@@ -1,0 +1,68 @@
+# Produit un IPA NON SIGNÉ, téléchargeable dans les artefacts du run.
+# C'est Sideloadly qui signera ensuite avec l'Apple ID personnel.
+#
+# Capacitor 8 utilise Swift Package Manager, pas CocoaPods : on compile donc
+# App.xcodeproj directement, et non un App.xcworkspace qui n'existe pas.
+
+name: IPA non signé
+
+on:
+  workflow_dispatch:      # lancement à la demande, depuis l'onglet Actions
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Package.swift référence node_modules/@capacitor/haptics en chemin relatif :
+      # les dépendances doivent être installées avant d'ouvrir le projet Xcode.
+      - run: npm ci
+
+      - run: npm run build
+
+      # Recopie dist/ dans ios/App/App/public et met à jour la liste des plugins.
+      - run: npx cap sync ios
+
+      - name: Archiver sans signature
+        working-directory: ios/App
+        run: |
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$PWD/build/App.xcarchive" \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_ENTITLEMENTS="" \
+            DEVELOPMENT_TEAM="" \
+            ONLY_ACTIVE_ARCH=NO \
+            archive
+
+      # Un IPA n'est qu'une archive zip contenant un dossier Payload/.
+      - name: Fabriquer l'IPA
+        working-directory: ios/App/build
+        run: |
+          mkdir -p Payload
+          cp -R App.xcarchive/Products/Applications/App.app Payload/
+          zip -qry BoitesPC.ipa Payload
+          ls -lh BoitesPC.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BoitesPC-ipa
+          path: ios/App/build/BoitesPC.ipa
+          retention-days: 30

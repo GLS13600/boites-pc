@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Icône — aperçu</title>
+<style>
+  body {
+    margin: 0; padding: 24px; background: #edeef0; color: #1e2227;
+    font: 14px ui-rounded, "Segoe UI", system-ui, sans-serif;
+  }
+  h1 { font-size: 17px; margin: 0 0 18px; }
+  .rangee { display: flex; align-items: flex-end; gap: 26px; flex-wrap: wrap; margin-bottom: 28px; }
+  .cas { text-align: center; }
+  .cas p { margin: 8px 0 0; font-size: 11px; color: #6b7280; }
+  /* iOS arrondit à ~22,4 % du côté : on simule pour juger du cadrage. */
+  .ic { background-size: cover; box-shadow: 0 4px 14px #0002; }
+  .r180 { width: 180px; height: 180px; border-radius: 40px; }
+  .r120 { width: 120px; height: 120px; border-radius: 27px; }
+  .r76  { width: 76px;  height: 76px;  border-radius: 17px; }
+  .r60  { width: 60px;  height: 60px;  border-radius: 13px; }
+  .r40  { width: 40px;  height: 40px;  border-radius: 9px; }
+  .r29  { width: 29px;  height: 29px;  border-radius: 6.5px; }
+  .ecran {
+    display: grid; grid-template-columns: repeat(4, 60px); gap: 26px 22px;
+    padding: 22px; border-radius: 22px; width: max-content;
+    background: linear-gradient(160deg, #6f7f95, #37455c);
+  }
+  .ecran div { text-align: center; }
+  .ecran span { display: block; margin-top: 5px; font-size: 9px; color: #fff; }
+  .faux { background: #cfd6e0; }
+</style>
+</head>
+<body>
+  <h1>Icône — aperçu aux tailles réelles d’iOS</h1>
+
+  <div class="rangee">
+    <div class="cas"><div class="ic r180" style="background-image:url('icon.svg')"></div><p>180 px · écran d’accueil @3x</p></div>
+    <div class="cas"><div class="ic r120" style="background-image:url('icon.svg')"></div><p>120 px · @2x</p></div>
+    <div class="cas"><div class="ic r76"  style="background-image:url('icon.svg')"></div><p>76 px · réglages</p></div>
+    <div class="cas"><div class="ic r60"  style="background-image:url('icon.svg')"></div><p>60 px · taille réelle</p></div>
+    <div class="cas"><div class="ic r40"  style="background-image:url('icon.svg')"></div><p>40 px · Spotlight</p></div>
+    <div class="cas"><div class="ic r29"  style="background-image:url('icon.svg')"></div><p>29 px · notifications</p></div>
+  </div>
+
+  <h1>Sur un écran d’accueil, entouré d’autres applications</h1>
+  <div class="ecran">
+    <div><div class="ic r60 faux"></div><span>Photos</span></div>
+    <div><div class="ic r60" style="background-image:url('icon.svg')"></div><span>Boîtes PC</span></div>
+    <div><div class="ic r60 faux"></div><span>Notes</span></div>
+    <div><div class="ic r60 faux"></div><span>Plans</span></div>
+  </div>
+</body>
+</html>

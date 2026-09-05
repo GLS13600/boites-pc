@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Calage des fonds</title>
+<style>
+  :root {
+    --paper: #f6f5f1; --panel: #fff; --rule: #e3e0d6; --ink: #1e2227;
+    --muted: #7c8592; --ball: #d6453c;
+    --font: ui-rounded, "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px; background: var(--paper); color: var(--ink);
+    font-family: var(--font); font-size: 14px;
+  }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  .sous { color: var(--muted); font-size: 12px; margin-bottom: 16px; line-height: 1.45; }
+  .lien { color: var(--muted); }
+
+  .bloc { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+  select {
+    width: 100%; padding: 8px 10px; font: inherit; border-radius: 8px;
+    border: 1px solid var(--rule); background: var(--paper); color: var(--ink);
+  }
+  .paire { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .curseur { margin-bottom: 14px; }
+  .curseur:last-child { margin-bottom: 0; }
+  .tete { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .tete b { font-size: 13px; }
+  .val {
+    width: 84px; padding: 4px 6px; text-align: right;
+    font: inherit; font-variant-numeric: tabular-nums; font-weight: 700;
+    color: var(--ball); background: var(--paper);
+    border: 1px solid var(--rule); border-radius: 6px;
+  }
+  .val:focus { outline: 2px solid var(--ball); outline-offset: -1px; }
+  /* Les flèches natives sont minuscules et gênent la saisie au clavier. */
+  .val::-webkit-outer-spin-button, .val::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .val { -moz-appearance: textfield; }
+  .aide { font-size: 11px; color: var(--muted); }
+  input[type=range] { width: 100%; accent-color: var(--ball); }
+
+  .boutons { display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 12px;
+    border-radius: 8px; border: 1px solid var(--rule); background: var(--paper);
+    color: var(--ink); cursor: pointer;
+  }
+  button:hover { background: #efece4; }
+  button.fort { background: var(--ball); border-color: var(--ball); color: #fff; }
+
+  code {
+    display: block; margin-top: 10px; padding: 10px 12px; border-radius: 8px;
+    background: #2b2f36; color: #e6e9ee; font-size: 12px; line-height: 1.5;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .etat { font-size: 12px; color: var(--muted); margin-top: 10px; min-height: 1.4em; }
+  .lie { color: #2e7d32; }
+  .perdu { color: var(--ball); }
+</style>
+</head>
+<body>
+
+<h1>Calage des fonds de boîte</h1>
+<p class="sous">
+  Gardez l'appli ouverte dans l'autre fenêtre : les curseurs la modifient en direct.<br />
+  Les valeurs se tapent aussi à la main, y compris au-delà de la course des curseurs.<br />
+  Quand un calage vous convient, copiez la ligne et collez-la dans
+  <span class="lien">src/paper-align.js</span>.
+</p>
+
+<div class="bloc">
+  <div class="paire">
+    <div>
+      <label for="gen">Génération du fond</label>
+      <select id="gen"></select>
+    </div>
+    <div>
+      <label for="fond">Fond affiché</label>
+      <select id="fond"></select>
+    </div>
+  </div>
+  <div class="etat" id="etat">Connexion à l'appli…</div>
+</div>
+
+<div class="bloc" id="curseurs">
+  <div class="curseur">
+    <div class="tete"><b>Horizontal &nbsp;<span class="aide">x</span></b><input type="number" class="val" id="vx" step="0.1" value="0" /></div>
+    <input type="range" id="x" min="-60" max="60" step="0.1" value="0" />
+    <div class="aide">Négatif = vers la gauche.</div>
+  </div>
+  <div class="curseur">
+    <div class="tete"><b>Vertical &nbsp;<span class="aide">y</span></b><input type="number" class="val" id="vy" step="0.1" value="0" /></div>
+    <input type="range" id="y" min="-80" max="40" step="0.1" value="0" />
+    <div class="aide">Négatif = le fond remonte. C'est ce qui place sa bande derrière le nom.</div>
+  </div>
+  <div class="curseur">
+    <div class="tete"><b>Largeur &nbsp;<span class="aide">w</span></b><input type="number" class="val" id="vw" step="0.1" value="100" /></div>
+    <input type="range" id="w" min="60" max="200" step="0.1" value="100" />
+    <div class="aide">100 = exactement la largeur de la grille des cases.</div>
+  </div>
+  <div class="curseur">
+    <div class="tete"><b>Hauteur &nbsp;<span class="aide">h</span></b><input type="number" class="val" id="vh" step="0.1" value="100" /></div>
+    <input type="range" id="h" min="60" max="220" step="0.1" value="100" />
+    <div class="aide">100 = exactement la hauteur de la grille des cases.</div>
+  </div>
+</div>
+
+<div class="bloc">
+  <div class="boutons">
+    <button class="fort" id="copier">Copier la ligne</button>
+    <button class="fort" id="copierTout">Copier TOUS mes réglages</button>
+    <button id="revenir">Revenir aux valeurs du fichier</button>
+    <button id="oublier">Oublier TOUS mes réglages</button>
+    <button id="precedent">◀ Fond précédent</button>
+    <button id="suivant">Fond suivant ▶</button>
+  </div>
+  <code id="ligne">—</code>
+</div>
+
+<script>
+  // Même origine que l'appli : BroadcastChannel suffit, aucun serveur intermédiaire.
+  const canal = new BroadcastChannel('pcbox-calage');
+
+  const $ = (id) => document.getElementById(id);
+  const axes = ['x', 'y', 'w', 'h'];
+  let catalogue = [];      // [{ id, name, game, gen, size }]
+  let cle = null;          // clé de calage courante, ex. « 5 » ou « 8:420x356 »
+  let duFichier = null;    // valeurs telles qu'elles sont dans paper-align.js
+  let vu = false;
+
+  // Le champ chiffré fait foi, pas le curseur : on peut y taper une valeur hors de sa
+  // course. Renvoie null tant qu'un champ est vide ou en cours de saisie (« - »),
+  // pour ne pas envoyer un 0 parasite à chaque frappe.
+  function valeurs() {
+    const o = {};
+    for (const a of axes) {
+      const n = Number($('v' + a).value);
+      if ($('v' + a).value.trim() === '' || !Number.isFinite(n)) return null;
+      o[a] = n;
+    }
+    return o;
+  }
+
+  function afficher(v) {
+    for (const a of axes) { $(a).value = v[a]; $('v' + a).value = v[a]; }
+    majLigne();
+  }
+  function majLigne() {
+    const v = valeurs();
+    if (!cle || !v) { if (!cle) $('ligne').textContent = '—'; return; }
+    const k = /^\d+$/.test(cle) ? cle : `'${cle}'`;
+    $('ligne').textContent = `${k}: { x: ${v.x}, y: ${v.y}, w: ${v.w}, h: ${v.h} },`;
+  }
+  function envoyer() {
+    const v = valeurs();
+    if (!cle || !v) return;
+    canal.postMessage({ type: 'align', cle, valeurs: v });
+    majLigne();
+  }
+
+  for (const a of axes) {
+    $(a).addEventListener('input', () => { $('v' + a).value = $(a).value; envoyer(); });
+    // Le curseur suit la saisie ; s'il déborde de sa course, le navigateur le borne,
+    // mais c'est bien la valeur tapée qui est envoyée.
+    $('v' + a).addEventListener('input', () => { $(a).value = $('v' + a).value; envoyer(); });
+  }
+
+  // --- listes ---
+  function remplirGenerations() {
+    const gens = [...new Set(catalogue.map((w) => w.gen))].sort((a, b) => a - b);
+    $('gen').innerHTML = gens.map((g) => `<option value="${g}">Génération ${g}</option>`).join('');
+  }
+  function remplirFonds() {
+    const g = Number($('gen').value);
+    const l = catalogue.filter((w) => w.gen === g);
+    $('fond').innerHTML = l.map((w) =>
+      `<option value="${w.id}">${w.name} — ${w.game} (${w.size})</option>`).join('');
+  }
+  function appliquer() {
+    const id = $('fond').value;
+    if (id) canal.postMessage({ type: 'apply', id });
+  }
+  $('gen').addEventListener('change', () => { remplirFonds(); appliquer(); });
+  $('fond').addEventListener('change', appliquer);
+
+  const decaler = (pas) => {
+    const s = $('fond');
+    s.selectedIndex = (s.selectedIndex + pas + s.length) % s.length;
+    appliquer();
+  };
+  $('suivant').addEventListener('click', () => decaler(1));
+  $('precedent').addEventListener('click', () => decaler(-1));
+
+  $('revenir').addEventListener('click', () => {
+    if (!duFichier) return;
+    afficher(duFichier);
+    canal.postMessage({ type: 'reset', cle });
+  });
+  // Récupère d'un coup tous les réglages en cours, pour les coller dans le fichier.
+  $('copierTout').addEventListener('click', () => {
+    enAttenteDeTout = true;
+    canal.postMessage({ type: 'tout' });
+  });
+  let enAttenteDeTout = false;
+
+  // Une fois les valeurs collées dans paper-align.js, les réglages en cours doivent
+  // disparaitre : ils priment sur le fichier et masqueraient donc les nouvelles
+  // valeurs.
+  $('oublier').addEventListener('click', () => {
+    canal.postMessage({ type: 'oublier' });
+    const b = $('oublier'), t = b.textContent;
+    b.textContent = 'Oublies - le fichier fait foi';
+    setTimeout(() => { b.textContent = t; }, 1800);
+  });
+
+  $('copier').addEventListener('click', async () => {
+    await navigator.clipboard.writeText($('ligne').textContent);
+    const b = $('copier'); const t = b.textContent;
+    b.textContent = 'Copié !'; setTimeout(() => { b.textContent = t; }, 1200);
+  });
+
+  // --- dialogue avec l'appli ---
+  canal.onmessage = ({ data }) => {
+    if (data.type === 'catalogue') {
+      catalogue = data.fonds;
+      vu = true;
+      $('etat').innerHTML = `<span class="lie">Relié à l'appli</span> — ${catalogue.length} fonds.`;
+      remplirGenerations();
+      remplirFonds();
+      return;
+    }
+    if (data.type === 'tousLesReglages') {
+      if (!enAttenteDeTout) return;
+      enAttenteDeTout = false;
+      const e = Object.entries(data.reglages);
+      if (!e.length) {
+        $('ligne').textContent = 'Aucun réglage en cours : rien à copier.';
+        return;
+      }
+      const bloc = e.map(([k, v]) => {
+        const cle = /^[0-9]+$/.test(k) ? k : `'${k}'`;
+        return `  ${cle}: { x: ${v.x}, y: ${v.y}, w: ${v.w}, h: ${v.h} },`;
+      }).join('\n');
+      $('ligne').textContent = bloc;
+      navigator.clipboard.writeText(bloc);
+      const b = $('copierTout'), t = b.textContent;
+      b.textContent = `${e.length} réglage(s) copié(s) !`;
+      setTimeout(() => { b.textContent = t; }, 1600);
+      return;
+    }
+    if (data.type === 'courant') {
+      cle = data.cle;
+      duFichier = data.duFichier;
+      afficher(data.valeurs);
+      $('etat').innerHTML = `<span class="lie">Relié</span> — clé <b>${cle}</b>`
+        + (data.override ? ' · <b>réglage en cours</b>, non enregistré' : ' · valeurs du fichier');
+      // Aligne les listes sur ce que l'appli affiche vraiment.
+      if ($('gen').value != data.gen) { $('gen').value = data.gen; remplirFonds(); }
+      if (data.id && $('fond').value !== data.id) $('fond').value = data.id;
+      return;
+    }
+  };
+
+  canal.postMessage({ type: 'hello' });
+  setTimeout(() => {
+    if (!vu) {
+      $('etat').innerHTML = '<span class="perdu">Appli introuvable.</span> '
+        + 'Ouvrez http://localhost:5173 dans une autre fenêtre, puis rechargez cette page.';
+    }
+  }, 1500);
+</script>
+</body>
+</html>

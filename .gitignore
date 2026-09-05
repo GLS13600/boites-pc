@@ -1,0 +1,24 @@
+node_modules
+dist
+
+# Captures des fonds des jeux : références de travail uniquement, assets Nintendo.
+# Ne pas versionner, ne pas copier dans public/ ni dans le bundle.
+reference
+
+# Régénérés à chaque build par `npx cap sync ios` depuis dist/ : les versionner
+# reviendrait à committer les 5 571 fichiers du bundle une seconde fois.
+ios/App/App/public
+ios/App/App/capacitor.config.json
+
+# Sorties de compilation Xcode.
+ios/App/build
+ios/DerivedData
+DerivedData
+*.xcarchive
+
+# Réglages propres à une machine ; le scheme partagé, lui, est versionné : sans lui
+# `xcodebuild -scheme App` échoue sur un runner, qui n'ouvre jamais l'interface Xcode.
+xcuserdata
+*.xcuserstate
+
+.DS_Store

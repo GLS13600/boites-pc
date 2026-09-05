@@ -1,0 +1,811 @@
+:root {
+  --paper: #f6f5f1;
+  --panel: #ffffff;
+  --rule: #e3e0d6;
+  --rule-soft: #efece4;
+  --ink: #1e2227;
+  --muted: #7c8592;
+  --slot: #fbfaf7;
+  --caught-tint: #fff6f4;
+  --caught-edge: #f0c4bd;
+  --ball: #d6453c;
+  --shiny: #b98b18;
+  --font: ui-rounded, "SF Pro Rounded", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--ball); outline-offset: 2px; }
+img { display: block; }
+
+#app { min-height: 100%; display: flex; flex-direction: column; }
+
+/* ---------- Barre des générations : fixée en haut ---------- */
+
+.gens {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: 4px;
+  padding: calc(10px + var(--safe-top)) 12px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+}
+.gens::-webkit-scrollbar { display: none; }
+
+.gen-tab {
+  flex: 0 0 auto;
+  padding: 8px 12px 9px;
+  border-radius: 9px 9px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  margin-bottom: -1px;
+}
+.gen-tab small { display: block; margin-top: 4px; font-size: 10px; font-weight: 500; opacity: 0.75; }
+.gen-tab[aria-selected="true"] {
+  background: var(--panel);
+  color: var(--ink);
+  border-color: var(--rule);
+  box-shadow: 0 -2px 0 var(--ball) inset;
+}
+
+/* ---------- La boîte ---------- */
+
+.box {
+  position: relative;
+  margin: 12px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  padding: 10px 10px 14px;
+  touch-action: none;
+  overflow: hidden; /* la grille glisse d'une boîte à l'autre : on clippe au panneau */
+}
+
+.box-head { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; margin-bottom: 10px; }
+.box-arrow {
+  height: 34px;
+  border-radius: 9px;
+  font-size: 17px;
+  color: var(--ink);
+  background: var(--slot);
+  border: 1px solid var(--rule);
+}
+.box-arrow:disabled { opacity: 0.3; cursor: default; }
+.box-title {
+  text-align: center;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--ink);
+  padding: 4px 8px;
+  border-radius: 9px;
+  min-width: 0;
+}
+.box-title:active { background: var(--slot); }
+.box-title small { display: block; font-weight: 500; font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 5px;
+  /* Sortie franche, entrée qui décélère : le geste paraît continu. */
+  transition: transform 210ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 210ms ease;
+  will-change: transform;
+}
+/* Pendant que le doigt tient la grille, aucune animation : elle colle au doigt. */
+.grid.no-anim { transition: none; }
+
+/* Le fond couvre TOUT le panneau, en-tête compris : la bande illustrée en haut de
+   l'image se retrouve ainsi derrière le nom de la boîte, comme dans les jeux. C'est
+   aussi ce qui évite d'avoir à mesurer la hauteur de cette bande sur 14 mises en page
+   différentes. Agrandies, les images doivent rester nettes : pas de lissage. */
+.box.papered { border-color: #0000; }
+/* Le fond vit dans sa propre couche : c'est ce qui permet de le remonter pour caler
+   sa bande d'en-tête derrière le titre (voir calePaper). Position et hauteur sont
+   posées en JS, après mesure. */
+/* Nom volontairement distinct de `.paper`, qui désigne les boutons du sélecteur de
+   fond : les deux ont déjà été confondus, et `position: absolute` sortait alors les
+   85 vignettes du flux. */
+/* Le calque suit la grille pendant le passage d une boite a l autre. */
+.box-paper.no-anim { transition: none; }
+.box-paper {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  z-index: 0;
+  pointer-events: none;
+}
+/* Le contenu de la boîte passe au-dessus de la couche de fond. */
+.box > *:not(.box-paper) { position: relative; z-index: 1; }
+/* Le titre passe sur la bande, dont la couleur est imprévisible : certains fonds
+   sont presque noirs (Zekrom, Kyurem Noir, plusieurs fonds d'Écarlate/Violet). Un
+   simple ombrage ne suffit pas ; on cerne donc le texte d'un halo blanc opaque, en
+   superposant plusieurs ombres. Texte sombre + halo blanc reste lisible sur clair
+   comme sur sombre. */
+.box.papered .box-title,
+.box.papered .box-title small {
+  color: #17150f;
+  text-shadow:
+    0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff,
+    0 1px 4px #fff, 0 -1px 4px #fff, 0 0 9px #fff;
+}
+.box.papered .box-arrow {
+  background: #ffffffb8;
+  border-color: #ffffffd0;
+}
+.box.papered .box-dots i { box-shadow: 0 0 0 1px #ffffff8c; }
+/* Sur un fond, on ne garde que le sprite : aucune plaque translucide autour. La
+   bordure reste déclarée mais transparente, pour que les états qui la colorent
+   (saisie, cible d'un dépôt, survol) restent visibles. */
+.grid.papered .slot { background: transparent; border-color: transparent; }
+.grid.papered .slot.caught { background: transparent; border-color: transparent; }
+/* Les cases libres gardent un liseré : sans lui, on ne verrait plus où ajouter. */
+.grid.papered .slot.empty { background: transparent; border-color: rgba(255, 255, 255, 0.55); }
+/* `.grid.papered .slot` est plus spécifique que `.slot.tenu` et consorts : sans ces
+   trois lignes, la bordure des états serait annulée et la cible d'un dépôt
+   deviendrait invisible sur un fond. */
+.grid.papered .slot.tenu { border-color: var(--ball); }
+.grid.papered .slot.survol { border-color: var(--ball); }
+.grid.papered .slot.cible { border-color: rgba(255, 255, 255, 0.7); }
+/* Le numéro se pose désormais sur l'image du fond : il lui faut un peu de contraste. */
+.grid.papered .slot .num { color: #17150f; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 5px #fff; }
+
+.slot {
+  aspect-ratio: 1;
+  border-radius: 9px;
+  background: var(--slot);
+  border: 1px solid var(--rule-soft);
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  transition: transform 110ms ease, background 160ms ease, border-color 160ms ease;
+}
+.slot:active { transform: scale(0.9); }
+.slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  /* Le sprite occupe toute la case, plus un léger débord : les PNG de PokéAPI ont une
+     marge transparente, on gagne donc en taille sans rogner la créature. */
+  padding: 0;
+  transform: scale(1.06);
+  transition: filter 160ms ease, opacity 160ms ease;
+}
+/* Non capturé : sprite 2D en gris. Capturé : sprite animé en couleur. */
+.slot:not(.caught) img { filter: grayscale(1); opacity: 0.72; }
+.slot.caught { background: var(--caught-tint); border-color: var(--caught-edge); }
+
+.slot.caught::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(to bottom, var(--ball) 50%, #fff 50%);
+  box-shadow: 0 0 0 1.2px var(--ink);
+}
+.slot.empty { border-style: dashed; background: transparent; }
+.slot .num {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 9px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  z-index: 1;
+}
+
+.box-dots { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 12px; }
+.box-dots .dots { display: flex; align-items: center; gap: 5px; }
+.box-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--rule); }
+.box-dots i.on { background: var(--ball); }
+
+/* ---------- Bas de page ---------- */
+
+.foot {
+  margin: 0 12px;
+  padding-bottom: calc(18px + var(--safe-bottom));
+  color: var(--muted);
+  font-size: 13px;
+}
+.progress { display: flex; align-items: center; gap: 10px; }
+.progress .bar { flex: 1; height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; }
+.progress .bar span { display: block; height: 100%; background: var(--ball); transition: width 240ms ease; }
+.progress strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.tools { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.tools .fin { display: flex; gap: 8px; margin-left: auto; order: 1; }
+.tools .segmente, .tools .bascule { order: 2; }
+
+/* Boutons de la barre : pastilles, avec un glyphe en tête. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.btn b { font-size: 14px; line-height: 1; }
+.btn:active { transform: scale(0.96); }
+.btn.primaire { background: var(--ball); border-color: var(--ball); color: #fff; }
+.btn.primaire b { font-size: 16px; }
+.btn.discret { color: var(--muted); background: transparent; }
+.btn.discret:active { background: var(--panel); }
+.btn.bascule.on { background: #fdf6e3; border-color: var(--shiny); color: var(--shiny); }
+
+/* Rail à trois positions pour l'effet du tap. */
+.segmente {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--rule-soft);
+  border: 1px solid var(--rule);
+}
+.segmente button {
+  padding: 5px 11px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  transition: background 140ms ease, color 140ms ease;
+}
+.segmente button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px #0000001f; }
+
+/* Sous 380 px, les libellés sautent : les glyphes suffisent à reconnaître les boutons. */
+@media (max-width: 379px) {
+  .btn.discret span { display: none; }
+  .btn.discret { padding: 7px 10px; }
+}
+
+.hint {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  line-height: 1.45;
+}
+.hint code { background: var(--slot); border: 1px solid var(--rule); padding: 1px 5px; border-radius: 4px; }
+
+/* ---------- Fiche ---------- */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 34, 39, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+  z-index: 10;
+}
+.backdrop.open { opacity: 1; pointer-events: auto; }
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 88vh;
+  background: var(--panel);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid var(--rule);
+  transform: translateY(100%);
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--safe-bottom);
+}
+.sheet.open { transform: translateY(0); }
+.sheet-grip { width: 38px; height: 5px; border-radius: 3px; background: var(--rule); margin: 8px auto 0; }
+.sheet-body { overflow-y: auto; padding: 8px 18px 22px; overscroll-behavior: contain; }
+
+.sheet-top { display: grid; grid-template-columns: 108px 1fr; gap: 14px; align-items: center; }
+.portrait { position: relative; }
+.portrait img { width: 108px; height: 108px; object-fit: contain; }
+.portrait.locked img { filter: grayscale(1); opacity: 0.72; }
+.shiny-btn {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  color: var(--muted);
+}
+.shiny-btn.on { color: var(--shiny); border-color: var(--shiny); background: #fdf7e6; }
+
+.sheet-name { font-size: 22px; font-weight: 800; margin: 0; line-height: 1.1; }
+.sheet-name small { font-weight: 500; color: var(--muted); font-size: 14px; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.sheet-genus { margin: 3px 0 8px; color: var(--muted); font-size: 13px; }
+.types { display: flex; gap: 6px; flex-wrap: wrap; }
+.type { padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff; background: var(--t, #888); }
+
+.catch-btn {
+  margin: 16px 0 4px;
+  width: 100%;
+  padding: 13px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 15px;
+  background: var(--ball);
+  color: #fff;
+}
+.catch-btn.done { background: transparent; border: 1.5px solid var(--rule); color: var(--muted); }
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--rule-soft);
+  border: 1px solid var(--rule-soft);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 14px;
+}
+.fact { background: var(--panel); padding: 9px 11px; margin: 0; }
+.fact dt { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+.fact dd { margin: 0; font-size: 14px; font-weight: 600; }
+.fact.wide { grid-column: 1 / -1; }
+.fact.wide dd { font-weight: 400; font-size: 13px; line-height: 1.45; }
+
+.sheet h3 { font-size: 15px; margin: 20px 0 8px; }
+.games { display: flex; flex-direction: column; gap: 8px; }
+.game { border: 1px solid var(--rule); border-radius: 10px; padding: 8px 10px; }
+.game-name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.loc { display: grid; grid-template-columns: 1fr auto; gap: 8px; font-size: 13px; padding: 4px 0; }
+.loc + .loc { border-top: 1px dashed var(--rule-soft); }
+.loc .where { font-weight: 600; }
+.loc .how { color: var(--muted); font-size: 12px; }
+.loc .lvl { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.none { color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+/* ---------- Personnalisation d'une boîte ---------- */
+
+.bs-title { font-size: 18px; font-weight: 800; margin: 4px 0 14px; }
+.bs-field { display: block; margin-bottom: 18px; }
+.bs-field span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.bs-name {
+  width: 100%;
+  padding: 11px 12px;
+  font: inherit;
+  font-size: 16px; /* < 16px déclencherait un zoom automatique sur iOS */
+  color: var(--ink);
+  background: var(--slot);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+.bs-name:focus { outline: 2px solid var(--ball); outline-offset: -1px; }
+
+/* Étape 1 : la génération. Rangée qui défile, comme la barre du haut. */
+.paper-gens {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+}
+.paper-gens::-webkit-scrollbar { display: none; }
+.paper-gen {
+  flex: 0 0 auto;
+  padding: 7px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--rule);
+  background: var(--slot);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+}
+.paper-gen small { display: block; font-size: 10px; font-weight: 500; opacity: 0.8; }
+.paper-gen.on { background: var(--ball); border-color: var(--ball); color: #fff; }
+
+/* Étape 2 : les fonds de cette génération. */
+.papers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.paper { display: block; text-align: center; border-radius: 10px; padding: 4px; }
+.paper small { display: block; margin-top: 5px; font-size: 11px; color: var(--muted); line-height: 1.25; }
+/* Le jeu d'origine, en dessous : plusieurs fonds partagent le même nom. */
+.paper small i { display: block; font-style: normal; font-size: 9px; opacity: 0.7; margin-top: 1px; }
+.paper-swatch {
+  display: block;
+  height: 56px;
+  border-radius: 9px;
+  border: 1px solid var(--rule);
+}
+/* Vignette = la capture du jeu, agrandie sans lissage.
+   La taille est posée ICI, pas dans le raccourci `background` de l'attribut style :
+   ce raccourci ne porte plus qu'une url() depuis que la couche .paper gère sa propre
+   taille, et il remet donc background-size/repeat à leurs valeurs par défaut. Sans
+   ces deux lignes, la vignette répète l'image à sa taille naturelle. */
+.paper-swatch.shot {
+  image-rendering: pixelated;
+  border-color: #0000;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+.paper-swatch.none {
+  background:
+    repeating-linear-gradient(45deg, var(--rule-soft) 0 5px, transparent 5px 10px), var(--slot);
+}
+.paper.on .paper-swatch { border-color: var(--ball); box-shadow: 0 0 0 2px var(--ball); }
+.paper-note { margin: 14px 2px 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.paper.on small { color: var(--ink); font-weight: 700; }
+
+@media (min-width: 720px) {
+  #app { max-width: 560px; margin: 0 auto; }
+  .sheet { max-width: 560px; margin: 0 auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}
+
+/* ---------- Emplacements libres et Pokémon ajoutés ---------- */
+
+/* Les cases au-delà du dernier numéro d'une génération deviennent des « + ». */
+.slot.empty {
+  color: var(--muted);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+}
+.slot.empty:active { transform: scale(0.9); }
+/* Un Pokémon ajouté à la main : liseré doré pour le distinguer du Pokédex. */
+.slot.extra { border-color: var(--shiny); }
+.slot.extra .num { color: var(--shiny); font-weight: 700; }
+.slot-x {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  z-index: 2;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--muted);
+  background: #ffffffd0;
+}
+
+/* ---------- Famille d'évolution ---------- */
+
+.evo { display: flex; flex-direction: column; gap: 2px; }
+/* L'indentation dit la profondeur : les familles qui se ramifient restent lisibles. */
+.evo-row { margin-left: calc(var(--d, 0) * 16px); }
+.evo-how {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
+  padding: 3px 0 3px 12px;
+  border-left: 2px solid var(--rule);
+  margin-left: 14px;
+}
+.evo-mon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  text-align: left;
+  position: relative;
+}
+.evo-mon img { width: 34px; height: 34px; object-fit: contain; image-rendering: pixelated; }
+.evo-mon span { font-size: 14px; font-weight: 600; }
+.evo-mon.on { background: var(--slot); border-color: var(--rule); }
+.evo-ok {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: linear-gradient(to bottom, var(--ball) 50%, #fff 50%);
+  box-shadow: 0 0 0 1.2px var(--ink);
+}
+
+/* ---------- Autres formes ---------- */
+
+.formes-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.formes-all {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--rule);
+  background: var(--slot);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.formes-all:active { background: var(--paper); }
+
+.formes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+/* .forme est un conteneur : le corps ouvre la fiche, le bouton range dans la boîte. */
+.forme {
+  display: flex;
+  align-items: stretch;
+  border-radius: 10px;
+  border: 1px solid var(--rule);
+  background: var(--slot);
+  overflow: hidden;
+}
+.forme-go {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  padding: 5px 4px 5px 7px;
+  text-align: left;
+}
+.forme img { width: 30px; height: 30px; object-fit: contain; image-rendering: pixelated; flex: 0 0 auto; }
+.forme span { font-size: 12px; font-weight: 600; line-height: 1.2; min-width: 0; }
+.forme span i { display: block; font-style: normal; font-size: 10px; font-weight: 500; color: var(--muted); }
+.forme-add {
+  flex: 0 0 30px;
+  border-left: 1px solid var(--rule);
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 700;
+}
+.forme-add.on { color: var(--ball); background: var(--caught-tint); }
+.forme-add:active { background: var(--paper); }
+.forme.on { border-color: var(--caught-edge); background: var(--caught-tint); }
+
+/* ---------- Sélecteur d'ajout ---------- */
+
+.picks { display: flex; flex-direction: column; gap: 4px; }
+.pick {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 10px;
+  text-align: left;
+}
+.pick:active { background: var(--slot); }
+.pick img { width: 34px; height: 34px; object-fit: contain; image-rendering: pixelated; }
+.pick span { font-size: 14px; font-weight: 600; line-height: 1.2; }
+.pick span i { display: block; font-style: normal; font-size: 11px; font-weight: 500; color: var(--muted); }
+
+/* Retour de la fiche d'une forme vers celle de son espèce. */
+.back-btn {
+  display: block;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--rule);
+  background: var(--slot);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+}
+.back-btn:active { background: var(--paper); }
+/* La forme actuellement affichée, dans la liste des formes. */
+.forme.ici { border-color: var(--ink); background: var(--panel); }
+.forme.ici span { color: var(--ink); }
+
+/* ---------- Mode Ranger ---------- */
+
+/* Le Pokémon saisi : la case brille et se soulève, pour dire « je te tiens ». */
+.slot.tenu {
+  border-color: var(--ball);
+  box-shadow: 0 0 0 2px var(--ball), 0 0 16px 3px rgba(214, 69, 60, 0.5);
+  transform: scale(1.08);
+  z-index: 3;
+}
+/* Pendant le glissement, le fantôme représente le Pokémon : la case d'origine
+   s'efface pour montrer qu'il l'a quittée. */
+.slot.tenu.glisse { transform: scale(1); box-shadow: 0 0 0 2px var(--ball); }
+.slot.tenu.glisse img { opacity: 0.2; }
+/* Toutes les autres cases deviennent des destinations possibles. */
+.slot.cible { border-style: dashed; border-color: var(--muted); }
+.box.ranger .slot { cursor: move; }
+
+/* Bascule de vue chromatique. */
+.tools button.on { color: var(--shiny); font-weight: 700; }
+
+.reset-btn {
+  display: block;
+  width: 100%;
+  margin: 0 0 16px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--rule);
+  background: var(--slot);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.reset-btn:active { background: var(--paper); }
+
+/* Le Pokémon suit le doigt pendant le glissement. */
+.drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  pointer-events: none; /* sinon elementFromPoint ne verrait que le fantôme */
+  opacity: 0.92;
+  filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.35));
+}
+/* Case survolée pendant le glissement : c'est là que le dépôt aura lieu. */
+.slot.survol { border-color: var(--ball); box-shadow: 0 0 0 2px var(--ball); }
+
+/* ---------- iOS : neutraliser l'aperçu natif au appui long ---------- */
+
+/* Sur iPhone, un appui long sur une image ouvre l'aperçu de Safari et son menu de
+   partage. Ce geste est capté par le navigateur AVANT notre code : sans ces règles,
+   le glisser-déposer est tout simplement inutilisable sur iPhone.
+   - -webkit-touch-callout : supprime le menu contextuel natif ;
+   - user-select : empêche la sélection qui l'accompagne ;
+   - -webkit-user-drag : empêche le glissement natif d'image (iOS 11+).
+   Ne pas retirer sans tester sur un vrai iPhone. */
+.box,
+.box * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+img {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+/* ---------- Placement libre d'un Pokémon ---------- */
+
+.tools button.fort {
+  color: var(--ball);
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid var(--caught-edge);
+  background: var(--caught-tint);
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+.tools button.fort:active { background: #ffe9e5; }
+
+/* Bandeau qui reste visible tant qu'un Pokémon attend son emplacement. */
+.hint.placer {
+  border-color: var(--caught-edge);
+  background: var(--caught-tint);
+}
+.hint.placer button {
+  display: inline-block;
+  margin-left: 8px;
+  color: var(--ball);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* Toutes les cases deviennent des destinations : on le montre. */
+.placement .slot { border-style: dashed; border-color: var(--ball); }
+
+/* Les onglets de remake, à la suite des générations : liseré doré pour les distinguer
+   des neuf générations, dont ils reprennent la région. */
+.gen-tab.remake[aria-selected="true"] { box-shadow: 0 -2px 0 var(--shiny) inset; }
+.gen-tab.remake small { font-style: italic; }
+
+/* Les deux boutons qui encadrent les pastilles : « − » retire la boîte affichée,
+   « + » en ajoute une. Même gabarit, sinon les pastilles ne seraient plus centrées. */
+.dot-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--rule);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+.dot-btn:hover { color: var(--ink); border-color: var(--muted); }
+.dot-btn:active { transform: scale(0.9); background: var(--slot); }
+/* La dernière boîte ne se supprime pas : le bouton s'efface au lieu de mentir. */
+.dot-btn:disabled { opacity: 0.3; cursor: default; transform: none; }
+/* Les pastilles tombent parfois SOUS le calque du fond, parfois sur le panneau
+   blanc selon le calage de la génération : la pastille reste donc opaque et claire,
+   avec un liseré blanc qui la détache d'un fond sombre. Un bouton translucide et
+   blanc devenait invisible sur le panneau. */
+.box.papered .dot-btn {
+  background: #fffffff2;
+  border-color: #ffffff;
+  color: var(--ink);
+  box-shadow: 0 1px 3px #0000002e;
+}
+.box.papered .dot-btn:hover { background: #fff; }
+.box-dots i { cursor: pointer; }
+
+/* Bord sensible pendant un glissement : on montre vers où l'on va basculer. */
+.box.bord-g::before,
+.box.bord-d::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 46px;
+  z-index: 2;
+  pointer-events: none;
+  animation: bordPulse 550ms ease-out;
+}
+.box.bord-g::before { left: 0; background: linear-gradient(to right, #d6453c66, #d6453c00); }
+.box.bord-d::before { right: 0; background: linear-gradient(to left, #d6453c66, #d6453c00); }
+@keyframes bordPulse { from { opacity: 0.25; } to { opacity: 1; } }
+
+/* Nom de boîte saisi : prêt à être déplacé sur une pastille. */
+.box-title.tenu {
+  background: var(--caught-tint);
+  box-shadow: 0 0 0 2px var(--ball);
+}
+/* Pendant le déplacement, les pastilles deviennent des destinations. */
+.box-dots.cible { padding: 4px 0; }
+.box-dots.cible i {
+  width: 12px;
+  height: 12px;
+  border: 1px dashed var(--ball);
+  background: transparent;
+}
+.box-dots.cible i.on { background: var(--caught-edge); }
+.box-dots i.survol {
+  background: var(--ball);
+  border-color: var(--ball);
+  transform: scale(1.35);
+}
+.box-dots i { transition: transform 120ms ease, background 120ms ease; }

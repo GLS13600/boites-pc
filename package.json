@@ -1,0 +1,26 @@
+{
+  "name": "pokedex-box",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "fetch-data": "node scripts/fetch-data.mjs",
+    "fetch-extra": "node scripts/fetch-extra.mjs",
+    "fetch-dex": "node scripts/fetch-dex.mjs",
+    "fetch-sprites": "node scripts/fetch-sprites.mjs"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "sharp": "^0.35.4",
+    "vite": "^6.0.0"
+  },
+  "dependencies": {
+    "@capacitor/cli": "^8.5.1",
+    "@capacitor/core": "^8.5.1",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.5.1"
+  }
+}

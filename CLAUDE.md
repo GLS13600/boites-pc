@@ -247,8 +247,11 @@ la fonction ne concerne que la gestion des boîtes.
   fiables et bien découpées (`mega-stones`, `held-items`, `choice`, `plates`…).
 - Les objets **sans sprite sont écartés** : ce sont des gemmes Méga présentes dans les
   données des jeux mais jamais distribuées. 358 objets bruts, 292 conservés.
-- L'objet tenu s'affiche **sous le sprite**, en `position: absolute` donc HORS DU
-  FLUX. Dans le flux il faisait grandir le panneau : son gabarit dépassait celui du
+- L'objet tenu se pose au **coin bas-droit du sprite**, en `position: absolute` donc
+  HORS DU FLUX. Sa boîte fait 22 px pour environ 15 px d'icône visible, soit la
+  hauteur du « N.26 » : les sprites d'objets de PokéAPI portent une large marge
+  transparente, si bien qu'une boîte calée sur la hauteur du texte donnerait une
+  icône bien plus petite que lui. Dans le flux il faisait grandir le panneau : son gabarit dépassait celui du
   texte de la ligne du bas, et les cases changeaient de taille dès qu'on équipait un
   Pokémon. Vérifié : 59 px de haut avec objet comme sans.
 - La règle du sprite est écrite `.eq > img:not(.eq-obj)`. Sans cette exclusion,

@@ -490,23 +490,29 @@ body { padding-bottom: calc(var(--nav-h) + var(--safe-bottom)); }
   font-variant-numeric: tabular-nums;
 }
 .eq-pv { margin-left: auto; }
-/* L'objet tenu se pose SOUS le sprite, en position absolue : dans le flux, son
-   gabarit dépassait celui du texte de la ligne du bas et faisait grandir tout le
-   panneau dès qu'on équipait un Pokémon. Hors flux, la case garde sa taille. */
+/* L'objet tenu se pose en bas à droite du sprite, en position absolue : dans le
+   flux, son gabarit dépassait celui du texte de la ligne du bas et faisait
+   grandir tout le panneau dès qu'on équipait un Pokémon. Hors flux, la case
+   garde sa taille quoi qu'il arrive.
+
+   22 px de boîte pour ~15 px d'icône visible, soit la hauteur du « N.26 » :
+   les sprites d'objets de PokéAPI portent une large marge transparente, si
+   bien qu'une boîte calée sur la hauteur du texte donnerait une icône bien
+   plus petite que lui. */
 .eq-obj {
   position: absolute;
-  left: 22px;   /* centré sous la colonne du sprite : 10 + (40 − 16) / 2 */
-  bottom: 4px;
+  left: 32px;   /* coin bas-droit du sprite, qui occupe 10 → 50 */
+  bottom: 6px;
   z-index: 2;
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   object-fit: contain;
   image-rendering: pixelated;
-  /* Un liseré sombre le détache du sprite, qui passe parfois derrière. */
+  /* Un liseré sombre le détache du sprite, qui passe derrière. */
   filter: drop-shadow(0 0 1px #1a1832) drop-shadow(0 0 2px #1a1832);
 }
-/* La colonne de droite est décalée de son biseau. */
-.equipe .eq:nth-child(even) .eq-obj { left: 36px; }
+/* La colonne de droite décale son sprite de son biseau : 24 → 64. */
+.equipe .eq:nth-child(even) .eq-obj { left: 46px; }
 /* Espèce absente du jeu choisi : on le signale sans retirer le Pokémon. */
 /* Espèce absente du jeu choisi : le liseré passe au rouge. */
 .eq.absent { background: var(--ball); }

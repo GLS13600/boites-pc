@@ -247,8 +247,13 @@ la fonction ne concerne que la gestion des boîtes.
   fiables et bien découpées (`mega-stones`, `held-items`, `choice`, `plates`…).
 - Les objets **sans sprite sont écartés** : ce sont des gemmes Méga présentes dans les
   données des jeux mais jamais distribuées. 358 objets bruts, 292 conservés.
-- L'objet tenu s'affiche **en bas à droite du parallélogramme**, dans `.eq-bas` avec
-  le niveau et les PV.
+- L'objet tenu s'affiche **sous le sprite**, en `position: absolute` donc HORS DU
+  FLUX. Dans le flux il faisait grandir le panneau : son gabarit dépassait celui du
+  texte de la ligne du bas, et les cases changeaient de taille dès qu'on équipait un
+  Pokémon. Vérifié : 59 px de haut avec objet comme sans.
+- La règle du sprite est écrite `.eq > img:not(.eq-obj)`. Sans cette exclusion,
+  `.eq img` — plus spécifique que `.eq-obj` — imposait 40 px à l'objet et lui collait
+  un placement de grille qui déplaçait son ancrage absolu.
 - La fiche de combat d'un membre montre ses **faiblesses et résistances** avec la même
   notation que l'analyse d'équipe (`×2`, `×4`, `÷2`, `0`), et suit elle aussi la
   génération du jeu. Les aides de rendu (`fmt`, `jetonsDe`, `badge`, `ligne`) vivent

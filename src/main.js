@@ -1901,10 +1901,10 @@ function renderEquipeSlot(m, i) {
       <span class="eq-bas">
         <span class="eq-lv">N.${niv}</span>
         <span class="eq-pv">${pv}/${pv}</span>
-        ${m.objet && items[m.objet]
-          ? `<img class="eq-obj" src="items/${m.objet}.png" alt="" title="${esc(items[m.objet].n)}" />`
-          : ''}
       </span>
+      ${m.objet && items[m.objet]
+        ? `<img class="eq-obj" src="items/${m.objet}.png" alt="" title="${esc(items[m.objet].n)}" />`
+        : ''}
       ${absent ? '<span class="eq-alerte" title="Absent de ce jeu">!</span>' : ''}
     </button>`;
 }

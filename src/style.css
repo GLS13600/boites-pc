@@ -456,7 +456,10 @@ body { padding-bottom: calc(var(--nav-h) + var(--safe-bottom)); }
 }
 .eq > * { position: relative; z-index: 1; }
 
-.eq img {
+/* Le sprite seul. On EXCLUT l'objet tenu : « .eq img » est plus spécifique que
+   « .eq-obj » et lui imposait sa taille de 40 px, en plus de lui coller un placement
+   de grille qui déplaçait son ancrage absolu. */
+.eq > img:not(.eq-obj) {
   grid-row: 1 / 4;
   width: 40px;
   height: 40px;
@@ -464,7 +467,7 @@ body { padding-bottom: calc(var(--nav-h) + var(--safe-bottom)); }
   image-rendering: pixelated;
 }
 /* Non capturé : gris, comme dans la grille des boîtes. Le signal reste le même. */
-.eq.gris img { filter: grayscale(1); opacity: 0.75; }
+.eq.gris > img:not(.eq-obj) { filter: grayscale(1); opacity: 0.75; }
 .eq-nom { font-size: 13px; font-weight: 700; line-height: 1.2; color: #ffffff; }
 .eq-jauge { display: flex; align-items: center; gap: 5px; }
 .eq-jauge i { font-style: italic; font-size: 9px; font-weight: 700; color: #b6b9db; }
@@ -487,15 +490,23 @@ body { padding-bottom: calc(var(--nav-h) + var(--safe-bottom)); }
   font-variant-numeric: tabular-nums;
 }
 .eq-pv { margin-left: auto; }
-/* L'objet tenu, en bas à droite du parallélogramme. */
+/* L'objet tenu se pose SOUS le sprite, en position absolue : dans le flux, son
+   gabarit dépassait celui du texte de la ligne du bas et faisait grandir tout le
+   panneau dès qu'on équipait un Pokémon. Hors flux, la case garde sa taille. */
 .eq-obj {
-  flex: 0 0 auto;
-  width: 17px;
-  height: 17px;
+  position: absolute;
+  left: 22px;   /* centré sous la colonne du sprite : 10 + (40 − 16) / 2 */
+  bottom: 4px;
+  z-index: 2;
+  width: 16px;
+  height: 16px;
   object-fit: contain;
   image-rendering: pixelated;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+  /* Un liseré sombre le détache du sprite, qui passe parfois derrière. */
+  filter: drop-shadow(0 0 1px #1a1832) drop-shadow(0 0 2px #1a1832);
 }
+/* La colonne de droite est décalée de son biseau. */
+.equipe .eq:nth-child(even) .eq-obj { left: 36px; }
 /* Espèce absente du jeu choisi : on le signale sans retirer le Pokémon. */
 /* Espèce absente du jeu choisi : le liseré passe au rouge. */
 .eq.absent { background: var(--ball); }

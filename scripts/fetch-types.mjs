@@ -84,6 +84,37 @@ let ok = true;
 for (const [libelle, vrai] of verif) { console.log(`  ${vrai ? '✓' : '✗'} ${libelle}`); if (!vrai) ok = false; }
 if (!ok) { console.error('\nLa table produite contredit un fait connu — on n’écrit rien.'); process.exit(1); }
 
+// ---------- Symboles des 18 types ----------
+//
+// Les pastilles rondes affichées dans l'analyse d'équipe. Source :
+// github.com/partywhale/pokemon-type-icons, sous licence MIT — un jeu SVG complet
+// et librement réutilisable, ce que n'est pas le premier résultat venu.
+//
+// À NE PAS confondre avec sprites/types/ du dépôt PokeAPI : celui-ci ne contient que
+// des bandeaux 200x40 portant le nom du type écrit en anglais, inutilisables ici.
+//
+// Les symboles de l'énergie du JCC ne conviendraient pas non plus : ils ne couvrent
+// qu'une dizaine de catégories et fusionnent plusieurs types du jeu vidéo (Vol et
+// Normal, Sol et Roche et Combat…). Il n'en existe pas 18.
+
+const ICONES = 'https://raw.githubusercontent.com/partywhale/pokemon-type-icons/main';
+const DEST = new URL('../public/types/', import.meta.url);
+await mkdir(DEST, { recursive: true });
+
+console.log('\nsymboles des types…');
+let ecrits = 0, octets = 0;
+for (const t of TYPES) {
+  const r = await fetch(`${ICONES}/icons/${t}.svg`);
+  if (!r.ok) { console.error(`échec sur ${t} (${r.status})`); process.exit(1); }
+  const svg = await r.text();
+  await writeFile(new URL(`${t}.svg`, DEST), svg);
+  ecrits++; octets += Buffer.byteLength(svg);
+}
+// La licence MIT impose de conserver l'avis de copyright : on l'embarque à côté.
+const lic = await fetch(`${ICONES}/LICENSE`);
+if (lic.ok) await writeFile(new URL('LICENCE.txt', DEST), await lic.text());
+console.log(`  ${ecrits} symboles, ${(octets / 1024).toFixed(0)} Ko, dans public/types/`);
+
 await writeFile(new URL('typechart.json', DATA), JSON.stringify({ types: TYPES, chart }));
 const ko = (o) => (Buffer.byteLength(JSON.stringify(o)) / 1024).toFixed(0);
 console.log(`\nsrc/data/typechart.json  ${ko({ types: TYPES, chart })} Ko · 9 générations × 18 × 18`);

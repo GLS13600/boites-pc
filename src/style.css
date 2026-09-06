@@ -593,18 +593,14 @@ body { padding-bottom: calc(62px + var(--safe-bottom)); }
 /* Faiblesse partagée par au moins trois membres : le vrai danger d'une équipe. */
 .tl.chaud { background: var(--caught-tint); border-radius: 6px; }
 
+/* Symbole rond du type. public/types/, jeu SVG sous licence MIT
+   (github.com/partywhale/pokemon-type-icons) : ils portent déjà leur couleur, il n'y
+   a rien à teinter. */
 .tb {
   flex: 0 0 auto;
-  width: 32px;
-  padding: 2px 0;
-  border-radius: 5px;
-  background: var(--t, #888);
-  color: #fff;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  text-align: center;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  display: block;
+  width: 20px;
+  height: 20px;
 }
 
 .tm { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }

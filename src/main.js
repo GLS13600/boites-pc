@@ -48,15 +48,6 @@ const TYPES = {
   dark: ['Ténèbres', '#4f423b'], steel: ['Acier', '#7e8e9b'], fairy: ['Fée', '#d977c1'],
 };
 
-// Abréviation de chaque type : trois lettres tiennent dans une pastille de 30 px,
-// là où « Électrik » ou « Ténèbres » forcerait une grille deux fois plus haute.
-const ABBR = {
-  normal: 'NOR', fire: 'FEU', water: 'EAU', grass: 'PLA', electric: 'ÉLE', ice: 'GLA',
-  fighting: 'COM', poison: 'POI', ground: 'SOL', flying: 'VOL', psychic: 'PSY',
-  bug: 'INS', rock: 'ROC', ghost: 'SPE', dragon: 'DRA', dark: 'TÉN', steel: 'ACI',
-  fairy: 'FÉE',
-};
-
 // Catégorie d'une attaque. Le statut est volontairement neutre : il n'inflige pas de
 // dégâts, ses colonnes Puissance et Précision valent souvent « — ».
 const CLASSES = {
@@ -2023,18 +2014,22 @@ function renderAnalyse() {
     m === 0 ? '0' : m >= 4 ? '×4' : m > 1 ? '×2' : m <= 0.25 ? '÷4' : m < 1 ? '÷2' : '×1';
   const classeMult = (m) => (m === 0 ? 'm0' : m > 1 ? 'mx' : m < 1 ? 'md' : 'mn');
 
-  const badge = (t) =>
-    `<span class="tb" style="--t:${TYPES[t]?.[1] || '#888'}" title="${esc(TYPES[t]?.[0] || t)}">${ABBR[t] || t.slice(0, 3).toUpperCase()}</span>`;
+  // Symbole du type, chemin relatif SANS « / » initial comme les sprites et les
+  // fonds : indispensable avec base: './', sinon Capacitor ne les trouve pas sur
+  // l'iPhone. Le nom français reste en alt et en title, pour l'accessibilité.
+  const badge = (t) => {
+    const nom = esc(TYPES[t]?.[0] || t);
+    return `<img class="tb" src="types/${t}.svg" alt="${nom}" title="${nom}" />`;
+  };
 
-  // Une ligne = une pastille de type suivie de ses multiplicateurs. Les valeurs
-  // neutres sont omises : elles n'apprennent rien et doubleraient la hauteur.
-  const ligne = (t, jetons, alerte) => `
+  // Une ligne = le symbole du type suivi de ses multiplicateurs. Les valeurs neutres
+  // sont omises, et une ligne qui n'aurait plus rien à montrer disparaît entièrement :
+  // dix-huit types dont douze sans intérêt, c'était surtout du bruit.
+  const ligne = (t, jetons, alerte) => (!jetons.length ? '' : `
     <div class="tl ${alerte ? 'chaud' : ''}">
       ${badge(t)}
-      <span class="tm">${jetons.length
-        ? jetons.map((m) => `<i class="${classeMult(m)}">${fmt(m)}</i>`).join('')
-        : '<i class="mn">·</i>'}</span>
-    </div>`;
+      <span class="tm">${jetons.map((m) => `<i class="${classeMult(m)}">${fmt(m)}</i>`).join('')}</span>
+    </div>`);
 
   // Le plus solide de l'équipe : la réponse directe à « qui est le tanker ».
   const tank = a.membres.slice().sort((x, y) => y.encaisse - x.encaisse)[0];
@@ -2045,7 +2040,7 @@ function renderAnalyse() {
       ${a.def.slice()
         .sort((x, y) => y.faibles - x.faibles || y.pire - x.pire || (y.resiste + y.immune) - (x.resiste + x.immune))
         .map((d) => ligne(d.t,
-          d.mults.filter((m) => m !== 1).sort((x, y) => y - x),
+          d.mults.filter((m) => m !== 1 && m !== 0).sort((x, y) => y - x),
           d.faibles >= 3)).join('')}
     </div>
 
@@ -2053,7 +2048,7 @@ function renderAnalyse() {
     ${a.typesAtq.size
       ? `<div class="tgrid off">${a.off.slice()
           .sort((x, y) => y.mult - x.mult)
-          .map((o) => ligne(o.t, o.mult === 1 ? [] : [o.mult], false)).join('')}</div>`
+          .map((o) => ligne(o.t, o.mult === 1 || o.mult === 0 ? [] : [o.mult], false)).join('')}</div>`
       : '<p class="none">Aucune attaque offensive choisie : sélectionnez-en pour voir la couverture.</p>'}
 
     <h3 class="an-h">Rôles</h3>

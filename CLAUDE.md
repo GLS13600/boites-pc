@@ -47,7 +47,8 @@ Pokémon. Destinée à finir en `.ipa` sideloadée sur iPhone via Sideloadly.
 | `src/data/learnsets-vg.json` | Moveset par espèce ET par jeu, **généré**, 5,7 Mo |
 | `scripts/fetch-battle.mjs` | Produit les trois ci-dessus (`npm run fetch-battle`) |
 | `src/data/typechart.json` | Table des types par génération, **généré** |
-| `scripts/fetch-types.mjs` | Aspire cette table (`npm run fetch-types`) |
+| `scripts/fetch-types.mjs` | Aspire table et symboles (`npm run fetch-types`) |
+| `public/types/` | Les 18 symboles de type, **générés**, 22 Ko |
 | `public/sprites/` | Les 5 291 sprites, **générés**, 40 Mo |
 
 ## Données
@@ -232,8 +233,11 @@ Sous la grille des six, trois lectures et une liste de conseils.
   couverture flatteuse et fausse.
 - Les deux grilles partagent le même gabarit, sur deux colonnes, et **le sens des
   couleurs s'inverse** : en défense un `×2` est rouge, en attaque il est vert.
-- Les types sont abrégés en trois lettres (`ABBR`) : « Électrik » ou « Ténèbres »
-  en toutes lettres forçait une grille deux fois plus haute.
+- **Les immunités ne sont pas affichées** : seuls `×` et `÷` apparaissent, et une
+  ligne qui n'aurait plus rien à montrer disparaît entièrement. Un type que rien ne
+  peut toucher reste signalé par la liste de conseils, qui le nomme — l'information
+  n'est donc pas perdue, seulement déplacée là où elle est actionnable.
+- Chaque type est représenté par son **symbole rond** (`public/types/<type>.svg`).
 - **Rôles** : Mur, Tank offensif, Sweeper, Casseur lent, Attaquant ou Polyvalent,
   déduits des stats de base, avec l'orientation physique / spéciale / mixte. Le plus
   solide de l'équipe est nommé explicitement.
@@ -261,6 +265,20 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 - Le script **vérifie six faits connus avant d'écrire** et s'interrompt si l'un
   échoue. Sans ce garde-fou, une erreur de lecture des relations passées produirait
   une table plausible mais fausse, impossible à repérer à l'œil.
+### Symboles des types
+
+- `public/types/<type>.svg`, 18 fichiers, 22 Ko. Source :
+  **github.com/partywhale/pokemon-type-icons, licence MIT** — `LICENCE.txt` est
+  embarqué à côté, l'avis de copyright doit être conservé.
+- **Ne pas se rabattre sur `sprites/types/` du dépôt PokeAPI** : ce dossier ne
+  contient que des bandeaux 200×40 portant le nom du type écrit **en anglais**,
+  inutilisables comme pictogrammes.
+- **Les symboles d'énergie du JCC ne conviennent pas** : ils ne couvrent qu'une
+  dizaine de catégories et fusionnent plusieurs types du jeu vidéo (Vol avec Normal,
+  Sol et Roche avec Combat…). Il n'en existe pas 18, la correspondance est impossible.
+- Les SVG portent déjà leur couleur : rien à teinter, on les affiche tels quels.
+  Chemin relatif **sans `/` initial**, comme les sprites et les fonds.
+
 - **Limite connue** : les types actuels sont utilisés quelle que soit la version. Les
   espèces retypées en gén. 6 (Mélofée devenue Fée) s'afficheront donc avec leur type
   moderne dans une partie de gén. 1. PokéAPI publie `past_types`, non exploité ici.

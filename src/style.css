@@ -894,18 +894,21 @@ img {
   background: var(--caught-tint);
   box-shadow: 0 0 0 2px var(--ball);
 }
-/* Pendant le déplacement, les pastilles deviennent des destinations. */
+/* Pendant le déplacement, les pastilles grossissent et celle de la boîte portée
+   passe au rouge : on suit des yeux la boîte qui se déplace d'une position à l'autre.
+   Elles ne sont PLUS des cibles de dépôt — viser 6 px au doigt était irréaliste. */
 .box-dots.cible { padding: 4px 0; }
-.box-dots.cible i {
-  width: 12px;
-  height: 12px;
-  border: 1px dashed var(--ball);
-  background: transparent;
+.box-dots.cible i { width: 9px; height: 9px; }
+.box-dots.cible i.on { background: var(--ball); transform: scale(1.4); }
+.box-dots i {
+  transition: transform 120ms ease, background 120ms ease, width 120ms ease, height 120ms ease;
 }
-.box-dots.cible i.on { background: var(--caught-edge); }
-.box-dots i.survol {
-  background: var(--ball);
+
+/* Boîte portée : les flèches deviennent les commandes du déplacement, un appui du
+   second doigt la fait avancer d'un cran. On le montre, sinon rien ne dit qu'elles
+   ont changé de rôle. */
+.box.porte .box-arrow:not(:disabled) {
   border-color: var(--ball);
-  transform: scale(1.35);
+  color: var(--ball);
+  background: var(--caught-tint);
 }
-.box-dots i { transition: transform 120ms ease, background 120ms ease; }

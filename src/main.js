@@ -236,12 +236,17 @@ function ajouteBoite(gen) {
 }
 // Déplace une boîte entière : on travaille sur des tranches de 30, d'où le calage
 // préalable. Sans lui, une liste de longueur libre décalerait tout le reste.
+//
+// `vers` est la position FINALE de la boîte, une fois qu'elle a été retirée de la
+// liste — pas un point d'insertion dans la numérotation d'origine. L'ancienne version
+// corrigeait `vers - 1` quand on allait vers la droite, ce qui rendait tout
+// déplacement d'un cran vers la droite parfaitement inopérant (0 → 1 laissait ABCD
+// inchangé) et faisait atterrir 0 → 3 en position 2. Ne pas réintroduire ce décalage.
 function bougeBoite(gen, de, vers) {
   if (de === vers) return;
   const l = padBoites(editList(gen));
   const bloc = l.splice(de * BOX_SIZE, BOX_SIZE);
-  const cible = de < vers ? (vers - 1) * BOX_SIZE : vers * BOX_SIZE;
-  l.splice(cible, 0, ...bloc);
+  l.splice(vers * BOX_SIZE, 0, ...bloc);
   saveOrder();
 }
 
@@ -1106,7 +1111,9 @@ app.addEventListener('click', (e) => {
   if (tab) { state.gen = +tab.dataset.gen; render(); return; }
 
   const arrow = e.target.closest('.box-arrow');
-  if (arrow) { slide(+arrow.dataset.dir); return; }
+  // Pendant qu'on porte une boîte, la flèche la déplace (géré au pointerdown) : elle
+  // ne doit pas en plus faire défiler jusqu'à la boîte voisine.
+  if (arrow) { if (!boxPress?.armed) slide(+arrow.dataset.dir); return; }
 
   // La croix retire de la boîte sans déclencher le bouton qui l'entoure.
   const croix = e.target.closest('[data-remove]');
@@ -1352,75 +1359,116 @@ window.addEventListener('pointercancel', finPress);
 
 // ---------- Déplacer une boîte entière ----------
 //
-// Appui long sur le NOM de la boîte, puis glissement sur les pastilles du bas : chaque
-// pastille est une position. On réutilise les pastilles plutôt que d'inventer une zone
-// de dépôt, elles disent déjà où l'on est et combien il y a de boîtes.
+// Appui long sur le NOM de la boîte : on la « porte ». Deux façons de la déplacer
+// ensuite, sans jamais relâcher le nom :
+//
+//   - glisser vers la gauche ou la droite : chaque PAS_BOITE parcourus la font
+//     avancer d'un cran, et l'affichage la suit ;
+//   - appuyer sur une flèche avec un SECOND doigt : un cran par appui.
+//
+// La version précédente demandait de lâcher la boîte sur une des pastilles du bas.
+// Ces pastilles font 6 px (12 px une fois armées) et se trouvent sous toute la
+// grille : viser au doigt était irréaliste. Elles restent un indicateur de position,
+// plus une cible.
+
+const PAS_BOITE = 70; // px de glissement horizontal pour avancer d'un cran
 
 let boxTimer;
-let boxPress = null; // { titre, de, x, y, armed, dragging }
+let boxPress = null; // { id, titre, x, y, armed, dragging, bouge }
 
 const finBoxPress = () => {
   clearTimeout(boxTimer);
-  if (boxPress?.titre) boxPress.titre.classList.remove('tenu');
+  boxPress?.titre?.classList.remove('tenu');
+  app.querySelector('.box')?.classList.remove('porte');
   app.querySelector('.box-dots')?.classList.remove('cible');
-  app.querySelectorAll('.box-dots i.survol').forEach((n) => n.classList.remove('survol'));
   boxPress = null;
 };
 
-const pastilleSous = (x, y) =>
-  document.elementFromPoint(x, y)?.closest('.box-dots i[data-boite]') ?? null;
+// render() détruit le titre tenu : après chaque rendu, on reprend le nouveau et on
+// lui rend sa marque, sinon la boîte cesserait visuellement d'être portée.
+const marqueTenue = () => {
+  if (!boxPress) return;
+  boxPress.titre = app.querySelector('.box-title');
+  boxPress.titre?.classList.add('tenu');
+  app.querySelector('.box')?.classList.add('porte');
+  app.querySelector('.box-dots')?.classList.add('cible');
+};
+
+// Avance la boîte portée d'un cran. On la suit : `state.box` la accompagne, donc
+// l'écran montre toujours la boîte qu'on tient.
+function deplaceBoiteDe(dir) {
+  if (!boxPress?.armed) return false;
+  const de = state.box[state.gen];
+  const vers = de + dir;
+  if (vers < 0 || vers >= boxCount(state.gen)) return false;
+  bougeBoite(state.gen, de, vers);
+  state.box[state.gen] = vers;
+  boxPress.bouge = true;
+  render();
+  marqueTenue();
+  retourHaptique();
+  return true;
+}
 
 app.addEventListener('pointerdown', (e) => {
+  // Second doigt sur une flèche pendant qu'on porte une boîte : elle avance d'un
+  // cran. Testé AVANT le nom, sinon le geste serait pris pour un nouvel appui.
+  if (boxPress?.armed) {
+    const fleche = e.target.closest('.box-arrow:not(:disabled)');
+    if (fleche) { e.preventDefault(); deplaceBoiteDe(+fleche.dataset.dir); return; }
+  }
+
   const titre = e.target.closest('.box-title');
   if (!titre || e.button > 0) return;
   finBoxPress();
-  boxPress = { titre, de: state.box[state.gen], x: e.clientX, y: e.clientY, armed: false, dragging: false };
+  boxPress = { id: e.pointerId, titre, x: e.clientX, y: e.clientY, armed: false, dragging: false, bouge: false };
   boxTimer = setTimeout(() => {
     boxTimer = null;
     if (!boxPress) return;
     boxPress.armed = true;
-    boxPress.titre.classList.add('tenu');
-    app.querySelector('.box-dots')?.classList.add('cible');
+    marqueTenue();
     retourHaptique();
   }, 450);
 });
 
 window.addEventListener('pointermove', (e) => {
-  if (!boxPress) return;
-  const dx = e.clientX - boxPress.x, dy = e.clientY - boxPress.y;
+  if (!boxPress || e.pointerId !== boxPress.id) return;
   if (!boxPress.armed) {
+    // Avant l'armement, tout mouvement annule : sans quoi un swipe de boîte
+    // démarrerait un déplacement.
+    const dx = e.clientX - boxPress.x, dy = e.clientY - boxPress.y;
     if (Math.abs(dx) > 8 || Math.abs(dy) > 8) finBoxPress();
     return;
   }
-  boxPress.dragging = true;
   e.preventDefault();
-  app.querySelectorAll('.box-dots i.survol').forEach((n) => n.classList.remove('survol'));
-  pastilleSous(e.clientX, e.clientY)?.classList.add('survol');
+  boxPress.dragging = true;
+
+  // On recale l'origine à chaque cran franchi : le geste peut donc enchaîner
+  // plusieurs boîtes d'un seul glissement continu.
+  let d = e.clientX - boxPress.x;
+  while (Math.abs(d) >= PAS_BOITE) {
+    const dir = d > 0 ? 1 : -1;
+    if (!deplaceBoiteDe(dir)) { boxPress.x = e.clientX; break; } // butée : on repart de zéro
+    boxPress.x += dir * PAS_BOITE;
+    d = e.clientX - boxPress.x;
+  }
 }, { passive: false });
 
 window.addEventListener('pointerup', (e) => {
-  if (!boxPress) return;
+  // Seul le pointeur qui tient le nom termine le geste : lever le second doigt après
+  // avoir touché une flèche lâcherait sinon la boîte au premier appui.
+  if (!boxPress || e.pointerId !== boxPress.id) return;
   const b = boxPress;
   clearTimeout(boxTimer);
-  const dot = b.armed ? pastilleSous(e.clientX, e.clientY) : null;
   finBoxPress();
   if (!b.armed) return;
-
-  // Relâché sans avoir bougé, ou hors des pastilles : on ouvre le panneau de la boîte.
-  if (!dot) {
-    // Le clic qui suit tout pointerup rouvrirait le panneau une seconde fois.
-    b.titre.addEventListener('click', (ev) => ev.stopPropagation(), { once: true, capture: true });
-    if (!b.dragging) openBoxSheet();
-    return;
-  }
-  const vers = +dot.dataset.boite;
-  bougeBoite(state.gen, b.de, vers);
-  state.box[state.gen] = vers;
-  render();
-  b.titre.addEventListener('click', (ev) => ev.stopPropagation(), { once: true, capture: true });
+  // Le clic qui suit tout pointerup rouvrirait le panneau une seconde fois.
+  b.titre?.addEventListener('click', (ev) => ev.stopPropagation(), { once: true, capture: true });
+  // Relâché sans avoir rien déplacé : c'était un appui long simple, on ouvre le panneau.
+  if (!b.dragging && !b.bouge) openBoxSheet();
 });
 
-window.addEventListener('pointercancel', finBoxPress);
+window.addEventListener('pointercancel', (e) => { if (boxPress && e.pointerId === boxPress.id) finBoxPress(); });
 app.addEventListener('contextmenu', (e) => {
   const slot = e.target.closest('.slot[data-id]');
   if (slot) { e.preventDefault(); openSheet(asKey(slot.dataset.id)); }

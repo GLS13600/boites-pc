@@ -304,9 +304,32 @@ Règles d'affichage, à ne pas casser :
 - `boxCount` ne réserve **plus** de boîte de rab automatique : elle faisait double
   emploi avec le « + » et en ajoutait deux d'un coup. `render()` appelle désormais
   `boxCount` au lieu de recalculer — la duplication avait masqué la correction.
-- **Appui long sur le nom de la boîte** puis glissement sur une pastille : la boîte
-  entière change de place (`bougeBoite`, tranches de 30). Les pastilles servent de
-  destinations, elles disent déjà où l'on est et combien il y a de boîtes.
+### Porter une boîte
+
+- **Appui long sur le nom de la boîte** : on la « porte » (`.tenu` sur le titre,
+  `.porte` sur la boîte). Deux façons de la déplacer ensuite, sans jamais relâcher :
+  - **glisser vers la gauche ou la droite** : chaque `PAS_BOITE` (70 px) parcourus la
+    font avancer d'un cran, et l'affichage la suit — on garde la boîte sous les yeux ;
+  - **appuyer sur une flèche avec un SECOND doigt** : un cran par appui.
+- Relâcher sans avoir rien déplacé ouvre le panneau de la boîte, comme avant.
+- **Le pointeur qui tient le nom est le seul à terminer le geste** (`boxPress.id`
+  comparé à `e.pointerId`). Sans ce filtre, lever le second doigt après avoir touché
+  une flèche lâchait la boîte dès le premier appui, et le geste à deux doigts était
+  inutilisable. Même filtre sur `pointermove` et `pointercancel`.
+- `render()` détruit le titre tenu à chaque cran : `marqueTenue()` reprend le nouveau
+  et lui rend ses classes, sinon la boîte cesserait visuellement d'être portée.
+- Les écouteurs sont sur `window`, comme pour les Pokémon : après un `render()`, un
+  écouteur posé sur `app` ne verrait plus rien remonter depuis un nœud détaché.
+- **Les pastilles ne sont plus des cibles de dépôt.** L'ancienne version demandait de
+  lâcher la boîte sur l'une d'elles : 6 px (12 px une fois armées), sous toute la
+  grille — viser au doigt était irréaliste, et c'est ce qui rendait la fonction
+  inutilisable. Elles restent un indicateur de position, grossies pendant le geste.
+- **`bougeBoite(gen, de, vers)` : `vers` est la position FINALE**, une fois la boîte
+  retirée de la liste — pas un point d'insertion dans la numérotation d'origine.
+  L'ancienne version corrigeait `vers - 1` en allant vers la droite, ce qui rendait
+  tout déplacement d'un cran vers la droite parfaitement inopérant (0 → 1 laissait
+  ABCD inchangé) et faisait atterrir 0 → 3 en position 2. Ne pas réintroduire ce
+  décalage.
 
 ## Changer de boîte en plein glissement
 

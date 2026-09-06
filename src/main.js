@@ -1912,11 +1912,13 @@ function renderCombat() {
 
         <div class="analyse">${renderAnalyse()}</div>
 
-        <p class="hint">
+        <!-- L'aide ne sert qu'à la première prise en main : dès qu'un Pokémon est
+             placé, le geste est compris et le pavé n'est plus que du bruit. -->
+        ${pleines ? '' : `<p class="hint">
           Touchez un emplacement pour choisir un Pokémon, puis le Pokémon lui-même
-          pour régler son niveau et ses quatre attaques. Les attaques proposées sont
-          celles apprenables dans <b>${esc(jeu.nom)}</b>.
-        </p>
+          pour régler son niveau, son talent, son objet et ses quatre attaques.
+          Tout suit la version choisie, ici <b>${esc(jeu.nom)}</b>.
+        </p>`}
       </section>`),
     renderNav(),
   );
@@ -2062,48 +2064,72 @@ function analyseEquipe() {
 
 // ---------- Rendu de l'analyse ----------
 
+// ---------- Rendu partagé des multiplicateurs de type ----------
+// Utilisé par l'analyse d'équipe ET par la fiche de combat d'un membre.
+
+// × pour ce qui fait mal, ÷ pour ce qui est encaissé, 0 pour une immunité.
+const fmt = (m) => (m === 0 ? '0' : m > 1 ? `×${m}` : `÷${Math.round(1 / m)}`);
+const classeMult = (m) => (m === 0 ? 'm0' : m > 1 ? 'mx' : 'md');
+
+// Les multiplicateurs de même nature sont MULTIPLIÉS entre eux : deux membres
+// faibles ×2 donnent un seul jeton ×4, pas « ×2 ×2 ». Une ligne se lit alors d'un
+// coup — ×16 dit tout de suite qu'un type ravage l'équipe.
+// Les immunités échappent à ce calcul (un produit contenant 0 vaudrait 0) : elles
+// gardent leur propre jeton, avec le nombre de membres concernés en exposant.
+// Sur un seul Pokémon la liste ne contient qu'une valeur : le produit la rend telle
+// quelle, et la même fonction sert donc aux deux usages.
+const jetonsDe = (mults) => {
+  const mal = mults.filter((m) => m > 1);
+  const bien = mults.filter((m) => m > 0 && m < 1);
+  const nulles = mults.filter((m) => m === 0).length;
+  const out = [];
+  if (mal.length) out.push({ v: mal.reduce((a, b) => a * b, 1), n: 1 });
+  if (bien.length) out.push({ v: bien.reduce((a, b) => a * b, 1), n: 1 });
+  if (nulles) out.push({ v: 0, n: nulles });
+  return out;
+};
+
+// Symbole du type, chemin relatif SANS « / » initial comme les sprites et les
+// fonds : indispensable avec base: './', sinon Capacitor ne les trouve pas sur
+// l'iPhone. Le nom français reste en alt et en title, pour l'accessibilité.
+const badge = (t) => {
+  const nom = esc(TYPES[t]?.[0] || t);
+  return `<img class="tb" src="types/${t}.svg" alt="${nom}" title="${nom}" />`;
+};
+
+// Une ligne = le symbole du type suivi de ses multiplicateurs. Les valeurs neutres
+// sont omises, et une ligne qui n'aurait plus rien à montrer disparaît entièrement :
+// dix-huit types dont douze sans intérêt, c'était surtout du bruit.
+const ligne = (t, jetons, alerte) => (!jetons.length ? '' : `
+  <div class="tl ${alerte ? 'chaud' : ''}">
+    ${badge(t)}
+    <span class="tm">${jetons.map((j) =>
+      `<i class="${classeMult(j.v)}">${fmt(j.v)}${j.n > 1 ? `<sup>${j.n}</sup>` : ''}</i>`).join('')}</span>
+  </div>`);
+
+// Faiblesses et résistances d'un SEUL Pokémon, dans le jeu choisi. Même principe
+// que l'analyse d'équipe : ×2, ×4 pour ce qui fait mal, ÷ pour ce qui est encaissé.
+function renderFaiblesses(espece) {
+  const table = typechart.chart[genDuJeu()];
+  const types = pokedex[espece]?.types || [];
+  if (!types.length) return '<p class="none">Types inconnus.</p>';
+  const lignes = typechart.types
+    .map((a) => {
+      let mult = 1;
+      for (const t of types) mult *= table[a]?.[t] ?? 1;
+      return { t: a, mult };
+    })
+    .filter((x) => x.mult !== 1)
+    .sort((x, y) => y.mult - x.mult);
+  if (!lignes.length) return '<p class="none">Neutre face à tous les types.</p>';
+  return `<div class="tgrid">${lignes.map((x) =>
+    ligne(x.t, jetonsDe([x.mult]), x.mult >= 4)).join('')}</div>`;
+}
+
 function renderAnalyse() {
   const a = analyseEquipe();
   if (!a) return '';
   const TT = typechart.types;
-
-  // × pour ce qui fait mal, ÷ pour ce qui est encaissé, 0 pour une immunité.
-  const fmt = (m) => (m === 0 ? '0' : m > 1 ? `×${m}` : `÷${Math.round(1 / m)}`);
-  const classeMult = (m) => (m === 0 ? 'm0' : m > 1 ? 'mx' : 'md');
-
-  // Les multiplicateurs de même nature sont MULTIPLIÉS entre eux : deux membres
-  // faibles ×2 donnent un seul jeton ×4, pas « ×2 ×2 ». Une ligne se lit alors d'un
-  // coup — ×16 dit tout de suite qu'un type ravage l'équipe.
-  // Les immunités échappent à ce calcul (un produit contenant 0 vaudrait 0) : elles
-  // gardent leur propre jeton, avec le nombre de membres concernés en exposant.
-  const jetonsDe = (mults) => {
-    const mal = mults.filter((m) => m > 1);
-    const bien = mults.filter((m) => m > 0 && m < 1);
-    const nulles = mults.filter((m) => m === 0).length;
-    const out = [];
-    if (mal.length) out.push({ v: mal.reduce((a, b) => a * b, 1), n: 1 });
-    if (bien.length) out.push({ v: bien.reduce((a, b) => a * b, 1), n: 1 });
-    if (nulles) out.push({ v: 0, n: nulles });
-    return out;
-  };
-
-  // Symbole du type, chemin relatif SANS « / » initial comme les sprites et les
-  // fonds : indispensable avec base: './', sinon Capacitor ne les trouve pas sur
-  // l'iPhone. Le nom français reste en alt et en title, pour l'accessibilité.
-  const badge = (t) => {
-    const nom = esc(TYPES[t]?.[0] || t);
-    return `<img class="tb" src="types/${t}.svg" alt="${nom}" title="${nom}" />`;
-  };
-
-  // Une ligne = le symbole du type suivi de ses multiplicateurs. Les valeurs neutres
-  // sont omises, et une ligne qui n'aurait plus rien à montrer disparaît entièrement :
-  // dix-huit types dont douze sans intérêt, c'était surtout du bruit.
-  const ligne = (t, jetons, alerte) => (!jetons.length ? '' : `
-    <div class="tl ${alerte ? 'chaud' : ''}">
-      ${badge(t)}
-      <span class="tm">${jetons.map((j) =>
-        `<i class="${classeMult(j.v)}">${fmt(j.v)}${j.n > 1 ? `<sup>${j.n}</sup>` : ''}</i>`).join('')}</span>
-    </div>`);
 
   // Le plus solide de l'équipe : la réponse directe à « qui est le tanker ».
   const tank = a.membres.slice().sort((x, y) => y.encaisse - x.encaisse)[0];
@@ -2344,6 +2370,9 @@ function htmlDetail() {
         ${objet?.d ? `<span class="lc-d">${esc(objet.d)}</span>` : ''}
       </button>`
       : '<p class="none">Aucun objet tenu en gén. 1.</p>'}
+
+    <h3>Faiblesses et résistances <small>${esc(jeuCourant().nom)}</small></h3>
+    ${renderFaiblesses(espece)}
 
     <h3>Statistiques <small>IV 31, EV 0, nature neutre</small></h3>
     ${bloc}

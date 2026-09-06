@@ -249,6 +249,13 @@ la fonction ne concerne que la gestion des boîtes.
   données des jeux mais jamais distribuées. 358 objets bruts, 292 conservés.
 - L'objet tenu s'affiche **en bas à droite du parallélogramme**, dans `.eq-bas` avec
   le niveau et les PV.
+- La fiche de combat d'un membre montre ses **faiblesses et résistances** avec la même
+  notation que l'analyse d'équipe (`×2`, `×4`, `÷2`, `0`), et suit elle aussi la
+  génération du jeu. Les aides de rendu (`fmt`, `jetonsDe`, `badge`, `ligne`) vivent
+  donc au niveau du module et non plus dans `renderAnalyse` : elles servent aux deux.
+  `jetonsDe` reçoit une liste d'une seule valeur dans ce cas, et la rend telle quelle.
+- **L'aide « Touchez un emplacement… » disparaît dès qu'un Pokémon est placé** : elle
+  ne sert qu'à la première prise en main, ensuite c'est du bruit sous l'équipe.
 
 ### Une équipe par version
 

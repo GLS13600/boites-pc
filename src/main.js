@@ -1806,10 +1806,16 @@ const saveCombat = () => {
 
 // Les talents n'existent qu'à partir de la gén. 3, les talents cachés de la gén. 5.
 // Un talent introduit après le jeu choisi n'est pas proposé.
-function poolTalents(espece) {
+//
+// On interroge la CLÉ du membre avant son espèce : une forme a ses propres talents,
+// et ils font toute la différence — Kyurem Blanc a Turbo Brasier là où Kyurem a
+// Pression, Méga-Dracaufeu X a Griffe Dure là où Dracaufeu a Brasier. Le repli sur
+// l'espèce sert aux formes cosmétiques, qui n'ont pas d'entrée propre.
+function poolTalents(key) {
   const g = genDuJeu();
   if (g < 3) return [];
-  return (abilities.of[espece] || [])
+  const liste = abilities.of[key] || abilities.of[speciesOf(key)] || [];
+  return liste
     .filter(([slug, cache]) => (abilities.list[slug]?.g ?? 3) <= g && (!cache || g >= 5));
 }
 
@@ -1946,8 +1952,8 @@ function renderEquipeSlot(m, i) {
   return `
     <button class="eq ${isCaught(m.key) ? '' : 'gris'} ${absent ? 'absent' : ''}" data-eq="${i}"
             aria-label="${esc(monName(m.key))}, niveau ${niv}">
-      <img src="${sprites.still(spriteKey(m.key), shinyView())}" alt=""
-           ${imgFallback(espece, shinyView())} />
+      <img src="${sprites.still(spriteKey(m.key), !!m.shiny)}" alt=""
+           ${imgFallback(espece, !!m.shiny)} />
       <span class="eq-nom">${esc(monName(m.key))}</span>
       <span class="eq-jauge"><i>PV</i><span class="jauge"><b></b></span></span>
       <span class="eq-bas">
@@ -2058,6 +2064,7 @@ function analyseEquipe() {
       types: pokedex[esp]?.types || [],
       st, niv: m.niv ?? NIV_DEFAUT,
       moves: (m.moves || []).filter(Boolean),
+      shiny: !!m.shiny,
       ...roleDe(st),
     });
   });
@@ -2232,7 +2239,7 @@ function renderAnalyse() {
     <ul class="roles">
       ${a.membres.map((m) => `
         <li>
-          <img src="${sprites.still(spriteKey(m.key), shinyView())}" alt="" ${imgFallback(m.esp, shinyView())} />
+          <img src="${sprites.still(spriteKey(m.key), m.shiny)}" alt="" ${imgFallback(m.esp, m.shiny)} />
           <span class="r-nom">${esc(m.nom)}</span>
           <span class="r-role">${m.role}</span>
           <span class="r-det">${m.orientation} · Vit. ${m.st.vit} · encaisse ${m.encaisse}</span>
@@ -2337,7 +2344,7 @@ function htmlChoixMon() {
 function htmlChoixTalent() {
   const m = equipe()[state.bs.slot];
   if (!m) return '<p class="none">Emplacement vide.</p>';
-  const liste = poolTalents(speciesOf(m.key));
+  const liste = poolTalents(m.key);
   return `
     <h2 class="bs-title">Talent — ${esc(monName(m.key))}</h2>
     <p class="paper-note">Talents disponibles dans ${esc(jeuCourant().nom)}.</p>
@@ -2394,7 +2401,7 @@ function htmlDetail() {
   const p = pokedex[espece] || {};
   const pool = poolAttaques(espece, state.jeu);
   const dispo = new Set((pool || []).map((x) => x.id));
-  const talents = poolTalents(espece);
+  const talents = poolTalents(m.key);
   const talent = m.talent && abilities.list[m.talent] ? abilities.list[m.talent] : null;
   const objet = m.objet && items[m.objet] ? items[m.objet] : null;
   const objetsDispo = poolObjets().length;
@@ -2437,8 +2444,11 @@ function htmlDetail() {
   return `
     <div class="sheet-top">
       <div class="portrait">
-        <img src="${sprites.still(spriteKey(m.key), shinyView())}" alt=""
-             ${imgFallback(espece, shinyView())} />
+        <img src="${sprites.still(spriteKey(m.key), !!m.shiny)}" alt=""
+             ${imgFallback(espece, !!m.shiny)} />
+        <button class="shiny-btn ${m.shiny ? 'on' : ''}" data-act="eq-shiny"
+                aria-pressed="${!!m.shiny}"
+                title="${m.shiny ? 'Voir la forme normale' : 'Voir la forme chromatique'}">&#10022;</button>
       </div>
       <div>
         <h2 class="sheet-name">${esc(monName(m.key))}</h2>
@@ -2673,6 +2683,15 @@ battleBody.addEventListener('click', (e) => {
     saveCombat();
     retourHaptique();
     openBattleSheet('detail', bs.slot);
+    return;
+  }
+
+  if (e.target.closest('[data-act="eq-shiny"]')) {
+    const m = equipe()[bs.slot];
+    m.shiny = !m.shiny;
+    saveCombat();
+    render();
+    renderBattleSheet();
     return;
   }
 

@@ -90,6 +90,31 @@ const PAR_ESPECE = await cache('species-abilities.json', async () => {
 });
 console.log(`  ${Object.keys(PAR_ESPECE).length} espèces`);
 
+// Les FORMES ont leurs propres talents, et ils font toute la différence : Kyurem
+// Blanc a Turbo Brasier là où Kyurem a Pression, Méga-Dracaufeu X a Dur-à-Cuire là
+// où Dracaufeu a Brasier. Sans elles, ces talents étaient inatteignables.
+//
+// Seules les formes à clé NUMÉRIQUE ont une entrée /pokemon propre. Les formes
+// cosmétiques (clé en toutes lettres, « deerling-winter ») n'en ont pas et
+// partagent de toute façon les talents de leur espèce : on les laisse de côté.
+const formes = JSON.parse(await readFile(new URL('../src/data/forms.json', import.meta.url), 'utf8'));
+const clesFormes = [];
+for (const liste of Object.values(formes)) {
+  for (const f of liste) if (typeof f.key === 'number') clesFormes.push(f.key);
+}
+console.log(`     + ${clesFormes.length} formes à clé numérique`);
+
+const PAR_FORME = await cache('form-abilities.json', async () => {
+  const res = await enParallele(clesFormes, 16, async (id) => {
+    const p = await j(`${API}/pokemon/${id}`);
+    if (!p) return null;
+    return p.abilities.map((a) => [a.ability.name, a.is_hidden ? 1 : 0]);
+  }, 'formes');
+  return Object.fromEntries(clesFormes.map((id, k) => [id, res[k]]).filter(([, v]) => v && v.length));
+});
+console.log(`  ${Object.keys(PAR_FORME).length} formes renseignées`);
+Object.assign(PAR_ESPECE, PAR_FORME);
+
 // ---------- 3. Les objets tenables ----------
 //
 // Catégories retenues : tout ce qu'un Pokémon peut porter et qui agit en combat.

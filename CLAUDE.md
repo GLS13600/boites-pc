@@ -236,6 +236,13 @@ la fonction ne concerne que la gestion des boîtes.
 - La **fiche du Pokédex** liste les talents de l'espèce, tous jeux confondus : elle
   décrit l'espèce, pas une partie. Le filtrage par version n'a lieu que dans la boîte
   de combat, où l'on compose pour un jeu précis.
+- **Une forme a ses PROPRES talents**, et `poolTalents()` interroge la clé du membre
+  avant son espèce. Kyurem Blanc a Turbo Brasier là où Kyurem a Pression,
+  Méga-Dracaufeu X a Griffe Dure là où Dracaufeu a Brasier. Sans ça ces talents
+  étaient tout simplement inatteignables. Le repli sur l'espèce sert aux formes
+  cosmétiques, qui n'ont pas d'entrée `/pokemon` propre. 315 formes renseignées.
+- **Le chromatique est propre à chaque membre** de l'équipe (`m.shiny`), indépendant
+  de la vue chromatique du Pokédex : on peut vouloir un seul shiny dans une équipe.
 - Dans la boîte de combat, talent et objet sont **filtrés par génération** :
   les talents n'existent qu'à partir de la gén. 3, les talents cachés de la gén. 5,
   les objets tenus de la gén. 2. Un talent introduit après le jeu choisi n'est pas

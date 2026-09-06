@@ -1867,6 +1867,58 @@ function poolAttaques(espece, jeu) {
   return out;
 }
 
+// ---------- Export et import des équipes ----------
+//
+// Distinct de l'export des boîtes : on peut vouloir transmettre une composition
+// sans donner tout son Living Dex, et inversement. Le fichier porte TOUTES les
+// équipes, une par version de jeu.
+
+function exportEquipes() {
+  const payload = { type: 'boitespc-equipes', v: 1, equipes: state.equipes };
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(blob),
+    download: `equipes-${new Date().toISOString().slice(0, 10)}.json`,
+  });
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// L'import FUSIONNE : il remplace les équipes des versions présentes dans le
+// fichier et laisse les autres intactes. Importer une seule équipe ne doit pas
+// effacer les onze autres.
+function importEquipes() {
+  const input = Object.assign(document.createElement('input'), { type: 'file', accept: '.json' });
+  input.onchange = async () => {
+    try {
+      const data = JSON.parse(await input.files[0].text());
+      // Format actuel, ou carte nue { jeu: [six cases] } : on reste tolérant.
+      const brut = data && data.equipes ? data.equipes : data;
+      if (!brut || typeof brut !== 'object' || Array.isArray(brut)) throw new Error('format');
+
+      let n = 0;
+      for (const [cle, eq] of Object.entries(brut)) {
+        // Jeu inconnu : on ignore plutôt que de créer une clé fantôme.
+        if (!JEUX.some((v) => v.k === cle) || !Array.isArray(eq)) continue;
+        // Le contenu vient d'un fichier : on le rebâtit à six cases et on écarte
+        // tout ce qui ne ressemble pas à un membre.
+        state.equipes[cle] = Array.from({ length: 6 }, (_, i) => {
+          const m = eq[i];
+          return m && typeof m === 'object' && m.key != null ? m : null;
+        });
+        n++;
+      }
+      if (!n) throw new Error('vide');
+      saveCombat();
+      render();
+      alert(`${n} équipe${n > 1 ? 's importées' : ' importée'}.`);
+    } catch {
+      alert("Fichier illisible : il faut un export d'équipes de cette appli.");
+    }
+  };
+  input.click();
+}
+
 // ---------- Rendu de la vue ----------
 
 function renderNav() {
@@ -1921,6 +1973,12 @@ function renderCombat() {
             <small>Version du jeu</small>
             <b>${esc(jeu.nom)}</b>
           </button>
+          <div class="eq-io">
+            <button data-act="eq-export" title="Exporter toutes mes équipes"
+                    aria-label="Exporter toutes mes équipes">&#8681;</button>
+            <button data-act="eq-import" title="Importer des équipes"
+                    aria-label="Importer des équipes">&#8679;</button>
+          </div>
           <div class="combat-compte"><b>${pleines}</b>/6</div>
         </div>
 
@@ -2656,6 +2714,8 @@ app.addEventListener('click', (e) => {
   if (state.vue !== 'combat') return;
 
   if (e.target.closest('[data-act="choix-jeu"]')) { openBattleSheet('version'); return; }
+  if (e.target.closest('[data-act="eq-export"]')) { exportEquipes(); return; }
+  if (e.target.closest('[data-act="eq-import"]')) { importEquipes(); return; }
 
   const eq = e.target.closest('[data-eq]');
   if (eq) {

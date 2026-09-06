@@ -273,6 +273,16 @@ la fonction ne concerne que la gestion des boîtes.
   du jeu courant. Ne pas retirer cette migration avant un moment.
 - Ne jamais lire `state.equipes` directement dans le rendu : passer par `equipe()`,
   sinon on afficherait l'équipe d'un autre jeu.
+- **Export et import propres aux équipes**, dans le bandeau entre la version et le
+  compteur. Distincts de ceux des boîtes : on peut vouloir transmettre une composition
+  sans donner tout son Living Dex, et inversement. Le fichier porte TOUTES les équipes,
+  une par version.
+- **L'import fusionne**, il ne remplace pas tout : il écrase les équipes des versions
+  présentes dans le fichier et laisse les autres intactes. Importer une seule équipe ne
+  doit pas effacer les onze autres.
+- Le contenu venant d'un fichier, il est **repris case par case** : une clé de jeu
+  inconnue est ignorée, et toute case qui ne ressemble pas à un membre devient `null`.
+  Vérifié avec une charge volontairement abîmée.
 
 ### Analyse de l'équipe
 

@@ -2010,9 +2010,24 @@ function renderAnalyse() {
   const TT = typechart.types;
 
   // × pour ce qui fait mal, ÷ pour ce qui est encaissé, 0 pour une immunité.
-  const fmt = (m) =>
-    m === 0 ? '0' : m >= 4 ? '×4' : m > 1 ? '×2' : m <= 0.25 ? '÷4' : m < 1 ? '÷2' : '×1';
-  const classeMult = (m) => (m === 0 ? 'm0' : m > 1 ? 'mx' : m < 1 ? 'md' : 'mn');
+  const fmt = (m) => (m === 0 ? '0' : m > 1 ? `×${m}` : `÷${Math.round(1 / m)}`);
+  const classeMult = (m) => (m === 0 ? 'm0' : m > 1 ? 'mx' : 'md');
+
+  // Les multiplicateurs de même nature sont MULTIPLIÉS entre eux : deux membres
+  // faibles ×2 donnent un seul jeton ×4, pas « ×2 ×2 ». Une ligne se lit alors d'un
+  // coup — ×16 dit tout de suite qu'un type ravage l'équipe.
+  // Les immunités échappent à ce calcul (un produit contenant 0 vaudrait 0) : elles
+  // gardent leur propre jeton, avec le nombre de membres concernés en exposant.
+  const jetonsDe = (mults) => {
+    const mal = mults.filter((m) => m > 1);
+    const bien = mults.filter((m) => m > 0 && m < 1);
+    const nulles = mults.filter((m) => m === 0).length;
+    const out = [];
+    if (mal.length) out.push({ v: mal.reduce((a, b) => a * b, 1), n: 1 });
+    if (bien.length) out.push({ v: bien.reduce((a, b) => a * b, 1), n: 1 });
+    if (nulles) out.push({ v: 0, n: nulles });
+    return out;
+  };
 
   // Symbole du type, chemin relatif SANS « / » initial comme les sprites et les
   // fonds : indispensable avec base: './', sinon Capacitor ne les trouve pas sur
@@ -2028,7 +2043,8 @@ function renderAnalyse() {
   const ligne = (t, jetons, alerte) => (!jetons.length ? '' : `
     <div class="tl ${alerte ? 'chaud' : ''}">
       ${badge(t)}
-      <span class="tm">${jetons.map((m) => `<i class="${classeMult(m)}">${fmt(m)}</i>`).join('')}</span>
+      <span class="tm">${jetons.map((j) =>
+        `<i class="${classeMult(j.v)}">${fmt(j.v)}${j.n > 1 ? `<sup>${j.n}</sup>` : ''}</i>`).join('')}</span>
     </div>`);
 
   // Le plus solide de l'équipe : la réponse directe à « qui est le tanker ».
@@ -2039,16 +2055,14 @@ function renderAnalyse() {
     <div class="tgrid">
       ${a.def.slice()
         .sort((x, y) => y.faibles - x.faibles || y.pire - x.pire || (y.resiste + y.immune) - (x.resiste + x.immune))
-        .map((d) => ligne(d.t,
-          d.mults.filter((m) => m !== 1 && m !== 0).sort((x, y) => y - x),
-          d.faibles >= 3)).join('')}
+        .map((d) => ligne(d.t, jetonsDe(d.mults), d.faibles >= 3)).join('')}
     </div>
 
     <h3 class="an-h">Attaque <small>meilleur coup disponible</small></h3>
     ${a.typesAtq.size
       ? `<div class="tgrid off">${a.off.slice()
           .sort((x, y) => y.mult - x.mult)
-          .map((o) => ligne(o.t, o.mult === 1 || o.mult === 0 ? [] : [o.mult], false)).join('')}</div>`
+          .map((o) => ligne(o.t, o.mult === 1 ? [] : [{ v: o.mult, n: 1 }], false)).join('')}</div>`
       : '<p class="none">Aucune attaque offensive choisie : sélectionnez-en pour voir la couverture.</p>'}
 
     <h3 class="an-h">Rôles</h3>

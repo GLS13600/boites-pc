@@ -402,82 +402,114 @@ body { padding-bottom: calc(62px + var(--safe-bottom)); }
 }
 .combat-compte b { color: var(--ink); font-size: 17px; }
 
-/* La grille de six, à la manière de l'écran d'équipe des jeux : fond sombre,
-   cartes claires sur deux colonnes. */
+/* L'écran d'équipe de Noir 2 / Blanc 2 : panneaux en parallélogramme cernés d'un
+   épais liseré blanc, fond bleu nuit quadrillé, et la colonne de droite décalée
+   vers le bas. Le liseré est obtenu par un fond blanc sur .eq et un ::before en
+   retrait de 3 px — clip-path découpe aussi les bordures, une vraie border serait
+   rognée par la découpe. */
 .equipe {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 16px;
-  background: linear-gradient(160deg, #35455f, #22304a);
+  gap: 7px 9px;
+  /* Le décalage de la colonne droite déborde : on lui réserve la place en bas. */
+  padding: 10px 10px 32px;
+  border-radius: 14px;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 22px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 22px),
+    linear-gradient(160deg, #262445, #15132a);
 }
+.equipe .eq:nth-child(even) { transform: translateY(20px); }
+
 .eq {
+  position: relative;
   display: grid;
-  grid-template-columns: 44px 1fr;
+  grid-template-columns: 40px 1fr;
   grid-template-rows: auto auto auto;
   align-items: center;
-  gap: 1px 8px;
-  position: relative;
-  padding: 7px 9px;
-  border: 1px solid #cdd5e2;
-  border-radius: 11px;
-  background: #f7f6f1;
-  color: var(--ink);
+  gap: 0 8px;
+  padding: 8px 24px 8px 10px;
+  border: 0;
+  background: #ffffff;
+  color: #eef0fb;
   font: inherit;
   text-align: left;
   cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 20px) 100%, 0 100%);
 }
+/* La colonne de droite est le miroir de la gauche : le biseau passe à gauche. */
+.equipe .eq:nth-child(even) {
+  padding: 8px 10px 8px 24px;
+  clip-path: polygon(20px 0, 100% 0, 100% 100%, 0 100%);
+}
+.eq::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  z-index: 0;
+  background: linear-gradient(150deg, #4f4d84, #35335e 55%, #2a2850);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 19px) 100%, 0 100%);
+}
+.equipe .eq:nth-child(even)::before {
+  clip-path: polygon(19px 0, 100% 0, 100% 100%, 0 100%);
+}
+.eq > * { position: relative; z-index: 1; }
+
 .eq img {
   grid-row: 1 / 4;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
   image-rendering: pixelated;
 }
 /* Non capturé : gris, comme dans la grille des boîtes. Le signal reste le même. */
 .eq.gris img { filter: grayscale(1); opacity: 0.75; }
-.eq-nom { font-size: 13px; font-weight: 700; line-height: 1.15; }
+.eq-nom { font-size: 13px; font-weight: 700; line-height: 1.2; color: #ffffff; }
 .eq-jauge { display: flex; align-items: center; gap: 5px; }
-.eq-jauge i { font-style: italic; font-size: 9px; font-weight: 700; color: #6b7280; }
-.jauge { flex: 1; height: 5px; border-radius: 3px; background: #d8d5cc; overflow: hidden; }
-.jauge b { display: block; height: 100%; width: 100%; background: #5ec26a; }
-.eq-lv { grid-column: 2; font-size: 11px; font-weight: 700; color: #4b5563; }
-.eq-pv {
-  position: absolute;
-  right: 9px;
-  bottom: 6px;
+.eq-jauge i { font-style: italic; font-size: 9px; font-weight: 700; color: #b6b9db; }
+.jauge { flex: 1; height: 5px; border-radius: 3px; background: #1a1832; overflow: hidden; }
+.jauge b { display: block; height: 100%; width: 100%; background: #64cf72; }
+/* Niveau et PV partagent la même cellule, calés chacun à un bord : sans markup
+   supplémentaire, et le PV reste hors de la zone biseautée grâce au padding. */
+.eq-lv, .eq-pv {
+  grid-row: 3;
+  grid-column: 2;
   font-size: 11px;
   font-weight: 700;
+  color: #ccd0ee;
   font-variant-numeric: tabular-nums;
-  color: #4b5563;
 }
+.eq-lv { justify-self: start; }
+.eq-pv { position: static; justify-self: end; }
 /* Espèce absente du jeu choisi : on le signale sans retirer le Pokémon. */
-.eq.absent { border-color: var(--ball); }
+/* Espèce absente du jeu choisi : le liseré passe au rouge. */
+.eq.absent { background: var(--ball); }
+/* La pastille doit rester DANS la découpe, sinon clip-path la rogne. */
 .eq-alerte {
   position: absolute;
-  top: -5px;
-  right: -5px;
-  width: 18px;
-  height: 18px;
+  top: 5px;
+  right: 26px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
   background: var(--ball);
   color: #fff;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   display: grid;
   place-items: center;
 }
+.equipe .eq:nth-child(even) .eq-alerte { right: 8px; }
 .eq.vide {
   grid-template-columns: 1fr;
   grid-template-rows: auto auto;
   place-items: center;
   gap: 2px;
-  min-height: 66px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px dashed rgba(255, 255, 255, 0.45);
-  color: rgba(255, 255, 255, 0.75);
+  min-height: 62px;
+  background: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.8);
 }
+.eq.vide::before { background: rgba(255, 255, 255, 0.06); }
 .eq.vide b { font-size: 19px; font-weight: 400; line-height: 1; }
 .eq.vide small { font-size: 10px; }
 

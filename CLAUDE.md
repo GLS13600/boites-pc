@@ -190,8 +190,15 @@ Seconde vue de l'application, atteinte par la **barre du bas** (`.nav`, deux ong
 Boîtes et Combat). `render()` bascule dessus dès sa première ligne ; tout le reste de
 la fonction ne concerne que la gestion des boîtes.
 
-- L'équipe de six est présentée comme l'écran d'équipe des jeux : fond sombre, deux
-  colonnes de cartes claires portant sprite, nom, jauge de PV, niveau et PV chiffrés.
+- L'équipe de six reprend l'**écran d'équipe de Noir 2 / Blanc 2** : panneaux en
+  parallélogramme biseauté, épais liseré blanc, fond bleu nuit quadrillé, et colonne
+  de droite décalée de 20 px vers le bas. Chaque panneau porte sprite, nom, jauge de
+  PV, niveau et PV chiffrés.
+- **Le liseré est un fond blanc sur `.eq` plus un `::before` en retrait de 3 px.**
+  `clip-path` découpe aussi les bordures : une vraie `border` serait rognée par la
+  découpe. Même raison pour la pastille d'alerte, qui doit rester dans la forme.
+- La colonne de droite est le **miroir** de la gauche, biseau à gauche au lieu de
+  droite, et `.equipe` réserve 32 px de marge basse pour absorber son décalage.
 - Un emplacement libre ouvre le sélecteur d'espèces ; un emplacement rempli ouvre son
   détail (niveau, stats calculées, quatre attaques, retrait).
 - **Capturé = couleur, non capturé = gris**, dans le sélecteur comme dans les cartes.
@@ -233,10 +240,14 @@ Sous la grille des six, trois lectures et une liste de conseils.
   couverture flatteuse et fausse.
 - Les deux grilles partagent le même gabarit, sur deux colonnes, et **le sens des
   couleurs s'inverse** : en défense un `×2` est rouge, en attaque il est vert.
-- **Les immunités ne sont pas affichées** : seuls `×` et `÷` apparaissent, et une
-  ligne qui n'aurait plus rien à montrer disparaît entièrement. Un type que rien ne
-  peut toucher reste signalé par la liste de conseils, qui le nomme — l'information
-  n'est donc pas perdue, seulement déplacée là où elle est actionnable.
+- **Les multiplicateurs de même nature sont multipliés entre eux** : deux membres
+  faibles ×2 donnent un seul jeton `×4`, jamais « ×2 ×2 ». Une ligne se lit d'un
+  coup, et `×16` dit immédiatement qu'un type ravage l'équipe. Les valeurs grimpent
+  vite (`÷32` pour cinq résistances) : c'est la conséquence assumée de la règle.
+- **Les immunités échappent à ce calcul** : un produit contenant 0 vaudrait 0 et
+  effacerait les faiblesses. Elles gardent leur propre jeton `0`, avec le nombre de
+  membres concernés en exposant.
+- Une ligne qui n'a plus rien à montrer disparaît entièrement.
 - Chaque type est représenté par son **symbole rond** (`public/types/<type>.svg`).
 - **Rôles** : Mur, Tank offensif, Sweeper, Casseur lent, Attaquant ou Polyvalent,
   déduits des stats de base, avec l'orientation physique / spéciale / mixte. Le plus

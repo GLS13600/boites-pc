@@ -12,7 +12,8 @@
     "fetch-dex": "node scripts/fetch-dex.mjs",
     "fetch-sprites": "node scripts/fetch-sprites.mjs",
     "fetch-moves": "node scripts/fetch-moves.mjs",
-    "fetch-battle": "node scripts/fetch-battle.mjs"
+    "fetch-battle": "node scripts/fetch-battle.mjs",
+    "fetch-types": "node scripts/fetch-types.mjs"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",

@@ -46,6 +46,8 @@ Pokémon. Destinée à finir en `.ipa` sideloadée sur iPhone via Sideloadly.
 | `src/data/versions.json` | Les 21 jeux jouables, **généré** |
 | `src/data/learnsets-vg.json` | Moveset par espèce ET par jeu, **généré**, 5,7 Mo |
 | `scripts/fetch-battle.mjs` | Produit les trois ci-dessus (`npm run fetch-battle`) |
+| `src/data/typechart.json` | Table des types par génération, **généré** |
+| `scripts/fetch-types.mjs` | Aspire cette table (`npm run fetch-types`) |
 | `public/sprites/` | Les 5 291 sprites, **générés**, 40 Mo |
 
 ## Données
@@ -214,6 +216,48 @@ la fonction ne concerne que la gestion des boîtes.
 - Dans le sélecteur d'attaques, le tri porte sur le **seul groupe** : le tri de JS
   étant stable, l'ordre du fichier est conservé — donc par niveau croissant, et par
   numéro pour les CT. Trier par nom à l'intérieur d'un groupe affichait N.62 avant N.1.
+
+### Analyse de l'équipe
+
+Sous la grille des six, trois lectures et une liste de conseils.
+
+- **Défense** : pour chacun des 18 types attaquants, combien de membres sont faibles
+  et combien résistent ou sont immunisés. Trié par nombre de faibles décroissant —
+  c'est la faiblesse partagée qui perd une partie, pas une résistance manquante.
+  Trois membres faibles ou plus déclenchent une alerte.
+- **Attaque** : la couverture repose sur les attaques **réellement choisies**, pas sur
+  ce que l'espèce pourrait apprendre. Un membre sans attaque offensive est signalé,
+  sans quoi on lirait une couverture flatteuse et fausse.
+- **Rôles** : Mur, Tank offensif, Sweeper, Casseur lent, Attaquant ou Polyvalent,
+  déduits des stats de base, avec l'orientation physique / spéciale / mixte. Le plus
+  solide de l'équipe est nommé explicitement.
+- **Conseils** : uniquement des constats actionnables (faiblesse partagée, type sans
+  aucune parade, équipe mono-orientée, aucun encaisseur, personne de rapide, types en
+  double). Aucun défaut détecté est un résultat valide, et il est affiché comme tel.
+
+**Seuils des rôles, calés sur des cas réels.** `encaisse` = PV + Déf + Déf.Spé.
+Mur à partir de 270 avec une frappe sous 100, Tank offensif à partir de 260. À 300,
+le test ne reconnaissait quasiment que Leuphorie : Airmure et Magnézone plafonnent à
+275 et sont pourtant les murs de leur équipe, si bien que l'appli annonçait « aucun
+encaisseur » juste après avoir désigné Magnézone comme le plus solide. Ce sont des
+heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du joueur.
+
+### Table des types
+
+- `npm run fetch-types` produit `typechart.json` : **9 générations × 18 × 18**, 32 Ko.
+- **Une table par génération, c'est indispensable** puisque l'appli laisse choisir
+  Rouge/Bleu. La table a changé deux fois lourdement : en gén. 1 le Spectre ne touchait
+  pas le Psy et l'Insecte battait le Poison ; en gén. 6 la Fée apparaît et l'Acier
+  cesse de résister au Spectre et aux Ténèbres. Afficher la table actuelle pour une
+  partie de gén. 1 donnerait des faiblesses fausses.
+- PokéAPI expose `past_damage_relations` : chaque entrée vaut « jusqu'à cette
+  génération incluse ». Le script reconstruit une matrice complète par génération.
+- Le script **vérifie six faits connus avant d'écrire** et s'interrompt si l'un
+  échoue. Sans ce garde-fou, une erreur de lecture des relations passées produirait
+  une table plausible mais fausse, impossible à repérer à l'œil.
+- **Limite connue** : les types actuels sont utilisés quelle que soit la version. Les
+  espèces retypées en gén. 6 (Mélofée devenue Fée) s'afficheront donc avec leur type
+  moderne dans une partie de gén. 1. PokéAPI publie `past_types`, non exploité ici.
 
 ### Stats
 

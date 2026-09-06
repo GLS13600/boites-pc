@@ -9,6 +9,7 @@ import moves from './data/moves.json';
 import learnsets from './data/learnsets.json';
 import stats from './data/stats.json';
 import JEUX from './data/versions.json';
+import typechart from './data/typechart.json';
 
 // ---------- Constantes ----------
 
@@ -1851,6 +1852,8 @@ function renderCombat() {
 
         ${LEARN_VG ? '' : '<p class="combat-charge">Chargement des attaques par version…</p>'}
 
+        <div class="analyse">${renderAnalyse()}</div>
+
         <p class="hint">
           Touchez un emplacement pour choisir un Pokémon, puis le Pokémon lui-même
           pour régler son niveau et ses quatre attaques. Les attaques proposées sont
@@ -1861,6 +1864,175 @@ function renderCombat() {
   );
 
   if (!LEARN_VG) chargeVG().then(() => { if (state.vue === 'combat') render(); });
+}
+
+// ---------- Analyse de l'équipe ----------
+//
+// Trois lectures complémentaires, celles qui servent vraiment à équilibrer :
+//   défense  — qui encaisse quoi, et surtout les faiblesses partagées ;
+//   attaque  — ce que l'équipe sait frapper efficacement, d'après les attaques
+//              RÉELLEMENT choisies, pas d'après le potentiel de l'espèce ;
+//   rôles    — mur, sweeper, attaquant, déduits des stats de base.
+//
+// La table des types suit la génération du jeu choisi : afficher les faiblesses
+// actuelles pour une partie de Rouge/Bleu donnerait des réponses fausses.
+
+const NUM_GEN = {
+  'generation-i': 1, 'generation-ii': 2, 'generation-iii': 3, 'generation-iv': 4,
+  'generation-v': 5, 'generation-vi': 6, 'generation-vii': 7, 'generation-viii': 8,
+  'generation-ix': 9,
+};
+const genDuJeu = () => NUM_GEN[jeuCourant().gen] ?? 9;
+
+// Rôle déduit des stats de base. Heuristique assumée : elle situe un Pokémon,
+// elle ne remplace pas le jugement d'un joueur.
+function roleDe(st) {
+  const encaisse = st.pv + st.def + st.defs;
+  const frappe = Math.max(st.att, st.atts);
+  const ecart = st.att - st.atts;
+  const orientation = ecart >= 15 ? 'physique' : ecart <= -15 ? 'spécial' : 'mixte';
+  let role;
+  // Seuils calés sur des encaisseurs réels : Airmure et Magnézone plafonnent à 275
+  // en PV+Déf+Déf.Spé, et ce sont pourtant les murs de leur équipe. À 300 le test ne
+  // reconnaissait quasiment que Leuphorie, et l'appli annonçait « aucun encaisseur »
+  // juste après avoir désigné Magnézone comme le plus solide.
+  if (encaisse >= 270 && frappe < 100) role = 'Mur';
+  else if (encaisse >= 260) role = 'Tank offensif';
+  else if (st.vit >= 100 && frappe >= 100) role = 'Sweeper';
+  else if (st.vit <= 55 && frappe >= 110) role = 'Casseur lent';
+  else if (frappe >= 110) role = 'Attaquant';
+  else role = 'Polyvalent';
+  return { role, orientation, encaisse, frappe };
+}
+
+function analyseEquipe() {
+  const table = typechart.chart[genDuJeu()];
+  const TT = typechart.types;
+
+  const membres = [];
+  state.equipe.forEach((m, i) => {
+    if (!m) return;
+    const esp = speciesOf(m.key);
+    const st = stats[esp];
+    if (!st) return;
+    membres.push({
+      i, key: m.key, esp, nom: monName(m.key),
+      types: pokedex[esp]?.types || [],
+      st, niv: m.niv ?? NIV_DEFAUT,
+      moves: (m.moves || []).filter(Boolean),
+      ...roleDe(st),
+    });
+  });
+  if (!membres.length) return null;
+
+  // --- Défense : pour chaque type attaquant, qui souffre et qui encaisse ---
+  const def = TT.map((a) => {
+    let faibles = 0, resiste = 0, immune = 0;
+    for (const mb of membres) {
+      let mult = 1;
+      for (const t of mb.types) mult *= table[a]?.[t] ?? 1;
+      if (mult === 0) immune++;
+      else if (mult > 1) faibles++;
+      else if (mult < 1) resiste++;
+    }
+    return { t: a, faibles, resiste, immune };
+  });
+
+  // --- Attaque : d'après les attaques offensives réellement sélectionnées ---
+  const typesAtq = new Set();
+  let sansAttaque = 0;
+  for (const mb of membres) {
+    const offensives = mb.moves.filter((id) => moves[id] && moves[id].c !== 'status' && moves[id].p);
+    if (!offensives.length) sansAttaque++;
+    for (const id of offensives) typesAtq.add(moves[id].t);
+  }
+  const couverts = new Set();
+  for (const a of typesAtq) for (const d of TT) if ((table[a]?.[d] ?? 1) > 1) couverts.add(d);
+
+  // --- Conseils : uniquement des constats actionnables ---
+  const avis = [];
+  const communes = def.filter((d) => d.faibles >= 3).sort((a, b) => b.faibles - a.faibles);
+  for (const d of communes) {
+    avis.push({ ton: 'alerte', txt: `<b>${membres.length === d.faibles ? 'Toute l’équipe' : d.faibles + ' membres'}</b> sont faibles au type ${TYPES[d.t][0]}. Une seule attaque de ce type peut balayer la partie.` });
+  }
+  const sansParade = def.filter((d) => !d.resiste && !d.immune && d.faibles > 0);
+  if (sansParade.length) {
+    avis.push({ ton: 'alerte', txt: `Aucun membre ne résiste au type ${sansParade.map((d) => TYPES[d.t][0]).join(', ')}.` });
+  }
+
+  const murs = membres.filter((m) => m.role === 'Mur' || m.role === 'Tank offensif');
+  if (!murs.length) avis.push({ ton: 'conseil', txt: 'Aucun encaisseur : tout le monde tombe vite. Un Pokémon très défensif donne le temps de reprendre la main.' });
+
+  const rapides = membres.filter((m) => m.st.vit >= 100);
+  if (!rapides.length && membres.length >= 3) avis.push({ ton: 'conseil', txt: 'Personne au-dessus de 100 en Vitesse : l’équipe frappera presque toujours en second.' });
+
+  const phys = membres.filter((m) => m.orientation === 'physique').length;
+  const spec = membres.filter((m) => m.orientation === 'spécial').length;
+  if (membres.length >= 3 && spec === 0) avis.push({ ton: 'conseil', txt: 'Équipe entièrement physique : un adversaire très défensif en Défense vous bloque net.' });
+  if (membres.length >= 3 && phys === 0) avis.push({ ton: 'conseil', txt: 'Équipe entièrement spéciale : un adversaire très défensif en Défense Spéciale vous bloque net.' });
+
+  // Deux membres au type identique : les faiblesses se cumulent au lieu de se couvrir.
+  const vus = new Map();
+  for (const m of membres) {
+    const cle = [...m.types].sort().join('/');
+    if (vus.has(cle)) avis.push({ ton: 'conseil', txt: `${esc(vus.get(cle))} et ${esc(m.nom)} partagent le même type : leurs faiblesses se cumulent.` });
+    else vus.set(cle, m.nom);
+  }
+
+  if (sansAttaque) {
+    avis.push({ ton: 'info', txt: `${sansAttaque} membre${sansAttaque > 1 ? 's n’ont' : ' n’a'} aucune attaque offensive : la couverture ci-dessus est incomplète.` });
+  }
+  const nonCouverts = TT.filter((d) => !couverts.has(d));
+  if (typesAtq.size && nonCouverts.length) {
+    avis.push({ ton: 'info', txt: `Rien ne frappe super efficacement : ${nonCouverts.map((d) => TYPES[d][0]).join(', ')}.` });
+  }
+  if (!avis.length) avis.push({ ton: 'bon', txt: 'Aucun défaut majeur détecté : pas de faiblesse partagée, un encaisseur, de la vitesse et les deux catégories d’attaque.' });
+
+  return { membres, def, couverts, typesAtq, avis, murs };
+}
+
+// ---------- Rendu de l'analyse ----------
+
+function renderAnalyse() {
+  const a = analyseEquipe();
+  if (!a) return '';
+  const TT = typechart.types;
+  const chip = (t, txt, cls) =>
+    `<span class="tchip ${cls}" style="--t:${TYPES[t]?.[1] || '#888'}">${TYPES[t]?.[0] || t}<i>${txt}</i></span>`;
+
+  // Le plus solide de l'équipe : la réponse directe à « qui est le tanker ».
+  const tank = a.membres.slice().sort((x, y) => y.encaisse - x.encaisse)[0];
+
+  return `
+    <h3 class="an-h">Défense <small>faiblesses partagées d'abord</small></h3>
+    <div class="tgrid">
+      ${a.def.slice().sort((x, y) => y.faibles - x.faibles || y.resiste - x.resiste).map((d) =>
+        chip(d.t, `${d.faibles} ✗ · ${d.resiste + d.immune} ✓`,
+          d.faibles >= 3 ? 'mauvais' : d.faibles > d.resiste + d.immune ? 'moyen' : d.resiste + d.immune ? 'bon' : '')).join('')}
+    </div>
+
+    <h3 class="an-h">Attaque <small>d'après les attaques choisies</small></h3>
+    ${a.typesAtq.size
+      ? `<div class="tgrid">${TT.map((d) => chip(d, a.couverts.has(d) ? '×2' : '—', a.couverts.has(d) ? 'bon' : '')).join('')}</div>`
+      : '<p class="none">Aucune attaque offensive choisie : sélectionnez-en pour voir la couverture.</p>'}
+
+    <h3 class="an-h">Rôles</h3>
+    <p class="an-tank">Le plus solide : <b>${esc(tank.nom)}</b> (${tank.encaisse} en PV+Déf+Déf.Spé).</p>
+    <ul class="roles">
+      ${a.membres.map((m) => `
+        <li>
+          <img src="${sprites.still(spriteKey(m.key), shinyView())}" alt="" ${imgFallback(m.esp, shinyView())} />
+          <span class="r-nom">${esc(m.nom)}</span>
+          <span class="r-role">${m.role}</span>
+          <span class="r-det">${m.orientation} · Vit. ${m.st.vit} · encaisse ${m.encaisse}</span>
+        </li>`).join('')}
+    </ul>
+
+    <h3 class="an-h">Conseils</h3>
+    <ul class="avis">
+      ${a.avis.map((v) => `<li class="${v.ton}">${v.txt}</li>`).join('')}
+    </ul>
+  `;
 }
 
 // ---------- Panneau de la boîte de combat ----------

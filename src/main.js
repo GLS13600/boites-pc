@@ -7,6 +7,8 @@ import forms from './data/forms.json';
 import remakes from './data/dex-remakes.json';
 import moves from './data/moves.json';
 import learnsets from './data/learnsets.json';
+import stats from './data/stats.json';
+import JEUX from './data/versions.json';
 
 // ---------- Constantes ----------
 
@@ -140,6 +142,9 @@ const SHINY_KEY = 'pcbox.caught.shiny';
 const BOXES_KEY = 'pcbox.boxes';
 const ORDER_KEY = 'pcbox.order';
 const VIEW_KEY = 'pcbox.view';
+const VUE_KEY = 'pcbox.vue';
+const EQUIPE_KEY = 'pcbox.equipe';
+const JEU_KEY = 'pcbox.jeu';
 const readJSON = (key, fallback) => {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
 };
@@ -164,6 +169,14 @@ const state = {
   addGen: 1,      // génération listée dans le sélecteur
   placing: null, // Pokémon choisi, en attente d'un emplacement
   open: null,
+  // Boîte de combat : vue active, jeu de référence, équipe de six, panneau ouvert.
+  vue: localStorage.getItem('pcbox.vue') === 'combat' ? 'combat' : 'boites',
+  jeu: localStorage.getItem('pcbox.jeu') || 'scarlet-violet',
+  equipe: (() => {
+    const e = readJSON('pcbox.equipe', null);
+    return Array.isArray(e) && e.length === 6 ? e : Array.from({ length: 6 }, () => null);
+  })(),
+  bs: null, // panneau de la boîte de combat : { mode, slot, emplacement, q }
 };
 const save = () => {
   localStorage.setItem(STORE_KEY, JSON.stringify([...state.caught]));
@@ -365,6 +378,10 @@ for (const e of CATALOGUE) e.cle = fold(e.name + ' ' + e.sub + ' ' + e.num);
 // ---------- Rendu ----------
 
 function render() {
+  // La barre du bas commute entre les deux vues. Tout le reste de render() ne
+  // concerne que la gestion des boîtes.
+  if (state.vue === 'combat') return renderCombat();
+
   const g = ONGLETS[state.gen];
   const liste = genList(state.gen);
   const perso = !!state.order[state.gen];
@@ -459,6 +476,7 @@ function render() {
         ${hasData ? '' : `<div class="hint">Les sprites viennent de PokéAPI, mais les noms, habitats et lieux de capture ne sont chargés que pour la première boîte. Lance <code>npm run fetch-data</code> pour tout récupérer.</div>`}
       </footer>
     `),
+    renderNav(),
   );
 
   calePaper();
@@ -916,7 +934,7 @@ function closeBoxSheet() {
 function syncBackdrop() {
   backdrop.classList.toggle('open',
     sheet.classList.contains('open') || boxSheet.classList.contains('open')
-    || addSheet.classList.contains('open'));
+    || addSheet.classList.contains('open') || battleSheet.classList.contains('open'));
 }
 
 // ---------- Panneau « ajouter un Pokémon à un emplacement » ----------
@@ -1716,6 +1734,434 @@ function importProgress() {
   };
   input.click();
 }
+
+// ---------- Boîte de combat ----------
+//
+// Seconde vue de l'application, atteinte par la barre du bas. On y compose une
+// équipe de six, on lui choisit des attaques, et on change de version de jeu : le
+// moveset disponible suit, puisqu'une espèce n'apprend pas les mêmes attaques dans
+// Rouge/Bleu et dans Écarlate/Violet.
+//
+// `learnsets-vg.json` pèse 5,7 Mo (11 jeux par espèce en moyenne) : il est chargé
+// par import() À LA DEMANDE, à la première ouverture de la vue, et non au
+// démarrage. Vite en fait un chunk séparé, servi depuis le système de fichiers —
+// l'application reste donc utilisable hors ligne.
+
+const JEU_DEFAUT = 'scarlet-violet';
+const NIV_DEFAUT = 50;
+const EQUIPE_VIDE = () => Array.from({ length: 6 }, () => null);
+
+let LEARN_VG = null;
+let chargementVG = null;
+function chargeVG() {
+  if (LEARN_VG) return Promise.resolve(LEARN_VG);
+  chargementVG ??= import('./data/learnsets-vg.json').then((m) => {
+    LEARN_VG = m.default;
+    return LEARN_VG;
+  });
+  return chargementVG;
+}
+
+const jeuCourant = () => JEUX.find((v) => v.k === state.jeu) || JEUX[JEUX.length - 1];
+
+const saveCombat = () => {
+  localStorage.setItem(EQUIPE_KEY, JSON.stringify(state.equipe));
+  localStorage.setItem(JEU_KEY, state.jeu);
+};
+
+// Formules officielles des jeux, à IV 31, EV 0 et nature neutre — les valeurs qu'on
+// veut voir dans un planificateur, sans imposer un dressage précis.
+// Munja fait exception : ses PV valent 1 quoi qu'il arrive.
+const MUNJA = 292;
+const calcPV = (base, niv, espece) =>
+  espece === MUNJA ? 1 : Math.floor(((2 * base + 31) * niv) / 100) + niv + 10;
+const calcStat = (base, niv) => Math.floor(((2 * base + 31) * niv) / 100) + 5;
+
+// Attaques apprenables par une espèce dans un jeu donné. `null` = l'espèce n'existe
+// pas dans ce jeu, ce qui n'est pas la même chose qu'une liste vide.
+function poolAttaques(espece, jeu) {
+  const l = LEARN_VG?.[espece]?.[jeu];
+  if (!l) return null;
+  const vues = new Set();
+  const out = [];
+  // Le niveau d'abord : si une attaque s'apprend aussi par CT, c'est le niveau
+  // qu'on veut afficher, c'est l'information la plus utile.
+  for (const [id, lv] of l.n) if (!vues.has(id) && vues.add(id)) out.push({ id, src: lv > 0 ? `N.${lv}` : 'Dép.', rang: 0 });
+  for (const [id, lab] of l.m) if (!vues.has(id) && vues.add(id)) out.push({ id, src: String(lab), rang: 1 });
+  for (const id of l.o) if (!vues.has(id) && vues.add(id)) out.push({ id, src: 'Œuf', rang: 2 });
+  for (const id of l.t) if (!vues.has(id) && vues.add(id)) out.push({ id, src: 'Maître', rang: 3 });
+  return out;
+}
+
+// ---------- Rendu de la vue ----------
+
+function renderNav() {
+  return h(`
+    <nav class="nav" role="tablist" aria-label="Vue">
+      ${[['boites', '▦', 'Boîtes'], ['combat', '⚔', 'Combat']].map(([v, ico, lib]) => `
+        <button class="nav-btn ${state.vue === v ? 'on' : ''}" role="tab"
+                aria-selected="${state.vue === v}" data-vue="${v}">
+          <b>${ico}</b><span>${lib}</span>
+        </button>`).join('')}
+    </nav>`);
+}
+
+function renderEquipeSlot(m, i) {
+  if (!m) {
+    return `<button class="eq vide" data-eq="${i}" aria-label="Emplacement ${i + 1}, libre">
+      <b>+</b><small>Libre</small>
+    </button>`;
+  }
+  const espece = speciesOf(m.key);
+  const st = stats[espece];
+  const niv = m.niv ?? NIV_DEFAUT;
+  const pv = st ? calcPV(st.pv, niv, espece) : 0;
+  const absent = LEARN_VG && !LEARN_VG[espece]?.[state.jeu];
+  return `
+    <button class="eq ${isCaught(m.key) ? '' : 'gris'} ${absent ? 'absent' : ''}" data-eq="${i}"
+            aria-label="${esc(monName(m.key))}, niveau ${niv}">
+      <img src="${sprites.still(spriteKey(m.key), shinyView())}" alt=""
+           ${imgFallback(espece, shinyView())} />
+      <span class="eq-nom">${esc(monName(m.key))}</span>
+      <span class="eq-jauge"><i>PV</i><span class="jauge"><b></b></span></span>
+      <span class="eq-lv">N.${niv}</span>
+      <span class="eq-pv">${pv}/${pv}</span>
+      ${absent ? '<span class="eq-alerte" title="Absent de ce jeu">!</span>' : ''}
+    </button>`;
+}
+
+function renderCombat() {
+  const jeu = jeuCourant();
+  const pleines = state.equipe.filter(Boolean).length;
+
+  app.replaceChildren(
+    h(`
+      <section class="combat">
+        <div class="combat-head">
+          <button class="jeu-btn" data-act="choix-jeu">
+            <small>Version du jeu</small>
+            <b>${esc(jeu.nom)}</b>
+          </button>
+          <div class="combat-compte"><b>${pleines}</b>/6</div>
+        </div>
+
+        <div class="equipe">
+          ${state.equipe.map(renderEquipeSlot).join('')}
+        </div>
+
+        ${LEARN_VG ? '' : '<p class="combat-charge">Chargement des attaques par version…</p>'}
+
+        <p class="hint">
+          Touchez un emplacement pour choisir un Pokémon, puis le Pokémon lui-même
+          pour régler son niveau et ses quatre attaques. Les attaques proposées sont
+          celles apprenables dans <b>${esc(jeu.nom)}</b>.
+        </p>
+      </section>`),
+    renderNav(),
+  );
+
+  if (!LEARN_VG) chargeVG().then(() => { if (state.vue === 'combat') render(); });
+}
+
+// ---------- Panneau de la boîte de combat ----------
+
+const battleSheet = h(`<aside class="sheet" role="dialog" aria-modal="true"><div class="sheet-grip"></div><div class="sheet-body"></div></aside>`);
+document.body.append(battleSheet);
+const battleBody = battleSheet.querySelector('.sheet-body');
+enableSwipeClose(battleSheet, closeBattleSheet);
+
+function closeBattleSheet() {
+  battleSheet.classList.remove('open');
+  state.bs = null;
+  syncBackdrop();
+}
+function openBattleSheet(mode, slot = null, emplacement = null) {
+  state.bs = { mode, slot, emplacement, q: '' };
+  renderBattleSheet();
+  battleBody.scrollTop = 0;
+  battleSheet.classList.add('open');
+  syncBackdrop();
+}
+
+function renderBattleSheet(gardeFocus) {
+  const bs = state.bs;
+  if (!bs) return;
+  battleBody.innerHTML =
+    bs.mode === 'version' ? htmlVersions()
+    : bs.mode === 'mon' ? htmlChoixMon()
+    : bs.mode === 'detail' ? htmlDetail()
+    : htmlChoixAttaque();
+  if (gardeFocus) {
+    const c = battleBody.querySelector('.bs-name');
+    if (c) { c.focus(); c.setSelectionRange(c.value.length, c.value.length); }
+  }
+}
+
+// Les 21 jeux, groupés par génération pour qu'on s'y retrouve.
+function htmlVersions() {
+  const parGen = {};
+  for (const v of JEUX) (parGen[v.gen] ??= []).push(v);
+  return `
+    <h2 class="bs-title">Version du jeu</h2>
+    <p class="paper-note">Le moveset proposé change d'un jeu à l'autre. Les stats de
+      base restent celles des jeux actuels : PokéAPI ne publie pas leur historique.</p>
+    ${Object.entries(parGen).map(([gen, liste]) => `
+      <div class="vgroupe">
+        <h3>Génération ${esc(gen.replace('generation-', '').toUpperCase())}</h3>
+        ${liste.map((v) => `
+          <button class="vjeu ${v.k === state.jeu ? 'on' : ''}" data-jeu="${esc(v.k)}">
+            ${esc(v.nom)}${v.k === state.jeu ? ' <i>✓</i>' : ''}
+          </button>`).join('')}
+      </div>`).join('')}
+  `;
+}
+
+// Choix d'un Pokémon pour un emplacement. Capturé = couleur, non capturé = gris :
+// c'est le même signal que dans la grille des boîtes.
+function htmlChoixMon() {
+  const q = fold(state.bs.q || '');
+  const res = q
+    ? CATALOGUE.filter((e) => e.cle.includes(q)).slice(0, 80)
+    : CATALOGUE.filter((e) => e.gen === state.addGen);
+  return `
+    <h2 class="bs-title">Choisir un Pokémon</h2>
+    <label class="bs-field">
+      <span>Rechercher</span>
+      <input class="bs-name bs-q" type="text" value="${esc(state.bs.q || '')}"
+             placeholder="Nom, forme, numéro…" autocomplete="off" />
+    </label>
+    ${q ? '' : `<div class="paper-gens" role="tablist">
+      ${GENS.map((g) => `
+        <button class="paper-gen ${g.n === state.addGen ? 'on' : ''}" role="tab"
+                aria-selected="${g.n === state.addGen}" data-agen="${g.n}">
+          Gén. ${g.n}<small>${g.name}</small>
+        </button>`).join('')}
+    </div>`}
+    <div class="picks">
+      ${res.map((e) => `
+        <button class="pick ${isCaught(e.id) ? '' : 'gris'}" data-eqpick="${e.id}">
+          <img src="${sprites.still(e.sprite)}" alt="" loading="lazy" ${imgFallback(e.num, false)} />
+          <span>${esc(e.name)}<i>${esc(e.sub)}</i></span>
+        </button>`).join('')}
+    </div>
+    ${res.length ? '' : '<p class="paper-note">Aucun résultat.</p>'}
+  `;
+}
+
+// Détail d'un membre : niveau, stats calculées, quatre attaques.
+function htmlDetail() {
+  const m = state.equipe[state.bs.slot];
+  if (!m) return '<p class="none">Emplacement vide.</p>';
+  const espece = speciesOf(m.key);
+  const st = stats[espece];
+  const niv = m.niv ?? NIV_DEFAUT;
+  const p = pokedex[espece] || {};
+  const pool = poolAttaques(espece, state.jeu);
+  const dispo = new Set((pool || []).map((x) => x.id));
+
+  const ligne = (lib, val) => `<div class="stat"><dt>${lib}</dt><dd>${val}</dd></div>`;
+  const bloc = st ? `
+    <dl class="stats">
+      ${ligne('PV', calcPV(st.pv, niv, espece))}
+      ${ligne('Attaque', calcStat(st.att, niv))}
+      ${ligne('Défense', calcStat(st.def, niv))}
+      ${ligne('Atq. Spé.', calcStat(st.atts, niv))}
+      ${ligne('Déf. Spé.', calcStat(st.defs, niv))}
+      ${ligne('Vitesse', calcStat(st.vit, niv))}
+    </dl>` : '<p class="none">Stats de base inconnues.</p>';
+
+  return `
+    <div class="sheet-top">
+      <div class="portrait">
+        <img src="${sprites.still(spriteKey(m.key), shinyView())}" alt=""
+             ${imgFallback(espece, shinyView())} />
+      </div>
+      <div>
+        <h2 class="sheet-name">${esc(monName(m.key))}</h2>
+        <div class="types">${(p.types || []).map((t) =>
+          `<span class="type" style="--t:${TYPES[t]?.[1] || '#888'}">${TYPES[t]?.[0] || t}</span>`).join('')}</div>
+      </div>
+    </div>
+
+    <div class="niv-rang">
+      <span>Niveau</span>
+      <button data-niv="-10">−10</button>
+      <button data-niv="-1">−1</button>
+      <b>${niv}</b>
+      <button data-niv="1">+1</button>
+      <button data-niv="10">+10</button>
+    </div>
+
+    <h3>Statistiques <small>IV 31, EV 0, nature neutre</small></h3>
+    ${bloc}
+
+    <h3>Attaques <small>${esc(jeuCourant().nom)}</small></h3>
+    ${pool === null
+      ? `<p class="none">${esc(monName(m.key))} n'apparaît pas dans ${esc(jeuCourant().nom)} : aucune attaque à proposer.</p>`
+      : `<div class="atq4">
+          ${Array.from({ length: 4 }, (_, i) => {
+            const id = m.moves?.[i];
+            const mv = id ? moves[id] : null;
+            if (!mv) return `<button class="atq libre" data-atq="${i}"><b>+</b> Attaque ${i + 1}</button>`;
+            const [tn, tc] = TYPES[mv.t] || [mv.t || '—', '#888'];
+            const ko = !dispo.has(id);
+            return `
+              <button class="atq ${ko ? 'ko' : ''}" data-atq="${i}">
+                <span class="atq-h">
+                  <span class="atq-n">${esc(mv.n)}</span>
+                  <span class="type mini" style="--t:${tc}">${tn}</span>
+                </span>
+                <span class="atq-m">Puis. <b>${mv.p ?? '—'}</b> · Préc. <b>${mv.a ?? '—'}</b> · PP <b>${mv.pp ?? '—'}</b>${ko ? ' · <i>indisponible ici</i>' : ''}</span>
+              </button>`;
+          }).join('')}
+        </div>`}
+
+    <button class="catch-btn retirer" data-act="eq-retirer">Retirer de l'équipe</button>
+  `;
+}
+
+// Choix d'une attaque parmi celles apprenables dans le jeu courant.
+function htmlChoixAttaque() {
+  const m = state.equipe[state.bs.slot];
+  if (!m) return '<p class="none">Emplacement vide.</p>';
+  const espece = speciesOf(m.key);
+  const pool = poolAttaques(espece, state.jeu) || [];
+  const q = fold(state.bs.q || '');
+  const res = pool
+    .filter((x) => !q || fold(moves[x.id]?.n || '').includes(q))
+    // Le tri de JS est stable : trier sur le seul groupe conserve l'ordre du
+    // fichier, donc les attaques par niveau restent classées PAR NIVEAU et les CT
+    // par numéro. Trier par nom à l'intérieur d'un groupe affichait N.62 avant N.1.
+    .sort((a, b) => a.rang - b.rang);
+
+  return `
+    <h2 class="bs-title">Attaque ${state.bs.emplacement + 1} — ${esc(monName(m.key))}</h2>
+    <p class="paper-note">${pool.length} attaques apprenables dans ${esc(jeuCourant().nom)}.</p>
+    <label class="bs-field">
+      <span>Rechercher</span>
+      <input class="bs-name bs-q" type="text" value="${esc(state.bs.q || '')}"
+             placeholder="Nom d'attaque…" autocomplete="off" />
+    </label>
+    <ul class="mlist">
+      ${res.map((x) => {
+        const mv = moves[x.id];
+        if (!mv) return '';
+        const [tn, tc] = TYPES[mv.t] || [mv.t || '—', '#888'];
+        const [cn, cc] = CLASSES[mv.c] || [mv.c || '—', '#888'];
+        const choisie = m.moves?.includes(x.id);
+        return `
+          <li class="mrow">
+            <button class="move ${choisie ? 'ouvert' : ''}" data-pickatq="${x.id}">
+              <span class="mbadge">${esc(x.src)}</span>
+              <span class="mmain">
+                <span class="mtitre">
+                  <span class="mname">${esc(mv.n)}</span>
+                  <span class="type mini" style="--t:${tc}">${tn}</span>
+                </span>
+                <span class="mmeta">
+                  <span class="mcls" style="--c:${cc}">${cn}</span>
+                  <span>Puis. <b>${mv.p ?? '—'}</b></span>
+                  <span>Préc. <b>${mv.a ?? '—'}</b></span>
+                  <span>PP <b>${mv.pp ?? '—'}</b></span>
+                </span>
+              </span>
+              ${choisie ? '<span class="mchev">✓</span>' : ''}
+            </button>
+          </li>`;
+      }).join('')}
+    </ul>
+    ${res.length ? '' : '<p class="paper-note">Aucune attaque ne correspond.</p>'}
+  `;
+}
+
+// ---------- Interactions ----------
+
+battleBody.addEventListener('input', (e) => {
+  if (!e.target.classList.contains('bs-q')) return;
+  state.bs.q = e.target.value;
+  renderBattleSheet(true);
+});
+
+battleBody.addEventListener('click', (e) => {
+  const bs = state.bs;
+  if (!bs) return;
+
+  const jeu = e.target.closest('[data-jeu]');
+  if (jeu) {
+    state.jeu = jeu.dataset.jeu;
+    saveCombat();
+    closeBattleSheet();
+    render();
+    return;
+  }
+
+  const gen = e.target.closest('[data-agen]');
+  if (gen) { state.addGen = +gen.dataset.agen; renderBattleSheet(); return; }
+
+  const pick = e.target.closest('[data-eqpick]');
+  if (pick) {
+    state.equipe[bs.slot] = { key: asKey(pick.dataset.eqpick), niv: NIV_DEFAUT, moves: [] };
+    saveCombat();
+    render();
+    openBattleSheet('detail', bs.slot);
+    return;
+  }
+
+  const niv = e.target.closest('[data-niv]');
+  if (niv) {
+    const m = state.equipe[bs.slot];
+    m.niv = Math.max(1, Math.min(100, (m.niv ?? NIV_DEFAUT) + Number(niv.dataset.niv)));
+    saveCombat();
+    render();
+    renderBattleSheet();
+    return;
+  }
+
+  const atq = e.target.closest('[data-atq]');
+  if (atq) { openBattleSheet('attaque', bs.slot, +atq.dataset.atq); return; }
+
+  const choix = e.target.closest('[data-pickatq]');
+  if (choix) {
+    const m = state.equipe[bs.slot];
+    m.moves = m.moves || [];
+    const id = +choix.dataset.pickatq;
+    // Déjà dans une autre case : on l'y retire, une attaque ne se met pas en double.
+    const ailleurs = m.moves.indexOf(id);
+    if (ailleurs >= 0 && ailleurs !== bs.emplacement) m.moves[ailleurs] = undefined;
+    m.moves[bs.emplacement] = id;
+    saveCombat();
+    retourHaptique();
+    openBattleSheet('detail', bs.slot);
+    return;
+  }
+
+  if (e.target.closest('[data-act="eq-retirer"]')) {
+    state.equipe[bs.slot] = null;
+    saveCombat();
+    closeBattleSheet();
+    render();
+  }
+});
+
+app.addEventListener('click', (e) => {
+  const vue = e.target.closest('[data-vue]');
+  if (vue) {
+    state.vue = vue.dataset.vue;
+    localStorage.setItem(VUE_KEY, state.vue);
+    render();
+    return;
+  }
+  if (state.vue !== 'combat') return;
+
+  if (e.target.closest('[data-act="choix-jeu"]')) { openBattleSheet('version'); return; }
+
+  const eq = e.target.closest('[data-eq]');
+  if (eq) {
+    const i = +eq.dataset.eq;
+    state.addGen = ONGLETS[state.gen].n;
+    openBattleSheet(state.equipe[i] ? 'detail' : 'mon', i);
+  }
+});
 
 render();
 

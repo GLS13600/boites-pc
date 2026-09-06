@@ -328,6 +328,241 @@ img { display: block; }
   color: var(--muted);
 }
 
+/* ---------- Barre du bas : commutation des deux vues ---------- */
+
+/* Fixée, donc hors du flux : le bas de page doit lui réserver sa hauteur, sinon
+   elle recouvrirait les derniers boutons. */
+.nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 12;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 6px 10px calc(6px + var(--safe-bottom));
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--rule);
+}
+.nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 0 5px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+.nav-btn b { font-size: 17px; line-height: 1; font-weight: 400; }
+.nav-btn.on { background: var(--caught-tint); color: var(--ball); }
+
+body { padding-bottom: calc(62px + var(--safe-bottom)); }
+
+/* ---------- Boîte de combat ---------- */
+
+.combat { margin: 12px; }
+.combat-head { display: flex; align-items: stretch; gap: 10px; margin-bottom: 12px; }
+.jeu-btn {
+  flex: 1;
+  text-align: left;
+  padding: 8px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.jeu-btn small { display: block; font-size: 11px; color: var(--muted); }
+.jeu-btn b { font-size: 15px; }
+.combat-compte {
+  display: grid;
+  place-items: center;
+  min-width: 58px;
+  border-radius: 12px;
+  background: var(--slot);
+  border: 1px solid var(--rule);
+  color: var(--muted);
+  font-size: 13px;
+}
+.combat-compte b { color: var(--ink); font-size: 17px; }
+
+/* La grille de six, à la manière de l'écran d'équipe des jeux : fond sombre,
+   cartes claires sur deux colonnes. */
+.equipe {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 16px;
+  background: linear-gradient(160deg, #35455f, #22304a);
+}
+.eq {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  grid-template-rows: auto auto auto;
+  align-items: center;
+  gap: 1px 8px;
+  position: relative;
+  padding: 7px 9px;
+  border: 1px solid #cdd5e2;
+  border-radius: 11px;
+  background: #f7f6f1;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.eq img {
+  grid-row: 1 / 4;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+/* Non capturé : gris, comme dans la grille des boîtes. Le signal reste le même. */
+.eq.gris img { filter: grayscale(1); opacity: 0.75; }
+.eq-nom { font-size: 13px; font-weight: 700; line-height: 1.15; }
+.eq-jauge { display: flex; align-items: center; gap: 5px; }
+.eq-jauge i { font-style: italic; font-size: 9px; font-weight: 700; color: #6b7280; }
+.jauge { flex: 1; height: 5px; border-radius: 3px; background: #d8d5cc; overflow: hidden; }
+.jauge b { display: block; height: 100%; width: 100%; background: #5ec26a; }
+.eq-lv { grid-column: 2; font-size: 11px; font-weight: 700; color: #4b5563; }
+.eq-pv {
+  position: absolute;
+  right: 9px;
+  bottom: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #4b5563;
+}
+/* Espèce absente du jeu choisi : on le signale sans retirer le Pokémon. */
+.eq.absent { border-color: var(--ball); }
+.eq-alerte {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ball);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+}
+.eq.vide {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
+  place-items: center;
+  gap: 2px;
+  min-height: 66px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px dashed rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.75);
+}
+.eq.vide b { font-size: 19px; font-weight: 400; line-height: 1; }
+.eq.vide small { font-size: 10px; }
+
+.combat-charge { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+
+/* ---------- Panneau : versions, niveau, stats, attaques ---------- */
+
+.vgroupe { margin-bottom: 14px; }
+.vgroupe h3 { font-size: 12px; color: var(--muted); margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+.vjeu {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 13px;
+  margin-bottom: 5px;
+  border: 1px solid var(--rule-soft);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.vjeu.on { border-color: var(--ball); background: var(--caught-tint); font-weight: 700; }
+.vjeu i { color: var(--ball); font-style: normal; }
+
+.niv-rang {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 14px 0 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.niv-rang b {
+  min-width: 42px;
+  text-align: center;
+  font-size: 17px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.niv-rang button {
+  padding: 5px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  background: var(--slot);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin: 0; }
+.stats .stat {
+  padding: 7px 9px;
+  border: 1px solid var(--rule-soft);
+  border-radius: 10px;
+  background: var(--slot);
+}
+.stats dt { font-size: 10px; color: var(--muted); }
+.stats dd { margin: 1px 0 0; font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.atq4 { display: grid; gap: 7px; }
+.atq {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  border: 1px solid var(--rule-soft);
+  border-radius: 11px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.atq.libre { border-style: dashed; color: var(--muted); font-size: 13px; }
+.atq.libre b { font-weight: 400; margin-right: 4px; }
+/* Attaque conservée mais non apprenable dans le jeu choisi : on la garde et on le
+   dit, plutôt que de l'effacer en silence au changement de version. */
+.atq.ko { border-color: var(--ball); background: var(--caught-tint); }
+.atq-h { display: flex; align-items: center; gap: 7px; }
+.atq-n { font-size: 14px; font-weight: 600; }
+.atq-m { display: block; margin-top: 2px; font-size: 11px; color: var(--muted); }
+.atq-m b { color: var(--ink); font-weight: 600; }
+.atq-m i { color: var(--ball); font-style: normal; font-weight: 700; }
+
+.catch-btn.retirer { background: var(--slot); color: var(--ball); border: 1px solid var(--ball); }
+
+/* Non capturé dans le sélecteur de la boîte de combat. */
+.pick.gris img { filter: grayscale(1); opacity: 0.72; }
+
 /* ---------- Bas de page ---------- */
 
 .foot {

@@ -42,6 +42,10 @@ Pokémon. Destinée à finir en `.ipa` sideloadée sur iPhone via Sideloadly.
 | `src/data/moves.json` | Les 731 attaques citées, **généré** |
 | `src/data/learnsets.json` | Moveset de chaque espèce, **généré** |
 | `scripts/fetch-moves.mjs` | Aspire attaques et movesets (`npm run fetch-moves`) |
+| `src/data/stats.json` | Stats de base des 1025 espèces, **généré** |
+| `src/data/versions.json` | Les 21 jeux jouables, **généré** |
+| `src/data/learnsets-vg.json` | Moveset par espèce ET par jeu, **généré**, 5,7 Mo |
+| `scripts/fetch-battle.mjs` | Produit les trois ci-dessus (`npm run fetch-battle`) |
 | `public/sprites/` | Les 5 291 sprites, **générés**, 40 Mo |
 
 ## Données
@@ -176,6 +180,51 @@ Règles d'affichage, à ne pas casser :
   perdrait la position de défilement au milieu d'une liste de soixante attaques.
 - Niveau 0 = attaque connue d'entrée de jeu, affichée « Dép. ». Une attaque de statut
   n'a ni puissance ni précision : « — » plutôt qu'un 0 faux.
+
+## Boîte de combat
+
+Seconde vue de l'application, atteinte par la **barre du bas** (`.nav`, deux onglets :
+Boîtes et Combat). `render()` bascule dessus dès sa première ligne ; tout le reste de
+la fonction ne concerne que la gestion des boîtes.
+
+- L'équipe de six est présentée comme l'écran d'équipe des jeux : fond sombre, deux
+  colonnes de cartes claires portant sprite, nom, jauge de PV, niveau et PV chiffrés.
+- Un emplacement libre ouvre le sélecteur d'espèces ; un emplacement rempli ouvre son
+  détail (niveau, stats calculées, quatre attaques, retrait).
+- **Capturé = couleur, non capturé = gris**, dans le sélecteur comme dans les cartes.
+  C'est le même signal que la grille des boîtes, on ne l'invente pas ici.
+- Persistance : `pcbox.vue`, `pcbox.jeu`, `pcbox.equipe`.
+
+### Movesets par version
+
+- `learnsets-vg.json` donne le moveset de chaque espèce **dans chaque jeu** : 10 050
+  couples espèce×jeu, ~11 jeux par espèce, **5,7 Mo**. À ne pas confondre avec
+  `learnsets.json` (713 Ko), qui n'en garde qu'un seul et sert à la fiche du Pokédex.
+- **Il est chargé par `import()` À LA DEMANDE**, à la première ouverture de la vue.
+  Vite en fait un chunk séparé : l'index reste à 5,2 Mo au lieu de 10,8 Mo, et le
+  démarrage n'est pas ralenti. Le chunk vit dans `dist/`, donc toujours hors ligne.
+  Ne pas repasser en import statique.
+- 21 jeux retenus : on écarte les exclusivités japonaises (doublons de Rouge/Bleu),
+  les spin-off GameCube, et tout groupe sans une seule attaque par niveau — les DLC
+  et les jeux dont PokéAPI ignore encore les movesets ressortiraient vides.
+- Changer de version **ne supprime pas** les attaques déjà choisies : celles qui ne
+  s'apprennent pas dans le nouveau jeu sont gardées et marquées « indisponible ici »
+  (`.atq.ko`). Les effacer en silence ferait perdre le travail d'un simple appui.
+- Une espèce absente du jeu choisi garde sa place, avec une pastille d'alerte.
+- Dans le sélecteur d'attaques, le tri porte sur le **seul groupe** : le tri de JS
+  étant stable, l'ordre du fichier est conservé — donc par niveau croissant, et par
+  numéro pour les CT. Trier par nom à l'intérieur d'un groupe affichait N.62 avant N.1.
+
+### Stats
+
+- Formules officielles à **IV 31, EV 0, nature neutre** : les valeurs d'un
+  planificateur, sans imposer un dressage précis. Un Pokémon réel, aux IV quelconques,
+  aura donc quelques PV d'écart — c'est attendu, pas un bug.
+- Munja (`292`) est le cas particulier : 1 PV quel que soit le niveau.
+- **Les stats de base ne changent pas avec la version choisie** : PokéAPI ne publie
+  pas leur historique, alors que plusieurs espèces ont été rééquilibrées en gén. 6.
+  Le panneau des versions le dit explicitement. Même limite pour la puissance et la
+  précision des attaques, données dans leurs valeurs actuelles.
 
 ## Fiche d'une forme
 

@@ -2143,9 +2143,20 @@ battleBody.addEventListener('click', (e) => {
   }
 });
 
+// Changer de vue referme tout panneau ouvert. Un panneau appartient à sa vue : le
+// détail d'un membre d'équipe n'a aucun sens par-dessus la gestion des boîtes, et
+// la fiche d'un Pokémon n'en a pas davantage par-dessus la boîte de combat.
+function fermeLesPanneaux() {
+  closeBattleSheet();
+  closeSheet();
+  closeBoxSheet();
+  closeAddSheet();
+}
+
 app.addEventListener('click', (e) => {
   const vue = e.target.closest('[data-vue]');
   if (vue) {
+    if (state.vue !== vue.dataset.vue) fermeLesPanneaux();
     state.vue = vue.dataset.vue;
     localStorage.setItem(VUE_KEY, state.vue);
     render();

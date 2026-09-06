@@ -1,4 +1,12 @@
-# Boîtes PC — Living Dex personnel
+# Guiguidex — Living Dex personnel
+
+Le nom affiché sur l'écran d'accueil est **Guiguidex**. Il vit à trois endroits, à
+tenir synchronisés : `CFBundleDisplayName` dans `ios/App/App/Info.plist` — c'est
+celui-là qui compte pour l'iPhone —, `appName` dans `capacitor.config.json` pour un
+futur `cap add ios`, et le `<title>` plus la balise `apple-mobile-web-app-title`
+d'`index.html` pour le navigateur et l'ajout à l'écran d'accueil depuis Safari.
+`CFBundleName` reste à `$(PRODUCT_NAME)`, soit « App » : c'est un nom interne, jamais
+affiché.
 
 Application web perso pour suivre un Living Dex, présentée comme les boîtes PC des jeux
 Pokémon. Destinée à finir en `.ipa` sideloadée sur iPhone via Sideloadly.

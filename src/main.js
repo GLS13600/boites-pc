@@ -48,6 +48,15 @@ const TYPES = {
   dark: ['Ténèbres', '#4f423b'], steel: ['Acier', '#7e8e9b'], fairy: ['Fée', '#d977c1'],
 };
 
+// Abréviation de chaque type : trois lettres tiennent dans une pastille de 30 px,
+// là où « Électrik » ou « Ténèbres » forcerait une grille deux fois plus haute.
+const ABBR = {
+  normal: 'NOR', fire: 'FEU', water: 'EAU', grass: 'PLA', electric: 'ÉLE', ice: 'GLA',
+  fighting: 'COM', poison: 'POI', ground: 'SOL', flying: 'VOL', psychic: 'PSY',
+  bug: 'INS', rock: 'ROC', ghost: 'SPE', dragon: 'DRA', dark: 'TÉN', steel: 'ACI',
+  fairy: 'FÉE',
+};
+
 // Catégorie d'une attaque. Le statut est volontairement neutre : il n'inflige pas de
 // dégâts, ses colonnes Puissance et Précision valent souvent « — ».
 const CLASSES = {
@@ -1925,17 +1934,23 @@ function analyseEquipe() {
   });
   if (!membres.length) return null;
 
-  // --- Défense : pour chaque type attaquant, qui souffre et qui encaisse ---
+  // --- Défense : le multiplicateur subi par CHAQUE membre ---
+  // On garde le détail et pas seulement des comptes : voir trois « ×2 » alignés dit
+  // immédiatement ce qu'un simple « 3 » ne montre pas.
   const def = TT.map((a) => {
-    let faibles = 0, resiste = 0, immune = 0;
-    for (const mb of membres) {
+    const mults = membres.map((mb) => {
       let mult = 1;
       for (const t of mb.types) mult *= table[a]?.[t] ?? 1;
-      if (mult === 0) immune++;
-      else if (mult > 1) faibles++;
-      else if (mult < 1) resiste++;
-    }
-    return { t: a, faibles, resiste, immune };
+      return mult;
+    });
+    return {
+      t: a,
+      mults,
+      faibles: mults.filter((m) => m > 1).length,
+      resiste: mults.filter((m) => m < 1 && m > 0).length,
+      immune: mults.filter((m) => m === 0).length,
+      pire: Math.max(...mults),
+    };
   });
 
   // --- Attaque : d'après les attaques offensives réellement sélectionnées ---
@@ -1946,8 +1961,13 @@ function analyseEquipe() {
     if (!offensives.length) sansAttaque++;
     for (const id of offensives) typesAtq.add(moves[id].t);
   }
-  const couverts = new Set();
-  for (const a of typesAtq) for (const d of TT) if ((table[a]?.[d] ?? 1) > 1) couverts.add(d);
+  // Face à un type défenseur donné, le mieux que l'équipe puisse faire avec les
+  // types d'attaque dont elle dispose.
+  const off = TT.map((d) => ({
+    t: d,
+    mult: typesAtq.size ? Math.max(...[...typesAtq].map((a) => table[a]?.[d] ?? 1)) : null,
+  }));
+  const couverts = new Set(off.filter((o) => o.mult > 1).map((o) => o.t));
 
   // --- Conseils : uniquement des constats actionnables ---
   const avis = [];
@@ -1988,7 +2008,7 @@ function analyseEquipe() {
   }
   if (!avis.length) avis.push({ ton: 'bon', txt: 'Aucun défaut majeur détecté : pas de faiblesse partagée, un encaisseur, de la vitesse et les deux catégories d’attaque.' });
 
-  return { membres, def, couverts, typesAtq, avis, murs };
+  return { membres, def, off, couverts, typesAtq, avis, murs };
 }
 
 // ---------- Rendu de l'analyse ----------
@@ -1997,23 +2017,43 @@ function renderAnalyse() {
   const a = analyseEquipe();
   if (!a) return '';
   const TT = typechart.types;
-  const chip = (t, txt, cls) =>
-    `<span class="tchip ${cls}" style="--t:${TYPES[t]?.[1] || '#888'}">${TYPES[t]?.[0] || t}<i>${txt}</i></span>`;
+
+  // × pour ce qui fait mal, ÷ pour ce qui est encaissé, 0 pour une immunité.
+  const fmt = (m) =>
+    m === 0 ? '0' : m >= 4 ? '×4' : m > 1 ? '×2' : m <= 0.25 ? '÷4' : m < 1 ? '÷2' : '×1';
+  const classeMult = (m) => (m === 0 ? 'm0' : m > 1 ? 'mx' : m < 1 ? 'md' : 'mn');
+
+  const badge = (t) =>
+    `<span class="tb" style="--t:${TYPES[t]?.[1] || '#888'}" title="${esc(TYPES[t]?.[0] || t)}">${ABBR[t] || t.slice(0, 3).toUpperCase()}</span>`;
+
+  // Une ligne = une pastille de type suivie de ses multiplicateurs. Les valeurs
+  // neutres sont omises : elles n'apprennent rien et doubleraient la hauteur.
+  const ligne = (t, jetons, alerte) => `
+    <div class="tl ${alerte ? 'chaud' : ''}">
+      ${badge(t)}
+      <span class="tm">${jetons.length
+        ? jetons.map((m) => `<i class="${classeMult(m)}">${fmt(m)}</i>`).join('')
+        : '<i class="mn">·</i>'}</span>
+    </div>`;
 
   // Le plus solide de l'équipe : la réponse directe à « qui est le tanker ».
   const tank = a.membres.slice().sort((x, y) => y.encaisse - x.encaisse)[0];
 
   return `
-    <h3 class="an-h">Défense <small>faiblesses partagées d'abord</small></h3>
+    <h3 class="an-h">Défense <small>ce que l'équipe subit</small></h3>
     <div class="tgrid">
-      ${a.def.slice().sort((x, y) => y.faibles - x.faibles || y.resiste - x.resiste).map((d) =>
-        chip(d.t, `${d.faibles} ✗ · ${d.resiste + d.immune} ✓`,
-          d.faibles >= 3 ? 'mauvais' : d.faibles > d.resiste + d.immune ? 'moyen' : d.resiste + d.immune ? 'bon' : '')).join('')}
+      ${a.def.slice()
+        .sort((x, y) => y.faibles - x.faibles || y.pire - x.pire || (y.resiste + y.immune) - (x.resiste + x.immune))
+        .map((d) => ligne(d.t,
+          d.mults.filter((m) => m !== 1).sort((x, y) => y - x),
+          d.faibles >= 3)).join('')}
     </div>
 
-    <h3 class="an-h">Attaque <small>d'après les attaques choisies</small></h3>
+    <h3 class="an-h">Attaque <small>meilleur coup disponible</small></h3>
     ${a.typesAtq.size
-      ? `<div class="tgrid">${TT.map((d) => chip(d, a.couverts.has(d) ? '×2' : '—', a.couverts.has(d) ? 'bon' : '')).join('')}</div>`
+      ? `<div class="tgrid off">${a.off.slice()
+          .sort((x, y) => y.mult - x.mult)
+          .map((o) => ligne(o.t, o.mult === 1 ? [] : [o.mult], false)).join('')}</div>`
       : '<p class="none">Aucune attaque offensive choisie : sélectionnez-en pour voir la couverture.</p>'}
 
     <h3 class="an-h">Rôles</h3>

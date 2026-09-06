@@ -581,26 +581,51 @@ body { padding-bottom: calc(62px + var(--safe-bottom)); }
 }
 .an-h small { font-size: 11px; font-weight: 500; color: var(--muted); }
 
-/* Les 18 types en grille. Le compte de faibles passe en premier : c'est ce qui
-   décide d'une composition, bien avant les résistances. */
-.tgrid { display: flex; flex-wrap: wrap; gap: 5px; }
-.tchip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-  background: var(--t, #888);
-  opacity: 0.42;
+/* Les 18 types sur deux colonnes : pastille du type, puis un multiplicateur par
+   membre concerné. Les valeurs neutres sont omises — elles n'apprennent rien et
+   doubleraient la hauteur du bloc. Trié par danger décroissant. */
+.tgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px 8px;
 }
-.tchip i { font-style: normal; font-weight: 600; font-size: 10px; opacity: 0.92; }
-.tchip.bon { opacity: 1; }
-.tchip.moyen { opacity: 1; box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px var(--shiny); }
-/* Faiblesse partagée par au moins trois membres : le vrai danger. */
-.tchip.mauvais { opacity: 1; box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px var(--ball); }
+.tl { display: flex; align-items: center; gap: 5px; min-width: 0; }
+/* Faiblesse partagée par au moins trois membres : le vrai danger d'une équipe. */
+.tl.chaud { background: var(--caught-tint); border-radius: 6px; }
+
+.tb {
+  flex: 0 0 auto;
+  width: 32px;
+  padding: 2px 0;
+  border-radius: 5px;
+  background: var(--t, #888);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+
+.tm { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }
+.tm i {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 4px;
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+}
+/* En défense : × fait mal, ÷ encaisse, 0 immunise. */
+.tm .mx { background: #fbe3e0; color: #b03127; }
+.tm .md { background: #e2f0e4; color: #37733f; }
+.tm .m0 { background: #e3e8f2; color: #3d4f77; }
+.tm .mn { background: none; color: var(--rule); padding: 3px 2px; }
+/* En attaque le sens s'inverse : frapper ×2 est bon, être encaissé ne l'est pas. */
+.tgrid.off .tm .mx { background: #e2f0e4; color: #37733f; }
+.tgrid.off .tm .md { background: #f3efe2; color: #7a6a34; }
+.tgrid.off .tm .m0 { background: #fbe3e0; color: #b03127; }
 
 .an-tank {
   margin: 0 0 10px;

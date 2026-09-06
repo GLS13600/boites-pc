@@ -221,13 +221,19 @@ la fonction ne concerne que la gestion des boîtes.
 
 Sous la grille des six, trois lectures et une liste de conseils.
 
-- **Défense** : pour chacun des 18 types attaquants, combien de membres sont faibles
-  et combien résistent ou sont immunisés. Trié par nombre de faibles décroissant —
-  c'est la faiblesse partagée qui perd une partie, pas une résistance manquante.
-  Trois membres faibles ou plus déclenchent une alerte.
-- **Attaque** : la couverture repose sur les attaques **réellement choisies**, pas sur
-  ce que l'espèce pourrait apprendre. Un membre sans attaque offensive est signalé,
-  sans quoi on lirait une couverture flatteuse et fausse.
+- **Défense** : pour chacun des 18 types attaquants, le multiplicateur subi par
+  **chaque** membre — `×4 ×2 ×2 0` se lit d'un coup d'œil là où un « 3 faibles »
+  cachait l'essentiel. Les valeurs neutres sont omises, sinon la grille doublerait de
+  hauteur. Trié par danger décroissant ; trois membres faibles ou plus surlignent la
+  ligne.
+- **Attaque** : le meilleur multiplicateur atteignable sur chaque type défenseur,
+  d'après les attaques **réellement choisies** et non ce que l'espèce pourrait
+  apprendre. Un membre sans attaque offensive est signalé, sans quoi on lirait une
+  couverture flatteuse et fausse.
+- Les deux grilles partagent le même gabarit, sur deux colonnes, et **le sens des
+  couleurs s'inverse** : en défense un `×2` est rouge, en attaque il est vert.
+- Les types sont abrégés en trois lettres (`ABBR`) : « Électrik » ou « Ténèbres »
+  en toutes lettres forçait une grille deux fois plus haute.
 - **Rôles** : Mur, Tank offensif, Sweeper, Casseur lent, Attaquant ou Polyvalent,
   déduits des stats de base, avec l'orientation physique / spéciale / mixte. Le plus
   solide de l'équipe est nommé explicitement.

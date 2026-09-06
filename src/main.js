@@ -12,6 +12,7 @@ import JEUX from './data/versions.json';
 import typechart from './data/typechart.json';
 import abilities from './data/abilities.json';
 import items from './data/items.json';
+import NATURES from './data/natures.json';
 
 // ---------- Constantes ----------
 
@@ -1833,11 +1834,28 @@ function poolObjets() {
 // veut voir dans un planificateur, sans imposer un dressage précis.
 // Munja fait exception : ses PV valent 1 quoi qu'il arrive.
 const MUNJA = 292;
-const calcPVIv = (base, niv, iv, espece) =>
-  espece === MUNJA ? 1 : Math.floor(((2 * base + iv) * niv) / 100) + niv + 10;
-const calcStatIv = (base, niv, iv) => Math.floor(((2 * base + iv) * niv) / 100) + 5;
-const calcPV = (base, niv, espece) => calcPVIv(base, niv, 31, espece);
-const calcStat = (base, niv) => calcStatIv(base, niv, 31);
+
+// Formules officielles complètes. `ev` est le total d'EV (0 à 252), `mult` le
+// coefficient de nature (1,1 / 1 / 0,9). Les PV ignorent la nature.
+const calcPVIv = (base, niv, iv, espece, ev = 0) =>
+  espece === MUNJA ? 1
+    : Math.floor(((2 * base + iv + Math.floor(ev / 4)) * niv) / 100) + niv + 10;
+const calcStatIv = (base, niv, iv, ev = 0, mult = 1) =>
+  Math.floor((Math.floor(((2 * base + iv + Math.floor(ev / 4)) * niv) / 100) + 5) * mult);
+
+// Coefficient appliqué à une stat par la nature choisie. Les cinq natures neutres
+// augmentent et diminuent la même stat : elles ne changent donc rien.
+const NATURE_PAR_CLE = Object.fromEntries(NATURES.map((n) => [n.k, n]));
+function multNature(cle, natureKey) {
+  const nat = NATURE_PAR_CLE[natureKey];
+  if (!nat || !nat.p || nat.p === nat.m) return 1;
+  if (nat.p === cle) return 1.1;
+  if (nat.m === cle) return 0.9;
+  return 1;
+}
+
+const calcPV = (base, niv, espece, ev = 0) => calcPVIv(base, niv, 31, espece, ev);
+const calcStat = (base, niv, ev = 0, mult = 1) => calcStatIv(base, niv, 31, ev, mult);
 
 // Retrouve les IV compatibles avec une stat relevée en jeu.
 //
@@ -1847,11 +1865,11 @@ const calcStat = (base, niv) => calcStatIv(base, niv, 31);
 //
 // Hypothèse assumée : EV à 0 et nature neutre. Un Pokémon entraîné ou de nature
 // favorable sortira de la plage — c'est ce que dit alors « hors plage ».
-function ivPossibles(base, niv, valeur, estPV, espece) {
+function ivPossibles(base, niv, valeur, estPV, espece, ev = 0, mult = 1) {
   if (!Number.isFinite(valeur)) return null;
   const ok = [];
   for (let iv = 0; iv <= 31; iv++) {
-    const v = estPV ? calcPVIv(base, niv, iv, espece) : calcStatIv(base, niv, iv);
+    const v = estPV ? calcPVIv(base, niv, iv, espece, ev) : calcStatIv(base, niv, iv, ev, mult);
     if (v === valeur) ok.push(iv);
   }
   return ok.length ? { min: ok[0], max: ok[ok.length - 1] } : null;
@@ -2280,6 +2298,7 @@ function renderBattleSheet(gardeFocus) {
     bs.mode === 'version' ? htmlVersions()
     : bs.mode === 'mon' ? htmlChoixMon()
     : bs.mode === 'detail' ? htmlDetail()
+    : bs.mode === 'nature' ? htmlChoixNature()
     : bs.mode === 'talent' ? htmlChoixTalent()
     : bs.mode === 'objet' ? htmlChoixObjet()
     : htmlChoixAttaque();
@@ -2338,6 +2357,29 @@ function htmlChoixMon() {
     </div>
     ${res.length ? '' : '<p class="paper-note">Aucun résultat.</p>'}
   `;
+}
+
+// Libellés courts des stats, pour l'effet d'une nature.
+const LIB_STAT = { att: 'Attaque', def: 'Défense', atts: 'Atq. Spé.', defs: 'Déf. Spé.', vit: 'Vitesse' };
+
+function htmlChoixNature() {
+  const m = equipe()[state.bs.slot];
+  if (!m) return '<p class="none">Emplacement vide.</p>';
+  return `
+    <h2 class="bs-title">Nature — ${esc(monName(m.key))}</h2>
+    <p class="paper-note">Une nature augmente une statistique de 10 % et en diminue
+      une autre d'autant. Les cinq neutres n'ont aucun effet.</p>
+    <div class="atq4">
+      ${NATURES.map((n) => {
+        const neutre = !n.p || n.p === n.m;
+        return `
+          <button class="atq ${m.nature === n.k ? 'choisi' : ''}" data-picknat="${esc(n.k)}">
+            <span class="atq-h"><span class="atq-n">${esc(n.n)}</span></span>
+            <span class="atq-m">${neutre ? 'Aucun effet'
+              : `<b class="n-plus">+10 %</b> ${esc(LIB_STAT[n.p])} · <b class="n-moins">−10 %</b> ${esc(LIB_STAT[n.m])}`}</span>
+          </button>`;
+      }).join('')}
+    </div>`;
 }
 
 // Les talents que l'espèce peut avoir dans le jeu choisi.
@@ -2409,21 +2451,31 @@ function htmlDetail() {
   // Chaque stat est saisissable : on y recopie la valeur lue en jeu, et l'appli en
   // déduit l'IV. Laissé vide, le champ retombe sur la valeur calculée à IV 31.
   const perso = m.stats || {};
+  const evs = m.evs || {};
+  const nature = NATURE_PAR_CLE[m.nature] || null;
   const champ = (cle, lib, base, estPV) => {
-    const calcule = estPV ? calcPV(base, niv, espece) : calcStat(base, niv);
+    const ev = evs[cle] || 0;
+    const mult = estPV ? 1 : multNature(cle, m.nature);
+    const calcule = estPV ? calcPV(base, niv, espece, ev) : calcStat(base, niv, ev, mult);
     const saisi = perso[cle];
-    const iv = saisi != null ? ivPossibles(base, niv, saisi, estPV, espece) : null;
+    const iv = saisi != null ? ivPossibles(base, niv, saisi, estPV, espece, ev, mult) : null;
+    const signe = mult > 1 ? '<b class="n-plus">+</b>' : mult < 1 ? '<b class="n-moins">−</b>' : '';
     const libelleIv = saisi == null ? 'calculé à IV 31'
       : !iv ? 'hors plage'
       : iv.min === iv.max ? `IV ${iv.min}`
       : `IV ${iv.min}–${iv.max}`;
     return `
       <div class="stat">
-        <dt>${lib}</dt>
+        <dt>${lib}${signe}</dt>
         <dd><input class="stat-in" type="number" inputmode="numeric" min="1" max="999"
                    data-stat="${cle}" value="${saisi ?? ''}" placeholder="${calcule}"
                    aria-label="${lib}" /></dd>
         <span class="stat-iv ${saisi != null && !iv ? 'faux' : ''}">${libelleIv}</span>
+        <label class="stat-ev">EV
+          <input type="number" inputmode="numeric" min="0" max="252"
+                 data-ev="${cle}" value="${ev || ''}" placeholder="0"
+                 aria-label="EV ${lib}" />
+        </label>
       </div>`;
   };
   const bloc = st ? `
@@ -2436,9 +2488,9 @@ function htmlDetail() {
       ${champ('vit', 'Vitesse', st.vit, false)}
     </dl>
     <p class="stat-note">
-      Recopiez les valeurs lues en jeu : l'IV est déduit de chacune. Le calcul
-      suppose <b>EV à 0 et nature neutre</b> — un Pokémon entraîné sortira de la
-      plage.${Object.keys(perso).length ? ' <button data-act="stats-reset">Tout effacer</button>' : ''}
+      Recopiez les valeurs lues en jeu : l'IV est déduit de chacune, en tenant compte
+      de la nature et des EV renseignés.${Object.keys(perso).length || Object.keys(evs).length
+        ? ' <button data-act="stats-reset">Tout effacer</button>' : ''}
     </p>` : '<p class="none">Stats de base inconnues.</p>';
 
   return `
@@ -2486,7 +2538,15 @@ function htmlDetail() {
     <h3>Faiblesses et résistances <small>${esc(jeuCourant().nom)}</small></h3>
     ${renderFaiblesses(espece)}
 
-    <h3>Statistiques <small>IV 31, EV 0, nature neutre</small></h3>
+    <h3>Nature</h3>
+    <button class="ligne-choix" data-choix="nature">
+      <span class="lc-t">${nature ? esc(nature.n) : 'Neutre (aucune)'}</span>
+      <span class="lc-d">${nature && nature.p && nature.p !== nature.m
+        ? `+10 % ${esc(LIB_STAT[nature.p])}, −10 % ${esc(LIB_STAT[nature.m])}`
+        : 'Aucun effet sur les statistiques'}</span>
+    </button>
+
+    <h3>Statistiques <small>IV déduits</small></h3>
     ${bloc}
 
     <h3>Attaques <small>${esc(jeuCourant().nom)}</small></h3>
@@ -2577,8 +2637,23 @@ battleBody.addEventListener('input', (e) => {
     return;
   }
 
-  // Saisie d'une stat. On agit sur le DOM plutôt que de reconstruire le panneau :
-  // un renderBattleSheet() ferait perdre le focus à chaque frappe.
+  // Saisie d'une stat ou d'un EV. On agit sur le DOM plutôt que de reconstruire le
+  // panneau : un renderBattleSheet() ferait perdre le focus à chaque frappe.
+  const champEv = e.target.closest('[data-ev]');
+  if (champEv) {
+    const mm = equipe()[state.bs.slot];
+    const cle = champEv.dataset.ev;
+    const v = Number(champEv.value.trim());
+    mm.evs = mm.evs || {};
+    if (!champEv.value.trim() || !Number.isFinite(v) || v <= 0) delete mm.evs[cle];
+    else mm.evs[cle] = Math.min(252, Math.round(v));
+    if (!Object.keys(mm.evs).length) delete mm.evs;
+    saveCombat();
+    majEtiquetteIv(champEv.closest('.stat'), mm, cle);
+    if (cle === 'pv') render();
+    return;
+  }
+
   const champ = e.target.closest('[data-stat]');
   if (!champ) return;
   const m = equipe()[state.bs.slot];
@@ -2594,22 +2669,35 @@ battleBody.addEventListener('input', (e) => {
   if (!Object.keys(m.stats).length) delete m.stats;
   saveCombat();
 
-  const niv = m.niv ?? NIV_DEFAUT;
-  const espece = speciesOf(m.key);
-  const base = { pv: st.pv, att: st.att, def: st.def, atts: st.atts, defs: st.defs, vit: st.vit }[cle];
-  const saisi = m.stats?.[cle];
-  const iv = saisi != null ? ivPossibles(base, niv, saisi, cle === 'pv', espece) : null;
-  const etiq = champ.parentElement.parentElement.querySelector('.stat-iv');
-  if (etiq) {
-    etiq.textContent = saisi == null ? 'calculé à IV 31'
-      : !iv ? 'hors plage'
-      : iv.min === iv.max ? `IV ${iv.min}`
-      : `IV ${iv.min}–${iv.max}`;
-    etiq.classList.toggle('faux', saisi != null && !iv);
-  }
+  majEtiquetteIv(champ.closest('.stat'), m, cle);
   // Les PV du panneau suivent la saisie ; le panneau lui-même n'est pas refait.
   if (cle === 'pv') render();
 });
+
+// Recalcule l'étiquette « IV … » d'une cellule, nature et EV compris.
+function majEtiquetteIv(cellule, m, cle) {
+  if (!cellule) return;
+  const st = stats[speciesOf(m.key)];
+  if (!st) return;
+  const niv = m.niv ?? NIV_DEFAUT;
+  const espece = speciesOf(m.key);
+  const base = st[cle];
+  const saisi = m.stats?.[cle];
+  const ev = m.evs?.[cle] || 0;
+  const mult = cle === 'pv' ? 1 : multNature(cle, m.nature);
+  const iv = saisi != null ? ivPossibles(base, niv, saisi, cle === 'pv', espece, ev, mult) : null;
+  const etiq = cellule.querySelector('.stat-iv');
+  if (!etiq) return;
+  etiq.textContent = saisi == null ? 'calculé à IV 31'
+    : !iv ? 'hors plage'
+    : iv.min === iv.max ? `IV ${iv.min}`
+    : `IV ${iv.min}–${iv.max}`;
+  etiq.classList.toggle('faux', saisi != null && !iv);
+  // Le repère grisé du champ suit aussi la nature et les EV.
+  const entree = cellule.querySelector('.stat-in');
+  if (entree) entree.placeholder = String(cle === 'pv'
+    ? calcPV(base, niv, espece, ev) : calcStat(base, niv, ev, mult));
+}
 
 battleBody.addEventListener('click', (e) => {
   const bs = state.bs;
@@ -2648,6 +2736,15 @@ battleBody.addEventListener('click', (e) => {
 
   const ligneChoix = e.target.closest('[data-choix]');
   if (ligneChoix) { openBattleSheet(ligneChoix.dataset.choix, bs.slot); return; }
+
+  const nat = e.target.closest('[data-picknat]');
+  if (nat) {
+    equipe()[bs.slot].nature = nat.dataset.picknat || null;
+    saveCombat();
+    retourHaptique();
+    openBattleSheet('detail', bs.slot);
+    return;
+  }
 
   const tal = e.target.closest('[data-picktal]');
   if (tal) {
@@ -2697,6 +2794,7 @@ battleBody.addEventListener('click', (e) => {
 
   if (e.target.closest('[data-act="stats-reset"]')) {
     delete equipe()[bs.slot].stats;
+    delete equipe()[bs.slot].evs;
     saveCombat();
     render();
     renderBattleSheet();

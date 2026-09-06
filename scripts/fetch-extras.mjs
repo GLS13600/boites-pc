@@ -181,6 +181,32 @@ for (const nom of manquants) delete OBJETS[nom];
 for (const o of Object.values(OBJETS)) delete o.s;
 console.log(`  ${Object.keys(OBJETS).length} objets conservés (avec sprite)`);
 
+// ---------- 5. Les natures ----------
+//
+// 25 natures : 5 neutres, et 20 qui augmentent une stat de 10 % en en diminuant une
+// autre d'autant. Sans elles, une stat relevée en jeu tombe presque toujours hors de
+// la plage des IV — c'est le premier écart systématique, avant même les EV.
+
+console.log('5/5  natures');
+const CLE_STAT = { attack: 'att', defense: 'def', 'special-attack': 'atts',
+  'special-defense': 'defs', speed: 'vit' };
+
+const NATURES = await cache('natures.json', async () => {
+  const liste = (await j(`${API}/nature?limit=100`)).results;
+  const res = await enParallele(liste, 12, (n) => j(n.url), 'natures');
+  return res.filter(Boolean).map((n) => ({
+    k: n.name,
+    n: fr(n.names) || n.name,
+    p: CLE_STAT[n.increased_stat?.name] ?? null,
+    m: CLE_STAT[n.decreased_stat?.name] ?? null,
+  })).sort((x, y) => x.n.localeCompare(y.n, 'fr'));
+});
+const neutres = NATURES.filter((n) => !n.p || n.p === n.m).length;
+console.log(`  ${NATURES.length} natures, dont ${neutres} neutres`);
+if (NATURES.length !== 25) { console.error('25 natures attendues'); process.exit(1); }
+
+await writeFile(new URL('natures.json', DATA), JSON.stringify(NATURES));
+
 await writeFile(new URL('abilities.json', DATA), JSON.stringify({ list: TALENTS, of: PAR_ESPECE }));
 await writeFile(new URL('items.json', DATA), JSON.stringify(OBJETS));
 

@@ -640,6 +640,38 @@ body { padding-bottom: calc(var(--nav-h) + var(--safe-bottom)); }
 .stat-in::placeholder { color: var(--muted); font-weight: 600; opacity: 0.75; }
 
 .stat-iv { display: block; margin-top: 1px; font-size: 9.5px; line-height: 1.2; color: var(--muted); }
+
+/* Les EV se saisissent sous l'IV : sans eux, un Pokémon ayant combattu sort
+   systématiquement de la plage, quelle que soit la nature choisie. */
+.stat-ev {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  font-size: 9.5px;
+  color: var(--muted);
+}
+.stat-ev input {
+  width: 100%;
+  min-width: 0;
+  padding: 1px 4px;
+  border: 1px solid var(--rule-soft);
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.stat-ev input::-webkit-outer-spin-button,
+.stat-ev input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Signe de la nature, accolé au nom de la stat qu'elle modifie. */
+.n-plus { color: #b03127; }
+.n-moins { color: #3d4f77; }
+.stats dt .n-plus, .stats dt .n-moins { margin-left: 3px; }
 /* Aucun IV ne colle : EV non nuls ou nature favorable. */
 .stat-iv.faux { color: var(--ball); font-weight: 700; }
 

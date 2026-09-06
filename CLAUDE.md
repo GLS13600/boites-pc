@@ -370,9 +370,17 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 - **La réponse est une PLAGE, jamais un chiffre seul.** L'arrondi de la formule fait
   que plusieurs IV donnent la même valeur affichée : à N.32, 96 PV sur Magnézone
   correspond à IV 29–31. À N.100 la réponse devient unique.
-- « **hors plage** » signifie qu'aucun IV ne convient : le calcul suppose EV à 0 et
-  nature neutre, donc un Pokémon entraîné ou de nature favorable sortira de la plage.
-  Ce n'est pas une erreur, c'est l'information utile.
+- **La nature et les EV se renseignent**, et le calcul en tient compte : sans eux, une
+  stat relevée en jeu tombait presque toujours « hors plage ». Une nature déplace la
+  valeur de ±10 %, ce qui suffit à faire sortir de la fourchette des IV — vérifié, 56
+  en Vitesse sur Gueriaigle N.26 donne « hors plage » en nature Hardi et `IV 17–20`
+  en Jovial, le maximum atteignable passant de 54 à 59.
+- Les natures viennent de `natures.json` (25, dont 5 neutres qui augmentent et
+  diminuent la même stat). Le nom de la stat modifiée porte un `+` ou un `−`.
+- « **hors plage** » signifie qu'aucun IV de 0 à 31 ne convient avec la nature et les
+  EV renseignés. Ce n'est pas une erreur : c'est le signe qu'il manque des EV, ou que
+  la nature choisie n'est pas la bonne.
+- Les PV ignorent la nature — seule règle particulière de la formule.
 - La saisie agit **sur le DOM**, elle ne rappelle pas `renderBattleSheet()` : le champ
   perdrait le focus à chaque frappe, comme le nom de boîte.
 - Munja (`292`) est le cas particulier : 1 PV quel que soit le niveau.

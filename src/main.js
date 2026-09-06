@@ -1795,6 +1795,12 @@ function chargeVG() {
 
 const jeuCourant = () => JEUX.find((v) => v.k === state.jeu) || JEUX[JEUX.length - 1];
 
+// Stats de base d'un membre. On interroge sa CLÉ avant son espèce : une forme a ses
+// propres stats, et l'écart est parfois énorme — Kyurem Blanc monte à 170 en Atq.
+// Spé. là où Kyurem plafonne à 130. Sans ça, une valeur relevée en jeu sur une forme
+// ressortait « hors plage » sans raison. Le repli sert aux formes cosmétiques.
+const statsDe = (key) => stats[key] || stats[speciesOf(key)] || null;
+
 // L'équipe du jeu couramment sélectionné, créée à la volée si elle n'existe pas.
 const equipe = () => (state.equipes[state.jeu] ??= EQUIPE_VIDE());
 
@@ -1963,7 +1969,7 @@ function renderEquipeSlot(m, i) {
     </button>`;
   }
   const espece = speciesOf(m.key);
-  const st = stats[espece];
+  const st = statsDe(m.key);
   const niv = m.niv ?? NIV_DEFAUT;
   const pv = m.stats?.pv ?? (st ? calcPV(st.pv, niv, espece) : 0);
   const absent = LEARN_VG && !LEARN_VG[espece]?.[state.jeu];
@@ -2075,7 +2081,7 @@ function analyseEquipe() {
   equipe().forEach((m, i) => {
     if (!m) return;
     const esp = speciesOf(m.key);
-    const st = stats[esp];
+    const st = statsDe(m.key);
     if (!st) return;
     membres.push({
       i, key: m.key, esp, nom: monName(m.key),
@@ -2438,7 +2444,7 @@ function htmlDetail() {
   const m = equipe()[state.bs.slot];
   if (!m) return '<p class="none">Emplacement vide.</p>';
   const espece = speciesOf(m.key);
-  const st = stats[espece];
+  const st = statsDe(m.key);
   const niv = m.niv ?? NIV_DEFAUT;
   const p = pokedex[espece] || {};
   const pool = poolAttaques(espece, state.jeu);
@@ -2657,7 +2663,7 @@ battleBody.addEventListener('input', (e) => {
   const champ = e.target.closest('[data-stat]');
   if (!champ) return;
   const m = equipe()[state.bs.slot];
-  const st = stats[speciesOf(m.key)];
+  const st = statsDe(m.key);
   if (!st) return;
   const cle = champ.dataset.stat;
   const brut = champ.value.trim();
@@ -2677,7 +2683,7 @@ battleBody.addEventListener('input', (e) => {
 // Recalcule l'étiquette « IV … » d'une cellule, nature et EV compris.
 function majEtiquetteIv(cellule, m, cle) {
   if (!cellule) return;
-  const st = stats[speciesOf(m.key)];
+  const st = statsDe(m.key);
   if (!st) return;
   const niv = m.niv ?? NIV_DEFAUT;
   const espece = speciesOf(m.key);

@@ -236,6 +236,11 @@ la fonction ne concerne que la gestion des boîtes.
 - La **fiche du Pokédex** liste les talents de l'espèce, tous jeux confondus : elle
   décrit l'espèce, pas une partie. Le filtrage par version n'a lieu que dans la boîte
   de combat, où l'on compose pour un jeu précis.
+- **Une forme a ses propres STATS DE BASE**, et l'écart est parfois énorme : Kyurem
+  Blanc monte à 170 en Atq. Spé. et 100 en Déf. Spé. là où Kyurem plafonne à 130 et 90.
+  `statsDe(key)` interroge la clé du membre avant son espèce ; sans lui, une valeur
+  relevée en jeu sur une forme ressortait « hors plage » sans raison. 326 formes
+  renseignées. Ne jamais lire `stats[...]` directement.
 - **Une forme a ses PROPRES talents**, et `poolTalents()` interroge la clé du membre
   avant son espèce. Kyurem Blanc a Turbo Brasier là où Kyurem a Pression,
   Méga-Dracaufeu X a Griffe Dure là où Dracaufeu a Brasier. Sans ça ces talents

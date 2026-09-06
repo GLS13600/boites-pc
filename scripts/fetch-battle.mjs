@@ -66,6 +66,40 @@ const STATS = await cache('stats.json', async () => {
 });
 console.log(`  ${Object.keys(STATS).length} espèces`);
 
+// Les FORMES ont leurs propres stats de base, et l'écart est parfois énorme :
+// Kyurem Blanc monte à 170 en Atq. Spé. là où Kyurem plafonne à 130. Sans elles,
+// une stat relevée en jeu sur une forme ressortait « hors plage » sans raison.
+//
+// Seules les formes à clé NUMÉRIQUE ont une entrée /pokemon propre ; les formes
+// cosmétiques partagent les stats de leur espèce.
+const formes = JSON.parse(await readFile(new URL('../src/data/forms.json', import.meta.url), 'utf8'));
+const clesFormes = [];
+for (const liste of Object.values(formes)) {
+  for (const f of liste) if (typeof f.key === 'number') clesFormes.push(f.key);
+}
+
+const STATS_FORMES = await cache('form-stats.json', async () => {
+  const out = {};
+  let i = 0, faits = 0;
+  await Promise.all(Array.from({ length: 16 }, async () => {
+    while (i < clesFormes.length) {
+      const id = clesFormes[i++];
+      const p = await j(`${API}/pokemon/${id}`);
+      if (p) {
+        const st = {};
+        for (const x of p.stats) { const k = CLE[x.stat.name]; if (k) st[k] = x.base_stat; }
+        out[id] = st;
+      }
+      if (++faits % 100 === 0) process.stdout.write(`  formes ${faits}/${clesFormes.length}   `);
+    }
+  }));
+  process.stdout.write(`  formes ${clesFormes.length}/${clesFormes.length}   
+`);
+  return out;
+});
+Object.assign(STATS, STATS_FORMES);
+console.log(`  + ${Object.keys(STATS_FORMES).length} formes`);
+
 // ---------- 2. Les jeux jouables ----------
 // On écarte les exclusivités japonaises (doublons de Rouge/Bleu), les spin-off
 // GameCube, et tout groupe sans une seule attaque par niveau — DLC et jeux dont

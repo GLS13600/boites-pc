@@ -10,6 +10,8 @@ import learnsets from './data/learnsets.json';
 import stats from './data/stats.json';
 import JEUX from './data/versions.json';
 import typechart from './data/typechart.json';
+import abilities from './data/abilities.json';
+import items from './data/items.json';
 
 // ---------- Constantes ----------
 
@@ -144,7 +146,7 @@ const BOXES_KEY = 'pcbox.boxes';
 const ORDER_KEY = 'pcbox.order';
 const VIEW_KEY = 'pcbox.view';
 const VUE_KEY = 'pcbox.vue';
-const EQUIPE_KEY = 'pcbox.equipe';
+const EQUIPES_KEY = 'pcbox.equipes';
 const JEU_KEY = 'pcbox.jeu';
 const readJSON = (key, fallback) => {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
@@ -173,9 +175,15 @@ const state = {
   // Boîte de combat : vue active, jeu de référence, équipe de six, panneau ouvert.
   vue: localStorage.getItem('pcbox.vue') === 'combat' ? 'combat' : 'boites',
   jeu: localStorage.getItem('pcbox.jeu') || 'scarlet-violet',
-  equipe: (() => {
-    const e = readJSON('pcbox.equipe', null);
-    return Array.isArray(e) && e.length === 6 ? e : Array.from({ length: 6 }, () => null);
+  // Une équipe par version de jeu : on garde une composition distincte pour chaque
+  // opus, puisque attaques, talents et objets n'y sont pas les mêmes.
+  equipes: (() => {
+    const parJeu = readJSON('pcbox.equipes', null);
+    if (parJeu && typeof parJeu === 'object' && !Array.isArray(parJeu)) return parJeu;
+    // Migration de l'équipe unique d'avant : elle devient celle du jeu courant.
+    const ancienne = readJSON('pcbox.equipe', null);
+    const jeu = localStorage.getItem('pcbox.jeu') || 'scarlet-violet';
+    return Array.isArray(ancienne) && ancienne.length === 6 ? { [jeu]: ancienne } : {};
   })(),
   bs: null, // panneau de la boîte de combat : { mode, slot, emplacement, q }
 };
@@ -624,6 +632,9 @@ function openSheet(id) {
 
     ${renderForms(base, id)}
 
+    <h3>Talents</h3>
+    ${renderTalents(base)}
+
     <h3>Attaques</h3>
     ${renderMoves(base)}
 
@@ -698,6 +709,24 @@ function renderForms(id, courant = id) {
                 title="${dans ? 'Retirer de la boîte' : 'Ajouter à la boîte'}">${dans ? '&#10003;' : '+'}</button>`}
       </div>`;
     }).join('')}</div>`;
+}
+
+// ---------- Talents ----------
+
+// Les talents de l'espèce, tous jeux confondus : la fiche du Pokédex décrit
+// l'espèce, pas une partie en cours. Le filtrage par version n'a lieu que dans la
+// boîte de combat, où l'on compose pour un jeu précis.
+function renderTalents(base) {
+  const liste = abilities.of[base] || [];
+  if (!liste.length) return '<p class="none">Aucun talent connu dans PokéAPI.</p>';
+  return `<ul class="talents">${liste.map(([slug, cache]) => {
+    const t = abilities.list[slug];
+    if (!t) return '';
+    return `<li>
+      <span class="t-nom">${esc(t.n)}${cache ? '<i>caché</i>' : ''}</span>
+      ${t.d ? `<span class="t-desc">${esc(t.d)}</span>` : ''}
+    </li>`;
+  }).join('')}</ul>`;
 }
 
 // ---------- Attaques ----------
@@ -1765,10 +1794,34 @@ function chargeVG() {
 
 const jeuCourant = () => JEUX.find((v) => v.k === state.jeu) || JEUX[JEUX.length - 1];
 
+// L'équipe du jeu couramment sélectionné, créée à la volée si elle n'existe pas.
+const equipe = () => (state.equipes[state.jeu] ??= EQUIPE_VIDE());
+
 const saveCombat = () => {
-  localStorage.setItem(EQUIPE_KEY, JSON.stringify(state.equipe));
+  localStorage.setItem(EQUIPES_KEY, JSON.stringify(state.equipes));
   localStorage.setItem(JEU_KEY, state.jeu);
 };
+
+// ---------- Talents et objets, filtrés par version ----------
+
+// Les talents n'existent qu'à partir de la gén. 3, les talents cachés de la gén. 5.
+// Un talent introduit après le jeu choisi n'est pas proposé.
+function poolTalents(espece) {
+  const g = genDuJeu();
+  if (g < 3) return [];
+  return (abilities.of[espece] || [])
+    .filter(([slug, cache]) => (abilities.list[slug]?.g ?? 3) <= g && (!cache || g >= 5));
+}
+
+// Les objets tenus apparaissent en gén. 2. Une liste de générations vide signifie
+// que PokéAPI l'ignore : on laisse passer plutôt que d'amputer la liste à tort.
+function poolObjets() {
+  const g = genDuJeu();
+  if (g < 2) return [];
+  return Object.entries(items)
+    .filter(([, o]) => !o.g.length || o.g.includes(g))
+    .sort((a, b) => a[1].n.localeCompare(b[1].n, 'fr'));
+}
 
 // Formules officielles des jeux, à IV 31, EV 0 et nature neutre — les valeurs qu'on
 // veut voir dans un planificateur, sans imposer un dressage précis.
@@ -1825,15 +1878,20 @@ function renderEquipeSlot(m, i) {
            ${imgFallback(espece, shinyView())} />
       <span class="eq-nom">${esc(monName(m.key))}</span>
       <span class="eq-jauge"><i>PV</i><span class="jauge"><b></b></span></span>
-      <span class="eq-lv">N.${niv}</span>
-      <span class="eq-pv">${pv}/${pv}</span>
+      <span class="eq-bas">
+        <span class="eq-lv">N.${niv}</span>
+        <span class="eq-pv">${pv}/${pv}</span>
+        ${m.objet && items[m.objet]
+          ? `<img class="eq-obj" src="items/${m.objet}.png" alt="" title="${esc(items[m.objet].n)}" />`
+          : ''}
+      </span>
       ${absent ? '<span class="eq-alerte" title="Absent de ce jeu">!</span>' : ''}
     </button>`;
 }
 
 function renderCombat() {
   const jeu = jeuCourant();
-  const pleines = state.equipe.filter(Boolean).length;
+  const pleines = equipe().filter(Boolean).length;
 
   app.replaceChildren(
     h(`
@@ -1847,7 +1905,7 @@ function renderCombat() {
         </div>
 
         <div class="equipe">
-          ${state.equipe.map(renderEquipeSlot).join('')}
+          ${equipe().map(renderEquipeSlot).join('')}
         </div>
 
         ${LEARN_VG ? '' : '<p class="combat-charge">Chargement des attaques par version…</p>'}
@@ -1910,7 +1968,7 @@ function analyseEquipe() {
   const TT = typechart.types;
 
   const membres = [];
-  state.equipe.forEach((m, i) => {
+  equipe().forEach((m, i) => {
     if (!m) return;
     const esp = speciesOf(m.key);
     const st = stats[esp];
@@ -2111,6 +2169,8 @@ function renderBattleSheet(gardeFocus) {
     bs.mode === 'version' ? htmlVersions()
     : bs.mode === 'mon' ? htmlChoixMon()
     : bs.mode === 'detail' ? htmlDetail()
+    : bs.mode === 'talent' ? htmlChoixTalent()
+    : bs.mode === 'objet' ? htmlChoixObjet()
     : htmlChoixAttaque();
   if (gardeFocus) {
     const c = battleBody.querySelector('.bs-name');
@@ -2169,9 +2229,60 @@ function htmlChoixMon() {
   `;
 }
 
+// Les talents que l'espèce peut avoir dans le jeu choisi.
+function htmlChoixTalent() {
+  const m = equipe()[state.bs.slot];
+  if (!m) return '<p class="none">Emplacement vide.</p>';
+  const liste = poolTalents(speciesOf(m.key));
+  return `
+    <h2 class="bs-title">Talent — ${esc(monName(m.key))}</h2>
+    <p class="paper-note">Talents disponibles dans ${esc(jeuCourant().nom)}.</p>
+    <div class="atq4">
+      ${liste.map(([slug, cache]) => {
+        const t = abilities.list[slug];
+        if (!t) return '';
+        return `
+          <button class="atq ${m.talent === slug ? 'choisi' : ''}" data-picktal="${esc(slug)}">
+            <span class="atq-h">
+              <span class="atq-n">${esc(t.n)}</span>
+              ${cache ? '<span class="type mini" style="--t:#7c7c74">caché</span>' : ''}
+            </span>
+            ${t.d ? `<span class="atq-m">${esc(t.d)}</span>` : ''}
+          </button>`;
+      }).join('')}
+      ${m.talent ? '<button class="atq libre" data-picktal="">Retirer le talent</button>' : ''}
+    </div>`;
+}
+
+// Les objets tenables en combat, existants dans le jeu choisi.
+function htmlChoixObjet() {
+  const m = equipe()[state.bs.slot];
+  if (!m) return '<p class="none">Emplacement vide.</p>';
+  const q = fold(state.bs.q || '');
+  const tous = poolObjets();
+  const res = q ? tous.filter(([, o]) => fold(o.n).includes(q)) : tous;
+  return `
+    <h2 class="bs-title">Objet tenu — ${esc(monName(m.key))}</h2>
+    <p class="paper-note">${tous.length} objets tenables dans ${esc(jeuCourant().nom)}.</p>
+    <label class="bs-field">
+      <span>Rechercher</span>
+      <input class="bs-name bs-q" type="text" value="${esc(state.bs.q || '')}"
+             placeholder="Nom d'objet…" autocomplete="off" />
+    </label>
+    ${m.objet ? '<button class="atq libre" data-pickobj="">Retirer l\'objet</button>' : ''}
+    <div class="objets">
+      ${res.map(([slug, o]) => `
+        <button class="objet ${m.objet === slug ? 'choisi' : ''}" data-pickobj="${esc(slug)}">
+          <img src="items/${slug}.png" alt="" loading="lazy" />
+          <span>${esc(o.n)}${o.d ? `<i>${esc(o.d)}</i>` : ''}</span>
+        </button>`).join('')}
+    </div>
+    ${res.length ? '' : '<p class="paper-note">Aucun objet ne correspond.</p>'}`;
+}
+
 // Détail d'un membre : niveau, stats calculées, quatre attaques.
 function htmlDetail() {
-  const m = state.equipe[state.bs.slot];
+  const m = equipe()[state.bs.slot];
   if (!m) return '<p class="none">Emplacement vide.</p>';
   const espece = speciesOf(m.key);
   const st = stats[espece];
@@ -2179,6 +2290,10 @@ function htmlDetail() {
   const p = pokedex[espece] || {};
   const pool = poolAttaques(espece, state.jeu);
   const dispo = new Set((pool || []).map((x) => x.id));
+  const talents = poolTalents(espece);
+  const talent = m.talent && abilities.list[m.talent] ? abilities.list[m.talent] : null;
+  const objet = m.objet && items[m.objet] ? items[m.objet] : null;
+  const objetsDispo = poolObjets().length;
 
   const ligne = (lib, val) => `<div class="stat"><dt>${lib}</dt><dd>${val}</dd></div>`;
   const bloc = st ? `
@@ -2213,6 +2328,23 @@ function htmlDetail() {
       <button data-niv="10">+10</button>
     </div>
 
+    <h3>Talent ${talents.length ? '' : '<small>aucun dans ce jeu</small>'}</h3>
+    ${talents.length ? `
+      <button class="ligne-choix" data-choix="talent">
+        <span class="lc-t">${talent ? esc(talent.n) : 'Choisir un talent'}</span>
+        ${talent?.d ? `<span class="lc-d">${esc(talent.d)}</span>` : ''}
+      </button>`
+      : '<p class="none">Les talents n\'existent qu\'à partir de la gén. 3.</p>'}
+
+    <h3>Objet tenu</h3>
+    ${objetsDispo ? `
+      <button class="ligne-choix" data-choix="objet">
+        ${objet ? `<img class="lc-i" src="items/${m.objet}.png" alt="" />` : ''}
+        <span class="lc-t">${objet ? esc(objet.n) : 'Aucun objet'}</span>
+        ${objet?.d ? `<span class="lc-d">${esc(objet.d)}</span>` : ''}
+      </button>`
+      : '<p class="none">Aucun objet tenu en gén. 1.</p>'}
+
     <h3>Statistiques <small>IV 31, EV 0, nature neutre</small></h3>
     ${bloc}
 
@@ -2243,7 +2375,7 @@ function htmlDetail() {
 
 // Choix d'une attaque parmi celles apprenables dans le jeu courant.
 function htmlChoixAttaque() {
-  const m = state.equipe[state.bs.slot];
+  const m = equipe()[state.bs.slot];
   if (!m) return '<p class="none">Emplacement vide.</p>';
   const espece = speciesOf(m.key);
   const pool = poolAttaques(espece, state.jeu) || [];
@@ -2321,7 +2453,7 @@ battleBody.addEventListener('click', (e) => {
 
   const pick = e.target.closest('[data-eqpick]');
   if (pick) {
-    state.equipe[bs.slot] = { key: asKey(pick.dataset.eqpick), niv: NIV_DEFAUT, moves: [] };
+    equipe()[bs.slot] = { key: asKey(pick.dataset.eqpick), niv: NIV_DEFAUT, moves: [] };
     saveCombat();
     render();
     openBattleSheet('detail', bs.slot);
@@ -2330,11 +2462,33 @@ battleBody.addEventListener('click', (e) => {
 
   const niv = e.target.closest('[data-niv]');
   if (niv) {
-    const m = state.equipe[bs.slot];
+    const m = equipe()[bs.slot];
     m.niv = Math.max(1, Math.min(100, (m.niv ?? NIV_DEFAUT) + Number(niv.dataset.niv)));
     saveCombat();
     render();
     renderBattleSheet();
+    return;
+  }
+
+  const ligneChoix = e.target.closest('[data-choix]');
+  if (ligneChoix) { openBattleSheet(ligneChoix.dataset.choix, bs.slot); return; }
+
+  const tal = e.target.closest('[data-picktal]');
+  if (tal) {
+    equipe()[bs.slot].talent = tal.dataset.picktal || null;
+    saveCombat();
+    retourHaptique();
+    openBattleSheet('detail', bs.slot);
+    return;
+  }
+
+  const obj = e.target.closest('[data-pickobj]');
+  if (obj) {
+    equipe()[bs.slot].objet = obj.dataset.pickobj || null;
+    saveCombat();
+    render();
+    retourHaptique();
+    openBattleSheet('detail', bs.slot);
     return;
   }
 
@@ -2343,7 +2497,7 @@ battleBody.addEventListener('click', (e) => {
 
   const choix = e.target.closest('[data-pickatq]');
   if (choix) {
-    const m = state.equipe[bs.slot];
+    const m = equipe()[bs.slot];
     m.moves = m.moves || [];
     const id = +choix.dataset.pickatq;
     // Déjà dans une autre case : on l'y retire, une attaque ne se met pas en double.
@@ -2357,7 +2511,7 @@ battleBody.addEventListener('click', (e) => {
   }
 
   if (e.target.closest('[data-act="eq-retirer"]')) {
-    state.equipe[bs.slot] = null;
+    equipe()[bs.slot] = null;
     saveCombat();
     closeBattleSheet();
     render();
@@ -2391,7 +2545,7 @@ app.addEventListener('click', (e) => {
   if (eq) {
     const i = +eq.dataset.eq;
     state.addGen = ONGLETS[state.gen].n;
-    openBattleSheet(state.equipe[i] ? 'detail' : 'mon', i);
+    openBattleSheet(equipe()[i] ? 'detail' : 'mon', i);
   }
 });
 

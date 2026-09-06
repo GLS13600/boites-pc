@@ -48,6 +48,10 @@ Pokémon. Destinée à finir en `.ipa` sideloadée sur iPhone via Sideloadly.
 | `scripts/fetch-battle.mjs` | Produit les trois ci-dessus (`npm run fetch-battle`) |
 | `src/data/typechart.json` | Table des types par génération, **généré** |
 | `scripts/fetch-types.mjs` | Aspire table et symboles (`npm run fetch-types`) |
+| `src/data/abilities.json` | 374 talents + ceux de chaque espèce, **généré** |
+| `src/data/items.json` | 292 objets tenables en combat, **généré** |
+| `public/items/` | Leurs sprites réels, **générés**, 73 Ko |
+| `scripts/fetch-extras.mjs` | Produit les trois ci-dessus (`npm run fetch-extras`) |
 | `public/types/` | Les 18 symboles de type, **générés**, 22 Ko |
 | `public/sprites/` | Les 5 291 sprites, **générés**, 40 Mo |
 
@@ -224,6 +228,36 @@ la fonction ne concerne que la gestion des boîtes.
 - Dans le sélecteur d'attaques, le tri porte sur le **seul groupe** : le tri de JS
   étant stable, l'ordre du fichier est conservé — donc par niveau croissant, et par
   numéro pour les CT. Trier par nom à l'intérieur d'un groupe affichait N.62 avant N.1.
+
+### Talents et objets
+
+- `npm run fetch-extras` produit `abilities.json` (91 Ko : les 374 talents avec leur
+  description française, plus ceux de chaque espèce) et `items.json` (49 Ko).
+- La **fiche du Pokédex** liste les talents de l'espèce, tous jeux confondus : elle
+  décrit l'espèce, pas une partie. Le filtrage par version n'a lieu que dans la boîte
+  de combat, où l'on compose pour un jeu précis.
+- Dans la boîte de combat, talent et objet sont **filtrés par génération** :
+  les talents n'existent qu'à partir de la gén. 3, les talents cachés de la gén. 5,
+  les objets tenus de la gén. 2. Un talent introduit après le jeu choisi n'est pas
+  proposé. Vérifié : 0 gemme Méga en gén. 5, 44 en gén. 6, et 181 → 235 → 292 objets
+  de la gén. 5 à la 9.
+- **Piège : l'attribut `holdable` de PokéAPI est inexploitable.** Il rate toutes les
+  gemmes Méga et les objets modernes (Veste de Combat, Casque Brut, Évoluroc) tout en
+  incluant Poké Balls, potions et vitamines. On passe par les **catégories** d'objets,
+  fiables et bien découpées (`mega-stones`, `held-items`, `choice`, `plates`…).
+- Les objets **sans sprite sont écartés** : ce sont des gemmes Méga présentes dans les
+  données des jeux mais jamais distribuées. 358 objets bruts, 292 conservés.
+- L'objet tenu s'affiche **en bas à droite du parallélogramme**, dans `.eq-bas` avec
+  le niveau et les PV.
+
+### Une équipe par version
+
+- `state.equipes` est un objet **indexé par clé de jeu**, et `equipe()` renvoie celle
+  du jeu courant, créée à la volée. Changer de version change donc d'équipe.
+- L'ancienne équipe unique (`pcbox.equipe`) est **migrée** au chargement vers la clé
+  du jeu courant. Ne pas retirer cette migration avant un moment.
+- Ne jamais lire `state.equipes` directement dans le rendu : passer par `equipe()`,
+  sinon on afficherait l'équipe d'un autre jeu.
 
 ### Analyse de l'équipe
 

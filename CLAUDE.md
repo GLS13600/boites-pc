@@ -323,9 +323,16 @@ Sous la grille des six, trois lectures et une liste de conseils.
 - **Rôles** : Mur, Tank offensif, Sweeper, Casseur lent, Attaquant ou Polyvalent,
   déduits des stats de base, avec l'orientation physique / spéciale / mixte. Le plus
   solide de l'équipe est nommé explicitement.
-- **Conseils** : uniquement des constats actionnables (faiblesse partagée, type sans
-  aucune parade, équipe mono-orientée, aucun encaisseur, personne de rapide, types en
-  double). Aucun défaut détecté est un résultat valide, et il est affiché comme tel.
+- **Conseils** : uniquement des constats actionnables. Deux familles.
+  - D'après les **types et les stats de base**, donc ce qu'un Pokémon *est* :
+    faiblesse partagée, type sans aucune parade, équipe mono-orientée, aucun
+    encaisseur, personne de rapide, types en double.
+  - D'après les **attaques réellement choisies**, donc ce qu'on lui a mis en main —
+    c'est là que se logent les erreurs les plus coûteuses et les plus faciles à
+    corriger : attaquer dans sa mauvaise catégorie (alerte), aucune attaque de son
+    propre type donc pas de STAB, toutes ses attaques du même type, aucune attaque de
+    statut dans l'équipe entière, moveset incomplet.
+  - Aucun défaut détecté est un résultat valide, et il est affiché comme tel.
 
 **Seuils des rôles, calés sur des cas réels.** `encaisse` = PV + Déf + Déf.Spé.
 Mur à partir de 270 avec une frappe sous 100, Tank offensif à partir de 260. À 300,

@@ -2140,6 +2140,53 @@ function analyseEquipe() {
     avis.push({ ton: 'alerte', txt: `Aucun membre ne résiste au type ${sansParade.map((d) => TYPES[d.t][0]).join(', ')}.` });
   }
 
+  // --- Conseils tirés des ATTAQUES réellement choisies ---
+  //
+  // Les contrôles ci-dessus portent sur les types et les stats de base, donc sur ce
+  // qu'un Pokémon EST. Ceux-ci portent sur ce qu'on lui a mis en main, là où se
+  // logent les erreurs les plus coûteuses et les plus faciles à corriger.
+  const sansStab = [], categorieRatee = [], incomplets = [], monoType = [];
+  let statutQuelquePart = false;
+
+  for (const mb of membres) {
+    if (mb.moves.some((id) => moves[id]?.c === 'status')) statutQuelquePart = true;
+    if (mb.moves.length && mb.moves.length < 4) incomplets.push(mb.nom);
+
+    const off = mb.moves.map((id) => moves[id]).filter((mv) => mv && mv.c !== 'status' && mv.p);
+    if (!off.length) continue;
+
+    // Le STAB vaut 1,5x : une attaque du type du lanceur frappe toujours plus fort
+    // qu'une attaque neutre de puissance égale.
+    if (!off.some((mv) => mb.types.includes(mv.t))) sansStab.push(mb.nom);
+
+    // Attaquer dans sa mauvaise catégorie gâche l'essentiel de la puissance.
+    const phys = off.filter((mv) => mv.c === 'physical').length;
+    const spec = off.filter((mv) => mv.c === 'special').length;
+    const ecart = mb.st.att - mb.st.atts;
+    if (ecart >= 20 && spec > phys) {
+      categorieRatee.push(`${mb.nom} frappe surtout en spécial alors qu'il a ${mb.st.att} en Attaque contre ${mb.st.atts} en Atq. Spé.`);
+    } else if (ecart <= -20 && phys > spec) {
+      categorieRatee.push(`${mb.nom} frappe surtout en physique alors qu'il a ${mb.st.atts} en Atq. Spé. contre ${mb.st.att} en Attaque.`);
+    }
+
+    // Toutes ses attaques du même type : un seul mur bien choisi l'arrête.
+    if (off.length >= 2 && new Set(off.map((mv) => mv.t)).size === 1) monoType.push(mb.nom);
+  }
+
+  for (const txt of categorieRatee) avis.push({ ton: 'alerte', txt: esc(txt) });
+  if (sansStab.length) {
+    avis.push({ ton: 'conseil', txt: `Aucune attaque du type de <b>${sansStab.map(esc).join('</b>, <b>')}</b> : le bonus de 50 % du STAB est perdu.` });
+  }
+  if (monoType.length) {
+    avis.push({ ton: 'conseil', txt: `<b>${monoType.map(esc).join('</b>, <b>')}</b> n'attaque${monoType.length > 1 ? 'nt' : ''} que d'un seul type : un mur bien choisi l'arrête.` });
+  }
+  if (membres.some((m) => m.moves.length) && !statutQuelquePart) {
+    avis.push({ ton: 'conseil', txt: 'Aucune attaque de statut dans l’équipe : ni soin, ni augmentation, ni entrave. Face à un adversaire qui se renforce, rien ne l’en empêchera.' });
+  }
+  if (incomplets.length) {
+    avis.push({ ton: 'info', txt: `Moveset incomplet : <b>${incomplets.map(esc).join('</b>, <b>')}</b>.` });
+  }
+
   const murs = membres.filter((m) => m.role === 'Mur' || m.role === 'Tank offensif');
   if (!murs.length) avis.push({ ton: 'conseil', txt: 'Aucun encaisseur : tout le monde tombe vite. Un Pokémon très défensif donne le temps de reprendre la main.' });
 

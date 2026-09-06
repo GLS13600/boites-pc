@@ -532,6 +532,12 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 
 - 9 onglets de génération, boîtes de **30** en grille 6×5, comme le PC des jeux.
 - La barre d'onglets est en `position: sticky; top: 0` — elle ne doit pas défiler.
+- **Tout panneau réserve la hauteur de la barre du bas** (`--nav-h`, 59 px) dans le
+  `padding-bottom` de `.sheet-body`. Cette barre est `position: fixed` avec un
+  `z-index` supérieur aux panneaux : sans cette réserve elle recouvre leurs derniers
+  59 px. Le bouton « Retirer de l'équipe » finissait dessous et, le contenu tenant
+  dans la hauteur, aucun défilement ne pouvait aller le chercher — il était
+  simplement inaccessible. La même variable sert au `padding-bottom` du `body`.
 - Gestes : tap = capturer, appui long 450 ms ou clic droit = fiche. Un bouton en bas
   inverse le comportement du tap. Swipe horizontal = boîte suivante/précédente.
 - Le swipe est verrouillé sur un axe : au premier mouvement on décide `x` ou `y`, et en

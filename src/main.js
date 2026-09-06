@@ -1827,9 +1827,29 @@ function poolObjets() {
 // veut voir dans un planificateur, sans imposer un dressage précis.
 // Munja fait exception : ses PV valent 1 quoi qu'il arrive.
 const MUNJA = 292;
-const calcPV = (base, niv, espece) =>
-  espece === MUNJA ? 1 : Math.floor(((2 * base + 31) * niv) / 100) + niv + 10;
-const calcStat = (base, niv) => Math.floor(((2 * base + 31) * niv) / 100) + 5;
+const calcPVIv = (base, niv, iv, espece) =>
+  espece === MUNJA ? 1 : Math.floor(((2 * base + iv) * niv) / 100) + niv + 10;
+const calcStatIv = (base, niv, iv) => Math.floor(((2 * base + iv) * niv) / 100) + 5;
+const calcPV = (base, niv, espece) => calcPVIv(base, niv, 31, espece);
+const calcStat = (base, niv) => calcStatIv(base, niv, 31);
+
+// Retrouve les IV compatibles avec une stat relevée en jeu.
+//
+// L'arrondi de la formule fait que PLUSIEURS IV donnent la même valeur affichée,
+// d'autant plus qu'on est à bas niveau : à N.50 une stat couvre souvent deux IV, à
+// N.100 la réponse est unique. On renvoie donc une plage, jamais un chiffre seul.
+//
+// Hypothèse assumée : EV à 0 et nature neutre. Un Pokémon entraîné ou de nature
+// favorable sortira de la plage — c'est ce que dit alors « hors plage ».
+function ivPossibles(base, niv, valeur, estPV, espece) {
+  if (!Number.isFinite(valeur)) return null;
+  const ok = [];
+  for (let iv = 0; iv <= 31; iv++) {
+    const v = estPV ? calcPVIv(base, niv, iv, espece) : calcStatIv(base, niv, iv);
+    if (v === valeur) ok.push(iv);
+  }
+  return ok.length ? { min: ok[0], max: ok[ok.length - 1] } : null;
+}
 
 // Attaques apprenables par une espèce dans un jeu donné. `null` = l'espèce n'existe
 // pas dans ce jeu, ce qui n'est pas la même chose qu'une liste vide.
@@ -1869,7 +1889,7 @@ function renderEquipeSlot(m, i) {
   const espece = speciesOf(m.key);
   const st = stats[espece];
   const niv = m.niv ?? NIV_DEFAUT;
-  const pv = st ? calcPV(st.pv, niv, espece) : 0;
+  const pv = m.stats?.pv ?? (st ? calcPV(st.pv, niv, espece) : 0);
   const absent = LEARN_VG && !LEARN_VG[espece]?.[state.jeu];
   return `
     <button class="eq ${isCaught(m.key) ? '' : 'gris'} ${absent ? 'absent' : ''}" data-eq="${i}"
@@ -2321,16 +2341,40 @@ function htmlDetail() {
   const objet = m.objet && items[m.objet] ? items[m.objet] : null;
   const objetsDispo = poolObjets().length;
 
-  const ligne = (lib, val) => `<div class="stat"><dt>${lib}</dt><dd>${val}</dd></div>`;
+  // Chaque stat est saisissable : on y recopie la valeur lue en jeu, et l'appli en
+  // déduit l'IV. Laissé vide, le champ retombe sur la valeur calculée à IV 31.
+  const perso = m.stats || {};
+  const champ = (cle, lib, base, estPV) => {
+    const calcule = estPV ? calcPV(base, niv, espece) : calcStat(base, niv);
+    const saisi = perso[cle];
+    const iv = saisi != null ? ivPossibles(base, niv, saisi, estPV, espece) : null;
+    const libelleIv = saisi == null ? 'calculé à IV 31'
+      : !iv ? 'hors plage'
+      : iv.min === iv.max ? `IV ${iv.min}`
+      : `IV ${iv.min}–${iv.max}`;
+    return `
+      <div class="stat">
+        <dt>${lib}</dt>
+        <dd><input class="stat-in" type="number" inputmode="numeric" min="1" max="999"
+                   data-stat="${cle}" value="${saisi ?? ''}" placeholder="${calcule}"
+                   aria-label="${lib}" /></dd>
+        <span class="stat-iv ${saisi != null && !iv ? 'faux' : ''}">${libelleIv}</span>
+      </div>`;
+  };
   const bloc = st ? `
     <dl class="stats">
-      ${ligne('PV', calcPV(st.pv, niv, espece))}
-      ${ligne('Attaque', calcStat(st.att, niv))}
-      ${ligne('Défense', calcStat(st.def, niv))}
-      ${ligne('Atq. Spé.', calcStat(st.atts, niv))}
-      ${ligne('Déf. Spé.', calcStat(st.defs, niv))}
-      ${ligne('Vitesse', calcStat(st.vit, niv))}
-    </dl>` : '<p class="none">Stats de base inconnues.</p>';
+      ${champ('pv', 'PV', st.pv, true)}
+      ${champ('att', 'Attaque', st.att, false)}
+      ${champ('def', 'Défense', st.def, false)}
+      ${champ('atts', 'Atq. Spé.', st.atts, false)}
+      ${champ('defs', 'Déf. Spé.', st.defs, false)}
+      ${champ('vit', 'Vitesse', st.vit, false)}
+    </dl>
+    <p class="stat-note">
+      Recopiez les valeurs lues en jeu : l'IV est déduit de chacune. Le calcul
+      suppose <b>EV à 0 et nature neutre</b> — un Pokémon entraîné sortira de la
+      plage.${Object.keys(perso).length ? ' <button data-act="stats-reset">Tout effacer</button>' : ''}
+    </p>` : '<p class="none">Stats de base inconnues.</p>';
 
   return `
     <div class="sheet-top">
@@ -2459,9 +2503,44 @@ function htmlChoixAttaque() {
 // ---------- Interactions ----------
 
 battleBody.addEventListener('input', (e) => {
-  if (!e.target.classList.contains('bs-q')) return;
-  state.bs.q = e.target.value;
-  renderBattleSheet(true);
+  if (e.target.classList.contains('bs-q')) {
+    state.bs.q = e.target.value;
+    renderBattleSheet(true);
+    return;
+  }
+
+  // Saisie d'une stat. On agit sur le DOM plutôt que de reconstruire le panneau :
+  // un renderBattleSheet() ferait perdre le focus à chaque frappe.
+  const champ = e.target.closest('[data-stat]');
+  if (!champ) return;
+  const m = equipe()[state.bs.slot];
+  const st = stats[speciesOf(m.key)];
+  if (!st) return;
+  const cle = champ.dataset.stat;
+  const brut = champ.value.trim();
+  const val = brut === '' ? null : Number(brut);
+
+  m.stats = m.stats || {};
+  if (val == null || !Number.isFinite(val) || val <= 0) delete m.stats[cle];
+  else m.stats[cle] = Math.round(val);
+  if (!Object.keys(m.stats).length) delete m.stats;
+  saveCombat();
+
+  const niv = m.niv ?? NIV_DEFAUT;
+  const espece = speciesOf(m.key);
+  const base = { pv: st.pv, att: st.att, def: st.def, atts: st.atts, defs: st.defs, vit: st.vit }[cle];
+  const saisi = m.stats?.[cle];
+  const iv = saisi != null ? ivPossibles(base, niv, saisi, cle === 'pv', espece) : null;
+  const etiq = champ.parentElement.parentElement.querySelector('.stat-iv');
+  if (etiq) {
+    etiq.textContent = saisi == null ? 'calculé à IV 31'
+      : !iv ? 'hors plage'
+      : iv.min === iv.max ? `IV ${iv.min}`
+      : `IV ${iv.min}–${iv.max}`;
+    etiq.classList.toggle('faux', saisi != null && !iv);
+  }
+  // Les PV du panneau suivent la saisie ; le panneau lui-même n'est pas refait.
+  if (cle === 'pv') render();
 });
 
 battleBody.addEventListener('click', (e) => {
@@ -2536,6 +2615,14 @@ battleBody.addEventListener('click', (e) => {
     saveCombat();
     retourHaptique();
     openBattleSheet('detail', bs.slot);
+    return;
+  }
+
+  if (e.target.closest('[data-act="stats-reset"]')) {
+    delete equipe()[bs.slot].stats;
+    saveCombat();
+    render();
+    renderBattleSheet();
     return;
   }
 

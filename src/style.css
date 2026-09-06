@@ -587,6 +587,43 @@ body { padding-bottom: calc(var(--nav-h) + var(--safe-bottom)); }
 .stats dt { font-size: 10px; color: var(--muted); }
 .stats dd { margin: 1px 0 0; font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
+/* Chaque stat se saisit : on y recopie la valeur lue en jeu. 16 px au minimum,
+   en dessous iOS zoome tout seul à la mise au point. */
+.stat-in {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.stat-in::-webkit-outer-spin-button,
+.stat-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+/* Vide, le champ montre la valeur calculée en gris : on sait ce qu'on remplace. */
+.stat-in::placeholder { color: var(--muted); font-weight: 600; opacity: 0.75; }
+
+.stat-iv { display: block; margin-top: 1px; font-size: 9.5px; line-height: 1.2; color: var(--muted); }
+/* Aucun IV ne colle : EV non nuls ou nature favorable. */
+.stat-iv.faux { color: var(--ball); font-weight: 700; }
+
+.stat-note { margin: 8px 0 0; font-size: 11.5px; line-height: 1.45; color: var(--muted); }
+.stat-note button {
+  margin-left: 4px;
+  padding: 2px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--slot);
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
 .atq4 { display: grid; gap: 7px; }
 .atq {
   display: block;

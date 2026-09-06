@@ -337,9 +337,19 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 
 ### Stats
 
-- Formules officielles à **IV 31, EV 0, nature neutre** : les valeurs d'un
-  planificateur, sans imposer un dressage précis. Un Pokémon réel, aux IV quelconques,
-  aura donc quelques PV d'écart — c'est attendu, pas un bug.
+- Formules officielles à **IV 31, EV 0, nature neutre** par défaut : les valeurs d'un
+  planificateur, sans imposer un dressage précis.
+- **Chaque stat est saisissable** : on y recopie la valeur lue en jeu, et l'appli en
+  **déduit l'IV** (`ivPossibles`, force brute sur 0–31). Vide, le champ retombe sur la
+  valeur calculée, affichée en gris comme repère. Les PV du panneau suivent la saisie.
+- **La réponse est une PLAGE, jamais un chiffre seul.** L'arrondi de la formule fait
+  que plusieurs IV donnent la même valeur affichée : à N.32, 96 PV sur Magnézone
+  correspond à IV 29–31. À N.100 la réponse devient unique.
+- « **hors plage** » signifie qu'aucun IV ne convient : le calcul suppose EV à 0 et
+  nature neutre, donc un Pokémon entraîné ou de nature favorable sortira de la plage.
+  Ce n'est pas une erreur, c'est l'information utile.
+- La saisie agit **sur le DOM**, elle ne rappelle pas `renderBattleSheet()` : le champ
+  perdrait le focus à chaque frappe, comme le nom de boîte.
 - Munja (`292`) est le cas particulier : 1 PV quel que soit le niveau.
 - **Les stats de base ne changent pas avec la version choisie** : PokéAPI ne publie
   pas leur historique, alors que plusieurs espèces ont été rééquilibrées en gén. 6.

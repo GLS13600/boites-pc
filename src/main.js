@@ -5,6 +5,8 @@ import { ALIGNEMENT, DEFAUT } from './paper-align.js';
 import evolutions from './data/evolutions.json';
 import forms from './data/forms.json';
 import remakes from './data/dex-remakes.json';
+import moves from './data/moves.json';
+import learnsets from './data/learnsets.json';
 
 // ---------- Constantes ----------
 
@@ -41,6 +43,12 @@ const TYPES = {
   flying: ['Vol', '#7b8dd6'], psychic: ['Psy', '#d95181'], bug: ['Insecte', '#8a9e26'],
   rock: ['Roche', '#9a8542'], ghost: ['Spectre', '#5f5090'], dragon: ['Dragon', '#5a46c4'],
   dark: ['Ténèbres', '#4f423b'], steel: ['Acier', '#7e8e9b'], fairy: ['Fée', '#d977c1'],
+};
+
+// Catégorie d'une attaque. Le statut est volontairement neutre : il n'inflige pas de
+// dégâts, ses colonnes Puissance et Précision valent souvent « — ».
+const CLASSES = {
+  physical: ['Physique', '#b5603a'], special: ['Spéciale', '#4472b5'], status: ['Statut', '#7c7c74'],
 };
 
 const METHODS = {
@@ -552,14 +560,16 @@ function openSheet(id) {
   const p = pokedex[base] || {};
   const caught = isCaught(id);
   const sh = state.shiny;
-  // Artwork officiel, grisé tant que non capturé (couleur une fois capturé).
+  // La fiche montre TOUJOURS le Pokémon en couleur, capturé ou non, normal comme
+  // chromatique : c'est la page où l'on vient regarder la bête. Le gris reste le
+  // signal d'état de la grille, et ici le bouton de capture dit déjà où l'on en est.
   // L'artwork officiel n'existe que pour l'espèce : une forme montre son sprite,
   // seul visuel qui lui soit propre.
   const portrait = forme ? sprites.still(spriteKey(id), sh) : sprites.art(id, sh);
 
   sheet.querySelector('.sheet-body').innerHTML = `
     <div class="sheet-top">
-      <div class="portrait ${caught ? '' : 'locked'}">
+      <div class="portrait">
         <img src="${portrait}" alt="${p.name || id}" ${imgFallback(id, sh)} />
         <button class="shiny-btn ${sh ? 'on' : ''}" data-act="shiny" aria-pressed="${sh}"
                 title="${sh ? 'Voir la forme normale' : 'Voir la forme chromatique'}">&#10022;</button>
@@ -589,6 +599,9 @@ function openSheet(id) {
     ${renderEvolution(base, id)}
 
     ${renderForms(base, id)}
+
+    <h3>Attaques</h3>
+    ${renderMoves(base)}
 
     <h3>Où le trouver</h3>
     ${renderEncounters(p)}
@@ -663,6 +676,68 @@ function renderForms(id, courant = id) {
     }).join('')}</div>`;
 }
 
+// ---------- Attaques ----------
+
+// Une espèce apprend un moveset différent dans chaque jeu ; `learnsets.json` n'en
+// garde qu'un, celui du jeu le plus récent où elle apparaît, et la fiche annonce
+// lequel — sans quoi on lirait des niveaux faux sans savoir d'où ils sortent.
+//
+// Les attaques sont celles de l'ESPÈCE : une forme emprunte déjà l'entrée de son
+// espèce pour les types et les lieux de capture, c'est le même principe.
+
+function renderMove(id, badge) {
+  const m = moves[id];
+  if (!m) return '';
+  const [tn, tc] = TYPES[m.t] || [m.t || '—', '#888'];
+  const [cn, cc] = CLASSES[m.c] || [m.c || '—', '#888'];
+  // Une attaque de statut n'a ni puissance ni précision : « — » plutôt qu'un 0 faux.
+  const val = (v) => (v == null ? '—' : v);
+  return `
+    <li class="mrow">
+      <button class="move" data-move="${id}" aria-expanded="false">
+        <span class="mbadge">${esc(badge)}</span>
+        <span class="mmain">
+          <span class="mtitre">
+            <span class="mname">${esc(m.n)}</span>
+            <span class="type mini" style="--t:${tc}">${tn}</span>
+          </span>
+          <span class="mmeta">
+            <span class="mcls" style="--c:${cc}">${cn}</span>
+            <span>Puis. <b>${val(m.p)}</b></span>
+            <span>Préc. <b>${val(m.a)}</b></span>
+            <span>PP <b>${val(m.pp)}</b></span>
+          </span>
+        </span>
+        ${m.d ? '<span class="mchev" aria-hidden="true">&rsaquo;</span>' : ''}
+      </button>
+      ${m.d ? `<p class="mdesc" hidden>${esc(m.d)}</p>` : ''}
+    </li>`;
+}
+
+function renderMoves(base) {
+  const l = learnsets[base];
+  if (!l) return '<p class="none">Attaques non renseignées pour ce Pokémon dans PokéAPI.</p>';
+
+  // Niveau 0 = attaque connue d'entrée de jeu (départ ou juste après évolution).
+  const groupes = [
+    ['Par niveau', l.n.map(([id, lv]) => [id, lv > 0 ? `N.${lv}` : 'Dép.']), true],
+    ['CT et CS', l.m, false],
+    ['Par œuf', l.o.map((id) => [id, 'Œuf']), false],
+    ['Par maître', l.t.map((id) => [id, 'Maît.']), false],
+  ].filter(([, liste]) => liste.length);
+
+  if (!groupes.length) return '<p class="none">Attaques non renseignées pour ce Pokémon dans PokéAPI.</p>';
+
+  return `
+    <p class="moves-jeu">D'après ${esc(l.j)}. Touchez une attaque pour son effet.</p>
+    ${groupes.map(([titre, liste, ouvert]) => `
+      <details class="mgroup" ${ouvert ? 'open' : ''}>
+        <summary>${titre}<b>${liste.length}</b></summary>
+        <ul class="mlist">${liste.map(([id, badge]) => renderMove(id, badge)).join('')}</ul>
+      </details>`).join('')}
+  `;
+}
+
 function renderEncounters(p) {
   const enc = p.encounters || [];
   if (!enc.length) {
@@ -694,8 +769,57 @@ function closeSheet() {
 // geste part de la poignée). Sinon on ne touche à rien : c'est un simple défilement.
 
 const CLOSE_AT = 110; // px de glissement au-delà desquels on ferme
+const NAV_AT = 60;    // px au-delà desquels on passe à la fiche voisine
 
-function enableSwipeClose(el, close) {
+// ---------- Passer d'une fiche à l'autre par glissement horizontal ----------
+
+// Les voisins sont les Pokémon rangés dans la BOÎTE affichée, cases vides exclues.
+// Une fiche ouverte depuis une chaîne d'évolution ou une forme peut donc ne pas s'y
+// trouver : le geste ne fait alors rien, plutôt que de sauter n'importe où.
+function voisinFiche(dir) {
+  const liste = genList(state.gen);
+  const debut = state.box[state.gen] * BOX_SIZE;
+  const boite = liste.slice(debut, debut + BOX_SIZE).filter((k) => k !== null && k !== undefined);
+  const i = boite.indexOf(state.open);
+  if (i < 0) return null;
+  const j = i + dir;
+  return j >= 0 && j < boite.length ? boite[j] : null;
+}
+
+// Le glissement porte sur .sheet-body, jamais sur .sheet : ce dernier réserve son
+// transform au translateY d'ouverture, et un translateX l'écraserait — le panneau
+// resterait collé en bas de l'écran.
+const NAV_OUT = 130, NAV_IN = 210;
+let navFicheEnCours = false;
+
+function navFiche(dir) {
+  if (navFicheEnCours) return;
+  const suivant = voisinFiche(dir);
+  if (suivant === null || suivant === undefined) return;
+  navFicheEnCours = true;
+
+  const b = sheetBody;
+  const w = b.getBoundingClientRect().width || 340;
+  b.style.transition = `transform ${NAV_OUT}ms ease-in, opacity ${NAV_OUT}ms ease-in`;
+  b.style.transform = `translateX(${-dir * w * 0.45}px)`;
+  b.style.opacity = '0';
+
+  setTimeout(() => {
+    openSheet(suivant);
+    b.style.transition = 'none';
+    b.style.transform = `translateX(${dir * w * 0.4}px)`;
+    b.style.opacity = '0';
+    // Reflow forcé plutôt que requestAnimationFrame, comme pour les boîtes : rAF ne
+    // se déclenche pas onglet en arrière-plan et la fiche resterait invisible.
+    void b.offsetWidth;
+    b.style.transition = `transform ${NAV_IN}ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity ${NAV_IN}ms ease-out`;
+    b.style.transform = '';
+    b.style.opacity = '';
+    setTimeout(() => { b.style.transition = ''; navFicheEnCours = false; }, NAV_IN);
+  }, NAV_OUT);
+}
+
+function enableSwipeClose(el, close, nav = null) {
   const body = el.querySelector('.sheet-body');
   let startY = 0, startX = 0, startTop = 0, fromGrip = false, drag = null;
 
@@ -713,21 +837,48 @@ function enableSwipeClose(el, close) {
     const dy = e.touches[0].clientY - startY;
     const dx = e.touches[0].clientX - startX;
 
-    // Premier mouvement : on décide une fois pour toutes s'il s'agit d'une fermeture.
+    // Premier mouvement : on décide une fois pour toutes de quel geste il s'agit —
+    // fermeture, navigation, ou simple défilement du contenu.
     if (drag === null) {
       if (Math.abs(dy) < 8 && Math.abs(dx) < 8) return;
-      const atTop = startTop <= 0 && body.scrollTop <= 0;
-      drag = Math.abs(dy) > Math.abs(dx) && dy > 0 && (fromGrip || atTop) ? 'close' : 'no';
-      if (drag === 'close') el.style.transition = 'none';
-      else return;
+      if (Math.abs(dy) > Math.abs(dx)) {
+        const atTop = startTop <= 0 && body.scrollTop <= 0;
+        drag = dy > 0 && (fromGrip || atTop) ? 'close' : 'no';
+        if (drag === 'close') el.style.transition = 'none';
+      } else {
+        drag = nav ? 'nav' : 'no';
+        if (drag === 'nav') body.style.transition = 'none';
+      }
+      if (drag === 'no') return;
     }
 
-    e.preventDefault(); // pendant la fermeture, la page ne doit pas bouger
+    e.preventDefault(); // pendant le geste, la page ne doit pas bouger
+
+    if (drag === 'nav') {
+      // Sans voisin de ce côté, le contenu ne suit qu'au tiers : le geste répond
+      // quand même, mais on sent qu'il n'ira nulle part.
+      const libre = nav.voisin(dx > 0 ? -1 : 1) != null;
+      body.style.transform = `translateX(${libre ? dx : dx / 3}px)`;
+      body.style.opacity = String(Math.max(0.35, 1 - Math.abs(dx) / 520));
+      return;
+    }
+
     el.style.transform = `translateY(${Math.max(0, dy)}px)`;
     backdrop.style.opacity = String(Math.max(0, 1 - dy / 340));
   }, { passive: false });
 
   const end = (e) => {
+    if (drag === 'nav') {
+      const dx = (e.changedTouches?.[0]?.clientX ?? startX) - startX;
+      // On rend la main : navFiche() reprend la suite de l'animation, ou le contenu
+      // revient simplement en place si le geste était trop court.
+      body.style.transition = '';
+      body.style.transform = '';
+      body.style.opacity = '';
+      if (Math.abs(dx) > NAV_AT) nav.aller(dx > 0 ? -1 : 1);
+      drag = null;
+      return;
+    }
     if (drag !== 'close') { drag = null; return; }
     const dy = (e.changedTouches?.[0]?.clientY ?? startY) - startY;
     // On rend la main au CSS : il anime soit le retour en place, soit la sortie.
@@ -742,7 +893,7 @@ function enableSwipeClose(el, close) {
 }
 
 const sheetBody = sheet.querySelector('.sheet-body');
-enableSwipeClose(sheet, closeSheet);
+enableSwipeClose(sheet, closeSheet, { voisin: voisinFiche, aller: navFiche });
 
 // ---------- Panneau « personnaliser la boîte » ----------
 
@@ -926,7 +1077,9 @@ boxSheet.addEventListener('click', (e) => {
   if (paper) {
     setBox(state.gen, state.box[state.gen], { paper: paper.dataset.paper });
     render();
-    renderBoxSheet();
+    // On referme : le choix est fait, et laisser le panneau ouvert cachait
+    // justement la boîte dont on vient de changer le fond.
+    closeBoxSheet();
   }
 });
 
@@ -1293,6 +1446,21 @@ sheet.addEventListener('click', (e) => {
     for (const x of forms[espece] ?? []) rangeForme(espece, x.key);
     render();
     openSheet(state.open);
+    return;
+  }
+
+  // Déplier l'effet d'une attaque. On agit sur le DOM plutôt que de rappeler
+  // openSheet() : reconstruire la fiche refermerait les groupes et perdrait la
+  // position de défilement, au beau milieu d'une liste de soixante attaques.
+  const mv = e.target.closest('[data-move]');
+  if (mv) {
+    const desc = mv.parentElement.querySelector('.mdesc');
+    if (desc) {
+      const ouvert = !desc.hidden;
+      desc.hidden = ouvert;
+      mv.setAttribute('aria-expanded', String(!ouvert));
+      mv.classList.toggle('ouvert', !ouvert);
+    }
     return;
   }
 

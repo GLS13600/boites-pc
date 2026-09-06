@@ -39,6 +39,9 @@ Pokémon. Destinée à finir en `.ipa` sideloadée sur iPhone via Sideloadly.
 | `src/data/dex-remakes.json` | Pokédex régionaux des remakes, **généré** |
 | `scripts/fetch-dex.mjs` | Aspire ces Pokédex (`npm run fetch-dex`) |
 | `scripts/fetch-sprites.mjs` | Rapatrie tous les sprites (`npm run fetch-sprites`) |
+| `src/data/moves.json` | Les 731 attaques citées, **généré** |
+| `src/data/learnsets.json` | Moveset de chaque espèce, **généré** |
+| `scripts/fetch-moves.mjs` | Aspire attaques et movesets (`npm run fetch-moves`) |
 | `public/sprites/` | Les 5 291 sprites, **générés**, 40 Mo |
 
 ## Données
@@ -88,7 +91,10 @@ Règles d'affichage, à ne pas casser :
 
 - Grille : toujours le sprite fixe. Non capturé → `filter: grayscale(1)` (**gris**).
   Capturé → **couleur**. C'est le seul signal d'état avec le marqueur Poké Ball.
-- Fiche : artwork officiel, grisé aussi tant que non capturé (classe `.portrait.locked`).
+- Fiche : artwork officiel **toujours en couleur**, capturé ou non, normal comme
+  chromatique. Le gris reste le signal d'état de la **grille** seule ; sur la fiche,
+  le bouton de capture dit déjà où l'on en est, et on vient y regarder la bête.
+  La classe `.portrait.locked` a été retirée, ne pas la réintroduire.
 - Chaque `<img>` garde un `onerror` de repli, qui doit viser le sprite de l'**espèce**
   (`speciesOf(key)` dans la grille, `e.num` dans le sélecteur). Viser `spriteKey()`
   reconstruit l'URL qui vient justement d'échouer : le repli ne servait alors à rien,
@@ -141,6 +147,35 @@ Règles d'affichage, à ne pas casser :
 - **Absents de PokéAPI, donc absents ici** : les distributions d'événements (Mew de
   1996, etc.). Les formes d'événement présentes dans les jeux (casquettes de Pikachu)
   le sont, elles, sous `kind: 'event'`.
+
+## Attaques
+
+- `npm run fetch-moves` produit `moves.json` (731 attaques : nom, type, catégorie,
+  puissance, précision, PP, effet en français) et `learnsets.json` (1025 espèces).
+  846 Ko à eux deux. Le script met en cache chaque étape dans `scripts/.cache/` :
+  une reprise ne refait pas les 4 300 requêtes.
+- **Un seul jeu par espèce.** Une espèce apprend un moveset différent dans chacun des
+  25 « version groups » ; tout embarquer ferait des dizaines de Mo pour une information
+  que personne ne lit. On garde le jeu le plus récent, et la fiche annonce lequel
+  (« D'après Écarlate / Violet »), sans quoi on lirait des niveaux faux.
+- **Piège** : le jeu le plus récent n'est pas toujours exploitable. 207 espèces
+  tombaient sur « Champions », dont PokéAPI ne connaît les attaques que par la méthode
+  `train` — les quatre catégories ressortaient vides et Dracaufeu s'affichait sans une
+  seule attaque. On retient donc le jeu le plus récent **qui apprend au moins une
+  attaque par niveau**, avec repli sur le plus récent tout court.
+- **CT et CS ne se distinguent pas** dans `move_learn_method` : les deux valent
+  `machine`. Il faut passer par `/machine`, qui donne l'objet réel (`tm39`, `hm01`) —
+  c'est ce qui permet d'écrire « CT39 » plutôt qu'un vague « Machine ». Les CS ne
+  subsistent que dans les jeux qui en ont encore (CS01 à CS08, côté DÉ/PS).
+- Les attaques sont celles de l'**espèce**, pas de la forme : la fiche d'une forme
+  emprunte déjà l'entrée de son espèce pour les types et les lieux de capture.
+- Quatre groupes repliables, « Par niveau » seul ouvert : une espèce peut avoir
+  soixante CT, les dérouler toutes noierait le reste de la fiche.
+- Toucher une attaque déplie son effet. Le gestionnaire agit **sur le DOM**, il ne
+  rappelle pas `openSheet()` : reconstruire la fiche refermerait les groupes et
+  perdrait la position de défilement au milieu d'une liste de soixante attaques.
+- Niveau 0 = attaque connue d'entrée de jeu, affichée « Dép. ». Une attaque de statut
+  n'a ni puissance ni précision : « — » plutôt qu'un 0 faux.
 
 ## Fiche d'une forme
 
@@ -370,6 +405,20 @@ Règles d'affichage, à ne pas casser :
   rapide de swipes perd donc les intermédiaires. Rendre l'animation interruptible si ça
   devient gênant.
 - `.box` a `touch-action: none` — c'est volontaire, on gère les gestes nous-mêmes.
+- **Glissement horizontal = fiche voisine** (`navFiche`), au-delà de 60 px. Les
+  voisins sont les Pokémon de la **boîte affichée**, cases vides exclues : une fiche
+  ouverte depuis une chaîne d'évolution peut ne pas s'y trouver, le geste ne fait
+  alors rien plutôt que de sauter n'importe où. Sans voisin de ce côté, le contenu ne
+  suit qu'au tiers — le geste répond, mais on sent qu'il n'ira nulle part.
+- Ce glissement porte sur **`.sheet-body`, jamais sur `.sheet`** : ce dernier réserve
+  son `transform` au `translateY` d'ouverture, et un `translateX` l'écraserait — le
+  panneau resterait collé en bas de l'écran. `.sheet` est donc en `overflow: hidden`
+  pour clipper le contenu qui glisse.
+- Comme pour les boîtes, l'entrée passe par un `void offsetWidth` et **non** par
+  `requestAnimationFrame`, qui ne se déclenche pas onglet en arrière-plan.
+- Les trois gestes se décident **au premier mouvement**, une fois pour toutes :
+  vertical vers le bas depuis le haut du contenu = fermeture, horizontal = fiche
+  voisine, tout le reste = défilement normal. Ne pas rendre cette décision continue.
 - Fermeture de la fiche par glissement vers le bas, au-delà de 110 px. Le geste n'est
   retenu que si le contenu est **déjà en haut** (ou si l'on part de la poignée) et que
   le mouvement est vertical descendant ; sinon `.sheet-body` défile normalement et on
@@ -471,6 +520,8 @@ vient des sprites**, pas du décor. Toutes les valeurs sont des variables dans `
   build et hors versionnage.
 - **Les gén. I et II n'ont aucun fond** : les boîtes y étaient unies. Le sélecteur
   l'explique au lieu d'afficher une liste vide. Les fonds arrivent en gén. III.
+- **Choisir un fond referme le panneau** : le choix est fait, et rester ouvert cachait
+  justement la boîte dont on venait de changer le fond.
 - Le sélecteur va en deux temps : génération, puis fonds de cette génération. Il
   s'ouvre sur la génération du fond **déjà posé** (`PAPER_GEN`), sinon sur celle de la
   boîte, en remontant à la III — sans ça le fond courant n'apparaîtrait pas

@@ -369,7 +369,13 @@ body { padding-bottom: calc(62px + var(--safe-bottom)); }
 
 /* ---------- Boîte de combat ---------- */
 
-.combat { margin: 12px; }
+/* Même calage vertical que la barre des générations (`.gens`, qui réserve
+   10px + safe-top en padding) : sans ça le bandeau passait sous l'îlot dynamique
+   de l'iPhone, la vue combat n'ayant aucune barre supérieure pour l'en écarter. */
+.combat {
+  margin: 12px;
+  margin-top: calc(10px + var(--safe-top));
+}
 .combat-head { display: flex; align-items: stretch; gap: 10px; margin-bottom: 12px; }
 .jeu-btn {
   flex: 1;

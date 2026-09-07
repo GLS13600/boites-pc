@@ -442,7 +442,7 @@ function render() {
         ? `${g.name} · N° ${start + 1} à ${Math.min(start + BOX_SIZE, total)}`
         : `${g.name} · ${start + g.from} à ${Math.min(start + g.from + BOX_SIZE - 1, g.to)}`;
 
-  app.replaceChildren(
+  poser(
     renderTabs(),
     h(`
       <section class="box ${paperBg ? 'papered' : ''} ${rang ? 'ranger' : ''} ${state.placing !== null ? 'placement' : ''}">
@@ -509,7 +509,6 @@ function render() {
       </footer>
     `),
   );
-  majNav();
 
   calePaper();
   if (import.meta.env.DEV) window.__annoncerCalage?.();
@@ -2044,7 +2043,22 @@ function renderNav() {
 // que la page était courte. Sortie du flux de l'application, elle ne dépend plus que
 // du viewport, et se pose au même endroit dans les trois vues.
 const nav = renderNav();
-document.body.append(nav);
+
+// Coquille d'application : le contenu de chaque vue défile DANS une zone dédiée,
+// et la barre du bas est le dernier élément d'un conteneur à hauteur d'écran.
+//
+// Elle était auparavant en `position: fixed`. Sur iPhone, un élément fixe combiné à
+// `env(safe-area-inset-bottom)` ne se place pas au même endroit selon que la page
+// peut défiler ou non : la barre descendait sur le Pokédex, long, et remontait sur
+// Boîtes et Combat, trop courts pour défiler. Remise dans le flux, elle ne dépend
+// plus que de la hauteur du conteneur, identique partout.
+function poser(...enfants) {
+  const vue = document.createElement('div');
+  vue.className = 'vue';
+  vue.append(...enfants);
+  app.replaceChildren(vue, nav);
+  majNav();
+}
 
 // Seul l'état actif change d'un rendu à l'autre : on le remplace sur place.
 function majNav() { nav.innerHTML = renderNav().innerHTML; }
@@ -2092,7 +2106,7 @@ function renderCombat() {
   const jeu = jeuCourant();
   const pleines = equipe().filter(Boolean).length;
 
-  app.replaceChildren(
+  poser(
     h(`
       <section class="combat">
         <div class="combat-head">
@@ -2126,7 +2140,6 @@ function renderCombat() {
         </p>`}
       </section>`),
   );
-  majNav();
 
   if (!LEARN_VG) chargeVG().then(() => { if (state.vue === 'combat') render(); });
 }
@@ -3028,7 +3041,7 @@ function renderPokedex() {
       </button>`;
   }).join('');
 
-  app.replaceChildren(
+  poser(
     h(`
       <nav class="gens dex-gens" role="tablist" aria-label="Génération">
         ${GENS.map((x) => `
@@ -3057,7 +3070,6 @@ function renderPokedex() {
         </p>
       </section>`),
   );
-  majNav();
 
   app.querySelector('.gen-tab[aria-selected="true"]')
     ?.scrollIntoView({ block: 'nearest', inline: 'center' });

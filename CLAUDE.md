@@ -713,7 +713,19 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 
 - 9 onglets de génération, boîtes de **30** en grille 6×5, comme le PC des jeux.
 - La barre d'onglets est en `position: sticky; top: 0` — elle ne doit pas défiler.
-- **La barre du bas vit dans `<body>`, pas dans `#app`**, et n'est construite qu'une
+- **Coquille d'application** : `#app` fait la hauteur de l'écran, le contenu de
+  chaque vue défile dans une zone `.vue` (`flex: 1; overflow-y: auto`), et la barre du
+  bas est le dernier élément du flux. **Le corps ne défile plus du tout.**
+- **Ne pas remettre la barre en `position: fixed`.** Sur iPhone, un élément fixe
+  combiné à `env(safe-area-inset-bottom)` ne se place pas au même endroit selon que la
+  page peut défiler ou non : la barre descendait sur le Pokédex, long, et remontait
+  sur Boîtes et Combat, trop courts pour défiler. Trois tentatives ont échoué avant
+  de comprendre que le problème venait de là et non du style de la barre.
+- `.vue` a besoin de `min-height: 0` : sans lui, un enfant flex refuse de rétrécir
+  sous la taille de son contenu et la zone ne défile pas.
+- La barre garde `position: relative` et son `z-index: 12` pour rester au-dessus des
+  panneaux, qui sont en position fixe avec un `z-index` moindre.
+- **La barre du bas est construite qu'une
   fois. Recréée à l'intérieur de `#app` — un conteneur flex en `min-height: 100%`
   dont la hauteur suit le contenu — elle s'ancrait différemment selon la vue et
   remontait d'autant que la page était courte. `majNav()` n'en rafraîchit que l'état

@@ -24,7 +24,8 @@
 
 html, body {
   margin: 0;
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font);
@@ -37,7 +38,17 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--ball); outline-offset: 2px; }
 img { display: block; }
 
-#app { min-height: 100%; display: flex; flex-direction: column; }
+/* Coquille : hauteur d'écran fixe, la zone .vue défile à l'intérieur et la barre
+   du bas reste le dernier élément. C'est ce qui garantit qu'elle se pose au même
+   endroit quelle que soit la longueur de la vue. */
+#app { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+.vue {
+  flex: 1 1 auto;
+  min-height: 0;   /* sans quoi un enfant flex refuse de rétrécir sous son contenu */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
 
 /* ---------- Barre des générations : fixée en haut ---------- */
 
@@ -338,10 +349,10 @@ img { display: block; }
 /* Fixée, donc hors du flux : le bas de page doit lui réserver sa hauteur, sinon
    elle recouvrirait les derniers boutons. */
 .nav {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  /* Dans le flux, en bas de la coquille. `relative` et le z-index la gardent
+     au-dessus des panneaux, qui sont en position fixe avec un z-index moindre. */
+  position: relative;
+  flex: 0 0 auto;
   z-index: 12;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -375,7 +386,7 @@ img { display: block; }
 .nav-btn b { font-size: 17px; line-height: 1; font-weight: 400; }
 .nav-btn.on { background: var(--caught-tint); color: var(--ball); }
 
-body { padding-bottom: calc(var(--nav-h) + var(--nav-bas)); }
+/* Le corps ne défile plus : c'est .vue qui s'en charge, et la barre est dans le flux. */
 
 /* ---------- Boîte de combat ---------- */
 

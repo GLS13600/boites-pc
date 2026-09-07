@@ -6,10 +6,11 @@
 
 name: IPA non signé
 
+# Lancement à la demande UNIQUEMENT. Les runners macOS comptent x10 dans le quota :
+# déclencher à chaque push consommerait la moitié du forfait mensuel en une fois,
+# alors que le site, lui, se redéploie gratuitement à chaque push.
 on:
-  workflow_dispatch:      # lancement à la demande, depuis l'onglet Actions
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:

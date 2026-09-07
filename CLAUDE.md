@@ -11,6 +11,34 @@ affiché.
 Application web perso pour suivre un Living Dex, présentée comme les boîtes PC des jeux
 Pokémon. Destinée à finir en `.ipa` sideloadée sur iPhone via Sideloadly.
 
+## Deux façons de l'installer
+
+L'application se distribue par **deux chaînes qui partagent le même `dist/`** et ne
+se gênent pas :
+
+- **IPA sideloadé** (`.github/workflows/ios.yml`, runner macOS) : app native via
+  Capacitor, à re-signer tous les 7 jours avec un certificat gratuit.
+- **Site sur GitHub Pages** (`.github/workflows/pages.yml`, runner Ubuntu) : ajouté
+  à l'écran d'accueil depuis Safari, sans certificat ni expiration.
+
+Le workflow iOS est **manuel uniquement** : le runner macOS compte ×10 dans le
+quota, un déclenchement à chaque push aurait mangé la moitié du forfait mensuel.
+Le site, lui, se redéploie à chaque push pour presque rien.
+
+### Service worker
+
+- `dist/sw.js` est **généré** par `scripts/build-sw.mjs`, enchaîné à `vite build` :
+  Vite empreinte les noms de fichiers, la liste à précharger n'est connue qu'après
+  la compilation.
+- Il ne sert QUE la version web. L'enregistrement est conditionné à
+  `location.protocol.startsWith('http')` : sous Capacitor la page n'est pas servie
+  en HTTP et tout est déjà embarqué, donc rien ne s'enregistre.
+- **Page en réseau d'abord**, pour qu'un déploiement soit vu au rechargement
+  suivant ; **tout le reste en cache d'abord**, les noms portant une empreinte ou
+  ne changeant jamais de contenu.
+- La coquille (11 Mo : page, icône, chunks Vite) est préchargée. Sprites et fonds
+  se mettent en cache au fil de la navigation — 84 Mo d'un bloc serait déraisonnable.
+
 ## Contraintes du poste de travail
 
 - Développement sous **Windows**, pas de Mac. Projet dans `D:\Code\Jeu\`.

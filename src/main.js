@@ -15,6 +15,15 @@ import items from './data/items.json';
 import NATURES from './data/natures.json';
 import formDesc from './data/form-desc.json';
 
+// Service worker : il ne sert QUE la version web hébergée. Sous Capacitor la page
+// n'est pas servie en HTTP et tout est déjà embarqué dans l'app — l'enregistrement
+// est donc conditionné au protocole, et un échec est sans conséquence.
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
 // ---------- Constantes ----------
 
 const GENS = [

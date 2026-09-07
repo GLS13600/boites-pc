@@ -27,10 +27,45 @@ Notes utiles :
 
 ---
 
-## 2. La compilation de l'IPA
+## 2. Le site en ligne (GitHub Pages)
 
-**Elle démarre toute seule à chaque `git push` sur `main`.** Le workflow accepte aussi
-un lancement manuel : onglet **Actions** → *IPA non signé* → **Run workflow**.
+Le même `dist/` sert au site et à l'IPA : les deux chaînes cohabitent sans se gêner.
+
+**À faire une seule fois :**
+
+1. Rendre le dépôt **public** — Settings → General → tout en bas, *Change
+   repository visibility*. GitHub Pages depuis un dépôt privé exige un abonnement
+   payant.
+2. Settings → **Pages** → *Build and deployment* → Source : **GitHub Actions**.
+
+Ensuite, **chaque `git push` redéploie le site**, en quelques minutes. L'adresse
+s'affiche à la fin du run, sous la forme `https://<pseudo>.github.io/<dépôt>/`.
+
+> Le runner Ubuntu du site compte ×1 dans le quota, contre ×10 pour le runner macOS
+> de l'IPA. Le site peut donc se redéployer à volonté sans entamer le forfait.
+
+### L'installer sur l'iPhone, sans certificat
+
+Ouvrir l'adresse dans **Safari** → Partager → **Sur l'écran d'accueil**. L'app
+s'appelle Guiguidex, s'ouvre en plein écran, et un service worker la garde
+utilisable hors ligne.
+
+Cette voie n'a **ni certificat, ni expiration à 7 jours, ni re-signature** : on
+pousse sur GitHub, et le téléphone a la nouvelle version au rechargement suivant.
+
+**Ce que le service worker met en cache :** la coquille de l'application (11 Mo,
+préchargés à la première visite) la rend fonctionnelle hors ligne tout de suite.
+Les sprites et les fonds, eux, se mettent en cache **au fil de la navigation** :
+ils sont trop volumineux pour être préchargés d'un bloc. Une génération déjà
+consultée reste donc disponible hors ligne, une génération jamais ouverte non.
+
+---
+
+## 3. La compilation de l'IPA
+
+**Elle se lance à la main uniquement** : onglet **Actions** → *IPA non signé* →
+**Run workflow**. Le déclenchement automatique a été retiré — avec deux workflows,
+un seul push aurait consommé la moitié du quota macOS mensuel.
 
 Compte 6 à 10 minutes. Une coche verte signifie que l'IPA est prêt.
 
@@ -46,7 +81,7 @@ Compte 6 à 10 minutes. Une coche verte signifie que l'IPA est prêt.
 
 ---
 
-## 3. Récupérer l'IPA
+## 4. Récupérer l'IPA
 
 1. Onglet **Actions** → cliquer le run terminé (coche verte).
 2. Rester sur la page **Summary** du run — l'encadré n'apparaît pas dans la vue des
@@ -60,7 +95,7 @@ même fichier qui resservira à chaque re-signature hebdomadaire.
 
 ---
 
-## 4. Installer sur l'iPhone
+## 5. Installer sur l'iPhone (IPA)
 
 1. iPhone branché en USB, déverrouillé, « Faire confiance à cet ordinateur » accepté.
 2. Glisser `BoitesPC.ipa` dans **Sideloadly**, saisir l'Apple ID, **Start**.
@@ -72,7 +107,7 @@ même fichier qui resservira à chaque re-signature hebdomadaire.
 
 ---
 
-## 5. Tous les 7 jours
+## 6. Tous les 7 jours (IPA uniquement)
 
 Le certificat gratuit expire au bout d'une semaine (3 apps maximum). Pour prolonger :
 rebrancher et re-sideloader **le même `.ipa`, avec le même bundle id**

@@ -174,7 +174,9 @@ const state = {
   placing: null, // Pokémon choisi, en attente d'un emplacement
   open: null,
   // Boîte de combat : vue active, jeu de référence, équipe de six, panneau ouvert.
-  vue: localStorage.getItem('pcbox.vue') === 'combat' ? 'combat' : 'boites',
+  vue: ['combat', 'pokedex'].includes(localStorage.getItem('pcbox.vue'))
+    ? localStorage.getItem('pcbox.vue') : 'boites',
+  dexGen: Math.min(9, Math.max(1, Number(localStorage.getItem('pcbox.dexgen')) || 1)),
   jeu: localStorage.getItem('pcbox.jeu') || 'scarlet-violet',
   // Une équipe par version de jeu : on garde une composition distincte pour chaque
   // opus, puisque attaques, talents et objets n'y sont pas les mêmes.
@@ -391,6 +393,7 @@ function render() {
   // La barre du bas commute entre les deux vues. Tout le reste de render() ne
   // concerne que la gestion des boîtes.
   if (state.vue === 'combat') return renderCombat();
+  if (state.vue === 'pokedex') return renderPokedex();
 
   const g = ONGLETS[state.gen];
   const liste = genList(state.gen);
@@ -831,6 +834,15 @@ const NAV_AT = 60;    // px au-delà desquels on passe à la fiche voisine
 // Une fiche ouverte depuis une chaîne d'évolution ou une forme peut donc ne pas s'y
 // trouver : le geste ne fait alors rien, plutôt que de sauter n'importe où.
 function voisinFiche(dir) {
+  // Dans la vue Pokédex, les voisins sont les espèces de la génération affichée,
+  // pas le contenu d'une boîte : on parcourt le Pokédex national dans l'ordre.
+  if (state.vue === 'pokedex') {
+    const g = GENS[state.dexGen - 1];
+    const id = Number(state.open);
+    if (!Number.isInteger(id) || id < g.from || id > g.to) return null;
+    const j = id + dir;
+    return j >= g.from && j <= g.to ? j : null;
+  }
   const liste = genList(state.gen);
   const debut = state.box[state.gen] * BOX_SIZE;
   const boite = liste.slice(debut, debut + BOX_SIZE).filter((k) => k !== null && k !== undefined);
@@ -1954,7 +1966,7 @@ function importEquipes() {
 function renderNav() {
   return h(`
     <nav class="nav" role="tablist" aria-label="Vue">
-      ${[['boites', '▦', 'Boîtes'], ['combat', '⚔', 'Combat']].map(([v, ico, lib]) => `
+      ${[['boites', '▦', 'Boîtes'], ['pokedex', '◉', 'Pokédex'], ['combat', '⚔', 'Combat']].map(([v, ico, lib]) => `
         <button class="nav-btn ${state.vue === v ? 'on' : ''}" role="tab"
                 aria-selected="${state.vue === v}" data-vue="${v}">
           <b>${ico}</b><span>${lib}</span>
@@ -2893,6 +2905,96 @@ app.addEventListener('click', (e) => {
     state.addGen = ONGLETS[state.gen].n;
     openBattleSheet(equipe()[i] ? 'detail' : 'mon', i);
   }
+});
+
+// ---------- Vue Pokédex ----------
+//
+// Troisième vue, entre les boîtes et le combat. Elle liste les ESPÈCES d'une
+// génération, sans leurs formes : c'est le Pokédex national, où Méga-Dracaufeu n'a
+// pas d'entrée propre. Les formes restent consultables dans la fiche, qui les liste
+// déjà et permet de les ranger.
+//
+// La fiche ouverte ici est exactement celle des boîtes (`openSheet`) : description,
+// famille d'évolution, formes, talents, attaques et lieux de capture.
+
+const DEXGEN_KEY = 'pcbox.dexgen';
+
+// Taux de remplissage d'une génération, d'après la collection ACTIVE — donc le
+// Pokédex chromatique quand la vue chromatique est allumée, comme dans les boîtes.
+function progresDex(n) {
+  const g = GENS[n - 1];
+  let pris = 0;
+  for (let id = g.from; id <= g.to; id++) if (isCaught(id)) pris++;
+  return { pris, total: g.to - g.from + 1 };
+}
+
+function renderPokedex() {
+  const n = state.dexGen;
+  const g = GENS[n - 1];
+  const { pris, total } = progresDex(n);
+  // Le total national, pour situer la génération dans l'ensemble.
+  let prisTout = 0;
+  for (let id = 1; id <= 1025; id++) if (isCaught(id)) prisTout++;
+
+  const cases = range(g.from, g.to).map((id) => {
+    const p = pokedex[id] || {};
+    const vu = isCaught(id);
+    return `
+      <button class="dx ${vu ? '' : 'gris'}" data-dex="${id}"
+              aria-label="${esc(p.name || `N° ${id}`)}${vu ? ', capturé' : ''}">
+        <img src="${sprites.still(id, shinyView())}" alt="" loading="lazy"
+             ${imgFallback(id, shinyView())} />
+        <span class="dx-num">N° ${String(id).padStart(4, '0')}</span>
+        <span class="dx-nom">${esc(p.name || '—')}</span>
+        ${vu ? '<span class="dx-ok" aria-hidden="true"></span>' : ''}
+      </button>`;
+  }).join('');
+
+  app.replaceChildren(
+    h(`
+      <nav class="gens dex-gens" role="tablist" aria-label="Génération">
+        ${GENS.map((x) => `
+          <button class="gen-tab" role="tab" data-dexgen="${x.n}"
+                  aria-selected="${x.n === n}">
+            Gén. ${x.n}<small>${esc(x.name)}</small>
+          </button>`).join('')}
+      </nav>`),
+    h(`
+      <section class="dex">
+        <div class="dex-head">
+          <div>
+            <b>${esc(g.name)}</b>
+            <small>N° ${g.from} à ${g.to}</small>
+          </div>
+          <div class="dex-compte"><b>${pris}</b>/${total}</div>
+        </div>
+        <div class="bar dex-bar"><span style="width:${total ? (100 * pris) / total : 0}%"></span></div>
+        <p class="dex-tout">${prisTout} sur 1025 au total${shinyView() ? ' · Pokédex chromatique' : ''}</p>
+
+        <div class="dex-grid">${cases}</div>
+
+        <p class="hint">
+          Les formes alternatives n’ont pas d’entrée au Pokédex : elles sont listées
+          dans la fiche de leur espèce, d’où l’on peut aussi les ranger en boîte.
+        </p>
+      </section>`),
+    renderNav(),
+  );
+
+  app.querySelector('.gen-tab[aria-selected="true"]')
+    ?.scrollIntoView({ block: 'nearest', inline: 'center' });
+}
+
+app.addEventListener('click', (e) => {
+  const onglet = e.target.closest('[data-dexgen]');
+  if (onglet) {
+    state.dexGen = +onglet.dataset.dexgen;
+    localStorage.setItem(DEXGEN_KEY, String(state.dexGen));
+    render();
+    return;
+  }
+  const carte = e.target.closest('[data-dex]');
+  if (carte) openSheet(Number(carte.dataset.dex));
 });
 
 render();

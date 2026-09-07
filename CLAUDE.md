@@ -196,6 +196,25 @@ Règles d'affichage, à ne pas casser :
 - Niveau 0 = attaque connue d'entrée de jeu, affichée « Dép. ». Une attaque de statut
   n'a ni puissance ni précision : « — » plutôt qu'un 0 faux.
 
+## Vue Pokédex
+
+Troisième vue, **entre les boîtes et le combat** dans la barre du bas (`.nav`, trois
+onglets). `render()` y bascule comme pour le combat.
+
+- Elle liste les **ESPÈCES** d'une génération, sans leurs formes : c'est le Pokédex
+  national, où Méga-Dracaufeu n'a pas d'entrée propre. Les formes restent dans la
+  fiche, qui les liste déjà et permet de les ranger en boîte.
+- **Trois par ligne**, sprite de 68 px : sur 375 px chaque case fait ~111 px, de quoi
+  loger le numéro et le nom sans troncature.
+- Neuf onglets de génération seulement — un remake n'a pas d'entrée au Pokédex
+  national. Le choix est persisté sous `pcbox.dexgen`.
+- **Taux de remplissage** par génération et au total, calculé sur la collection
+  ACTIVE (`isCaught`) : il suit donc la bascule normal / chromatique des boîtes.
+- La fiche ouverte est exactement celle des boîtes (`openSheet`) : description,
+  évolutions, formes, talents, attaques, lieux de capture.
+- `voisinFiche()` connaît cette vue : le glissement horizontal parcourt le Pokédex
+  dans l'ordre des numéros, et non le contenu d'une boîte.
+
 ## Boîte de combat
 
 Seconde vue de l'application, atteinte par la **barre du bas** (`.nav`, deux onglets :

@@ -69,15 +69,11 @@ un seul push aurait consommé la moitié du quota macOS mensuel.
 
 Compte 6 à 10 minutes. Une coche verte signifie que l'IPA est prêt.
 
-> **Attention aux minutes.** Un compte gratuit donne ~200 minutes de runner macOS par
-> mois (les runners macOS comptent ×10). Chaque push consomme donc une compilation.
-> Pour ne compiler qu'à la demande, supprimer ces deux lignes de
-> `.github/workflows/ios.yml` :
->
-> ```yaml
->   push:
->     branches: [main]
-> ```
+> **Attention aux minutes.** Un compte gratuit donne ~200 minutes de runner macOS
+> par mois, les runners macOS comptant ×10. Une compilation en consomme donc une
+> soixantaine : environ trois par mois si l'on ne fait que ça. Ne relance ce
+> workflow que lorsque tu veux vraiment un nouvel IPA — pour tester une
+> modification au quotidien, passe par le site, qui est gratuit.
 
 ---
 

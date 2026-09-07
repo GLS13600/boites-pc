@@ -713,6 +713,15 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 
 - 9 onglets de génération, boîtes de **30** en grille 6×5, comme le PC des jeux.
 - La barre d'onglets est en `position: sticky; top: 0` — elle ne doit pas défiler.
+- **La barre du bas vit dans `<body>`, pas dans `#app`**, et n'est construite qu'une
+  fois. Recréée à l'intérieur de `#app` — un conteneur flex en `min-height: 100%`
+  dont la hauteur suit le contenu — elle s'ancrait différemment selon la vue et
+  remontait d'autant que la page était courte. `majNav()` n'en rafraîchit que l'état
+  actif, et l'écoute du changement de vue vit sur la barre elle-même.
+- La marge sous les icônes est `--nav-bas`, soit **45 % de la zone sûre** et non sa
+  totalité : réserver les 34 px de l'indicateur d'accueil laissait un vide visible
+  qui décollait la barre du bord de l'écran. `--nav-h` ne couvre donc plus que le
+  contenu (53 px), et le corps comme les panneaux réservent `--nav-h + --nav-bas`.
 - **La barre du bas est OPAQUE, dans la couleur du papier** (`--paper`). Translucide
   avec un `backdrop-filter`, elle changeait d'aspect selon la page : sur le Pokédex la
   grille défile dessous et le flou la fondait dans la page, alors que sur Boîtes et

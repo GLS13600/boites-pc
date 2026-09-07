@@ -508,8 +508,8 @@ function render() {
         ${hasData ? '' : `<div class="hint">Les sprites viennent de PokéAPI, mais les noms, habitats et lieux de capture ne sont chargés que pour la première boîte. Lance <code>npm run fetch-data</code> pour tout récupérer.</div>`}
       </footer>
     `),
-    renderNav(),
   );
+  majNav();
 
   calePaper();
   if (import.meta.env.DEV) window.__annoncerCalage?.();
@@ -2036,6 +2036,29 @@ function renderNav() {
     </nav>`);
 }
 
+// La barre du bas vit DANS <body>, pas dans #app, et n'est construite qu'une fois.
+//
+// Elle était auparavant recréée à l'intérieur de #app à chaque rendu. Or #app est un
+// conteneur flex en min-height: 100%, dont la hauteur suit celle du contenu : la
+// barre s'y ancrait différemment selon la longueur de la vue et remontait d'autant
+// que la page était courte. Sortie du flux de l'application, elle ne dépend plus que
+// du viewport, et se pose au même endroit dans les trois vues.
+const nav = renderNav();
+document.body.append(nav);
+
+// Seul l'état actif change d'un rendu à l'autre : on le remplace sur place.
+function majNav() { nav.innerHTML = renderNav().innerHTML; }
+
+// La barre n'étant plus dans #app, son écoute doit vivre sur elle.
+nav.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-vue]');
+  if (!b || b.dataset.vue === state.vue) return;
+  fermeLesPanneaux();
+  state.vue = b.dataset.vue;
+  localStorage.setItem(VUE_KEY, state.vue);
+  render();
+});
+
 function renderEquipeSlot(m, i) {
   if (!m) {
     return `<button class="eq vide" data-eq="${i}" aria-label="Emplacement ${i + 1}, libre">
@@ -2102,8 +2125,8 @@ function renderCombat() {
           Tout suit la version choisie, ici <b>${esc(jeu.nom)}</b>.
         </p>`}
       </section>`),
-    renderNav(),
   );
+  majNav();
 
   if (!LEARN_VG) chargeVG().then(() => { if (state.vue === 'combat') render(); });
 }
@@ -2947,14 +2970,7 @@ function fermeLesPanneaux() {
 }
 
 app.addEventListener('click', (e) => {
-  const vue = e.target.closest('[data-vue]');
-  if (vue) {
-    if (state.vue !== vue.dataset.vue) fermeLesPanneaux();
-    state.vue = vue.dataset.vue;
-    localStorage.setItem(VUE_KEY, state.vue);
-    render();
-    return;
-  }
+  // La bascule de vue est écoutée sur la barre elle-même, qui vit hors de #app.
   if (state.vue !== 'combat') return;
 
   if (e.target.closest('[data-act="choix-jeu"]')) { openBattleSheet('version'); return; }
@@ -3040,8 +3056,8 @@ function renderPokedex() {
           dans la fiche de leur espèce, d’où l’on peut aussi les ranger en boîte.
         </p>
       </section>`),
-    renderNav(),
   );
+  majNav();
 
   app.querySelector('.gen-tab[aria-selected="true"]')
     ?.scrollIntoView({ block: 'nearest', inline: 'center' });

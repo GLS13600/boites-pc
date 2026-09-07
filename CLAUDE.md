@@ -740,12 +740,17 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
   Combat — dont le contenu est trop court pour défiler — elle n'avait que du fond
   derrière elle et virait au blanc franc, formant une bande visible. Ne pas la
   repasser en translucide.
-- **Tout panneau réserve la hauteur de la barre du bas** (`--nav-h`, 59 px) dans le
-  `padding-bottom` de `.sheet-body`. Cette barre est `position: fixed` avec un
-  `z-index` supérieur aux panneaux : sans cette réserve elle recouvre leurs derniers
-  59 px. Le bouton « Retirer de l'équipe » finissait dessous et, le contenu tenant
-  dans la hauteur, aucun défilement ne pouvait aller le chercher — il était
-  simplement inaccessible. La même variable sert au `padding-bottom` du `body`.
+- **Tout panneau réserve la hauteur de la barre du bas** (`--nav-h` + `--nav-bas`)
+  dans le `padding-bottom` de `.sheet-body`. Les panneaux sont en position fixe et
+  passent DEVANT la barre : sans cette réserve, elle recouvrait leurs derniers pixels.
+  Le bouton « Retirer de l'équipe » finissait dessous et, le contenu tenant dans la
+  hauteur, aucun défilement ne pouvait aller le chercher — il était inaccessible.
+  Tenir les deux valeurs à jour ensemble si la barre change de gabarit.
+- **Gabarit de la barre : 49 px** avec une zone sûre de 34 px, soit `--nav-h` (38 px,
+  contenu) plus `--nav-bas` (30 % de `env(safe-area-inset-bottom)`). Elle a fait 68 px
+  un temps, ce qui mangeait une rangée entière du Pokédex : c'est une barre de
+  navigation, pas un bandeau. Ne pas réserver la zone sûre en entier — l'indicateur
+  d'accueil de l'iPhone se superpose volontiers à quelques pixels de fond neutre.
 - Gestes : tap = capturer, appui long 450 ms ou clic droit = fiche. Un bouton en bas
   inverse le comportement du tap. Swipe horizontal = boîte suivante/précédente.
 - Le swipe est verrouillé sur un axe : au premier mouvement on décide `x` ou `y`, et en

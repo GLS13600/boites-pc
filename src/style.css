@@ -12,11 +12,11 @@
   --shiny: #b98b18;
   --font: ui-rounded, "SF Pro Rounded", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
-  --nav-h: 53px; /* hauteur du contenu de la barre du bas */
+  --nav-h: 38px; /* hauteur du contenu de la barre du bas */
   /* Marge sous les icônes. On ne réserve pas toute la zone sûre : l’indicateur
      d’accueil laissait 45 px de vide sous les libellés, ce qui décollait
      visiblement la barre du bord de l’écran. */
-  --nav-bas: calc(var(--safe-bottom) * 0.45);
+  --nav-bas: calc(var(--safe-bottom) * 0.3);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -357,7 +357,7 @@ img { display: block; }
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
-  padding: 6px 10px var(--nav-bas);
+  padding: 3px 10px var(--nav-bas);
   /* OPAQUE, et dans la couleur du papier. Translucide avec un flou d'arrière-plan,
      la barre changeait d'aspect selon la page : sur le Pokédex la grille défilait
      dessous et le flou la fondait dans la page, tandis que sur Boîtes et Combat —
@@ -371,8 +371,8 @@ img { display: block; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 7px 0 5px;
+  gap: 1px;
+  padding: 2px 0;
   border: 0;
   border-radius: 12px;
   background: none;
@@ -383,7 +383,7 @@ img { display: block; }
   cursor: pointer;
   transition: background 150ms ease, color 150ms ease;
 }
-.nav-btn b { font-size: 17px; line-height: 1; font-weight: 400; }
+.nav-btn b { font-size: 15px; line-height: 1; font-weight: 400; }
 .nav-btn.on { background: var(--caught-tint); color: var(--ball); }
 
 /* Le corps ne défile plus : c'est .vue qui s'en charge, et la barre est dans le flux. */

@@ -34,6 +34,22 @@ const cache = async (nom, produire) => {
   return v;
 };
 
+// Exécuteur à parallélisme borné, avec compteur de progression.
+async function enParallele(items, n, fn, libelle) {
+  const out = new Array(items.length);
+  let i = 0, faits = 0;
+  await Promise.all(Array.from({ length: n }, async () => {
+    while (i < items.length) {
+      const k = i++;
+      out[k] = await fn(items[k]);
+      if (++faits % 100 === 0) process.stdout.write(`  ${libelle} ${faits}/${items.length}   `);
+    }
+  }));
+  process.stdout.write(`  ${libelle} ${items.length}/${items.length}   
+`);
+  return out;
+}
+
 const LEARN = JSON.parse(await readFile(new URL('learn.json', CACHE), 'utf8'));
 const VG = JSON.parse(await readFile(new URL('vg.json', CACHE), 'utf8'));
 const MACH = JSON.parse(await readFile(new URL('machines.json', CACHE), 'utf8'));
@@ -120,11 +136,13 @@ console.log(`  ${jeux.length} jeux retenus`);
 
 // ---------- 3. Movesets par version ----------
 
-console.log('3/3  movesets par version');
+console.log('3/4  movesets par version');
 const dispo = new Set(jeux.map((v) => v.k));
-const out = {};
-let couples = 0;
-for (const [id, moves] of Object.entries(LEARN)) {
+
+// Regroupe les attaques d'une entrée /pokemon par jeu. Un jeu sans une seule
+// attaque par niveau est écarté : DLC et jeux dont PokéAPI ignore les movesets
+// ressortiraient vides.
+function parJeuDe(moves) {
   const parJeu = {};
   for (const m of moves) for (const d of m.d) {
     if (!dispo.has(d.vg)) continue;
@@ -140,10 +158,75 @@ for (const [id, moves] of Object.entries(LEARN)) {
     g.m.sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'fr', { numeric: true }));
     g.o.sort((a, b) => a - b);
     g.t.sort((a, b) => a - b);
-    couples++;
   }
-  if (Object.keys(parJeu).length) out[id] = parJeu;
+  return parJeu;
 }
+
+const out = {};
+let couples = 0;
+for (const [id, moves] of Object.entries(LEARN)) {
+  const parJeu = parJeuDe(moves);
+  const n = Object.keys(parJeu).length;
+  couples += n;
+  if (n) out[id] = parJeu;
+}
+
+// ---------- 4. Les formes : attaques propres et mode d'obtention ----------
+//
+// Une forme n'apprend pas les mêmes attaques que son espèce : Kyurem Blanc a
+// Pouvoir Antique et Flamme Croix, que Kyurem n'a pas, et lui manque Grimace.
+// On ne garde toutefois son entrée que pour les jeux où elle DIFFÈRE : la plupart
+// des Méga partagent le moveset de base, les dupliquer gonflerait le fichier.
+
+console.log('4/4  formes');
+// `clesFormes` et `formes` sont déjà construits plus haut, pour les stats de base.
+const especeDe = {};
+const especesAvecFormes = [];
+for (const [esp, liste] of Object.entries(formes)) {
+  if (liste.length) especesAvecFormes.push(Number(esp));
+  for (const f of liste) if (typeof f.key === 'number') especeDe[f.key] = Number(esp);
+}
+
+const LEARN_FORMES = await cache('form-learn.json', async () => {
+  const res = await enParallele(clesFormes, 16, async (id) => {
+    const p = await j(`${API}/pokemon/${id}`);
+    if (!p) return null;
+    return p.moves.map((m) => ({
+      id: Number(m.move.url.match(/\/(\d+)\/?$/)[1]),
+      d: m.version_group_details.map((v) => ({
+        vg: v.version_group.name, lv: v.level_learned_at, me: v.move_learn_method.name,
+      })),
+    }));
+  }, 'attaques');
+  return Object.fromEntries(clesFormes.map((id, k) => [id, res[k]]).filter(([, v]) => v));
+});
+
+let formesGardees = 0, couplesFormes = 0;
+for (const [id, moves] of Object.entries(LEARN_FORMES)) {
+  const parJeu = parJeuDe(moves);
+  const garde = {};
+  for (const [vg, g] of Object.entries(parJeu)) {
+    const ref = out[especeDe[id]]?.[vg];
+    if (JSON.stringify(ref) !== JSON.stringify(g)) { garde[vg] = g; couplesFormes++; }
+  }
+  if (Object.keys(garde).length) { out[id] = garde; formesGardees++; }
+}
+console.log(`  ${formesGardees} formes au moveset distinct (${couplesFormes} couples)`);
+
+// PokéAPI décrit l'obtention des formes dans `form_descriptions`, souvent en
+// français : fusion de Kyurem, Chant Antique de Meloetta, Orbe Griseous de
+// Giratina. Les Méga et les Gigamax n'y figurent pas — la fiche retombe alors sur
+// une explication par nature de forme, écrite côté application.
+const DESC_FORMES = await cache('form-desc.json', async () => {
+  const res = await enParallele(especesAvecFormes, 16, async (id) => {
+    const d = await j(`${API}/pokemon-species/${id}`);
+    const t = d?.form_descriptions?.find((x) => x.language.name === 'fr')?.description;
+    return t ? t.replace(/[\n\f]/g, ' ').replace(/\s+/g, ' ').trim() : null;
+  }, 'obtention');
+  return Object.fromEntries(especesAvecFormes.map((id, k) => [id, res[k]]).filter(([, v]) => v));
+});
+console.log(`  ${Object.keys(DESC_FORMES).length} descriptions d'obtention`);
+await writeFile(new URL('form-desc.json', DATA), JSON.stringify(DESC_FORMES));
 
 await writeFile(new URL('stats.json', DATA), JSON.stringify(STATS));
 await writeFile(new URL('versions.json', DATA), JSON.stringify(jeux));

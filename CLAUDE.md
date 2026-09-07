@@ -187,8 +187,8 @@ Règles d'affichage, à ne pas casser :
   `machine`. Il faut passer par `/machine`, qui donne l'objet réel (`tm39`, `hm01`) —
   c'est ce qui permet d'écrire « CT39 » plutôt qu'un vague « Machine ». Les CS ne
   subsistent que dans les jeux qui en ont encore (CS01 à CS08, côté DÉ/PS).
-- Les attaques sont celles de l'**espèce**, pas de la forme : la fiche d'une forme
-  emprunte déjà l'entrée de son espèce pour les types et les lieux de capture.
+- Dans la **fiche du Pokédex**, les attaques sont celles de l'espèce : elle décrit
+  l'espèce, pas une partie.
 - Quatre groupes repliables, « Par niveau » seul ouvert : une espèce peut avoir
   soixante CT, les dérouler toutes noierait le reste de la fiche.
 - Toucher une attaque déplie son effet. Le gestionnaire agit **sur le DOM**, il ne
@@ -256,6 +256,26 @@ la fonction ne concerne que la gestion des boîtes.
 - Dans le sélecteur d'attaques, le tri porte sur le **seul groupe** : le tri de JS
   étant stable, l'ordre du fichier est conservé — donc par niveau croissant, et par
   numéro pour les CT. Trier par nom à l'intérieur d'un groupe affichait N.62 avant N.1.
+
+### Attaques et obtention des formes
+
+- **Une forme n'apprend pas les mêmes attaques que son espèce.** Kyurem Blanc a
+  Flamme Croix, que Kyurem n'a pas, et lui manquent Grimace et Ère Glaciaire.
+  `poolAttaques()` interroge donc la clé du membre avant son espèce.
+- `learnsets-vg.json` ne porte l'entrée d'une forme **que pour les jeux où elle
+  diffère** : la plupart des Méga partagent le moveset de base, et les dupliquer
+  gonflerait le fichier pour rien. 117 formes concernées, +0,2 Mo seulement. D'où le
+  repli sur l'espèce, indispensable.
+- La fiche d'une forme annonce **comment l'obtenir**. Deux sources, dans cet ordre :
+  - `form_descriptions` de PokéAPI, en français, mais pour **34 espèces seulement** —
+    les cas mécaniquement particuliers (fusion de Kyurem, Chant Antique de Meloetta,
+    Orbe Griseous de Giratina) ;
+  - à défaut, une explication par **nature de forme** (`OBTENTION`), écrite côté
+    application : Gemme Méga, phénomène Gigamax, forme régionale, Totem, événement…
+    Elle reste exacte pour les 644 formes que PokéAPI ne décrit pas.
+- Quand la description officielle existe ET que la forme est de nature « autre », la
+  ligne générique est masquée : « Forme particulière à cette espèce » n'apprend rien
+  de plus.
 
 ### Talents et objets
 

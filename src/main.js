@@ -13,6 +13,7 @@ import typechart from './data/typechart.json';
 import abilities from './data/abilities.json';
 import items from './data/items.json';
 import NATURES from './data/natures.json';
+import formDesc from './data/form-desc.json';
 
 // ---------- Constantes ----------
 
@@ -630,6 +631,8 @@ function openSheet(id) {
       </div>
     </div>
 
+    ${forme ? renderObtention(forme, base) : ''}
+
     ${forme ? `<button class="back-btn" data-evo="${base}">&lsaquo; Revenir à ${esc(p.name || ('N° ' + base))}</button>` : ''}
 
     <button class="catch-btn ${caught ? 'done' : ''}" data-act="toggle" data-id="${id}">
@@ -726,6 +729,38 @@ function renderForms(id, courant = id) {
                 title="${dans ? 'Retirer de la boîte' : 'Ajouter à la boîte'}">${dans ? '&#10003;' : '+'}</button>`}
       </div>`;
     }).join('')}</div>`;
+}
+
+// ---------- Obtention d'une forme ----------
+//
+// PokéAPI décrit l'obtention dans `form_descriptions`, mais pour 34 espèces
+// seulement — les cas mécaniquement particuliers : fusion de Kyurem, Chant Antique
+// de Meloetta, Orbe Griseous de Giratina. Pour tout le reste (Méga, Gigamax,
+// régionales…), on explique par NATURE de forme, ce qui reste exact.
+const OBTENTION = {
+  mega: 'Méga-Évolution : en combat, en lui faisant tenir sa Gemme Méga.',
+  gmax: 'Phénomène Gigamax : en combat, dans les jeux de la 8ᵉ génération.',
+  region: 'Forme régionale : elle ne se rencontre que dans la région concernée.',
+  totem: 'Pokémon Totem : rencontré lors des épreuves, il ne se capture pas.',
+  event: 'Distribution événementielle : elle ne s’obtient pas en jeu normal.',
+  combat: 'Changement de forme en combat, selon une condition propre à l’espèce.',
+  cosmetique: 'Variante cosmétique : aucun effet sur les statistiques ni le type.',
+  femelle: 'Différence entre mâle et femelle : c’est le sexe qui détermine l’aspect.',
+  autre: 'Forme particulière à cette espèce.',
+};
+
+function renderObtention(forme, base) {
+  const officielle = formDesc[base];
+  // « Forme particulière à cette espèce » n'apprend rien quand la description
+  // officielle dit déjà comment l'obtenir : on ne garde alors que celle-ci.
+  const parNature = forme.kind === 'autre' && officielle
+    ? null : (OBTENTION[forme.kind] ?? OBTENTION.autre);
+  return `
+    <p class="obtention">
+      <b>Comment l’obtenir</b>
+      ${parNature ? `<span>${esc(parNature)}</span>` : ''}
+      ${officielle ? `<i>${esc(officielle)}</i>` : ''}
+    </p>`;
 }
 
 // ---------- Talents ----------
@@ -1906,10 +1941,15 @@ function ivPossibles(base, niv, valeur, estPV, espece, ev = 0, mult = 1) {
   return ok.length ? { min: ok[0], max: ok[ok.length - 1] } : null;
 }
 
-// Attaques apprenables par une espèce dans un jeu donné. `null` = l'espèce n'existe
-// pas dans ce jeu, ce qui n'est pas la même chose qu'une liste vide.
-function poolAttaques(espece, jeu) {
-  const l = LEARN_VG?.[espece]?.[jeu];
+// Attaques apprenables dans un jeu donné. `null` = absent de ce jeu, ce qui n'est
+// pas la même chose qu'une liste vide.
+//
+// On interroge la CLÉ du membre avant son espèce : une forme n'apprend pas les
+// mêmes attaques — Kyurem Blanc a Flamme Croix, que Kyurem n'a pas, et lui manquent
+// Grimace et Ère Glaciaire. Le fichier ne porte l'entrée d'une forme que pour les
+// jeux où elle diffère, d'où le repli sur l'espèce.
+function poolAttaques(key, jeu) {
+  const l = LEARN_VG?.[key]?.[jeu] ?? LEARN_VG?.[speciesOf(key)]?.[jeu];
   if (!l) return null;
   const vues = new Set();
   const out = [];
@@ -1997,7 +2037,7 @@ function renderEquipeSlot(m, i) {
   const st = statsDe(m.key);
   const niv = m.niv ?? NIV_DEFAUT;
   const pv = m.stats?.pv ?? (st ? calcPV(st.pv, niv, espece) : 0);
-  const absent = LEARN_VG && !LEARN_VG[espece]?.[state.jeu];
+  const absent = LEARN_VG && !LEARN_VG[m.key]?.[state.jeu] && !LEARN_VG[espece]?.[state.jeu];
   return `
     <button class="eq ${isCaught(m.key) ? '' : 'gris'} ${absent ? 'absent' : ''}" data-eq="${i}"
             aria-label="${esc(monName(m.key))}, niveau ${niv}">
@@ -2519,7 +2559,7 @@ function htmlDetail() {
   const st = statsDe(m.key);
   const niv = m.niv ?? NIV_DEFAUT;
   const p = pokedex[espece] || {};
-  const pool = poolAttaques(espece, state.jeu);
+  const pool = poolAttaques(m.key, state.jeu);
   const dispo = new Set((pool || []).map((x) => x.id));
   const talents = poolTalents(m.key);
   const talent = m.talent && abilities.list[m.talent] ? abilities.list[m.talent] : null;
@@ -2657,7 +2697,7 @@ function htmlChoixAttaque() {
   const m = equipe()[state.bs.slot];
   if (!m) return '<p class="none">Emplacement vide.</p>';
   const espece = speciesOf(m.key);
-  const pool = poolAttaques(espece, state.jeu) || [];
+  const pool = poolAttaques(m.key, state.jeu) || [];
   const q = fold(state.bs.q || '');
   const res = pool
     .filter((x) => !q || fold(moves[x.id]?.n || '').includes(q))

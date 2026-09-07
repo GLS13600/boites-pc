@@ -83,6 +83,15 @@ const sprites = {
 // Un gif animé peut manquer pour quelques formes : on retombe sur le sprite fixe.
 const imgFallback = (id, shiny) => `onerror="this.onerror=null;this.src='${sprites.still(spriteKey(id), shiny)}'"`;
 
+// Repli du grand portrait, à DEUX niveaux : l'artwork peut manquer pour une forme,
+// et son sprite 2D aussi — 25 formes n'en ont aucun. On finit sur le sprite de
+// l'espèce, qui existe toujours.
+const portraitFallback = (id, shiny) => {
+  const propre = sprites.still(spriteKey(id), shiny);
+  const espece = sprites.still(speciesOf(id), shiny);
+  return `onerror="this.onerror=function(){this.onerror=null;this.src='${espece}'};this.src='${propre}'"`;
+};
+
 // ---------- Formes alternatives ----------
 
 // Les formes portent un id de sprite au-delà de 10000, donc sans collision avec les
@@ -599,14 +608,18 @@ function openSheet(id) {
   // La fiche montre TOUJOURS le Pokémon en couleur, capturé ou non, normal comme
   // chromatique : c'est la page où l'on vient regarder la bête. Le gris reste le
   // signal d'état de la grille, et ici le bouton de capture dit déjà où l'on en est.
-  // L'artwork officiel n'existe que pour l'espèce : une forme montre son sprite,
-  // seul visuel qui lui soit propre.
-  const portrait = forme ? sprites.still(spriteKey(id), sh) : sprites.art(id, sh);
+  //
+  // L'artwork officiel EXISTE aussi pour les formes à clé numérique (Méga, Gigamax,
+  // régionales) : elles s'affichent donc en grand, comme les espèces. Seules les
+  // formes cosmétiques, dont la clé est un slug, gardent leur sprite 2D — c'est de
+  // toute façon leur seul visuel propre.
+  const grandPortrait = !forme || typeof id === 'number';
+  const portrait = grandPortrait ? sprites.art(id, sh) : sprites.still(spriteKey(id), sh);
 
   sheet.querySelector('.sheet-body').innerHTML = `
     <div class="sheet-top">
       <div class="portrait">
-        <img src="${portrait}" alt="${p.name || id}" ${imgFallback(id, sh)} />
+        <img src="${portrait}" alt="${p.name || id}" ${portraitFallback(id, sh)} />
         <button class="shiny-btn ${sh ? 'on' : ''}" data-act="shiny" aria-pressed="${sh}"
                 title="${sh ? 'Voir la forme normale' : 'Voir la forme chromatique'}">&#10022;</button>
       </div>

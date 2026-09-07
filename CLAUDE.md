@@ -86,7 +86,8 @@ runtime. Vérifié via l'API Performance : 0 ressource hors origine.
 
 - fixe : `sprites/{id}.png` — chromatique : `sprites/shiny/{id}.png`
 - femelle : `sprites/female/{id}.png` (le `shiny/` se préfixe sans cas particulier)
-- artwork : `sprites/other/official-artwork/{id}.webp` (+ `shiny/`)
+- artwork : `sprites/other/official-artwork/{id}.webp` (+ `shiny/`), pour les 1025
+  espèces **et** les formes à clé numérique
 
 `npm run fetch-sprites` rapatrie les 5 291 fichiers (**40 Mo**) et **reprend** comme
 les autres scripts : un fichier déjà présent n'est pas retéléchargé.
@@ -431,8 +432,17 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 ## Fiche d'une forme
 
 - Une forme n'a pas d'entrée propre au Pokédex : la fiche emprunte celle de son espèce
-  (`speciesOf()`) pour les types, la description et les lieux, et affiche le sprite de
-  la forme en portrait — l'artwork officiel n'existe que pour l'espèce.
+  (`speciesOf()`) pour les types, la description et les lieux.
+- **L'artwork officiel EXISTE pour les formes à clé numérique** (Méga, Gigamax,
+  régionales) : elles s'affichent en grand comme les espèces. L'affirmation inverse
+  figurait ici et avait fait afficher un sprite 2D là où un artwork était disponible.
+  Seules les **formes cosmétiques**, dont la clé est un slug, n'en ont pas et gardent
+  leur sprite 2D — c'est de toute façon leur seul visuel propre.
+- Le grand portrait a un repli à **deux niveaux** (`portraitFallback`) : artwork →
+  sprite 2D de la forme → sprite de l'espèce. Les 25 formes sans aucun sprite propre
+  ont besoin du troisième cran.
+- **La fiche de combat garde le sprite 2D**, volontairement : on y compose une équipe,
+  pas une encyclopédie, et le petit sprite se lit mieux à côté des stats.
 - Un bouton **« ‹ Revenir à <espèce> »** ramène à la forme de base. La liste « Formes »
   inclut la base en tête et marque celle affichée (`.forme.ici`), donc on circule
   librement entre formes sans repasser par la grille.

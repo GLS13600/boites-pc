@@ -46,6 +46,17 @@ for (const liste of Object.values(forms)) {
   for (const f of liste) {
     for (const sh of ['', 'shiny/']) {
       taches.push({ type: 'still', url: `${sh}${f.sprite}.png`, sortie: `${sh}${f.sprite}.png` });
+      // L'artwork officiel EXISTE aussi pour les formes à clé numérique
+      // (Méga, Gigamax, régionales) : la fiche les montre donc en grand,
+      // comme les espèces. Les formes cosmétiques, elles, n'en ont pas —
+      // leur clé est un slug, on ne tente même pas.
+      if (typeof f.key === 'number') {
+        taches.push({
+          type: 'art',
+          url: `other/official-artwork/${sh}${f.key}.png`,
+          sortie: `other/official-artwork/${sh}${f.key}.webp`,
+        });
+      }
     }
   }
 }

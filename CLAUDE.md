@@ -713,6 +713,12 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 
 - 9 onglets de génération, boîtes de **30** en grille 6×5, comme le PC des jeux.
 - La barre d'onglets est en `position: sticky; top: 0` — elle ne doit pas défiler.
+- **La barre du bas est OPAQUE, dans la couleur du papier** (`--paper`). Translucide
+  avec un `backdrop-filter`, elle changeait d'aspect selon la page : sur le Pokédex la
+  grille défile dessous et le flou la fondait dans la page, alors que sur Boîtes et
+  Combat — dont le contenu est trop court pour défiler — elle n'avait que du fond
+  derrière elle et virait au blanc franc, formant une bande visible. Ne pas la
+  repasser en translucide.
 - **Tout panneau réserve la hauteur de la barre du bas** (`--nav-h`, 59 px) dans le
   `padding-bottom` de `.sheet-body`. Cette barre est `position: fixed` avec un
   `z-index` supérieur aux panneaux : sans cette réserve elle recouvre leurs derniers

@@ -343,8 +343,13 @@ img { display: block; }
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
   padding: 6px 10px calc(6px + var(--safe-bottom));
-  background: color-mix(in srgb, var(--panel) 88%, transparent);
-  backdrop-filter: blur(12px);
+  /* OPAQUE, et dans la couleur du papier. Translucide avec un flou d'arrière-plan,
+     la barre changeait d'aspect selon la page : sur le Pokédex la grille défilait
+     dessous et le flou la fondait dans la page, tandis que sur Boîtes et Combat —
+     dont le contenu est trop court pour défiler — elle n'avait que du fond derrière
+     elle et virait au blanc franc, formant une bande qui tranchait sur le papier.
+     Opaque, elle est identique partout. */
+  background: var(--paper);
   border-top: 1px solid var(--rule);
 }
 .nav-btn {

@@ -9,11 +9,28 @@
 
 name: IPA non signé
 
-# Lancement à la demande UNIQUEMENT. Les runners macOS comptent x10 dans le
-# quota : déclencher à chaque push consommerait la moitié du forfait mensuel,
-# alors que le site, lui, se redéploie gratuitement à chaque push.
+# Compilé À CHAQUE PUSH sur main. Le dépôt étant PUBLIC, les runners standard —
+# macOS compris — ne consomment aucun quota : le multiplicateur x10 ne vaut que
+# pour les dépôts privés. Repasser le dépôt en privé rendrait ce déclencheur
+# coûteux, il faudrait alors revenir au lancement manuel.
 on:
+  push:
+    branches: [main]
+    # Une modification de documentation ne change pas l'application : inutile de
+    # mobiliser un runner macOS 15 minutes et de publier une release pour ça.
+    paths-ignore:
+      - '**.md'
+      - 'reference/**'
+      - 'calage.html'
+      - 'icone.html'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
+
+# Deux poussées rapprochées ne doivent pas produire deux IPA concurrents : seule
+# la plus récente compte, on annule celle qui est déjà en cours.
+concurrency:
+  group: ios
+  cancel-in-progress: true
 
 # Nécessaire pour créer la release et y attacher l'IPA.
 permissions:
@@ -88,6 +105,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # `run_number` ne change pas quand on RELANCE une exécution : sans cette
+          # suppression, `gh release create` échouerait sur un tag déjà pris.
+          gh release delete "v$APP_VERSION" --yes --cleanup-tag 2>/dev/null || true
           gh release create "v$APP_VERSION" \
             ios/App/build/Guiguidex.ipa \
             ios/App/build/source.json \

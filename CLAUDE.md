@@ -26,9 +26,19 @@ se gênent pas :
 - **Site sur GitHub Pages** (`.github/workflows/pages.yml`, runner Ubuntu) : ajouté
   à l'écran d'accueil depuis Safari, sans certificat ni expiration.
 
-Le workflow iOS est **manuel uniquement** : le runner macOS compte ×10 dans le
-quota, un déclenchement à chaque push aurait mangé la moitié du forfait mensuel.
-Le site, lui, se redéploie à chaque push pour presque rien.
+**Les deux se déclenchent à chaque push sur `main`.** Le ×10 des runners macOS ne
+s'applique qu'aux dépôts **privés** : le dépôt étant public, les runners standard
+ne consomment aucun quota. C'est ce qui a permis d'automatiser l'IPA, longtemps
+resté manuel pour cette raison. **Repasser le dépôt en privé rendrait ce
+déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seul.
+
+- `paths-ignore` écarte la documentation : une retouche de `.md` ne change pas
+  l'application, mobiliser 15 minutes de runner et publier une release pour ça
+  n'aurait aucun sens.
+- Un groupe `concurrency` annule la compilation en cours quand une nouvelle
+  poussée arrive : deux IPA concurrents n'ont pas de sens, seul le dernier compte.
+- La release est **supprimée puis recréée** : `run_number` ne change pas quand on
+  RELANCE une exécution, et `gh release create` échouerait sur un tag déjà pris.
 
 ### Service worker
 

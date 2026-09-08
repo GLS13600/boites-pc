@@ -182,9 +182,31 @@ const VIEW_KEY = 'pcbox.view';
 const VUE_KEY = 'pcbox.vue';
 const EQUIPES_KEY = 'pcbox.equipes';
 const JEU_KEY = 'pcbox.jeu';
+const ONGLETS_KEY = 'pcbox.onglets';
 const readJSON = (key, fallback) => {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
 };
+
+// Ordre D'AFFICHAGE des onglets : un tableau d'index dans ONGLETS.
+//
+// Les index eux-mêmes ne bougent JAMAIS. Ils sont la clé de `state.order`,
+// `state.box` et `state.boxes` : réordonner ONGLETS aurait déplacé toutes les
+// boîtes déjà personnalisées. On sépare donc l'ordre d'affichage du stockage.
+//
+// La liste est reprise index par index : on écarte l'inconnu et on complète à la
+// fin, pour qu'un onglet ajouté plus tard apparaisse au lieu de disparaître.
+function lisOrdreOnglets() {
+  const brut = readJSON(ONGLETS_KEY, null);
+  const vus = new Set();
+  const l = [];
+  if (Array.isArray(brut)) {
+    for (const i of brut) {
+      if (Number.isInteger(i) && i >= 0 && i < ONGLETS.length && !vus.has(i)) { vus.add(i); l.push(i); }
+    }
+  }
+  for (let i = 0; i < ONGLETS.length; i++) if (!vus.has(i)) l.push(i);
+  return l;
+}
 
 const state = {
   gen: 0,
@@ -197,7 +219,9 @@ const state = {
   view: localStorage.getItem(VIEW_KEY) === 'shiny' ? 'shiny' : 'normal',
   // Contenu de chaque génération : liste ordonnée de clés. Absente = ordre du Pokédex.
   order: readJSON(ORDER_KEY, {}),
+  ordreOnglets: lisOrdreOnglets(),
   held: null, // case saisie en mode Ranger
+  ongletTenu: null, // index ONGLETS de l'onglet porté, ou null
   // Réglages par boîte, clé « gén:boîte » -> { name, paper }.
   boxes: readJSON(BOXES_KEY, {}),
   paperGen: null, // génération ouverte dans le sélecteur de fond
@@ -293,6 +317,20 @@ function moveTo(gen, from, to) {
   saveOrder();
 }
 function resetOrder(gen) { delete state.order[gen]; saveOrder(); }
+
+const saveOrdreOnglets = () =>
+  localStorage.setItem(ONGLETS_KEY, JSON.stringify(state.ordreOnglets));
+
+// `vers` est le rang D'AFFICHAGE final, une fois l'onglet retiré de la liste —
+// même convention que `bougeBoite`, à ne pas corriger par un `vers - 1`.
+function bougeOnglet(de, vers) {
+  const l = state.ordreOnglets;
+  if (de === vers || de < 0 || de >= l.length || vers < 0 || vers >= l.length) return false;
+  const [i] = l.splice(de, 1);
+  l.splice(vers, 0, i);
+  saveOrdreOnglets();
+  return true;
+}
 
 // Une case peut valoir null : c'est un emplacement vide VOULU, ce qui permet d'avoir
 // des boîtes entières libres. La progression n'en tient évidemment pas compte.
@@ -545,8 +583,12 @@ function render() {
   if (import.meta.env.DEV) window.__annoncerCalage?.();
 
   // Garde l'onglet de génération actif visible dans la barre (utile après un swipe).
-  app.querySelector('.gen-tab[aria-selected="true"]')
-    ?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  // Pendant qu'on PORTE un onglet on ne recentre pas : la barre glisserait sous le
+  // doigt, ce que le déplacement lirait comme un nouveau mouvement.
+  if (state.ongletTenu === null) {
+    app.querySelector('.gen-tab[aria-selected="true"]')
+      ?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }
 }
 
 // Calage du fond, lu dans src/paper-align.js — table éditée à la main.
@@ -590,11 +632,16 @@ function alignementDe(gen, size) {
   return REGLAGES.get(cle) ?? ALIGNEMENT[cle] ?? ALIGNEMENT[gen] ?? DEFAUT;
 }
 
+// Les onglets se rendent dans `state.ordreOnglets`. `data-gen` reste l'index dans
+// ONGLETS — la clé de tout le stockage — et `data-rang` porte la position affichée,
+// dont le geste de déplacement a besoin.
 function renderTabs() {
   const el = h(`<nav class="gens" role="tablist"></nav>`);
-  ONGLETS.forEach((o, i) => {
+  state.ordreOnglets.forEach((i, rang) => {
+    const o = ONGLETS[i];
     el.append(h(`
-      <button class="gen-tab ${o.remake ? 'remake' : ''}" role="tab" data-gen="${i}"
+      <button class="gen-tab ${o.remake ? 'remake' : ''} ${i === state.ongletTenu ? 'tenu' : ''}"
+              role="tab" data-gen="${i}" data-rang="${rang}"
               aria-selected="${i === state.gen}" ${o.titre ? `title="${esc(o.titre)}"` : ''}>
         ${esc(o.label)}<small>${esc(o.sub)}</small>
       </button>`));
@@ -1617,6 +1664,89 @@ window.addEventListener('pointerup', (e) => {
 });
 
 window.addEventListener('pointercancel', (e) => { if (boxPress && e.pointerId === boxPress.id) finBoxPress(); });
+
+// ---------- Déplacer un onglet ----------
+//
+// Appui long sur un onglet : on le « porte ». On le fait ensuite glisser sur ses
+// voisins, qui lui cèdent la place.
+//
+// Manipulation DIRECTE, et non pas fixe comme pour les boîtes : les onglets n'ont
+// pas tous la même largeur (« Gén. 1 » contre « Let's Go »), un pas en pixels
+// tomberait juste ici et faux là. On regarde donc simplement quel onglet se trouve
+// sous le doigt.
+//
+// L'ordre obtenu ne touche QUE l'affichage : les index d'ONGLETS, qui indexent les
+// boîtes et leur contenu, restent intacts.
+
+let tabTimer;
+let tabPress = null; // { id, x, y, armed, bouge }
+
+const finTabPress = () => {
+  clearTimeout(tabTimer);
+  tabPress = null;
+  if (state.ongletTenu !== null) { state.ongletTenu = null; render(); }
+};
+
+function deplaceOngletSous(x, y) {
+  if (!tabPress?.armed || state.ongletTenu === null) return;
+  const sous = document.elementFromPoint(x, y)?.closest('.gen-tab');
+  if (!sous) return;
+  const de = state.ordreOnglets.indexOf(state.ongletTenu);
+  if (!bougeOnglet(de, +sous.dataset.rang)) return;
+  tabPress.bouge = true;
+  render();
+  retourHaptique();
+}
+
+app.addEventListener('pointerdown', (e) => {
+  const tab = e.target.closest('.gen-tab');
+  if (!tab || e.button > 0) return;
+  finTabPress();
+  const gen = +tab.dataset.gen;
+  tabPress = { id: e.pointerId, x: e.clientX, y: e.clientY, armed: false, bouge: false };
+  tabTimer = setTimeout(() => {
+    tabTimer = null;
+    if (!tabPress) return;
+    tabPress.armed = true;
+    state.ongletTenu = gen;
+    render();
+    retourHaptique();
+  }, 450);
+});
+
+window.addEventListener('pointermove', (e) => {
+  if (!tabPress || e.pointerId !== tabPress.id) return;
+  if (!tabPress.armed) {
+    // Avant l'armement, tout mouvement annule : la barre doit rester défilable.
+    const dx = e.clientX - tabPress.x, dy = e.clientY - tabPress.y;
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) finTabPress();
+    return;
+  }
+  e.preventDefault();
+  deplaceOngletSous(e.clientX, e.clientY);
+}, { passive: false });
+
+window.addEventListener('pointerup', (e) => {
+  if (!tabPress || e.pointerId !== tabPress.id) return;
+  const arme = tabPress.armed;
+  finTabPress();
+  // Le clic qui suit tout pointerup changerait d'onglet : on l'absorbe dès qu'on a
+  // porté, même sans avoir rien déplacé — l'appui long n'est pas une sélection.
+  if (arme) {
+    app.addEventListener('click', (ev) => {
+      if (ev.target.closest('.gen-tab')) { ev.stopPropagation(); ev.preventDefault(); }
+    }, { once: true, capture: true });
+  }
+});
+
+window.addEventListener('pointercancel', (e) => { if (tabPress && e.pointerId === tabPress.id) finTabPress(); });
+
+// La barre défile en `touch-action: pan-x` : pendant qu'on porte un onglet, ce
+// défilement se battrait avec le geste. On le supprime à la source, comme pour le
+// swipe des boîtes. Ne pas repasser ce listener en `passive: true`.
+app.addEventListener('touchmove', (e) => {
+  if (tabPress?.armed) e.preventDefault();
+}, { passive: false });
 app.addEventListener('contextmenu', (e) => {
   const slot = e.target.closest('.slot[data-id]');
   if (slot) { e.preventDefault(); openSheet(asKey(slot.dataset.id)); }
@@ -1711,9 +1841,13 @@ const tailleBrute = (gen) => genList(gen).length;
 function target(dir) {
   const next = state.box[state.gen] + dir;
   if (next >= 0 && next < boxCount(state.gen)) return { gen: state.gen, box: next };
-  if (dir > 0 && state.gen < ONGLETS.length - 1) return { gen: state.gen + 1, box: 0 };
-  if (dir < 0 && state.gen > 0) return { gen: state.gen - 1, box: boxCount(state.gen - 1) - 1 };
-  return null;
+  // Au bord d'un onglet on déborde sur le voisin AFFICHÉ, et non sur l'index
+  // suivant dans ONGLETS : depuis que les onglets se réordonnent, les deux
+  // diffèrent, et suivre les index ferait sauter à un onglet éloigné à l'écran.
+  const rang = state.ordreOnglets.indexOf(state.gen) + dir;
+  if (rang < 0 || rang >= state.ordreOnglets.length) return null;
+  const voisin = state.ordreOnglets[rang];
+  return { gen: voisin, box: dir > 0 ? 0 : boxCount(voisin) - 1 };
 }
 
 function navigate(dir) {

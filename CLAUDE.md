@@ -555,6 +555,39 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 - **L'index dans `ONGLETS` est la clé de `state.order` et `state.box`** : n'ajouter
   qu'à la **fin** du tableau, sinon les boîtes déjà personnalisées changeraient de
   place. Les 9 générations gardent les index 0 à 8.
+
+### Réordonner les onglets
+
+- **Appui long (450 ms) sur un onglet : on le « porte »** (`.tenu`, halo rouge), puis
+  on le fait glisser sur ses voisins, qui lui cèdent la place. Relâcher termine.
+- **L'ordre d'affichage est un tableau SÉPARÉ** (`state.ordreOnglets`, persisté sous
+  `pcbox.onglets`) : une liste d'index dans `ONGLETS`. Les index eux-mêmes ne bougent
+  **jamais** — ils indexent `state.order`, `state.box` et `state.boxes`. Réordonner
+  `ONGLETS` aurait déplacé le contenu de toutes les boîtes personnalisées, ce qui est
+  exactement ce que la règle ci-dessus interdit. Vérifié : après avoir amené RO/SA en
+  tête, il affiche toujours ses 135 espèces à partir de 252, et Gén. 1 ses 151 à
+  partir de 1.
+- Le rendu porte donc **deux attributs** : `data-gen`, index dans `ONGLETS` et clé de
+  tout le stockage, et `data-rang`, position affichée dont le geste a besoin.
+- **Manipulation directe, pas de pas fixe** contrairement au déplacement des boîtes :
+  les onglets n'ont pas tous la même largeur (« Gén. 1 » contre « Let's Go »), un pas
+  en pixels tomberait juste ici et faux là. On regarde quel onglet est sous le doigt
+  (`elementFromPoint`).
+- **Pas de recentrage pendant le portage.** `render()` fait normalement défiler la
+  barre jusqu'à l'onglet actif ; pendant le geste elle glisserait sous le doigt, que
+  le déplacement relirait comme un mouvement — emballement garanti.
+- **Le défilement natif de la barre est neutralisé deux fois** pendant le portage :
+  `touch-action: none` en CSS et un `touchmove` non passif en JS. La barre est en
+  `pan-x`, elle se battrait sinon avec le geste. Ne pas repasser ce listener en
+  `passive: true`.
+- **Le débordement en fin d'onglet suit l'ordre AFFICHÉ** (`target`), pas l'index
+  suivant dans `ONGLETS` : depuis que les onglets se réordonnent, les deux diffèrent,
+  et suivre les index ferait sauter à un onglet éloigné à l'écran.
+- La liste stockée est **reprise index par index** au chargement : on écarte
+  l'inconnu et on complète à la fin, pour qu'un onglet ajouté plus tard apparaisse au
+  lieu de disparaître.
+- Le clic qui suit tout `pointerup` est absorbé dès qu'on a porté, même sans avoir
+  rien déplacé : un appui long n'est pas une sélection.
 - Le sous-titre annonce les numéros **nationaux** pour une génération, **régionaux**
   pour un remake, le **rang** dès que l'ordre est personnalisé, et « boîte libre » pour
   la boîte de rab au-delà de la liste — sans quoi la gén. 9 affichait « 1026 à 1025 ».

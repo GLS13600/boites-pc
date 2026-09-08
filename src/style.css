@@ -88,6 +88,22 @@ img { display: block; }
   box-shadow: 0 -2px 0 var(--ball) inset;
 }
 
+/* Onglet porté : même signal que le titre d'une boîte qu'on déplace — halo rouge
+   et léger agrandissement. Il passe AU-DESSUS de ses voisins pendant qu'il les
+   traverse, sinon la barre le rognerait au passage. */
+.gen-tab.tenu {
+  background: var(--caught-tint);
+  color: var(--ink);
+  box-shadow: 0 0 0 2px var(--ball);
+  transform: scale(1.06);
+  position: relative;
+  z-index: 1;
+}
+.gen-tab { transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease; }
+/* Le défilement natif de la barre est neutralisé pendant le portage (aussi côté JS,
+   par un touchmove non passif) : les deux se battraient pour le même geste. */
+.gens:has(.gen-tab.tenu) { touch-action: none; }
+
 /* ---------- La boîte ---------- */
 
 .box {

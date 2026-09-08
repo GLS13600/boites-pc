@@ -8,7 +8,6 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
 // porte l'IPA. C'est cette égalité qui permet à SideStore de comparer la version
 // installée à celle du manifeste et de proposer la mise à jour.
 const version = process.env.APP_VERSION || pkg.version;
-const build = new Date().toISOString().slice(0, 10);
 
 // base './' : les chemins restent relatifs, indispensable quand Capacitor
 // chargera le dossier dist/ depuis le système de fichiers de l'iPhone.
@@ -16,7 +15,6 @@ export default defineConfig({
   base: './',
   define: {
     __APP_VERSION__: JSON.stringify(version),
-    __APP_BUILD__: JSON.stringify(build),
   },
   build: {
     outDir: 'dist',

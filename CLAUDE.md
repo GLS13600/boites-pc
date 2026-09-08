@@ -56,9 +56,10 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 
 ## Version affichée
 
-- Le pied de la vue Boîtes porte `Guiguidex <version> · <date>`. Ce n'est pas
-  décoratif : les mises à jour arrivant **sans fil**, c'est le seul moyen de
-  vérifier quel build tourne réellement sur le téléphone.
+- Le pied de la vue Boîtes porte `v<version>`, en 10 px. Ce n'est pas décoratif :
+  les mises à jour arrivant **sans fil**, c'est le seul moyen de vérifier quel build
+  tourne réellement sur le téléphone. La date de compilation y figurait au début et
+  a été retirée — elle n'apprenait rien que la version ne dise déjà.
 - La valeur vient de `vite.config.js`, via `define` : `__APP_VERSION__` est
   remplacé à la compilation. En développement elle retombe sur `package.json`
   (0.1.0), en CI la variable d'environnement `APP_VERSION` la surcharge.
@@ -684,9 +685,22 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
   Ranger), une bascule **Normal / Chromatique**, et export/import en retrait.
 - Le mode se choisit **directement** (`mode-set`), il ne cycle plus : trois clics pour
   revenir en arrière, c'était pénible.
-- `.fin` (export/import) est placé juste après le bouton principal et porte
-  `order: 1` : sinon il occupait une troisième ligne à lui seul sous 380 px. Ses
-  libellés disparaissent alors, les glyphes suffisent.
+- **`.tools` est une GRILLE de trois rangées pleine largeur**, dans l'ordre où l'on
+  s'en sert : l'action, ce que fait un tap, puis l'affichage et la sauvegarde.
+  - C'était un `flex-wrap` dont on rattrapait le passage à la ligne avec des `order`.
+    La composition changeait donc selon la largeur de l'écran et rien ne s'alignait.
+    **Ne pas revenir à `flex-wrap` ni à `order` ici** : la grille supprime le
+    décalage à la racine.
+  - La troisième rangée est en `1fr auto` : `auto` sur la paire export/import lui
+    garde SA largeur quand le libellé de la bascule passe de « Normal » à
+    « Chromatique ». Deux colonnes en `1fr` auraient fait sauter les deux boutons à
+    chaque basculement. Vérifié : la paire reste au pixel près.
+  - Le rail des modes est en trois **tiers égaux** : les trois états sont au même
+    niveau, et la largeur du rail ne dépend plus de la longueur des mots.
+  - Export et import partagent un contenant (`.paire`), identique à celui du rail :
+    deux commandes de même nature se lisent comme une seule partie.
+  - Tous les boutons font **38 px** de haut, et les trois rangées le même bord
+    gauche et droit. Vérifié à 375 px : 351 px de large pour les deux premières.
 
 ## Boîtes : ajouter, déplacer
 

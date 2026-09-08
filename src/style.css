@@ -1025,17 +1025,53 @@ img { display: block; }
 .progress .bar span { display: block; height: 100%; background: var(--ball); transition: width 240ms ease; }
 .progress strong { color: var(--ink); font-variant-numeric: tabular-nums; }
 
-.tools { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-/* Discret : c'est un repère de vérification, pas une information de tous les jours. */
+/* TROIS RANGÉES EMPILÉES, chacune pleine largeur, dans l'ordre où l'on s'en sert :
+   l'action, puis ce que fait un tap, puis l'affichage et la sauvegarde.
+
+   C'était auparavant un `flex-wrap` dont on rattrapait le passage à la ligne avec des
+   `order` : la composition changeait selon la largeur de l'écran et rien ne
+   s'alignait. Une grille supprime le problème à la racine — plus de `order`, plus de
+   `flex-wrap`, donc plus de décalage. Ne pas y revenir. */
+.tools { display: grid; gap: 8px; margin-top: 14px; }
+.tools .btn { justify-content: center; min-height: 38px; }
+.tools .rangee {
+  display: grid;
+  /* `auto` sur la paire : elle garde SA largeur quand le libellé de la bascule passe
+     de « Normal » à « Chromatique ». Deux colonnes en `1fr` auraient fait sauter les
+     boutons de sauvegarde à chaque basculement. */
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+/* Export et import forment un groupe, dans le même contenant que le rail des modes :
+   deux commandes de même nature se lisent comme une seule partie. */
+.paire {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--rule-soft);
+  border: 1px solid var(--rule);
+}
+.tools .paire .btn {
+  min-height: 30px;
+  padding: 6px 10px;
+  border-color: transparent;
+  background: none;
+}
+.tools .paire .btn:active { background: var(--panel); }
+
+/* Le numéro de build : un repère de vérification après une mise à jour sans fil, pas
+   une information de tous les jours. Discret, et la version seule — la date de
+   compilation n'apprenait rien de plus. */
 .version {
-  margin-top: 14px;
+  margin-top: 12px;
   text-align: center;
-  font-size: 11px;
+  font-size: 10px;
   color: var(--muted);
+  opacity: 0.7;
   font-variant-numeric: tabular-nums;
 }
-.tools .fin { display: flex; gap: 8px; margin-left: auto; order: 1; }
-.tools .segmente, .tools .bascule { order: 2; }
 
 /* Boutons de la barre : pastilles, avec un glyphe en tête. */
 .btn {
@@ -1062,14 +1098,19 @@ img { display: block; }
 
 /* Rail à trois positions pour l'effet du tap. */
 .segmente {
-  display: inline-flex;
+  /* Trois tiers ÉGAUX : les trois états sont au même niveau, et la largeur du rail
+     ne dépend plus de la longueur des mots. */
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
   padding: 3px;
   border-radius: 999px;
   background: var(--rule-soft);
   border: 1px solid var(--rule);
 }
 .segmente button {
-  padding: 5px 11px;
+  min-height: 30px;
+  padding: 5px 8px;
   border-radius: 999px;
   color: var(--muted);
   font-size: 12px;
@@ -1079,10 +1120,10 @@ img { display: block; }
 }
 .segmente button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px #0000001f; }
 
-/* Sous 380 px, les libellés sautent : les glyphes suffisent à reconnaître les boutons. */
-@media (max-width: 379px) {
+/* La grille laisse tenir « Exporter » et « Importer » jusqu'à 375 px. En dessous les
+   glyphes suffisent à reconnaître les boutons. */
+@media (max-width: 339px) {
   .btn.discret span { display: none; }
-  .btn.discret { padding: 7px 10px; }
 }
 
 .hint {

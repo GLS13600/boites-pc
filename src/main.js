@@ -539,19 +539,12 @@ function render() {
           <div class="bar"><span style="width:${total ? (100 * pris) / total : 0}%"></span></div>
           <div><strong>${pris}</strong> / ${total}</div>
         </div>
+        <!-- Trois rangées empilées, dans l'ordre où l'on s'en sert : l'action, puis
+             ce que fait un tap, puis l'affichage et la sauvegarde. -->
         <div class="tools">
           <button class="btn primaire" data-act="add">
             <b>+</b><span>Ajouter un Pokémon</span>
           </button>
-
-          <div class="fin">
-            <button class="btn discret" data-act="export" title="Enregistrer une sauvegarde">
-              <b>&#8681;</b><span>Exporter</span>
-            </button>
-            <button class="btn discret" data-act="import" title="Charger une sauvegarde">
-              <b>&#8679;</b><span>Importer</span>
-            </button>
-          </div>
 
           <!-- Trois états sur un seul rail : on voit d'un coup celui qui est actif. -->
           <div class="segmente" role="group" aria-label="Effet du tap">
@@ -560,11 +553,20 @@ function render() {
                       aria-pressed="${state.mode === m}">${t}</button>`).join('')}
           </div>
 
-          <button class="btn bascule ${shinyView() ? 'on' : ''}" data-act="view"
-                  aria-pressed="${shinyView()}" title="Basculer entre Pokédex normal et chromatique">
-            <b>&#10022;</b><span>${shinyView() ? 'Chromatique' : 'Normal'}</span>
-          </button>
-
+          <div class="rangee">
+            <button class="btn bascule ${shinyView() ? 'on' : ''}" data-act="view"
+                    aria-pressed="${shinyView()}" title="Basculer entre Pokédex normal et chromatique">
+              <b>&#10022;</b><span>${shinyView() ? 'Chromatique' : 'Normal'}</span>
+            </button>
+            <div class="paire" role="group" aria-label="Sauvegarde">
+              <button class="btn discret" data-act="export" title="Enregistrer une sauvegarde">
+                <b>&#8681;</b><span>Exporter</span>
+              </button>
+              <button class="btn discret" data-act="import" title="Charger une sauvegarde">
+                <b>&#8679;</b><span>Importer</span>
+              </button>
+            </div>
+          </div>
         </div>
         ${state.placing !== null ? `<div class="hint placer">
           Touchez l&rsquo;emplacement où placer <b>${esc(monName(state.placing))}</b> — vous pouvez changer de boîte ou de génération.
@@ -574,7 +576,7 @@ function render() {
         ${hasData ? '' : `<div class="hint">Les sprites viennent de PokéAPI, mais les noms, habitats et lieux de capture ne sont chargés que pour la première boîte. Lance <code>npm run fetch-data</code> pour tout récupérer.</div>`}
         <!-- Repère de build. Les mises à jour arrivant sans fil par SideStore, c'est
              le seul moyen de vérifier d'un coup d'œil quelle version tourne. -->
-        <div class="version">Guiguidex ${__APP_VERSION__} &middot; ${__APP_BUILD__}</div>
+        <div class="version">v${__APP_VERSION__}</div>
       </footer>
     `),
   );

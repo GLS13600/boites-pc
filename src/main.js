@@ -242,24 +242,38 @@ function removeAt(gen, index) {
   const l = editList(gen);
   if (index >= 0 && index < l.length) { l.splice(index, 1); saveOrder(); }
 }
-// Déplacement : après le retrait, une destination située plus loin recule d'un cran.
-// Dépôt : deux Pokémon échangent leur place. Une case libre au-delà de la liste
-// signifie « mettre à la fin ».
+// Dépôt : le Pokémon se pose sur la case VISÉE, quelle qu'elle soit. Sur un autre
+// Pokémon les deux échangent ; sur une case vide il s'y installe et laisse un trou
+// derrière lui.
+//
+// Une case libre au-delà de la liste renvoyait auparavant le Pokémon À LA FIN de
+// celle-ci : on désignait une case précise et il atterrissait ailleurs. On comble
+// donc d'abord avec des emplacements vides jusqu'à la case visée, ce qui ramène
+// les deux cas à un simple échange. Les `null` ainsi créés sont des emplacements
+// vides ordinaires, que la progression ignore déjà.
 function swapOrMove(gen, from, to) {
   const l = editList(gen);
   if (from < 0 || from >= l.length || from === to) return;
-  if (to >= l.length) {
-    const [k] = l.splice(from, 1);
-    l.push(k);
-  } else {
-    [l[from], l[to]] = [l[to], l[from]];
-  }
+  while (l.length <= to) l.push(null);
+  [l[from], l[to]] = [l[to], l[from]];
   saveOrder();
 }
 
+// Déplacement : après le retrait, une destination située plus loin recule d'un cran.
+//
+// Sur une case VIDE on ne décale rien : le Pokémon s'y installe, comme au
+// glisser-déposer. Sans ce cas particulier, `splice` le ramenait au bout de la
+// liste et la case désignée restait vide. Le décalage garde tout son sens sur une
+// case occupée, où il n'y a pas de place à prendre.
 function moveTo(gen, from, to) {
   const l = editList(gen);
   if (from === to || from < 0 || from >= l.length) return;
+  if (to >= l.length || l[to] === null || l[to] === undefined) {
+    while (l.length <= to) l.push(null);
+    [l[from], l[to]] = [l[to], l[from]];
+    saveOrder();
+    return;
+  }
   const [k] = l.splice(from, 1);
   l.splice(Math.max(0, Math.min(from < to ? to - 1 : to, l.length)), 0, k);
   saveOrder();

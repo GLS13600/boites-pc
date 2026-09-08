@@ -586,8 +586,15 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 - **Appui long (450 ms) puis glissement**, dans **tous** les modes. La case saisie
   **brille** (`.tenu` : halo rouge + léger agrandissement) et le téléphone vibre.
   Pendant le glissement, la case d'origine s'efface (`.glisse`) et un fantôme
-  (`.drag-ghost`) suit le doigt. Au relâchement, les deux Pokémon **échangent** leur
-  place (`swapOrMove`) ; une case libre au-delà de la liste renvoie le Pokémon à la fin.
+  (`.drag-ghost`) suit le doigt. **Au relâchement, le Pokémon se pose sur la case
+  VISÉE** (`swapOrMove`) : sur un autre Pokémon les deux échangent, sur une case
+  vide il s'y installe et laisse un trou derrière lui.
+- **Une case libre au-delà de la liste est une destination comme une autre.** Elle
+  renvoyait auparavant le Pokémon à la FIN de la liste : on désignait une case
+  précise et il atterrissait ailleurs. `swapOrMove` comble donc la liste de `null`
+  jusqu'à la case visée, ce qui ramène les deux cas à un simple échange. Ces `null`
+  sont des emplacements vides ordinaires, que la progression ignore déjà — la liste
+  s'allonge, le total affiché ne bouge pas.
 - Le fantôme est en `pointer-events: none`, sans quoi `elementFromPoint` ne verrait
   que lui et jamais la case visée.
 - **L'appui long n'ouvre PAS la fiche** — c'était le cas avant, ça a été retiré : il
@@ -691,6 +698,10 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 - En mode Ranger : toucher un Pokémon le saisit (`state.held`, classe `.tenu`), toucher
   une destination l'y déplace. Appui long sans bouger = insérer **à cet endroit**. La
   croix retire.
+- `moveTo` traite la **case vide** comme le glisser-déposer : le Pokémon s'y installe,
+  sans rien décaler. Le décalage garde tout son sens sur une case occupée, où il faut
+  bien faire de la place ; sur un trou il n'y a rien à pousser, et `splice` ramenait
+  le Pokémon au bout de la liste.
 - `state.held` est un **rang**, pas une clé : deux exemplaires du même Pokémon dans une
   boîte doivent rester distinguables.
 - Hors mode Ranger, une case libre ouvre le sélecteur et **ajoute à la fin**.

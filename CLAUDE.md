@@ -18,6 +18,11 @@ se gênent pas :
 
 - **IPA sideloadé** (`.github/workflows/ios.yml`, runner macOS) : app native via
   Capacitor, à re-signer tous les 7 jours avec un certificat gratuit.
+  Le workflow **publie une release GitHub** portant `Guiguidex.ipa` et
+  `source.json`, le manifeste que **SideStore** interroge pour proposer la mise à
+  jour **sans câble**. L'URL donnée à SideStore une fois pour toutes est
+  `.../releases/latest/download/source.json` : GitHub la fait pointer sur la
+  release la plus récente, donc rien à ré-enregistrer à chaque publication.
 - **Site sur GitHub Pages** (`.github/workflows/pages.yml`, runner Ubuntu) : ajouté
   à l'écran d'accueil depuis Safari, sans certificat ni expiration.
 
@@ -38,6 +43,24 @@ Le site, lui, se redéploie à chaque push pour presque rien.
   ne changeant jamais de contenu.
 - La coquille (11 Mo : page, icône, chunks Vite) est préchargée. Sprites et fonds
   se mettent en cache au fil de la navigation — 84 Mo d'un bloc serait déraisonnable.
+
+## Version affichée
+
+- Le pied de la vue Boîtes porte `Guiguidex <version> · <date>`. Ce n'est pas
+  décoratif : les mises à jour arrivant **sans fil**, c'est le seul moyen de
+  vérifier quel build tourne réellement sur le téléphone.
+- La valeur vient de `vite.config.js`, via `define` : `__APP_VERSION__` est
+  remplacé à la compilation. En développement elle retombe sur `package.json`
+  (0.1.0), en CI la variable d'environnement `APP_VERSION` la surcharge.
+- **Le même `APP_VERSION` est passé à Vite ET à `xcodebuild`** (`MARKETING_VERSION`).
+  Cette égalité est ce qui permet à SideStore de comparer la version installée à
+  celle du manifeste : les désaccorder ferait manquer les mises à jour, ou en
+  proposerait en boucle.
+- Le numéro vaut `1.0.<numéro d'exécution>`, donc **strictement croissant**. Une
+  version qui n'augmente pas passe inaperçue de SideStore.
+- `scripts/build-source.mjs` écrit le manifeste. La **taille en octets doit être
+  exacte**, SideStore la vérifie au téléchargement : elle est relevée sur l'IPA
+  réel, jamais recopiée.
 
 ## Contraintes du poste de travail
 

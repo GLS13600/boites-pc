@@ -506,6 +506,9 @@ function render() {
         </div>` : ''}
         ${rang ? '<div class="hint">Appui long puis glissement : déplacer un Pokémon ; s’il en croise un autre, les deux échangent de place. Toucher un Pokémon puis sa destination fait de même d’une boîte à l’autre. Appui long sans bouger : insérer ici, tout ce qui suit se décale. × : retirer.</div>' : ''}
         ${hasData ? '' : `<div class="hint">Les sprites viennent de PokéAPI, mais les noms, habitats et lieux de capture ne sont chargés que pour la première boîte. Lance <code>npm run fetch-data</code> pour tout récupérer.</div>`}
+        <!-- Repère de build. Les mises à jour arrivant sans fil par SideStore, c'est
+             le seul moyen de vérifier d'un coup d'œil quelle version tourne. -->
+        <div class="version">Guiguidex ${__APP_VERSION__} &middot; ${__APP_BUILD__}</div>
       </footer>
     `),
   );

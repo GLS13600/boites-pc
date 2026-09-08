@@ -535,10 +535,23 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
   Or HeartGold/Argent SoulSilver, Rubis Oméga/Saphir Alpha, Let's Go, Diamant
   Étincelant/Perle Scintillante.
 - Une génération se décrit par une **plage** du Pokédex national ; un remake porte sa
-  **propre liste**, dans l'ordre régional du jeu. C'est tout l'intérêt de l'onglet :
-  HG/SS classe les Johto avant les Kanto, ROSA a son ordre de Hoenn. Repris tel quel
-  depuis `/pokedex/` de PokéAPI (`updated-johto`, `updated-hoenn`, `kanto`,
+  **propre liste**, dans l'ordre régional du jeu — c'est tout l'intérêt de l'onglet.
+  Repris depuis `/pokedex/` de PokéAPI (`updated-johto`, `updated-hoenn`, `kanto`,
   `letsgo-kanto`, `original-sinnoh`).
+- **Un onglet de remake ne garde que les espèces de SA génération** (`listeRemake`).
+  Un Pokédex régional en mélange plusieurs : celui de RO/SA compte 211 entrées pour
+  135 espèces de Hoenn, celui de HG/SS 256 pour 100 de Johto. On vient y
+  collectionner une génération, donc on filtre — mais l'ORDRE du jeu est conservé.
+  Effets, vérifiés : RF/VF 151→151, HG/SS 256→100, RO/SA 211→135, Let's Go 153→151,
+  DÉ/PS 151→81.
+  - `GENS` associe déjà chaque région à sa plage (`name` EST la région) : pas de
+    table de correspondance à tenir à jour.
+  - Le filtrage vit dans `main.js`, PAS dans `dex-remakes.json`, qui doit rester une
+    copie fidèle de PokéAPI.
+  - **DÉ/PS est le seul onglet incomplet** : 81 espèces sur les 107 de la gén. 4. Le
+    Pokédex de Sinnoh d'origine ignore les 26 ajoutées par celui de Platine
+    (Magnézone, Togekiss, Phyllali, Givrali…). Ce n'est pas un bug du filtre, c'est
+    le contenu du jeu ; les manquantes s'ajoutent à la main si besoin.
 - **L'index dans `ONGLETS` est la clé de `state.order` et `state.box`** : n'ajouter
   qu'à la **fin** du tableau, sinon les boîtes déjà personnalisées changeraient de
   place. Les 9 générations gardent les index 0 à 8.

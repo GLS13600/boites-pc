@@ -44,11 +44,25 @@ const BOX_SIZE = 30;
 // du jeu (Or HeartGold classe les Johto avant les Kanto). L'ordre de ce tableau fixe
 // l'index utilisé par state.order et state.box : n'ajouter qu'à la FIN, sinon les
 // boîtes déjà personnalisées changeraient de place.
+// Un Pokédex RÉGIONAL mélange les générations : celui de RO/SA compte 211 entrées,
+// dont 47 de gén. 1 et 20 de gén. 2, et celui de HG/SS en compte 256 pour 100
+// espèces de Johto. Une boîte de remake ne retient que les espèces de SA
+// génération — c'est ce qu'on vient y collectionner — mais dans l'ordre du jeu,
+// qui reste tout l'intérêt de l'onglet.
+//
+// `GENS` associe déjà chaque région à sa plage de numéros : `name` EST la région,
+// donc aucune table de correspondance à tenir à jour. Le filtrage a lieu ici et
+// non dans `dex-remakes.json`, qui doit rester une copie fidèle de PokéAPI.
+function listeRemake(r) {
+  const g = GENS.find((x) => x.name === r.region);
+  return g ? r.liste.filter((id) => id >= g.from && id <= g.to) : r.liste;
+}
+
 const ONGLETS = [
   ...GENS.map((g) => ({ ...g, label: `Gén. ${g.n}`, sub: g.name, remake: false })),
   ...Object.entries(remakes).map(([cle, r]) => ({
     n: r.gen, name: r.region, label: r.court, sub: r.region,
-    liste: r.liste, titre: r.name, remake: true, cle,
+    liste: listeRemake(r), titre: r.name, remake: true, cle,
   })),
 ];
 

@@ -16,7 +16,7 @@
   /* Marge sous les icônes. On ne réserve pas toute la zone sûre : l’indicateur
      d’accueil laissait 45 px de vide sous les libellés, ce qui décollait
      visiblement la barre du bord de l’écran. */
-  --nav-bas: calc(var(--safe-bottom) * 0.3);
+  --nav-bas: calc(var(--safe-bottom) * 0.6);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 

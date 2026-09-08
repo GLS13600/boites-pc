@@ -769,11 +769,18 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
   Le bouton « Retirer de l'équipe » finissait dessous et, le contenu tenant dans la
   hauteur, aucun défilement ne pouvait aller le chercher — il était inaccessible.
   Tenir les deux valeurs à jour ensemble si la barre change de gabarit.
-- **Gabarit de la barre : 49 px** avec une zone sûre de 34 px, soit `--nav-h` (38 px,
-  contenu) plus `--nav-bas` (30 % de `env(safe-area-inset-bottom)`). Elle a fait 68 px
-  un temps, ce qui mangeait une rangée entière du Pokédex : c'est une barre de
-  navigation, pas un bandeau. Ne pas réserver la zone sûre en entier — l'indicateur
-  d'accueil de l'iPhone se superpose volontiers à quelques pixels de fond neutre.
+- **Gabarit de la barre : 59 px** avec une zone sûre de 34 px, soit `--nav-h` (38 px,
+  contenu) plus `--nav-bas` (60 % de `env(safe-area-inset-bottom)`), ce qui laisse
+  **22 px sous les libellés**. Valeur calée en trois temps, à ne pas refaire :
+  - **68 px** (`--nav-h` 53 + 45 %) : trop haute, elle mangeait une rangée entière
+    du Pokédex. C'est une barre de navigation, pas un bandeau.
+  - **49 px** (38 + 30 %) : compacte, mais collée au bord de l'écran — 12 px sous
+    les libellés ne suffisent pas au-dessus de l'indicateur d'accueil.
+  - **59 px** (38 + 60 %) : le contenu reste compact, la marge basse double.
+  Autrement dit, les deux valeurs se règlent séparément : `--nav-h` décide de la
+  taille des boutons, `--nav-bas` de la distance au bord. Ne pas réserver la zone
+  sûre en ENTIER pour autant — l'indicateur d'accueil se superpose volontiers à
+  quelques pixels de fond neutre.
 - Gestes : tap = capturer, appui long 450 ms ou clic droit = fiche. Un bouton en bas
   inverse le comportement du tap. Swipe horizontal = boîte suivante/précédente.
 - Le swipe est verrouillé sur un axe : au premier mouvement on décide `x` ou `y`, et en

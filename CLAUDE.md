@@ -779,18 +779,23 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
   Le bouton « Retirer de l'équipe » finissait dessous et, le contenu tenant dans la
   hauteur, aucun défilement ne pouvait aller le chercher — il était inaccessible.
   Tenir les deux valeurs à jour ensemble si la barre change de gabarit.
-- **Gabarit de la barre : 59 px** avec une zone sûre de 34 px, soit `--nav-h` (38 px,
-  contenu) plus `--nav-bas` (60 % de `env(safe-area-inset-bottom)`), ce qui laisse
-  **22 px sous les libellés**. Valeur calée en trois temps, à ne pas refaire :
-  - **68 px** (`--nav-h` 53 + 45 %) : trop haute, elle mangeait une rangée entière
-    du Pokédex. C'est une barre de navigation, pas un bandeau.
-  - **49 px** (38 + 30 %) : compacte, mais collée au bord de l'écran — 12 px sous
-    les libellés ne suffisent pas au-dessus de l'indicateur d'accueil.
-  - **59 px** (38 + 60 %) : le contenu reste compact, la marge basse double.
-  Autrement dit, les deux valeurs se règlent séparément : `--nav-h` décide de la
-  taille des boutons, `--nav-bas` de la distance au bord. Ne pas réserver la zone
-  sûre en ENTIER pour autant — l'indicateur d'accueil se superpose volontiers à
-  quelques pixels de fond neutre.
+- **Gabarit de la barre : 67 px** avec une zone sûre de 34 px, soit `--nav-h`
+  (47 px, contenu) plus `--nav-bas` (57 % de `env(safe-area-inset-bottom)`).
+  **Ces valeurs sont RELEVÉES sur une capture d'écran de référence**, pas estimées :
+  iPhone 16 Pro, 1206×2622 donc ×3, filet séparateur à y=2421 → 201 px image,
+  soit 67 px CSS. Repères secondaires de cette capture, en points CSS : 15 px
+  au-dessus de l'encre de l'icône, 12 px d'encre d'icône, 7,7 px jusqu'au libellé,
+  8,7 px d'encre de libellé, **23 px sous l'encre du libellé**.
+  - Le réglage a coûté quatre allers-retours à l'estime (68 → 49 → 59) avant d'être
+    mesuré. **Mesurer la capture d'abord**, c'est cinq minutes contre plusieurs
+    tours : à l'œil, on juge la marge basse et on se trompe sur la hauteur totale.
+  - Attention au piège de mesure : les 23 px de la capture partent de **l'encre** du
+    libellé, alors que `getBoundingClientRect()` donne sa **boîte**, ~3,5 px plus bas.
+    Confondre les deux fait viser 3,5 px trop généreux.
+  - Les deux variables se règlent séparément : `--nav-h` décide de la taille des
+    boutons, `--nav-bas` de la distance au bord. Ne pas réserver la zone sûre en
+    ENTIER — l'indicateur d'accueil se superpose volontiers à quelques pixels de
+    fond neutre.
 - Gestes : tap = capturer, appui long 450 ms ou clic droit = fiche. Un bouton en bas
   inverse le comportement du tap. Swipe horizontal = boîte suivante/précédente.
 - Le swipe est verrouillé sur un axe : au premier mouvement on décide `x` ou `y`, et en

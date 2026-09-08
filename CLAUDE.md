@@ -779,8 +779,8 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
   Le bouton « Retirer de l'équipe » finissait dessous et, le contenu tenant dans la
   hauteur, aucun défilement ne pouvait aller le chercher — il était inaccessible.
   Tenir les deux valeurs à jour ensemble si la barre change de gabarit.
-- **Gabarit de la barre : 67 px** avec une zone sûre de 34 px, soit `--nav-h`
-  (47 px, contenu) plus `--nav-bas` (57 % de `env(safe-area-inset-bottom)`).
+- **Gabarit de la barre : 82 px** avec une zone sûre de 34 px, soit `--nav-h`
+  (47 px, contenu) plus `--nav-bas`, qui vaut désormais la **zone sûre ENTIÈRE**.
   **Ces valeurs sont RELEVÉES sur une capture d'écran de référence**, pas estimées :
   iPhone 16 Pro, 1206×2622 donc ×3, filet séparateur à y=2421 → 201 px image,
   soit 67 px CSS. Repères secondaires de cette capture, en points CSS : 15 px
@@ -793,9 +793,12 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
     libellé, alors que `getBoundingClientRect()` donne sa **boîte**, ~3,5 px plus bas.
     Confondre les deux fait viser 3,5 px trop généreux.
   - Les deux variables se règlent séparément : `--nav-h` décide de la taille des
-    boutons, `--nav-bas` de la distance au bord. Ne pas réserver la zone sûre en
-    ENTIER — l'indicateur d'accueil se superpose volontiers à quelques pixels de
-    fond neutre.
+    boutons, `--nav-bas` de la distance au bord.
+  - **La capture de référence n'a PAS été le mot de la fin** : une fois ses 67 px
+    obtenus au pixel près, la barre a encore été jugée trop basse et on a ajouté
+    15 px, ce qui revient à réserver la zone sûre entière (34 px sous les libellés
+    au lieu de 19). Le goût a tranché contre la mesure — c'est une préférence
+    explicite, pas un oubli : ne pas « corriger » ce réglage vers la capture.
 - Gestes : tap = capturer, appui long 450 ms ou clic droit = fiche. Un bouton en bas
   inverse le comportement du tap. Swipe horizontal = boîte suivante/précédente.
 - Le swipe est verrouillé sur un axe : au premier mouvement on décide `x` ou `y`, et en

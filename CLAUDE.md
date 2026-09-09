@@ -627,9 +627,21 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
   les onglets n'ont pas tous la même largeur (« Gén. 1 » contre « Let's Go »), un pas
   en pixels tomberait juste ici et faux là. On regarde quel onglet est sous le doigt
   (`elementFromPoint`).
+- **Le décalage horizontal de la barre est MÉMORISÉ puis rendu à chaque rendu**
+  (`defileOnglets`, relevé avant `poser()` et réappliqué juste après). `poser()`
+  reconstruit la barre, et un élément neuf repart à `scrollLeft: 0` — donc tout à
+  gauche, sur Gén. 1.
+  - C'est ce qui cassait le geste : au moment de l'armement, le `render()` ramenait
+    la barre à zéro, le doigt se retrouvait au-dessus d'un TOUT AUTRE onglet, et
+    celui qu'on portait y sautait aussitôt. Symptôme vu de l'utilisateur : la barre
+    file vers Gén. 1 au retour haptique, et l'onglet refuse d'aller vers la droite.
+  - Vérifié : décalage inchangé (568 px) à travers l'armement, et un onglet porté
+    passe bien de la position 9 à 11.
 - **Pas de recentrage pendant le portage.** `render()` fait normalement défiler la
   barre jusqu'à l'onglet actif ; pendant le geste elle glisserait sous le doigt, que
-  le déplacement relirait comme un mouvement — emballement garanti.
+  le déplacement relirait comme un mouvement — emballement garanti. Supprimer ce
+  recentrage était nécessaire mais PAS suffisant : sans la restitution ci-dessus, la
+  barre restait simplement collée à gauche.
 - **Le défilement natif de la barre est neutralisé deux fois** pendant le portage :
   `touch-action: none` en CSS et un `touchmove` non passif en JS. La barre est en
   `pan-x`, elle se battrait sinon avec le geste. Ne pas repasser ce listener en

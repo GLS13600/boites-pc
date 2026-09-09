@@ -509,6 +509,11 @@ function render() {
         ? `${g.name} · N° ${start + 1} à ${Math.min(start + BOX_SIZE, total)}`
         : `${g.name} · ${start + g.from} à ${Math.min(start + g.from + BOX_SIZE - 1, g.to)}`;
 
+  // `poser()` reconstruit la barre d'onglets, qui défile horizontalement : un
+  // élément neuf repart à scrollLeft 0, donc tout à gauche sur Gén. 1. On mémorise
+  // son décalage pour le lui rendre juste après.
+  const defileOnglets = app.querySelector('.gens')?.scrollLeft ?? 0;
+
   poser(
     renderTabs(),
     h(`
@@ -581,6 +586,13 @@ function render() {
       </footer>
     `),
   );
+
+  // Rendu AVANT tout recentrage : sans lui, l'armement d'un appui long ramenait la
+  // barre à gauche, le doigt se retrouvait au-dessus d'un tout autre onglet, et
+  // celui qu'on portait y sautait aussitôt — impossible de le déplacer vers la
+  // droite, il partait systématiquement vers Gén. 1.
+  const barreOnglets = app.querySelector('.gens');
+  if (barreOnglets) barreOnglets.scrollLeft = defileOnglets;
 
   calePaper();
   if (import.meta.env.DEV) window.__annoncerCalage?.();

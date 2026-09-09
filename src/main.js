@@ -413,6 +413,21 @@ function sortForme(key) {
   if (loc) removeAt(loc.gen, loc.index);
 }
 
+// Les fonds de la gén. 5 ont été renommés avec un préfixe `5G_`. Or l'id d'un fond
+// EST son nom de fichier et vit dans `localStorage` : sans cette reprise, une boîte
+// réglée sur « Box_Beach_V » perdrait son fond en silence, `paperCss` ignorant les
+// id inconnus. On ne touche qu'aux id devenus introuvables dont la version préfixée,
+// elle, existe.
+(function migrePrefixe5G() {
+  let bouge = false;
+  for (const info of Object.values(state.boxes)) {
+    if (!info.paper || PAPER_BY_ID.has(info.paper)) continue;
+    const prefixe = '5G_' + info.paper;
+    if (PAPER_BY_ID.has(prefixe)) { info.paper = prefixe; bouge = true; }
+  }
+  if (bouge) saveBoxes();
+})();
+
 // Ancien format (Pokémon rangés par boîte sous « add ») : on les verse une fois pour
 // toutes en fin de génération, pour ne perdre aucune personnalisation.
 (function migreAdd() {

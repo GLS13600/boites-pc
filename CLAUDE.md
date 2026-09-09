@@ -1195,6 +1195,20 @@ vient des sprites**, pas du décor. Toutes les valeurs sont des variables dans `
   - Ils sont passés en PNG **palettisé** (type 3) au lieu de RGBA. La transparence
     survit par `tRNS` — vérifié sur les 40 —, mais un export qui la perdrait
     remplirait les coins arrondis de blanc.
+- **La gén. 5 est recadrée elle aussi** : 156×142 → **156×114**, `band` à 0, calage
+  à refaire. Ses fichiers portent en plus un préfixe **`5G_`**, à la demande — donc
+  ses ids ont changé, contrairement à la gén. 4 qui a gardé les siens. Le préfixe
+  fait doublon avec le dossier `5/` ; il est conservé par choix, pas par nécessité.
+  - **Une migration reprend les id stockés** (`migrePrefixe5G`) : `Box_Beach_V` devient
+    `5G_Box_Beach_V` dans `pcbox.boxes`. Sans elle, une boîte réglée sur un fond de
+    gén. 5 l'aurait perdu en silence, `paperCss` ignorant les id inconnus. Elle ne
+    touche qu'aux id devenus introuvables dont la version préfixée existe.
+  - **Piège d'export, deux fois** : Photoshop a nommé un calque `Calque-1` — c'était
+    `Box_Beach_V`, repéré comme seul id sans fichier. Et `Box_Munna_BW` est ressorti en
+    **154×113 RGBA** quand les 31 autres font 156×114 RGB. Sans conséquence visible
+    (1,3 % d'écart), mais le lot n'est pas homogène.
+  - La perte de l'alpha est SANS effet ici : dans l'original, les pixels transparents
+    étaient ceux de la bande, et le panneau avait déjà des coins opaques. Vérifié.
 - **Les gén. I et II n'ont aucun fond** : les boîtes y étaient unies. Le sélecteur
   l'explique au lieu d'afficher une liste vide. Les fonds arrivent en gén. III.
 - **Choisir un fond referme le panneau** : le choix est fait, et rester ouvert cachait

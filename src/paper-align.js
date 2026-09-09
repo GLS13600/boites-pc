@@ -40,7 +40,11 @@ export const ALIGNEMENT = {
   // derrière le titre.
   4: { x: -2.7, y: -3.9, w: 105.7, h: 104.9 },
 
-  // ---- Gén. 5 — 32 fonds (156x142) ---- VALIDÉ à la main.
+  // ---- Gén. 5 — 32 fonds (156x114) ----
+  // À RÉGLER. Comme la gén. 4, les images ont été recadrées pour retirer la bande du
+  // nom de boîte : 156x142 -> 156x114. La valeur ci-dessous date d'avant, son y de
+  // −24,4 servant à glisser la bande derrière le titre. Point de départ arithmétique,
+  // à affiner avec Calage-Fonds.bat : { x: -4.95, y: 0.3, w: 110, h: 100.6 }.
   5: { x: -4.95, y: -24.4, w: 110, h: 125.3 },
 
   // ---- Gén. 6 — 32 fonds (211x210 et voisins) ---- VALIDÉ à la main.

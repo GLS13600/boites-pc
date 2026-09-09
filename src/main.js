@@ -222,6 +222,7 @@ const state = {
   ordreOnglets: lisOrdreOnglets(),
   held: null, // case saisie en mode Ranger
   ongletTenu: null, // index ONGLETS de l'onglet porté, ou null
+  dexQ: '', // recherche du Pokédex, volontairement NON persistée
   // Réglages par boîte, clé « gén:boîte » -> { name, paper }.
   boxes: readJSON(BOXES_KEY, {}),
   paperGen: null, // génération ouverte dans le sélecteur de fond
@@ -734,6 +735,9 @@ function openSheet(id) {
       <div class="fact"><dt>Poids</dt><dd>${p.weight ? p.weight.toFixed(1) + ' kg' : '—'}</dd></div>
       ${p.flavor ? `<div class="fact wide"><dt>Description</dt><dd>${p.flavor}</dd></div>` : ''}
     </dl>
+
+    <h3>Faiblesses et résistances <small>table actuelle</small></h3>
+    ${renderFaiblesses(base, 9)}
 
     <h3>Famille d'évolution</h3>
     ${renderEvolution(base, id)}
@@ -2361,6 +2365,8 @@ function renderCombat() {
 
         <div class="analyse">${renderAnalyse()}</div>
 
+        ${renderTableTypes()}
+
         <!-- L'aide ne sert qu'à la première prise en main : dès qu'un Pokémon est
              placé, le geste est compris et le pavé n'est plus que du bruit. -->
         ${pleines ? '' : `<p class="hint">
@@ -2588,6 +2594,14 @@ const jetonsDe = (mults) => {
 // Symbole du type, chemin relatif SANS « / » initial comme les sprites et les
 // fonds : indispensable avec base: './', sinon Capacitor ne les trouve pas sur
 // l'iPhone. Le nom français reste en alt et en title, pour l'accessibilité.
+// Génération d'APPARITION des types tardifs. PokéAPI ne publie dans
+// `past_damage_relations` que ce qui a CHANGÉ : les types qui n'existaient pas
+// encore gardent donc leurs relations modernes dans les tables antérieures. Sans
+// ce filtre, une table de Rouge/Bleu afficherait une ligne Fée — un type inventé
+// vingt ans plus tard.
+const TYPE_DEPUIS = { dark: 2, steel: 2, fairy: 6 };
+const typesDeGen = (gen) => typechart.types.filter((t) => (TYPE_DEPUIS[t] ?? 1) <= gen);
+
 const badge = (t) => {
   const nom = esc(TYPES[t]?.[0] || t);
   return `<img class="tb" src="types/${t}.svg" alt="${nom}" title="${nom}" />`;
@@ -2603,13 +2617,18 @@ const ligne = (t, jetons, alerte) => (!jetons.length ? '' : `
       `<i class="${classeMult(j.v)}">${fmt(j.v)}${j.n > 1 ? `<sup>${j.n}</sup>` : ''}</i>`).join('')}</span>
   </div>`);
 
-// Faiblesses et résistances d'un SEUL Pokémon, dans le jeu choisi. Même principe
-// que l'analyse d'équipe : ×2, ×4 pour ce qui fait mal, ÷ pour ce qui est encaissé.
-function renderFaiblesses(espece) {
-  const table = typechart.chart[genDuJeu()];
+// Faiblesses, résistances et immunités d'un SEUL Pokémon. Même principe que
+// l'analyse d'équipe : ×2, ×4 pour ce qui fait mal, ÷ pour ce qui est encaissé,
+// 0 pour ce qui ne touche pas.
+//
+// La génération est un PARAMÈTRE : la fiche de combat passe celle du jeu choisi,
+// la fiche du Pokédex la table moderne. Cette dernière décrit l'espèce et non une
+// partie — même règle que pour ses talents, listés tous jeux confondus.
+function renderFaiblesses(espece, gen = genDuJeu()) {
+  const table = typechart.chart[gen];
   const types = pokedex[espece]?.types || [];
   if (!types.length) return '<p class="none">Types inconnus.</p>';
-  const lignes = typechart.types
+  const lignes = typesDeGen(gen)
     .map((a) => {
       let mult = 1;
       for (const t of types) mult *= table[a]?.[t] ?? 1;
@@ -2620,6 +2639,44 @@ function renderFaiblesses(espece) {
   if (!lignes.length) return '<p class="none">Neutre face à tous les types.</p>';
   return `<div class="tgrid">${lignes.map((x) =>
     ligne(x.t, jetonsDe([x.mult]), x.mult >= 4)).join('')}</div>`;
+}
+
+// Table des types complète : 18 attaquants en lignes, 18 défenseurs en colonnes.
+//
+// Repliée par défaut (`<details>`), et c'est délibéré : 324 cases sous l'équipe
+// noieraient l'analyse, alors qu'on ne vient l'ouvrir que ponctuellement, pour
+// vérifier un cas précis. Pas de JavaScript pour ça, la balise suffit.
+//
+// Les cases NEUTRES restent vides : sur 324 cases, 200 valent 1 et ne disent rien.
+// Ne garder que ce qui s'écarte de 1 rend la table lisible d'un coup d'œil.
+//
+// Elle suit la génération du jeu choisi, comme le reste de la boîte de combat :
+// c'est tout l'intérêt d'avoir une table par génération.
+function renderTableTypes() {
+  const gen = genDuJeu();
+  const table = typechart.chart[gen];
+  const T = typesDeGen(gen);
+  const entete = T.map((d) => `<th scope="col">${badge(d)}</th>`).join('');
+  const corps = T.map((a) => `
+    <tr>
+      <th scope="row">${badge(a)}</th>
+      ${T.map((d) => {
+        const m = table[a]?.[d] ?? 1;
+        return m === 1 ? '<td></td>' : `<td class="${classeMult(m)}">${fmt(m)}</td>`;
+      }).join('')}
+    </tr>`).join('');
+  return `
+    <details class="tt">
+      <summary>Table des types <small>${esc(jeuCourant().nom)}</small></summary>
+      <p class="tt-leg">Ligne = type de l'attaque, colonne = type du défenseur.
+         Les cases vides sont neutres.</p>
+      <div class="tt-wrap">
+        <table class="tt-tab">
+          <thead><tr><th></th>${entete}</tr></thead>
+          <tbody>${corps}</tbody>
+        </table>
+      </div>
+    </details>`;
 }
 
 function renderAnalyse() {
@@ -3249,6 +3306,34 @@ function progresDex(n) {
   return { pris, total: g.to - g.from + 1 };
 }
 
+const caseDex = (id) => {
+  const p = pokedex[id] || {};
+  const vu = isCaught(id);
+  return `
+    <button class="dx ${vu ? '' : 'gris'}" data-dex="${id}"
+            aria-label="${esc(p.name || `N° ${id}`)}${vu ? ', capturé' : ''}">
+      <img src="${sprites.still(id, shinyView())}" alt="" loading="lazy"
+           ${imgFallback(id, shinyView())} />
+      <span class="dx-num">N° ${String(id).padStart(4, '0')}</span>
+      <span class="dx-nom">${esc(p.name || '—')}</span>
+      ${vu ? '<span class="dx-ok" aria-hidden="true"></span>' : ''}
+    </button>`;
+};
+
+// La recherche BALAIE LES NEUF GÉNÉRATIONS et ignore donc l'onglet, comme celle du
+// sélecteur des boîtes : on cherche justement ce qu'on ne sait pas situer. Sans
+// recherche, on s'en tient à la génération affichée.
+//
+// Le numéro est indexé au même titre que le nom, et `fold` retire les accents :
+// « ecaiglaire » doit trouver Écaiglaire.
+function especesDex() {
+  const q = state.dexQ.trim();
+  if (!q) { const g = GENS[state.dexGen - 1]; return range(g.from, g.to); }
+  const f = fold(q);
+  return range(1, 1025).filter((id) =>
+    String(id).includes(f) || fold(pokedex[id]?.name || '').includes(f));
+}
+
 function renderPokedex() {
   const n = state.dexGen;
   const g = GENS[n - 1];
@@ -3257,19 +3342,7 @@ function renderPokedex() {
   let prisTout = 0;
   for (let id = 1; id <= 1025; id++) if (isCaught(id)) prisTout++;
 
-  const cases = range(g.from, g.to).map((id) => {
-    const p = pokedex[id] || {};
-    const vu = isCaught(id);
-    return `
-      <button class="dx ${vu ? '' : 'gris'}" data-dex="${id}"
-              aria-label="${esc(p.name || `N° ${id}`)}${vu ? ', capturé' : ''}">
-        <img src="${sprites.still(id, shinyView())}" alt="" loading="lazy"
-             ${imgFallback(id, shinyView())} />
-        <span class="dx-num">N° ${String(id).padStart(4, '0')}</span>
-        <span class="dx-nom">${esc(p.name || '—')}</span>
-        ${vu ? '<span class="dx-ok" aria-hidden="true"></span>' : ''}
-      </button>`;
-  }).join('');
+  const cases = especesDex().map(caseDex).join('');
 
   poser(
     h(`
@@ -3292,6 +3365,13 @@ function renderPokedex() {
         <div class="bar dex-bar"><span style="width:${total ? (100 * pris) / total : 0}%"></span></div>
         <p class="dex-tout">${prisTout} sur 1025 au total${shinyView() ? ' · Pokédex chromatique' : ''}</p>
 
+        <div class="dex-rech">
+          <input type="search" data-dexq placeholder="Chercher un nom ou un numéro"
+                 value="${esc(state.dexQ)}" aria-label="Chercher un Pokémon"
+                 autocomplete="off" autocorrect="off" spellcheck="false" />
+        </div>
+        <p class="dex-res" ${state.dexQ.trim() ? '' : 'hidden'}></p>
+
         <div class="dex-grid">${cases}</div>
 
         <p class="hint">
@@ -3305,9 +3385,29 @@ function renderPokedex() {
     ?.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
 
+// La frappe agit SUR LE DOM : reconstruire la vue ferait perdre le focus au champ
+// à chaque caractère, comme pour le nom de boîte.
+app.addEventListener('input', (e) => {
+  const champ = e.target.closest('[data-dexq]');
+  if (!champ) return;
+  state.dexQ = champ.value;
+  const ids = especesDex();
+  const grille = app.querySelector('.dex-grid');
+  if (grille) grille.innerHTML = ids.map(caseDex).join('');
+  const info = app.querySelector('.dex-res');
+  if (info) {
+    const q = state.dexQ.trim();
+    info.hidden = !q;
+    info.textContent = ids.length === 0 ? 'Aucun Pokémon ne correspond.'
+      : `${ids.length} résultat${ids.length > 1 ? 's' : ''} sur les neuf générations`;
+  }
+});
+
 app.addEventListener('click', (e) => {
   const onglet = e.target.closest('[data-dexgen]');
   if (onglet) {
+    // Changer de génération sort de la recherche : on vient voir CET onglet.
+    state.dexQ = '';
     state.dexGen = +onglet.dataset.dexgen;
     localStorage.setItem(DEXGEN_KEY, String(state.dexGen));
     render();

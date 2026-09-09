@@ -3069,6 +3069,12 @@ function htmlDetail() {
         : 'Aucun effet sur les statistiques'}</span>
     </button>
 
+    <!-- Le socle de l'espèce, que le niveau ne change pas — à ne pas confondre avec
+         les valeurs calculées juste en dessous. Les deux titres se suivent, d'où les
+         sous-titres qui les distinguent. -->
+    <h3>Statistiques de base <small>indépendantes du niveau</small></h3>
+    ${renderStatsBase(m.key)}
+
     <h3>Statistiques <small>IV déduits</small></h3>
     ${bloc}
 

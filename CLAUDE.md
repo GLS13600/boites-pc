@@ -308,6 +308,14 @@ onglets). `render()` y bascule comme pour le combat.
   - Passe par **`statsDe(key)`**, jamais `stats[...]` : une forme a ses propres stats.
     Vérifié, Méga-Dracaufeu X affiche 130/111/130 pour un total de 634, là où
     Dracaufeu donne 84/78/109 et 534.
+  - Le bloc sert **aux trois vues**. La fiche des boîtes et celle du Pokédex sont la
+    MÊME (`openSheet`), donc une seule insertion les couvre toutes les deux ; la fiche
+    de combat (`htmlDetail`) a la sienne.
+  - Dans la fiche de combat, deux titres « Statistiques » se suivent et pourraient se
+    confondre : le socle de l'espèce, que le niveau ne change pas, puis les valeurs
+    calculées avec IV, EV et nature. Les sous-titres les distinguent —
+    « indépendantes du niveau » contre « IV déduits ». Ne pas les fusionner : la
+    première est une caractéristique, la seconde une mesure de CE Pokémon.
 - **Barre de recherche** (`state.dexQ`, volontairement NON persistée : une recherche
   est de passage). Elle **balaie les neuf générations et ignore l'onglet**, comme
   celle du sélecteur des boîtes — on cherche justement ce qu'on ne sait pas situer.

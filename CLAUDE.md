@@ -293,7 +293,16 @@ onglets). `render()` y bascule comme pour le combat.
 - **Taux de remplissage** par génération et au total, calculé sur la collection
   ACTIVE (`isCaught`) : il suit donc la bascule normal / chromatique des boîtes.
 - La fiche ouverte est exactement celle des boîtes (`openSheet`) : description,
-  évolutions, formes, talents, attaques, lieux de capture.
+  **faiblesses**, évolutions, formes, talents, attaques, lieux de capture.
+- **Barre de recherche** (`state.dexQ`, volontairement NON persistée : une recherche
+  est de passage). Elle **balaie les neuf générations et ignore l'onglet**, comme
+  celle du sélecteur des boîtes — on cherche justement ce qu'on ne sait pas situer.
+  Le numéro est indexé au même titre que le nom, et `fold` retire les accents.
+  - La frappe **agit sur le DOM** : elle réécrit la seule `.dex-grid`, sans rappeler
+    `render()`. Reconstruire la vue ferait perdre le focus au champ à chaque
+    caractère, comme pour le nom de boîte. Vérifié : le focus survit à la saisie.
+  - Le champ est en `font-size: 16px` — en dessous, iOS zoome tout seul à la saisie.
+  - Changer de génération vide la recherche : on vient voir CET onglet.
 - `voisinFiche()` connaît cette vue : le glissement horizontal parcourt le Pokédex
   dans l'ordre des numéros, et non le contenu d'une boîte.
 
@@ -483,6 +492,31 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 - Le script **vérifie six faits connus avant d'écrire** et s'interrompt si l'un
   échoue. Sans ce garde-fou, une erreur de lecture des relations passées produirait
   une table plausible mais fausse, impossible à repérer à l'œil.
+- **`TYPE_DEPUIS` masque les types qui n'existaient pas encore** (Ténèbres et Acier
+  en gén. 2, Fée en gén. 6). PokéAPI ne publie dans `past_damage_relations` que ce
+  qui a **changé** : les types plus récents conservent donc leurs relations modernes
+  dans les tables antérieures, et rien ne les signale comme absents. Sans ce filtre,
+  une table de Rouge/Bleu affichait une ligne Fée — un type inventé vingt ans plus
+  tard. Vérifié : 15 types en gén. 1, 17 en gén. 2, 18 à partir de la 6.
+- **La table complète est affichée dans la boîte de combat** (`renderTableTypes`),
+  18 × 18, **repliée par défaut** : 324 cases sous l'équipe noieraient l'analyse,
+  alors qu'on ne l'ouvre que pour vérifier un cas précis. Un `<details>` suffit,
+  pas de JavaScript.
+  - **Ligne = attaquant, colonne = défenseur**, et une légende le dit — la
+    convention inverse existe et se lit tout aussi bien, l'ambiguïté est réelle.
+  - Les cases **neutres restent vides** : sur 324, environ 200 valent 1 et
+    n'apprennent rien. Ne montrer que ce qui s'écarte de 1 rend la table lisible.
+  - Elle se lit **en attaque** (×2 vert, comme la grille « Attaque » de l'analyse
+    d'équipe et à l'inverse de sa grille « Défense »), puisque la ligne est le type
+    du coup porté.
+  - `.tt-wrap` défile horizontalement — 19 colonnes ne tiennent pas sur 375 px — et
+    la première colonne est `sticky` : sans elle on perd de vue le type attaquant
+    dès qu'on fait glisser la table.
+- `renderFaiblesses(espece, gen)` prend la génération EN PARAMÈTRE : la fiche de
+  combat passe celle du jeu choisi, **la fiche du Pokédex la table moderne (9)**.
+  Cette dernière décrit l'espèce et non une partie — même règle que ses talents,
+  listés tous jeux confondus. Elle montre faiblesses, résistances ET immunités
+  (jeton `0`). Vérifié sur Dracaufeu : Roche ×4, Sol 0.
 ### Symboles des types
 
 - `public/types/<type>.svg`, 18 fichiers, 22 Ko. Source :

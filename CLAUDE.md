@@ -1180,6 +1180,20 @@ vient des sprites**, pas du décor. Toutes les valeurs sont des variables dans `
 - Voir `reference/LISEZMOI.md` pour la provenance et la chaîne de traitement des
   images (réduction, recadrage des captures de menu). Le dossier `reference/` est hors
   build et hors versionnage.
+- **Les fonds de la gén. 4 sont RECADRÉS** : 162×148 à l'origine, **134×101**
+  aujourd'hui, la bande du nom de boîte ayant été retirée à l'image. `band` est donc
+  passé à 0 pour ces 40 entrées, et leur calage est à refaire — l'ancien y de −27,4
+  servait précisément à cacher cette bande derrière le titre.
+  - L'étirement vertical passe de **×1,17 à ×1,42** (image plus large que haute
+    plaquée sur un panneau plus haut que large). Reste sous la limite du visible,
+    fixée à ×1,6 — mais il ne reste plus de marge, à surveiller.
+  - **Piège d'export** : Photoshop a préfixé les 40 fichiers (`_0000_`, `_0001_`…).
+    L'id EST le nom de fichier : sans le retrait de ce préfixe, les 40 fonds
+    devenaient introuvables. Vérifier systématiquement les noms après un traitement
+    par lot, en particulier `Box_PokéCenter_IV` et `Box_Pokéathlon_HGSS`, accentués.
+  - Ils sont passés en PNG **palettisé** (type 3) au lieu de RGBA. La transparence
+    survit par `tRNS` — vérifié sur les 40 —, mais un export qui la perdrait
+    remplirait les coins arrondis de blanc.
 - **Les gén. I et II n'ont aucun fond** : les boîtes y étaient unies. Le sélecteur
   l'explique au lieu d'afficher une liste vide. Les fonds arrivent en gén. III.
 - **Choisir un fond referme le panneau** : le choix est fait, et rester ouvert cachait

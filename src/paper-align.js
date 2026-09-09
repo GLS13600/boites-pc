@@ -34,7 +34,12 @@ export const ALIGNEMENT = {
   // VALIDÉ à la main.
   '3:406x370': { x: -4, y: -16, w: 108, h: 119.8 },    // 3 fonds · Colosseum
 
-  // ---- Gén. 4 — 40 fonds (162x148) ---- VALIDÉ à la main.
+  // ---- Gén. 4 — 40 fonds (134x101) ----
+  // À RÉGLER. Les images ont été RECADRÉES pour retirer la bande du nom de boîte :
+  // 162x148 sans bande utile, 134x101 désormais. La valeur ci-dessous vient d'avant
+  // ce recadrage — son y de −27,4 servait justement à glisser la bande derrière le
+  // titre, ce qui n'a plus lieu d'être. Point de départ arithmétique, à affiner avec
+  // Calage-Fonds.bat : { x: -2.9, y: -4.2, w: 105.8, h: 108.9 }.
   4: { x: -2.9, y: -27.4, w: 105.8, h: 132.1 },
 
   // ---- Gén. 5 — 32 fonds (156x142) ---- VALIDÉ à la main.

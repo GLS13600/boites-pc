@@ -40,6 +40,19 @@ jobs:
       # Produit dist/ ET dist/sw.js, la coquille du service worker.
       - run: npm run build
 
+      # Le manifeste que SideStore interroge. Il est servi PAR LE SITE et non par
+      # l'URL de release : celle-ci répond 302 en text/html, avec deux redirections
+      # avant le fichier, et SideStore y lisait du HTML au lieu de JSON. Pages le
+      # sert en 200 direct.
+      #
+      # Il est bâti d'après la dernière release publiée, seule à connaître la
+      # version et la taille réelles de l'IPA. Le workflow iOS relance donc ce
+      # déploiement après en avoir créé une.
+      - name: Écrire le manifeste de source
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/build-source.mjs --release dist/source.json
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

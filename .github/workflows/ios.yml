@@ -33,9 +33,11 @@ concurrency:
   group: ios
   cancel-in-progress: true
 
-# Nécessaire pour créer la release et y attacher l'IPA.
+# `contents` pour créer la release, `actions` pour relancer ensuite le workflow
+# Pages, qui republie le manifeste de source.
 permissions:
   contents: write
+  actions: write
 
 jobs:
   build:
@@ -122,3 +124,11 @@ jobs:
           name: Guiguidex-ipa
           path: ios/App/build/Guiguidex.ipa
           retention-days: 30
+
+      # Le manifeste servi par le site est bâti d'après la DERNIÈRE release : il
+      # faut redéployer Pages maintenant qu'elle existe, sinon il resterait une
+      # version en arrière jusqu'à la poussée suivante.
+      - name: Republier le manifeste sur le site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main

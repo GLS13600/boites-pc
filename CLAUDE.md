@@ -18,11 +18,10 @@ se gênent pas :
 
 - **IPA sideloadé** (`.github/workflows/ios.yml`, runner macOS) : app native via
   Capacitor, à re-signer tous les 7 jours avec un certificat gratuit.
-  Le workflow **publie une release GitHub** portant `Guiguidex.ipa` et
-  `source.json`, le manifeste que **SideStore** interroge pour proposer la mise à
-  jour **sans câble**. L'URL donnée à SideStore une fois pour toutes est
-  `.../releases/latest/download/source.json` : GitHub la fait pointer sur la
-  release la plus récente, donc rien à ré-enregistrer à chaque publication.
+  Le workflow **publie une release GitHub** portant `Guiguidex.ipa`, et le site
+  publie `source.json`, le manifeste que **SideStore** interroge pour proposer la
+  mise à jour **sans câble**. URL à enregistrer une fois pour toutes :
+  `https://gls13600.github.io/boites-pc/source.json`.
 - **Site sur GitHub Pages** (`.github/workflows/pages.yml`, runner Ubuntu) : ajouté
   à l'écran d'accueil depuis Safari, sans certificat ni expiration.
 
@@ -37,6 +36,25 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
   n'aurait aucun sens.
 - Un groupe `concurrency` annule la compilation en cours quand une nouvelle
   poussée arrive : deux IPA concurrents n'ont pas de sens, seul le dernier compte.
+- **Le manifeste est servi par le SITE, pas par l'URL de release.** Celle-ci
+  (`releases/latest/download/source.json`) répond **302 en `text/html`**, avec DEUX
+  redirections avant le fichier, qui arrive ensuite en `application/octet-stream`.
+  SideStore y lisait du HTML : « Unexpected character '<' around line 1 ». Pages
+  sert le fichier en 200 direct, sans redirection. **Ne pas revenir à une URL de
+  release** pour un JSON destiné à un client HTTP simple ; elle reste très bien pour
+  le téléchargement de l'IPA, qui est un binaire.
+- `scripts/build-source.mjs --release` bâtit le manifeste **depuis l'API GitHub**,
+  d'après la dernière release : le site n'a pas l'IPA sous la main, il est construit
+  par un tout autre workflow sur un runner macOS. Le mode local
+  (`<ipa> <version> <sortie>`) subsiste et sert à attacher une copie à la release.
+- **Le workflow iOS relance `pages.yml` après avoir créé la release** (`gh workflow
+  run`, d'où la permission `actions: write`). Sans cette relance le manifeste
+  resterait une version en arrière : Pages se déploie en une minute, l'IPA demande
+  un quart d'heure, donc la release n'existe pas encore au moment du déploiement
+  déclenché par la même poussée.
+- Si aucune release ne porte `Guiguidex.ipa`, le script **avertit sans faire échouer**
+  le déploiement : le site prime sur le manifeste, et un manifeste absent se voit
+  tout de suite.
 - La release est **supprimée puis recréée** : `run_number` ne change pas quand on
   RELANCE une exécution, et `gh release create` échouerait sur un tag déjà pris.
 

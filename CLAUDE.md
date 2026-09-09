@@ -595,6 +595,18 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
   figurait ici et avait fait afficher un sprite 2D là où un artwork était disponible.
   Seules les **formes cosmétiques**, dont la clé est un slug, n'en ont pas et gardent
   leur sprite 2D — c'est de toute façon leur seul visuel propre.
+- **Les formes FEMELLES font exception et prennent l'artwork de leur ESPÈCE.**
+  PokéAPI n'en publie aucun qui leur soit propre (pas de `female/` sous
+  `official-artwork/`), et leur sprite 2D ne fait que **96 px** pour un portrait de
+  108 — soit 324 px sur un écran ×3, un agrandissement de 3,4× qui rendait une image
+  molle là où les autres fiches sont nettes.
+  - Le prix est assumé : le portrait ne montre plus la différence femelle, puisque
+    l'artwork est celui par défaut. Elle reste visible juste en dessous, dans la
+    liste des formes, qui affiche les sprites à leur taille native.
+  - `sprites.art(id)` sur une clé slug viserait `official-artwork/25-female.webp`,
+    inexistant : il faut passer explicitement par l'espèce (`base`).
+  - Vérifié : la fiche femelle sert un artwork de 384 px, et une forme à clé
+    numérique (Gigamax) garde bien le SIEN.
 - Le grand portrait a un repli à **deux niveaux** (`portraitFallback`) : artwork →
   sprite 2D de la forme → sprite de l'espèce. Les 25 formes sans aucun sprite propre
   ont besoin du troisième cran.

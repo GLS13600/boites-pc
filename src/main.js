@@ -712,11 +712,21 @@ function openSheet(id) {
   // signal d'état de la grille, et ici le bouton de capture dit déjà où l'on en est.
   //
   // L'artwork officiel EXISTE aussi pour les formes à clé numérique (Méga, Gigamax,
-  // régionales) : elles s'affichent donc en grand, comme les espèces. Seules les
-  // formes cosmétiques, dont la clé est un slug, gardent leur sprite 2D — c'est de
-  // toute façon leur seul visuel propre.
-  const grandPortrait = !forme || typeof id === 'number';
-  const portrait = grandPortrait ? sprites.art(id, sh) : sprites.still(spriteKey(id), sh);
+  // régionales) : elles s'affichent donc en grand, comme les espèces. Les formes
+  // cosmétiques, dont la clé est un slug, gardent leur sprite 2D — c'est de toute
+  // façon leur seul visuel propre.
+  //
+  // EXCEPTION, les formes femelles : PokéAPI ne publie aucun artwork femelle, et
+  // leur sprite 2D ne fait que 96 px pour un portrait de 108 — soit 324 px sur un
+  // écran ×3, un agrandissement de 3,4× qui rend une bouillie. On prend donc
+  // l'artwork de l'ESPÈCE, net. La différence femelle reste visible juste en
+  // dessous, dans la liste des formes, qui affiche les sprites à leur taille.
+  const femelle = forme?.kind === 'femelle';
+  const grandPortrait = !forme || typeof id === 'number' || femelle;
+  // `sprites.art(id)` sur une clé slug viserait `official-artwork/25-female.webp`,
+  // qui n'existe pas : on passe explicitement par l'espèce.
+  const portrait = !grandPortrait ? sprites.still(spriteKey(id), sh)
+    : sprites.art(femelle ? base : id, sh);
 
   sheet.querySelector('.sheet-body').innerHTML = `
     <div class="sheet-top">

@@ -26,21 +26,22 @@ export const DEFAUT = { x: 0, y: -24.9, w: 100, h: 137.4 };
 
 export const ALIGNEMENT = {
   // ---- Gén. 3 : quatre formats d'image, calés séparément ----
+  // VALIDÉ à la main.
+  '3:156x141': { x: -2.9, y: -24.5, w: 105.8, h: 128 },   // 52 fonds · Rubis/Saphir, RF/VF, Émeraude
   // À RÉGLER — valeurs encore issues du calage automatique.
-  '3:156x141': { x: 0, y: -23.5, w: 100, h: 123.5 },   // 52 fonds · Rubis/Saphir, RF/VF, Émeraude
   '3:203x214': { x: 0, y: -24.9, w: 100, h: 137.4 },   // 21 fonds · Pokémon Box RS, texture pleine
   '3:384x320': { x: 0, y: -24.9, w: 100, h: 137.4 },   // 8 fonds · XD, texture pleine
   // VALIDÉ à la main.
   '3:406x370': { x: -4, y: -16, w: 108, h: 119.8 },    // 3 fonds · Colosseum
 
   // ---- Gén. 4 — 40 fonds (162x148) ---- VALIDÉ à la main.
-  4: { x: -1.8, y: -24.5, w: 103.4, h: 127.1 },
+  4: { x: -2.9, y: -27.4, w: 105.8, h: 132.1 },
 
   // ---- Gén. 5 — 32 fonds (156x142) ---- VALIDÉ à la main.
   5: { x: -4.95, y: -24.4, w: 110, h: 125.3 },
 
   // ---- Gén. 6 — 32 fonds (211x210 et voisins) ---- VALIDÉ à la main.
-  6: { x: -1.1, y: -25.5, w: 102.6, h: 127.3 },
+  6: { x: -2.7, y: -28.1, w: 105.8, h: 129.3 },
 
   // ---- Gén. 7 — 16 fonds (208x192) ---- VALIDÉ à la main.
   7: { x: -4.4, y: -24.8, w: 109.2, h: 129.6 },

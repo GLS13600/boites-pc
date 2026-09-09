@@ -2680,8 +2680,6 @@ function renderTableTypes() {
   return `
     <details class="tt">
       <summary>Table des types <small>${esc(jeuCourant().nom)}</small></summary>
-      <p class="tt-leg">Ligne = type de l'attaque, colonne = type du défenseur.
-         Les cases vides sont neutres.</p>
       <div class="tt-wrap">
         <table class="tt-tab">
           <thead><tr><th></th>${entete}</tr></thead>

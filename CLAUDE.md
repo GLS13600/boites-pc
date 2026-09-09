@@ -502,8 +502,15 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
   18 × 18, **repliée par défaut** : 324 cases sous l'équipe noieraient l'analyse,
   alors qu'on ne l'ouvre que pour vérifier un cas précis. Un `<details>` suffit,
   pas de JavaScript.
-  - **Ligne = attaquant, colonne = défenseur**, et une légende le dit — la
-    convention inverse existe et se lit tout aussi bien, l'ambiguïté est réelle.
+  - **Ligne = attaquant, colonne = défenseur.** La convention inverse existe et se
+    lit tout aussi bien : l'ambiguïté est réelle, il faut donc la lever. Ce sont les
+    **couleurs des en-têtes** qui s'en chargent — colonne de gauche en rouge pour
+    qui attaque, ligne du haut en bleu clair pour qui défend — et non une légende
+    écrite, qui occupait deux lignes au-dessus de la table pour être lue une fois.
+    Teintes claires obligatoires : les symboles de type se posent dessus.
+  - Le coin haut-gauche n'appartient à aucun des deux axes et reste neutre.
+  - La colonne de gauche doit rester OPAQUE : elle est `sticky` et laisserait sinon
+    voir défiler les cases par-dessous.
   - Les cases **neutres restent vides** : sur 324, environ 200 valent 1 et
     n'apprennent rien. Ne montrer que ce qui s'écarte de 1 rend la table lisible.
   - Elle se lit **en attaque** (×2 vert, comme la grille « Attaque » de l'analyse

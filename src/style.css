@@ -843,7 +843,6 @@ img { display: block; }
   cursor: pointer;
 }
 .tt summary small { font-weight: 600; color: var(--muted); }
-.tt-leg { margin: 0 14px 8px; font-size: 11px; color: var(--muted); }
 .tt-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -862,12 +861,22 @@ img { display: block; }
   font-variant-numeric: tabular-nums;
 }
 .tt-tab .tb { width: 18px; height: 18px; margin: 0 auto; }
+/* Les deux axes se distinguent PAR LA COULEUR, sans légende à lire : rouge pour la
+   colonne de gauche, le type qui attaque ; bleu pour la ligne du haut, le type qui
+   défend. Des teintes claires, parce que les symboles de type se posent dessus et
+   doivent rester lisibles. */
+.tt-tab thead th { background: #dce9f7; }
 .tt-tab tbody th {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: var(--panel);
+  /* Opaque obligatoirement : la colonne reste collée pendant le défilement et
+     laisserait sinon voir les cases qui passent dessous. */
+  background: #f7dcd9;
 }
+/* Le coin haut-gauche n'appartient à aucun des deux axes : on le laisse neutre
+   plutôt que de le teinter au hasard de la règle qui gagne. */
+.tt-tab thead th:first-child { background: var(--panel); }
 /* La LIGNE est le type de l'attaque : on lit donc la table en attaque, où frapper
    ×2 est un bon résultat. C'est le même sens que la grille « Attaque » de
    l'analyse d'équipe, et l'inverse de la grille « Défense ». */

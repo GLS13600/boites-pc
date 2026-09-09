@@ -913,224 +913,224 @@
   ],
   "5": [
     {
-      "id": "5G_Box_Black_Kyurem_B2W2",
+      "id": "Box_Black_Kyurem_B2W2",
       "name": "Black Kyurem",
       "game": "Noir 2/Blanc 2",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Sky_V",
+      "id": "Box_Sky_V",
       "name": "Ciel",
       "game": "Gén. V",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Checks_V",
+      "id": "Box_Checks_V",
       "name": "Damier",
       "game": "Gén. V",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Desert_V",
+      "id": "Box_Desert_V",
       "name": "Désert",
       "game": "Gén. V",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Crag_V",
+      "id": "Box_Crag_V",
       "name": "Falaise",
       "game": "Gén. V",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Seafloor_V",
+      "id": "Box_Seafloor_V",
       "name": "Fond marin",
       "game": "Gén. V",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Forest_V",
+      "id": "Box_Forest_V",
       "name": "Forêt",
       "game": "Gén. V",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Cave_V",
+      "id": "Box_Cave_V",
       "name": "Grotte",
       "game": "Gén. V",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Machine_V",
+      "id": "Box_Machine_V",
       "name": "Machine",
       "game": "Gén. V",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Monochrome_B2W2",
+      "id": "Box_Monochrome_B2W2",
       "name": "Monochrome",
       "game": "Noir 2/Blanc 2",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Monochrome_BW",
+      "id": "Box_Monochrome_BW",
       "name": "Monochrome",
       "game": "Noir/Blanc",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Movie_B2W2",
+      "id": "Box_Movie_B2W2",
       "name": "Movie",
       "game": "Noir 2/Blanc 2",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Munna_BW",
+      "id": "Box_Munna_BW",
       "name": "Munna",
       "game": "Noir/Blanc",
       "band": 0,
       "size": "154x113"
     },
     {
-      "id": "5G_Box_Musical_BW",
+      "id": "Box_Musical_BW",
       "name": "Musical",
       "game": "Noir/Blanc",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Snow_V",
+      "id": "Box_Snow_V",
       "name": "Neige",
       "game": "Gén. V",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Beach_V",
+      "id": "Box_Beach_V",
       "name": "Plage",
       "game": "Gén. V",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Poké_Center_V",
+      "id": "Box_Poké_Center_V",
       "name": "Poké Center",
       "game": "Gén. V",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_PWT_B2W2",
+      "id": "Box_PWT_B2W2",
       "name": "PWT",
       "game": "Noir 2/Blanc 2",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Reshiram_B2W2",
+      "id": "Box_Reshiram_B2W2",
       "name": "Reshiram",
       "game": "Noir 2/Blanc 2",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Reshiram_BW",
+      "id": "Box_Reshiram_BW",
       "name": "Reshiram",
       "game": "Noir/Blanc",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_River_V",
+      "id": "Box_River_V",
       "name": "Rivière",
       "game": "Gén. V",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Savanna_V",
+      "id": "Box_Savanna_V",
       "name": "Savane",
       "game": "Gén. V",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Subway_BW",
+      "id": "Box_Subway_BW",
       "name": "Subway",
       "game": "Noir/Blanc",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Team_Plasma_B2W2",
+      "id": "Box_Team_Plasma_B2W2",
       "name": "Team Plasma",
       "game": "Noir 2/Blanc 2",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Team_Plasma_BW",
+      "id": "Box_Team_Plasma_BW",
       "name": "Team Plasma",
       "game": "Noir/Blanc",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Simple_V",
+      "id": "Box_Simple_V",
       "name": "Uni",
       "game": "Gén. V",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_City_V",
+      "id": "Box_City_V",
       "name": "Ville",
       "game": "Gén. V",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Volcano_V",
+      "id": "Box_Volcano_V",
       "name": "Volcan",
       "game": "Gén. V",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_White_Kyurem_B2W2",
+      "id": "Box_White_Kyurem_B2W2",
       "name": "White Kyurem",
       "game": "Noir 2/Blanc 2",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Zekrom_B2W2",
+      "id": "Box_Zekrom_B2W2",
       "name": "Zekrom",
       "game": "Noir 2/Blanc 2",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Zekrom_BW",
+      "id": "Box_Zekrom_BW",
       "name": "Zekrom",
       "game": "Noir/Blanc",
       "band": 0,
       "size": "156x114"
     },
     {
-      "id": "5G_Box_Zoroark_BW",
+      "id": "Box_Zoroark_BW",
       "name": "Zoroark",
       "game": "Noir/Blanc",
       "band": 0,

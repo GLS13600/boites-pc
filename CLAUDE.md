@@ -1196,14 +1196,14 @@ vient des sprites**, pas du décor. Toutes les valeurs sont des variables dans `
     survit par `tRNS` — vérifié sur les 40 —, mais un export qui la perdrait
     remplirait les coins arrondis de blanc.
 - **La gén. 5 est recadrée elle aussi** : 156×142 → **156×114**, `band` à 0, calage
-  refait (`{ x: -4.9, y: 0.1, w: 109.9, h: 101.1 }`). Ses fichiers portent en plus
-  un préfixe **`5G_`**, à la demande — donc ses ids ont changé, contrairement à la
-  gén. 4 qui a gardé les siens. Le préfixe
-  fait doublon avec le dossier `5/` ; il est conservé par choix, pas par nécessité.
-  - **Une migration reprend les id stockés** (`migrePrefixe5G`) : `Box_Beach_V` devient
-    `5G_Box_Beach_V` dans `pcbox.boxes`. Sans elle, une boîte réglée sur un fond de
-    gén. 5 l'aurait perdu en silence, `paperCss` ignorant les id inconnus. Elle ne
-    touche qu'aux id devenus introuvables dont la version préfixée existe.
+  refait (`{ x: -4.9, y: 0.1, w: 109.9, h: 101.1 }`). Ses ids sont les mêmes que ceux
+  des autres générations, `Box_X`.
+  - **Ses fichiers ont porté un temps un préfixe `5G_`**, avant de revenir au nom
+    simple : le préfixe faisait doublon avec le dossier `5/`. `migrePrefixe5G` **retire**
+    donc ce préfixe des id stockés — une version intermédiaire a pu l'écrire dans
+    `pcbox.boxes`, et une boîte y aurait perdu son fond en silence, `paperCss` ignorant
+    les id inconnus. À garder un moment. Vérifié dans les deux sens : un id préfixé est
+    rétabli, un id déjà correct n'est pas touché.
   - **Piège d'export, deux fois** : Photoshop a nommé un calque `Calque-1` — c'était
     `Box_Beach_V`, repéré comme seul id sans fichier. Et `Box_Munna_BW` est ressorti en
     **154×113 RGBA** quand les 31 autres font 156×114 RGB. Sans conséquence visible

@@ -420,17 +420,18 @@ function sortForme(key) {
   if (loc) removeAt(loc.gen, loc.index);
 }
 
-// Les fonds de la gén. 5 ont été renommés avec un préfixe `5G_`. Or l'id d'un fond
-// EST son nom de fichier et vit dans `localStorage` : sans cette reprise, une boîte
-// réglée sur « Box_Beach_V » perdrait son fond en silence, `paperCss` ignorant les
-// id inconnus. On ne touche qu'aux id devenus introuvables dont la version préfixée,
-// elle, existe.
+// Les fonds de la gén. 5 ont porté un temps un préfixe `5G_`, avant de revenir au
+// nom simple des autres générations. Or l'id d'un fond EST son nom de fichier et vit
+// dans `localStorage` : une version intermédiaire a donc pu écrire « 5G_Box_Beach_V »
+// chez qui la faisait tourner. On le rétablit, sans quoi la boîte perdrait son fond
+// en silence — `paperCss` ignore les id inconnus. À garder un moment.
 (function migrePrefixe5G() {
   let bouge = false;
   for (const info of Object.values(state.boxes)) {
     if (!info.paper || PAPER_BY_ID.has(info.paper)) continue;
-    const prefixe = '5G_' + info.paper;
-    if (PAPER_BY_ID.has(prefixe)) { info.paper = prefixe; bouge = true; }
+    if (!info.paper.startsWith('5G_')) continue;
+    const nu = info.paper.slice(3);
+    if (PAPER_BY_ID.has(nu)) { info.paper = nu; bouge = true; }
   }
   if (bouge) saveBoxes();
 })();

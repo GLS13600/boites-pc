@@ -1965,6 +1965,10 @@ const IN_MS = 230;  // la suivante entre en décélérant
 const smooth = matchMedia('(prefers-reduced-motion: reduce)');
 const gridEl = () => app.querySelector('.grid');
 const paperEl = () => app.querySelector('.box-paper');
+// La plaque de titre glisse avec le reste. Elle est le FOND du bouton, donc c'est
+// lui qu'on translate : le nom part avec sa plaque, comme la grille part avec le
+// sien. Les séparer ferait flotter le nom au-dessus d'une plaque en mouvement.
+const titleEl = () => app.querySelector('.box-title');
 let sliding = false;
 
 // Colle la grille au doigt. Sans destination (bout du Pokédex), on freine le geste.
@@ -1982,15 +1986,22 @@ function dragGrid(dx) {
     f.classList.add('no-anim');
     f.style.transform = `translateX(${d * 0.85}px)`;
   }
+  // La plaque suit au même rythme que la grille : plus étroite que le fond, elle
+  // n'a pas besoin du retrait appliqué à celui-ci.
+  const t = titleEl();
+  if (t) {
+    t.classList.add('no-anim');
+    t.style.transform = `translateX(${d}px)`;
+  }
 }
 
 // Relâché sans franchir le seuil : la grille revient en place.
 function snapGrid() {
-  for (const el of [gridEl(), paperEl()]) {
+  for (const el of [gridEl(), paperEl(), titleEl()]) {
     if (!el) continue;
     el.classList.remove('no-anim');
     el.style.transform = '';
-    if (el.classList.contains('grid')) el.style.opacity = '';
+    el.style.opacity = '';
   }
 }
 
@@ -2020,6 +2031,14 @@ function slide(dir, dx = 0) {
     fOut.style.opacity = '0';
   }
 
+  const tOut = titleEl();
+  if (tOut) {
+    tOut.classList.remove('no-anim');
+    tOut.style.transition = `transform ${OUT_MS}ms ease-in, opacity ${OUT_MS}ms ease-in`;
+    tOut.style.transform = `translateX(${out}px)`;
+    tOut.style.opacity = '0';
+  }
+
   setTimeout(() => {
     navigate(dir); // render() reconstruit la grille
     const n = gridEl();
@@ -2047,6 +2066,19 @@ function slide(dir, dx = 0) {
       fIn.style.transition = `transform ${IN_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity ${IN_MS}ms ease-out`;
       fIn.style.transform = '';
       fIn.style.opacity = '';
+    }
+
+    // Même entrée pour la plaque, par le même bord.
+    const tIn = titleEl();
+    if (tIn) {
+      tIn.classList.add('no-anim');
+      tIn.style.transform = `translateX(${dir * 55}%)`;
+      tIn.style.opacity = '0';
+      void tIn.offsetWidth;
+      tIn.classList.remove('no-anim');
+      tIn.style.transition = `transform ${IN_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity ${IN_MS}ms ease-out`;
+      tIn.style.transform = '';
+      tIn.style.opacity = '';
     }
 
     setTimeout(() => {

@@ -1218,9 +1218,16 @@ vient des sprites**, pas du décor. Toutes les valeurs sont des variables dans `
     ce qui ne se voit pas — et le texte se place naturellement par-dessus.
   - Un drapeau **`titre`** au catalogue dit qui en possède une. Sans lui, l'application
     irait chercher 236 fichiers dont 196 sont inexistants.
-  - **Seule la gén. 4 en a** pour le moment, ses 40 fonds. Le dossier `5 Title` livré
-    en même temps contient les originaux 156×142 **entiers**, pas les bandes découpées :
-    il est inutilisable tel quel et attend un vrai découpage.
+  - **Gén. 4 et 5 en ont**, soit 72 plaques. Le drapeau étant lu sans distinction de
+    génération, en ajouter une autre ne demandera que les fichiers et le drapeau.
+  - **La plaque glisse avec la boîte** : `dragGrid`, `slide` et `snapGrid` translatent
+    `.box-title` comme ils translatent `.grid` et `.box-paper`. C'est le BOUTON qu'on
+    déplace, pas un calque : le nom part avec sa plaque, les séparer ferait flotter le
+    texte au-dessus d'une plaque en mouvement.
+    - Elle suit au **même rythme que la grille**, sans le retrait de 0,85 appliqué au
+      fond : ce retrait corrige la largeur du calque, or la plaque est plus étroite.
+    - `.box-title.no-anim` est indispensable, comme pour les deux autres : sans elle la
+      position de départ de l'entrée serait animée au lieu d'être posée.
   - Même piège d'export que pour les fonds : un calque sorti sous le nom `Calque-1`,
     identifié comme `Box_Backyard_DP` par élimination — c'était le seul id sans plaque.
 - **Les gén. I et II n'ont aucun fond** : les boîtes y étaient unies. Le sélecteur

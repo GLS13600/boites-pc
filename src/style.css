@@ -141,6 +141,7 @@ img { display: block; }
    accueillir un nom, et ses proportions sont à 3 % de celles du bouton — la
    déformation ne se voit pas. Le texte garde son halo blanc, la plaque étant claire
    sur certains fonds et sombre sur d'autres. */
+.box-title.no-anim { transition: none; }
 .box-title.plaque {
   background-repeat: no-repeat;
   background-size: 100% 100%;

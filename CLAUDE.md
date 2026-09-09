@@ -1210,6 +1210,19 @@ vient des sprites**, pas du décor. Toutes les valeurs sont des variables dans `
     (1,3 % d'écart), mais le lot n'est pas homogène.
   - La perte de l'alpha est SANS effet ici : dans l'original, les pixels transparents
     étaient ceux de la bande, et le panneau avait déjà des coins opaques. Vérifié.
+- **La plaque de titre est une image à part**, `public/wallpapers/titres/<id>.png`.
+  C'est la bande qui, dans le jeu, porte le nom de la boîte : elle a été découpée du
+  fond, et se repose en **fond du bouton `.box-title`**.
+  - Pas de calque séparé : ses proportions (116×23, soit 5,04) collent à celles du
+    bouton (249×48, soit 5,19). Un `background-size: 100% 100%` la déforme de **×1,03**,
+    ce qui ne se voit pas — et le texte se place naturellement par-dessus.
+  - Un drapeau **`titre`** au catalogue dit qui en possède une. Sans lui, l'application
+    irait chercher 236 fichiers dont 196 sont inexistants.
+  - **Seule la gén. 4 en a** pour le moment, ses 40 fonds. Le dossier `5 Title` livré
+    en même temps contient les originaux 156×142 **entiers**, pas les bandes découpées :
+    il est inutilisable tel quel et attend un vrai découpage.
+  - Même piège d'export que pour les fonds : un calque sorti sous le nom `Calque-1`,
+    identifié comme `Box_Backyard_DP` par élimination — c'était le seul id sans plaque.
 - **Les gén. I et II n'ont aucun fond** : les boîtes y étaient unies. Le sélecteur
   l'explique au lieu d'afficher une liste vide. Les fonds arrivent en gén. III.
 - **Choisir un fond referme le panneau** : le choix est fait, et rester ouvert cachait

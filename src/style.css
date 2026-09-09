@@ -137,6 +137,14 @@ img { display: block; }
   border-radius: 9px;
   min-width: 0;
 }
+/* Plaque de titre du jeu, en fond du bouton. `100% 100%` : elle est faite pour
+   accueillir un nom, et ses proportions sont à 3 % de celles du bouton — la
+   déformation ne se voit pas. Le texte garde son halo blanc, la plaque étant claire
+   sur certains fonds et sombre sur d'autres. */
+.box-title.plaque {
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
 .box-title:active { background: var(--slot); }
 .box-title small { display: block; font-weight: 500; font-size: 12px; color: var(--muted); margin-top: 3px; }
 

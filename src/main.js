@@ -171,6 +171,13 @@ for (const [gen, list] of Object.entries(wallpapers)) {
 
 // Un id inconnu (fond retiré, ou ancien catalogue) ne doit pas casser une boîte.
 const paperCss = (id) => (paperUrl(id) ? `url(${paperUrl(id)})` : '');
+
+// Plaque de titre : la bande qui, dans le jeu, porte le nom de la boîte. Elle a été
+// découpée du fond et vit à part, dans `titres/<id>.png`. Toutes les générations n'en
+// ont pas — d'où le drapeau `titre` au catalogue, qui évite d'aller chercher 200
+// fichiers inexistants.
+const titreUrl = (id) => (PAPER_BY_ID.get(id)?.titre ? `wallpapers/titres/${encodeURIComponent(id)}.png` : '');
+const titreCss = (id) => (titreUrl(id) ? `url(${titreUrl(id)})` : '');
 // Hauteur de la bande d'en-tête du fond, en fraction de l'image (0 = pas de bande).
 // Format de l'image (« 156x142 ») : sert à choisir le calage quand une génération
 // contient plusieurs mises en page.
@@ -517,6 +524,7 @@ function render() {
   const rang = state.mode === "move";
   // Un id inconnu retombe sur « aucun fond » plutôt que sur une grille vide.
   const paperBg = paperCss(boxInfo(state.gen, b).paper);
+  const titrePlaque = titreCss(boxInfo(state.gen, b).paper);
   // Ordre par défaut : on affiche la plage du Pokédex, plus parlante. Dès que la
   // génération est réarrangée, cette plage ne veut plus rien dire : on montre le rang.
   // Ordre d'origine : on annonce les numéros réels — nationaux pour une génération,
@@ -542,7 +550,12 @@ function render() {
         ${paperBg ? `<div class="box-paper" data-gen="${paperGen(boxInfo(state.gen, b).paper) ?? ''}" data-size="${paperSize(boxInfo(state.gen, b).paper) ?? ''}" style="background-image:${paperBg}"></div>` : ''}
         <div class="box-head">
           <button class="box-arrow" data-dir="-1" ${b === 0 ? 'disabled' : ''} aria-label="Boîte précédente">&lsaquo;</button>
-          <button class="box-title" data-act="box-edit" title="Renommer la boîte et choisir son fond">
+          <!-- La plaque de titre se pose EN FOND du bouton, pas dans un calque à part :
+               ses proportions (116×23, soit 5,04) collent presque exactement à celles du
+               bouton (5,19), et le texte se place naturellement par-dessus. -->
+          <button class="box-title ${titrePlaque ? 'plaque' : ''}" data-act="box-edit"
+                  title="Renommer la boîte et choisir son fond"
+                  ${titrePlaque ? `style="background-image:${titrePlaque}"` : ''}>
             ${esc(boxLabel(state.gen, b))}
             <small>${sous}</small>
           </button>

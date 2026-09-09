@@ -595,280 +595,320 @@
       "name": "Big Brother",
       "game": "Or HeartGold/Argent SoulSilver",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_PokéCenter_IV",
       "name": "Centre Pokémon",
       "game": "Gén. IV",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Sky_IV",
       "name": "Ciel",
       "game": "Gén. IV",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Contest_Pt",
       "name": "Concours",
       "game": "Platine",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Croagunk_Pt",
       "name": "Croagunk",
       "game": "Platine",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Checks_IV",
       "name": "Damier",
       "game": "Gén. IV",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Desert_IV",
       "name": "Désert",
       "game": "Gén. IV",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Distortion_Pt",
       "name": "Distorsion",
       "game": "Platine",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Space_DP",
       "name": "Espace",
       "game": "Diamant/Perle",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Crag_IV",
       "name": "Falaise",
       "game": "Gén. IV",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Seafloor_IV",
       "name": "Fond marin",
       "game": "Gén. IV",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Forest_IV",
       "name": "Forêt",
       "game": "Gén. IV",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Cave_IV",
       "name": "Grotte",
       "game": "Gén. IV",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Heart_HGSS",
       "name": "Heart",
       "game": "Or HeartGold/Argent SoulSilver",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Backyard_DP",
       "name": "Jardin",
       "game": "Diamant/Perle",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Kimono_Girl_HGSS",
       "name": "Kimono Girl",
       "game": "Or HeartGold/Argent SoulSilver",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Legend_DP",
       "name": "Légende",
       "game": "Diamant/Perle",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Legend_Pt",
       "name": "Légende",
       "game": "Platine",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Machine_IV",
       "name": "Machine",
       "game": "Gén. IV",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Snow_IV",
       "name": "Neige",
       "game": "Gén. IV",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Nostalgic_DP",
       "name": "Nostalgique",
       "game": "Diamant/Perle",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Nostalgic_Pt",
       "name": "Nostalgique",
       "game": "Platine",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_PikaPika_DP",
       "name": "PikaPika",
       "game": "Diamant/Perle",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_PikaPika_Pt",
       "name": "PikaPika",
       "game": "Platine",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Beach_IV",
       "name": "Plage",
       "game": "Gén. IV",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Pokéathlon_HGSS",
       "name": "Pokéathlon",
       "game": "Or HeartGold/Argent SoulSilver",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Revival_HGSS",
       "name": "Revival",
       "game": "Or HeartGold/Argent SoulSilver",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_River_IV",
       "name": "Rivière",
       "game": "Gén. IV",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Savanna_IV",
       "name": "Savane",
       "game": "Gén. IV",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Soul_HGSS",
       "name": "Soul",
       "game": "Or HeartGold/Argent SoulSilver",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Spiky_Pika_HGSS",
       "name": "Spiky Pika",
       "game": "Or HeartGold/Argent SoulSilver",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Team_Galactic_DP",
       "name": "Team Galactic",
       "game": "Diamant/Perle",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Team_Galactic_Pt",
       "name": "Team Galactic",
       "game": "Platine",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Torchic_DP",
       "name": "Torchic",
       "game": "Diamant/Perle",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Trio_DP",
       "name": "Trio",
       "game": "Diamant/Perle",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Trio_HGSS",
       "name": "Trio",
       "game": "Or HeartGold/Argent SoulSilver",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Trio_Pt",
       "name": "Trio",
       "game": "Platine",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Simple_IV",
       "name": "Uni",
       "game": "Gén. IV",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_City_IV",
       "name": "Ville",
       "game": "Gén. IV",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     },
     {
       "id": "Box_Volcano_IV",
       "name": "Volcan",
       "game": "Gén. IV",
       "band": 0,
-      "size": "134x101"
+      "size": "134x101",
+      "titre": true
     }
   ],
   "5": [

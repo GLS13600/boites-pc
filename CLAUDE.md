@@ -516,6 +516,10 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
   - Elle se lit **en attaque** (×2 vert, comme la grille « Attaque » de l'analyse
     d'équipe et à l'inverse de sa grille « Défense »), puisque la ligne est le type
     du coup porté.
+  - Ses teintes sont **plus soutenues que celles de l'analyse d'équipe**, et les
+    classes sont donc préfixées `.tt-tab` pour ne pas déteindre dessus. La table est
+    dense — cases de 26 px, texte de 9 px — et ce qui suffit à distinguer une ligne
+    aérée s'y perd.
   - `.tt-wrap` défile horizontalement — 19 colonnes ne tiennent pas sur 375 px — et
     la première colonne est `sticky` : sans elle on perd de vue le type attaquant
     dès qu'on fait glisser la table.

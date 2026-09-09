@@ -880,9 +880,13 @@ img { display: block; }
 /* La LIGNE est le type de l'attaque : on lit donc la table en attaque, où frapper
    ×2 est un bon résultat. C'est le même sens que la grille « Attaque » de
    l'analyse d'équipe, et l'inverse de la grille « Défense ». */
-.tt-tab .mx { background: #e2f0e4; color: #37733f; }
-.tt-tab .md { background: #f3efe2; color: #7a6a34; }
-.tt-tab .m0 { background: #fbe3e0; color: #b03127; }
+/* Teintes plus soutenues que celles des grilles d'analyse : la table est dense,
+   ses cases font 26 px et son texte 9 px. Ce qui suffit à distinguer une ligne
+   aérée s'y perdrait. Les classes sont préfixées `.tt-tab`, donc l'analyse d'équipe
+   garde ses tons doux. */
+.tt-tab .mx { background: #c3e8ca; color: #1a5527; }
+.tt-tab .md { background: #f0e3b4; color: #655518; }
+.tt-tab .m0 { background: #f8cdc7; color: #97271e; }
 
 .an-tank {
   margin: 0 0 10px;

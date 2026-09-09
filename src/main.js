@@ -2743,10 +2743,26 @@ function closeBattleSheet() {
   state.bs = null;
   syncBackdrop();
 }
+// Panneaux ouverts DEPUIS la fiche de détail, et qui y ramènent. Choisir une
+// attaque en bas de la fiche renvoyait tout en haut : on perdait sa place à chaque
+// attaque, soit quatre fois par Pokémon. Même principe que le `keepScroll` de la
+// fiche du Pokédex.
+const SOUS_PANNEAUX = new Set(['attaque', 'talent', 'objet', 'nature']);
+let defileDetail = { slot: null, y: 0 };
+
 function openBattleSheet(mode, slot = null, emplacement = null) {
+  const avant = state.bs;
+  // On quitte le détail pour un sous-panneau : on retient où on en était.
+  if (avant?.mode === 'detail' && mode !== 'detail') {
+    defileDetail = { slot: avant.slot, y: battleBody.scrollTop };
+  }
   state.bs = { mode, slot, emplacement, q: '' };
   renderBattleSheet();
-  battleBody.scrollTop = 0;
+  // Retour au détail depuis un de ces panneaux, sur le MÊME Pokémon : on rend la
+  // position. Ouvert autrement — depuis l'équipe, ou sur un autre membre — la fiche
+  // repart en haut, comme il se doit.
+  const retour = mode === 'detail' && SOUS_PANNEAUX.has(avant?.mode) && defileDetail.slot === slot;
+  battleBody.scrollTop = retour ? defileDetail.y : 0;
   battleSheet.classList.add('open');
   syncBackdrop();
 }

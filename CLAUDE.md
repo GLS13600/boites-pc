@@ -414,6 +414,17 @@ la fonction ne concerne que la gestion des boîtes.
   `jetonsDe` reçoit une liste d'une seule valeur dans ce cas, et la rend telle quelle.
 - **L'aide « Touchez un emplacement… » disparaît dès qu'un Pokémon est placé** : elle
   ne sert qu'à la première prise en main, ensuite c'est du bruit sous l'équipe.
+- **La fiche de détail retrouve sa position de défilement** au retour des panneaux
+  qui en sortent (`SOUS_PANNEAUX` : attaque, talent, objet, nature). `openBattleSheet`
+  remettait `scrollTop` à 0 sans distinction : choisir une attaque, qui vit tout en
+  bas de la fiche, renvoyait donc en haut — quatre fois par Pokémon, plus le talent
+  et l'objet.
+  - La position est retenue **en quittant** le détail, et rendue au retour **sur le
+    même membre** (`defileDetail.slot === slot`). Ouverte autrement — depuis
+    l'équipe, ou sur un autre Pokémon — la fiche repart en haut, comme il se doit.
+  - Les sous-panneaux, eux, ouvrent toujours en haut : ce sont des listes neuves.
+  - Vérifié : 526 avant et après le choix d'une attaque, 400 de même pour un talent,
+    et 0 en rouvrant la fiche depuis l'équipe.
 
 ### Une équipe par version
 

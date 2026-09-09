@@ -38,7 +38,7 @@ export const ALIGNEMENT = {
   // Images RECADRÉES : la bande du nom de boîte a été retirée, 162x148 -> 134x101.
   // D'où un y proche de 0, là où il valait −27,4 : il n'y a plus de bande à glisser
   // derrière le titre.
-  4: { x: -2.7, y: -3.9, w: 105.7, h: 104.9 },
+  4: { x: -2.7, y: -2.1, w: 105.7, h: 104.9 },
 
   // ---- Gén. 5 — 32 fonds (156x114) ---- VALIDÉ à la main.
   // Images RECADRÉES : bande du nom retirée, 156x142 -> 156x114. Le y repasse près de

@@ -1183,7 +1183,7 @@ vient des sprites**, pas du décor. Toutes les valeurs sont des variables dans `
 - **Les fonds de la gén. 4 sont RECADRÉS** : 162×148 à l'origine, **134×101**
   aujourd'hui, la bande du nom de boîte ayant été retirée à l'image. `band` est donc
   passé à 0 pour ces 40 entrées, et le calage a été refait
-  (`{ x: -2.7, y: -3.9, w: 105.7, h: 104.9 }`) : son `y` est désormais proche de 0,
+  (`{ x: -2.7, y: -2.1, w: 105.7, h: 104.9 }`) : son `y` est désormais proche de 0,
   là où il valait −27,4 pour glisser la bande derrière le titre de la boîte.
   - L'étirement vertical passe de **×1,17 à ×1,42** (image plus large que haute
     plaquée sur un panneau plus haut que large). Reste sous la limite du visible,

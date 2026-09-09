@@ -293,7 +293,21 @@ onglets). `render()` y bascule comme pour le combat.
 - **Taux de remplissage** par génération et au total, calculé sur la collection
   ACTIVE (`isCaught`) : il suit donc la bascule normal / chromatique des boîtes.
 - La fiche ouverte est exactement celle des boîtes (`openSheet`) : description,
-  **faiblesses**, évolutions, formes, talents, attaques, lieux de capture.
+  **statistiques de base**, faiblesses, évolutions, formes, talents, attaques, lieux
+  de capture.
+- **Les stats de base sont affichées en barres** (`renderStatsBase`), sous la fiche du
+  Pokédex, avec un total.
+  - Longueur rapportée à **255**, le maximum réel du jeu (les PV de Leuphorie) : les
+    barres se comparent donc d'une espèce à l'autre et aucune valeur n'est écrêtée.
+    Rapporter au meilleur score de l'espèce aurait donné une barre pleine à tout
+    Pokémon, y compris aux plus faibles. Le prix : dans la plage utile (40–120) les
+    barres restent courtes, et c'est la COULEUR qui porte la qualité.
+  - Quatre paliers : `< 60` rouge, `< 100` orange, `< 120` vert-jaune, au-delà vert.
+  - Trois colonnes fixes (libellé, valeur, piste) pour que toutes les barres partent
+    du même bord — alignées, elles se comparent d'un coup d'œil.
+  - Passe par **`statsDe(key)`**, jamais `stats[...]` : une forme a ses propres stats.
+    Vérifié, Méga-Dracaufeu X affiche 130/111/130 pour un total de 634, là où
+    Dracaufeu donne 84/78/109 et 534.
 - **Barre de recherche** (`state.dexQ`, volontairement NON persistée : une recherche
   est de passage). Elle **balaie les neuf générations et ignore l'onglet**, comme
   celle du sélecteur des boîtes — on cherche justement ce qu'on ne sait pas situer.

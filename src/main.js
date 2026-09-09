@@ -695,6 +695,43 @@ const sheet = h(`<aside class="sheet" role="dialog" aria-modal="true"><div class
 document.body.append(backdrop, sheet);
 backdrop.addEventListener('click', () => { closeSheet(); closeBoxSheet(); closeAddSheet(); });
 
+// Stats de base en barres.
+//
+// La longueur est rapportée à 255, le maximum réel du jeu (les PV de Leuphorie) :
+// les barres restent donc comparables d'une espèce à l'autre, et aucune valeur n'est
+// écrêtée. Rapporter au meilleur score de l'espèce aurait donné à tout Pokémon une
+// barre pleine, y compris aux plus faibles.
+//
+// La COULEUR dit la qualité de la valeur, ce que la longueur seule rend mal à cette
+// échelle : à 255, une stat de 100 n'occupe que 39 % de la piste.
+const STAT_LIGNES = [['pv', 'PV'], ['att', 'Attaque'], ['def', 'Défense'],
+  ['atts', 'Atq. Spé.'], ['defs', 'Déf. Spé.'], ['vit', 'Vitesse']];
+const MAX_STAT = 255;
+const classeStat = (v) => (v < 60 ? 'sb-bas' : v < 100 ? 'sb-moyen' : v < 120 ? 'sb-bon' : 'sb-haut');
+
+// `statsDe` et non `stats[...]` : une forme a ses PROPRES stats de base, et la fiche
+// doit montrer celles de la forme affichée — Kyurem Blanc monte à 170 en Atq. Spé.
+function renderStatsBase(key) {
+  const st = statsDe(key);
+  if (!st) return '<p class="none">Statistiques inconnues.</p>';
+  const total = STAT_LIGNES.reduce((n, [k]) => n + (st[k] || 0), 0);
+  return `
+    <div class="statbars">
+      ${STAT_LIGNES.map(([k, lib]) => `
+        <div class="sb">
+          <span class="sb-lib">${lib}</span>
+          <span class="sb-val">${st[k]}</span>
+          <span class="sb-piste"><i class="${classeStat(st[k])}"
+                style="width:${(100 * st[k]) / MAX_STAT}%"></i></span>
+        </div>`).join('')}
+      <div class="sb sb-total">
+        <span class="sb-lib">Total</span>
+        <span class="sb-val">${total}</span>
+        <span class="sb-piste"></span>
+      </div>
+    </div>`;
+}
+
 function openSheet(id) {
   // Nouveau Pokémon : on repart en haut. Simple bascule (shiny, capture) : on garde la place.
   const keepScroll = state.open === id ? sheetBody.scrollTop : 0;
@@ -754,6 +791,9 @@ function openSheet(id) {
       <div class="fact"><dt>Poids</dt><dd>${p.weight ? p.weight.toFixed(1) + ' kg' : '—'}</dd></div>
       ${p.flavor ? `<div class="fact wide"><dt>Description</dt><dd>${p.flavor}</dd></div>` : ''}
     </dl>
+
+    <h3>Statistiques de base</h3>
+    ${renderStatsBase(id)}
 
     <h3>Faiblesses et résistances <small>table actuelle</small></h3>
     ${renderFaiblesses(base, 9)}

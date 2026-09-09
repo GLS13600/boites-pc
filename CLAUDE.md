@@ -665,9 +665,18 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 - Sur iPhone, un appui long sur une image ouvre l’aperçu de Safari et son menu de
   partage. Safari capte ce geste **avant** notre code : sans contre-mesure, le
   glisser-déposer est inutilisable sur iPhone alors qu’il marche sur PC.
-- Neutralisé en CSS sur `.box`, ses descendants et toutes les `img` :
-  `-webkit-touch-callout: none`, `user-select: none`, `-webkit-user-drag: none`.
-  Ne pas retirer ces règles sans retester sur un vrai iPhone.
+- Le symptôme ne se limite pas à l'aperçu d'image : sur du TEXTE, l'appui long le
+  surligne en bleu et fait surgir le menu copier/coller par-dessus tout l'écran.
+- Neutralisé en CSS par `-webkit-touch-callout: none` et `user-select: none` sur
+  **`.box`, `.gens`, `.nav` et leurs descendants**, plus `-webkit-user-drag: none`
+  sur toutes les `img`. Ne pas retirer sans retester sur un vrai iPhone.
+- **La liste doit couvrir TOUTE zone portant un appui long.** `.gens` y a été
+  ajoutée après coup : la barre d'onglets est rendue À CÔTÉ de `.box`, pas dedans,
+  si bien que porter un onglet sélectionnait son libellé. `.box-title` est, lui, un
+  descendant de `.box` et était couvert d'emblée. Le réflexe en ajoutant un geste
+  d'appui long : vérifier que sa zone tombe dans ce sélecteur.
+- Contre-épreuve à garder : le texte des fiches doit RESTER sélectionnable. Vérifié,
+  `.foot` et le corps des panneaux sont en `user-select: auto`.
 - L’événement `contextmenu` ne se déclenche pas sur iOS pour ce geste : le traiter en
   JavaScript ne suffirait pas, la parade est bien côté CSS.
 

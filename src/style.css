@@ -1542,15 +1542,25 @@ img { display: block; }
 
 /* ---------- iOS : neutraliser l'aperçu natif au appui long ---------- */
 
-/* Sur iPhone, un appui long sur une image ouvre l'aperçu de Safari et son menu de
-   partage. Ce geste est capté par le navigateur AVANT notre code : sans ces règles,
-   le glisser-déposer est tout simplement inutilisable sur iPhone.
+/* Sur iPhone, un appui long est capté par le navigateur AVANT notre code : il
+   surligne le texte en bleu et fait surgir le menu copier/coller, par-dessus tout.
+   Sans ces règles, aucun de nos gestes d'appui long n'est utilisable sur iPhone.
    - -webkit-touch-callout : supprime le menu contextuel natif ;
    - user-select : empêche la sélection qui l'accompagne ;
    - -webkit-user-drag : empêche le glissement natif d'image (iOS 11+).
+
+   LA LISTE DOIT COUVRIR TOUTE ZONE PORTANT UN APPUI LONG. `.gens` y a été ajoutée
+   après coup : la barre d'onglets est rendue À CÔTÉ de `.box`, pas dedans, si bien
+   que le déplacement d'un onglet sélectionnait son libellé. `.box-title`, lui, est
+   bien un descendant de `.box` et était couvert d'emblée. `.nav` suit par principe :
+   elle ne porte aucun geste, mais sélectionner « Boîtes » ne sert à rien non plus.
    Ne pas retirer sans tester sur un vrai iPhone. */
 .box,
-.box * {
+.box *,
+.gens,
+.gens *,
+.nav,
+.nav * {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;

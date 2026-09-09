@@ -1182,8 +1182,9 @@ vient des sprites**, pas du décor. Toutes les valeurs sont des variables dans `
   build et hors versionnage.
 - **Les fonds de la gén. 4 sont RECADRÉS** : 162×148 à l'origine, **134×101**
   aujourd'hui, la bande du nom de boîte ayant été retirée à l'image. `band` est donc
-  passé à 0 pour ces 40 entrées, et leur calage est à refaire — l'ancien y de −27,4
-  servait précisément à cacher cette bande derrière le titre.
+  passé à 0 pour ces 40 entrées, et le calage a été refait
+  (`{ x: -2.7, y: -3.9, w: 105.7, h: 104.9 }`) : son `y` est désormais proche de 0,
+  là où il valait −27,4 pour glisser la bande derrière le titre de la boîte.
   - L'étirement vertical passe de **×1,17 à ×1,42** (image plus large que haute
     plaquée sur un panneau plus haut que large). Reste sous la limite du visible,
     fixée à ×1,6 — mais il ne reste plus de marge, à surveiller.

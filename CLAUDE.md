@@ -1099,9 +1099,24 @@ vient des sprites**, pas du décor. Toutes les valeurs sont des variables dans `
 ## Personnalisation des boîtes
 
 - Chaque boîte a un **nom** et un **fond**, réglés en tapant sur le titre de la boîte.
-- Les fonds sont les **276 fonds officiels des jeux**, générations III à IX, tirés des
-  archives Bulbagarden, dans `public/wallpapers/<id>.png` (6,1 Mo). Trop volumineux pour
-  être inlinés : Vite les copie tels quels dans `dist/`, donc embarqués et hors ligne.
+- Les fonds sont les **236 fonds officiels des jeux**, générations III à VIII, tirés
+  des archives Bulbagarden, dans **`public/wallpapers/<génération>/<id>.png`** (4,9 Mo).
+  Trop volumineux pour être inlinés : Vite les copie tels quels dans `dist/`, donc
+  embarqués et hors ligne.
+- **Le classement par génération ne touche PAS aux identifiants.** L'id reste le seul
+  nom de fichier ; `paperUrl` retrouve le dossier via `PAPER_GEN`. C'est ce qui a
+  permis de ranger les 236 fichiers sans migration : un id part en `localStorage`, et
+  le changer aurait fait perdre son fond à chaque boîte personnalisée. Vérifié, une
+  boîte réglée avant le déplacement charge toujours le sien.
+- **40 fonds ont été RETIRÉS** : les 19 d'Épée/Bouclier et les 21 d'Écarlate/Violet
+  (suffixes `SwSh`, `SV`, `S`, `Vi`). Leurs seules sources sont des **captures du menu
+  complet** du jeu ; le recadrage donnait la GRILLE de la boîte — ses cases, un bout du
+  panneau latéral — et non sa tapisserie. Ce n'étaient pas des fonds. Ne pas les
+  régénérer sans source propre. La gén. 9 n'en a donc plus aucun, et le sélecteur le
+  dit comme pour les gén. 1 et 2.
+  - Conservés parce que fidèles : les **32 BDSP** (textures propres, seulement
+    réduites) et les **21 Pokémon Box RS** (recadrés sur une zone de texture sans
+    interface). Vérifié à l'image, pas seulement d'après la documentation.
 - Le fond vit dans une **couche dédiée** (`.box-paper`, positionnée en absolu dans
   `.box`), dont `calePaper()` pose position et taille **après rendu** : la taille des
   cases dépend de la largeur de l'écran.

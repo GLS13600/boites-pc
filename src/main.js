@@ -155,7 +155,13 @@ const speciesOf = (k) => FORM_BY_KEY.get(k)?.species ?? k;
 // Le catalogue est produit par un script à partir des fichiers ; l'`id` est le nom de
 // fichier et part en localStorage, le renommer casserait les boîtes personnalisées.
 // 30 noms de fichiers contiennent des accents (« Box_PokéCenter_E ») : on encode.
-const paperUrl = (id) => (PAPER_BY_ID.has(id) ? `wallpapers/${encodeURIComponent(id)}.png` : '');
+// Les fonds sont rangés PAR GÉNÉRATION, `wallpapers/<gen>/<id>.png`. Le dossier se
+// déduit de `PAPER_GEN` : l'identifiant, lui, reste le seul nom de fichier et ne
+// change donc PAS. C'est ce qui permet ce classement sans migration — l'id part en
+// `localStorage`, et le renommer aurait fait perdre son fond à chaque boîte
+// personnalisée.
+const paperUrl = (id) =>
+  (PAPER_BY_ID.has(id) ? `wallpapers/${PAPER_GEN.get(id)}/${encodeURIComponent(id)}.png` : '');
 
 const PAPER_BY_ID = new Map();
 const PAPER_GEN = new Map(); // id -> génération, pour rouvrir le sélecteur au bon endroit

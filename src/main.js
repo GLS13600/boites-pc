@@ -711,22 +711,19 @@ function openSheet(id) {
   // chromatique : c'est la page où l'on vient regarder la bête. Le gris reste le
   // signal d'état de la grille, et ici le bouton de capture dit déjà où l'on en est.
   //
-  // L'artwork officiel EXISTE aussi pour les formes à clé numérique (Méga, Gigamax,
-  // régionales) : elles s'affichent donc en grand, comme les espèces. Les formes
-  // cosmétiques, dont la clé est un slug, gardent leur sprite 2D — c'est de toute
-  // façon leur seul visuel propre.
+  // On demande TOUJOURS l'artwork de la forme elle-même, et `portraitFallback`
+  // retombe sur son sprite 2D quand il n'existe pas. Le portrait montre donc le plus
+  // souvent possible une image nette, SANS jamais cesser de représenter la forme
+  // exacte — un artwork qui ne serait pas le bon vaut moins que le sprite qui l'est.
   //
-  // EXCEPTION, les formes femelles : PokéAPI ne publie aucun artwork femelle, et
-  // leur sprite 2D ne fait que 96 px pour un portrait de 108 — soit 324 px sur un
-  // écran ×3, un agrandissement de 3,4× qui rend une bouillie. On prend donc
-  // l'artwork de l'ESPÈCE, net. La différence femelle reste visible juste en
-  // dessous, dans la liste des formes, qui affiche les sprites à leur taille.
-  const femelle = forme?.kind === 'femelle';
-  const grandPortrait = !forme || typeof id === 'number' || femelle;
-  // `sprites.art(id)` sur une clé slug viserait `official-artwork/25-female.webp`,
-  // qui n'existe pas : on passe explicitement par l'espèce.
-  const portrait = !grandPortrait ? sprites.still(spriteKey(id), sh)
-    : sprites.art(femelle ? base : id, sh);
+  // Le critère précédent — « clé numérique » — était faux dans les deux sens : 12
+  // formes à clé numérique (Mimiqui Démasqué, Zygarde, Méga-Nigirigon…) n'ont aucun
+  // artwork, et 70 formes à clé slug en ont un (Pichu, Zarbi A, Cape Plante, les trois
+  // Mothim…), qui restait inutilisé. Le fichier fait foi, pas la forme de la clé.
+  //
+  // `spriteKey(id)` et non `id` : l'artwork d'une forme à slug porte le nom de son
+  // sprite (`414` pour mothim-plant), jamais celui de sa clé.
+  const portrait = sprites.art(spriteKey(id), sh);
 
   sheet.querySelector('.sheet-body').innerHTML = `
     <div class="sheet-top">

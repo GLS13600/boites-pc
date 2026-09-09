@@ -590,23 +590,25 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 
 - Une forme n'a pas d'entrée propre au Pokédex : la fiche emprunte celle de son espèce
   (`speciesOf()`) pour les types, la description et les lieux.
-- **L'artwork officiel EXISTE pour les formes à clé numérique** (Méga, Gigamax,
-  régionales) : elles s'affichent en grand comme les espèces. L'affirmation inverse
-  figurait ici et avait fait afficher un sprite 2D là où un artwork était disponible.
-  Seules les **formes cosmétiques**, dont la clé est un slug, n'en ont pas et gardent
-  leur sprite 2D — c'est de toute façon leur seul visuel propre.
-- **Les formes FEMELLES font exception et prennent l'artwork de leur ESPÈCE.**
-  PokéAPI n'en publie aucun qui leur soit propre (pas de `female/` sous
-  `official-artwork/`), et leur sprite 2D ne fait que **96 px** pour un portrait de
-  108 — soit 324 px sur un écran ×3, un agrandissement de 3,4× qui rendait une image
-  molle là où les autres fiches sont nettes.
-  - Le prix est assumé : le portrait ne montre plus la différence femelle, puisque
-    l'artwork est celui par défaut. Elle reste visible juste en dessous, dans la
-    liste des formes, qui affiche les sprites à leur taille native.
-  - `sprites.art(id)` sur une clé slug viserait `official-artwork/25-female.webp`,
-    inexistant : il faut passer explicitement par l'espèce (`base`).
-  - Vérifié : la fiche femelle sert un artwork de 384 px, et une forme à clé
-    numérique (Gigamax) garde bien le SIEN.
+- **Le portrait demande TOUJOURS l'artwork de la forme elle-même**
+  (`sprites.art(spriteKey(id))`), et `portraitFallback` retombe sur son sprite 2D
+  quand il n'existe pas. Deux exigences, dans cet ordre :
+  1. **Le portrait représente la forme EXACTE.** Un artwork qui ne serait pas le bon
+     vaut moins qu'un sprite 2D qui l'est — c'est pourquoi une forme femelle garde son
+     `female/<id>.png`, PokéAPI ne publiant aucun artwork femelle. Substituer celui de
+     l'espèce a été essayé puis retiré : net, mais faux.
+  2. **Le plus de portraits nets possible**, sous cette contrainte.
+  - Le critère précédent — « clé numérique » — était FAUX DANS LES DEUX SENS. 12 formes
+    à clé numérique n'ont aucun artwork (Mimiqui Démasqué, Zygarde, Méga-Nigirigon…),
+    et 70 formes à clé slug en ont un (Pichu, Zarbi A, Cape Plante, les trois Mothim…),
+    qui restait inutilisé. **Le fichier fait foi, pas la forme de la clé** : demander
+    puis retomber vaut mieux que présumer.
+  - `spriteKey(id)` et non `id` : l'artwork d'une forme à slug porte le nom de son
+    SPRITE (`414` pour mothim-plant), jamais celui de sa clé.
+  - Effet mesuré : **384 formes en artwork** au lieu de 314, les 294 autres sur leur
+    propre sprite 2D. Vérifié sur les trois cas — femelle (slug sans artwork) → son
+    sprite, Gigamax (numérique avec) → le sien, Zarbi A (slug avec) → 384 px là où
+    elle affichait du 2D.
 - Le grand portrait a un repli à **deux niveaux** (`portraitFallback`) : artwork →
   sprite 2D de la forme → sprite de l'espèce. Les 25 formes sans aucun sprite propre
   ont besoin du troisième cran.

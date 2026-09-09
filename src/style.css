@@ -12,10 +12,11 @@
   --shiny: #b98b18;
   --font: ui-rounded, "SF Pro Rounded", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
-  --nav-h: 47px; /* hauteur du contenu de la barre du bas */
-  /* Marge sous les icônes. On ne réserve pas toute la zone sûre : l’indicateur
-     d’accueil laissait 45 px de vide sous les libellés, ce qui décollait
-     visiblement la barre du bord de l’écran. */
+  --nav-h: 48px; /* hauteur du contenu de la barre du bas, filet compris */
+  --nav-ico: 20px; /* taille des icônes de cette barre, voir .nav */
+  /* Marge sous les icônes : la zone sûre ENTIÈRE. On n'en réservait d'abord qu'une
+     fraction, pour ne pas décoller la barre du bord de l'écran — puis la barre a été
+     jugée trop basse et on est passé au total. Préférence explicite, pas un oubli. */
   --nav-bas: var(--safe-bottom);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -373,7 +374,13 @@ img { display: block; }
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
-  padding: 13px 10px var(--nav-bas);
+  /* La hauteur totale de la barre ne doit PAS bouger : elle a été relevée sur une
+     capture de référence, et tout le reste de l'appli lui réserve --nav-h.
+     Elle vaut 1 (filet) + haut + icône + 2 (écart) + 15 (libellé) + --nav-bas, soit
+     48 px hors zone sûre. Le haut est donc l'ajustement : 30 px moins l'icône.
+     Les glyphes d'avant faisaient 17 px pour 13 px de marge ; à 20 px d'icône il en
+     reste 10. Changer --nav-ico impose de refaire cette soustraction. */
+  padding: 10px 10px var(--nav-bas);
   /* OPAQUE, et dans la couleur du papier. Translucide avec un flou d'arrière-plan,
      la barre changeait d'aspect selon la page : sur le Pokédex la grille défilait
      dessous et le flou la fondait dans la page, tandis que sur Boîtes et Combat —
@@ -399,8 +406,19 @@ img { display: block; }
   cursor: pointer;
   transition: background 150ms ease, color 150ms ease;
 }
-.nav-btn b { font-size: 17px; line-height: 1; font-weight: 400; }
+/* Les icônes sont en couleur : elles ne peuvent pas rougir avec le libellé quand
+   l'onglet devient actif. C'est le gris qui porte le repos, comme dans la grille des
+   boîtes où le gris dit « pas capturé » — et la couleur revient sur l'onglet actif. */
+.nav-btn svg {
+  display: block;
+  width: var(--nav-ico);
+  height: var(--nav-ico);
+  filter: grayscale(0.45);
+  opacity: 0.82;
+  transition: filter 150ms ease, opacity 150ms ease;
+}
 .nav-btn.on { background: var(--caught-tint); color: var(--ball); }
+.nav-btn.on svg { filter: none; opacity: 1; }
 
 /* Le corps ne défile plus : c'est .vue qui s'en charge, et la barre est dans le flux. */
 

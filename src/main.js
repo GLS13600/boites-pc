@@ -2191,13 +2191,76 @@ function importEquipes() {
 
 // ---------- Rendu de la vue ----------
 
+// Icônes de la barre du bas. Dessinées ici plutôt que chargées depuis `public/` :
+// trois fichiers de plus pour 2 Ko, alors que l'appli ne fait aucune requête au
+// runtime et que ces icônes sont visibles en permanence, donc jamais candidates au
+// chargement paresseux.
+//
+// Elles sont EN COULEUR, contrairement aux glyphes qu'elles remplacent : elles ne
+// peuvent donc pas virer au rouge quand l'onglet devient actif. C'est le gris qui
+// porte l'état au repos (`filter: grayscale`), exactement comme dans la grille des
+// boîtes où le gris dit « pas capturé ». Le libellé et la pastille, eux, rougissent.
+//
+// Tout est en viewBox 0 0 24 24, sans `width` ni `height` : c'est la feuille de
+// style qui décide de la taille, via `--nav-ico`.
+const ICONES = {
+  // Boîtes : la grille du PC, une case portant une Poké Ball.
+  boites: `<svg viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="2.4" y="4" width="19.2" height="16" rx="2.8" fill="#fff" stroke="#1e2227" stroke-width="1.5"/>
+    <g fill="#c9cfd8">
+      <rect x="5" y="7" width="4.2" height="4.2" rx="1"/><rect x="14.8" y="7" width="4.2" height="4.2" rx="1"/>
+      <rect x="5" y="12.8" width="4.2" height="4.2" rx="1"/><rect x="9.9" y="12.8" width="4.2" height="4.2" rx="1"/>
+      <rect x="14.8" y="12.8" width="4.2" height="4.2" rx="1"/>
+    </g>
+    <g transform="translate(9.9 7)">
+      <circle cx="2.1" cy="2.1" r="2.1" fill="#fff" stroke="#1e2227" stroke-width=".7"/>
+      <path d="M0 2.1a2.1 2.1 0 0 1 4.2 0z" fill="#d6453c"/>
+      <rect y="1.75" width="4.2" height=".7" fill="#1e2227"/>
+      <circle cx="2.1" cy="2.1" r=".62" fill="#fff" stroke="#1e2227" stroke-width=".5"/>
+    </g>
+  </svg>`,
+  // Pokédex : le boîtier rouge, sa lentille, ses trois voyants, une fiche à droite.
+  pokedex: `<svg viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="1.8" y="4.6" width="20.4" height="14.8" rx="2.6" fill="#d6453c"/>
+    <circle cx="5.4" cy="7.6" r=".95" fill="#f4c53c"/>
+    <circle cx="7.8" cy="7.6" r=".95" fill="#3fbf6a"/>
+    <circle cx="10.2" cy="7.6" r=".95" fill="#ffdad6"/>
+    <circle cx="6.8" cy="14" r="3.2" fill="#fff"/>
+    <circle cx="6.8" cy="14" r="2.2" fill="#2ea3d8"/>
+    <circle cx="6" cy="13.2" r=".7" fill="#fff"/>
+    <rect x="12.6" y="6.8" width="7.8" height="10.4" rx="1" fill="#f6f5f1"/>
+    <g fill="#c3cad3">
+      <rect x="14" y="8.8" width="5" height=".95" rx=".47"/><rect x="14" y="11" width="4" height=".95" rx=".47"/>
+      <rect x="14" y="13.2" width="5" height=".95" rx=".47"/><rect x="14" y="15.4" width="3.2" height=".95" rx=".47"/>
+    </g>
+  </svg>`,
+  // Combat : la Potion des jeux. Le liquide monte en dôme au centre, comme sur le
+  // sprite d'origine, et déborde volontairement du flacon : c'est `clipPath` qui le
+  // recoupe sur la silhouette, plutôt qu'un tracé calculé à la main sur ses courbes.
+  combat: `<svg viewBox="0 0 24 24" aria-hidden="true">
+    <defs>
+      <path id="gd-pot" d="M9.4 3.8H14.6A3 3 0 0 1 17.6 6.8V12.6C17.6 14.4 19.9 15.4 19.9 17.9A3.9 3.9 0 0 1 16 21.8H8A3.9 3.9 0 0 1 4.1 17.9C4.1 15.4 6.4 14.4 6.4 12.6V6.8A3 3 0 0 1 9.4 3.8Z"/>
+      <clipPath id="gd-pot-c"><use href="#gd-pot"/></clipPath>
+    </defs>
+    <rect x="3.4" y="6.4" width="5.6" height="3.6" rx="1.4" fill="#7a68ab" stroke="#1e2227" stroke-width="1.3"/>
+    <circle cx="4.8" cy="8.2" r="1.6" fill="#8a78bd" stroke="#1e2227" stroke-width="1.1"/>
+    <circle cx="4.8" cy="8.2" r=".6" fill="#54427f"/>
+    <use href="#gd-pot" fill="#fbfaf7"/>
+    <g clip-path="url(#gd-pot-c)">
+      <path d="M2 16C4.8 15.8 6.6 15 7.6 13.4C8.7 11.6 9.9 10.2 12 10.2C14.1 10.2 15.3 11.6 16.4 13.4C17.4 15 19.2 15.8 22 16V23H2Z" fill="#6f5b9e"/>
+      <ellipse cx="15.6" cy="17.8" rx="1.6" ry="2" fill="#fff" opacity=".26"/>
+    </g>
+    <use href="#gd-pot" fill="none" stroke="#1e2227" stroke-width="1.5"/>
+  </svg>`,
+};
+
 function renderNav() {
   return h(`
     <nav class="nav" role="tablist" aria-label="Vue">
-      ${[['boites', '▦', 'Boîtes'], ['pokedex', '◉', 'Pokédex'], ['combat', '⚔', 'Combat']].map(([v, ico, lib]) => `
+      ${[['boites', 'Boîtes'], ['pokedex', 'Pokédex'], ['combat', 'Combat']].map(([v, lib]) => `
         <button class="nav-btn ${state.vue === v ? 'on' : ''}" role="tab"
                 aria-selected="${state.vue === v}" data-vue="${v}">
-          <b>${ico}</b><span>${lib}</span>
+          ${ICONES[v]}<span>${lib}</span>
         </button>`).join('')}
     </nav>`);
 }

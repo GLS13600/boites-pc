@@ -105,6 +105,7 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `Calage-Fonds.bat` | Ouvre l'appli et l'outil côte à côte |
 | `public/icon.svg` | Icône de l'application, vectorielle |
 | `icone.html` | Aperçu de l'icône aux tailles d'iOS (dev seulement) |
+| `icones-nav.html` | Aperçu des icônes de la barre du bas (dev seulement) |
 | `scripts/fetch-extra.mjs` | Aspire évolutions et formes (`npm run fetch-extra`) |
 | `src/data/dex-remakes.json` | Pokédex régionaux des remakes, **généré** |
 | `scripts/fetch-dex.mjs` | Aspire ces Pokédex (`npm run fetch-dex`) |
@@ -834,10 +835,9 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
   dont la hauteur suit le contenu — elle s'ancrait différemment selon la vue et
   remontait d'autant que la page était courte. `majNav()` n'en rafraîchit que l'état
   actif, et l'écoute du changement de vue vit sur la barre elle-même.
-- La marge sous les icônes est `--nav-bas`, soit **45 % de la zone sûre** et non sa
-  totalité : réserver les 34 px de l'indicateur d'accueil laissait un vide visible
-  qui décollait la barre du bord de l'écran. `--nav-h` ne couvre donc plus que le
-  contenu (53 px), et le corps comme les panneaux réservent `--nav-h + --nav-bas`.
+- **Deux variables, deux rôles** : `--nav-h` (48 px) couvre le contenu de la barre,
+  filet compris ; `--nav-bas` la marge sous les libellés. Les panneaux réservent la
+  somme des deux. Les valeurs exactes et leur histoire sont juste en dessous.
 - **La barre du bas est OPAQUE, dans la couleur du papier** (`--paper`). Translucide
   avec un `backdrop-filter`, elle changeait d'aspect selon la page : sur le Pokédex la
   grille défile dessous et le flou la fondait dans la page, alors que sur Boîtes et
@@ -851,7 +851,7 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
   hauteur, aucun défilement ne pouvait aller le chercher — il était inaccessible.
   Tenir les deux valeurs à jour ensemble si la barre change de gabarit.
 - **Gabarit de la barre : 82 px** avec une zone sûre de 34 px, soit `--nav-h`
-  (47 px, contenu) plus `--nav-bas`, qui vaut désormais la **zone sûre ENTIÈRE**.
+  (48 px, contenu et filet) plus `--nav-bas`, qui vaut la **zone sûre ENTIÈRE**.
   **Ces valeurs sont RELEVÉES sur une capture d'écran de référence**, pas estimées :
   iPhone 16 Pro, 1206×2622 donc ×3, filet séparateur à y=2421 → 201 px image,
   soit 67 px CSS. Repères secondaires de cette capture, en points CSS : 15 px
@@ -870,6 +870,33 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
     15 px, ce qui revient à réserver la zone sûre entière (34 px sous les libellés
     au lieu de 19). Le goût a tranché contre la mesure — c'est une préférence
     explicite, pas un oubli : ne pas « corriger » ce réglage vers la capture.
+
+### Icônes des onglets
+
+- Les trois glyphes (`▦ ◉ ⚔`) ont laissé place à des **SVG en couleur**, écrits dans
+  `ICONES` au-dessus de `renderNav()` : la grille du PC portant une Poké Ball, le
+  Pokédex rouge avec sa lentille et sa fiche, la Potion des jeux. Ils sont dessinés
+  dans `main.js` et non chargés depuis `public/` : trois fichiers de plus pour 2 Ko,
+  alors que l'appli ne fait aucune requête au runtime.
+- Ils sont en `viewBox 0 0 24 24` **sans `width` ni `height`** : c'est `--nav-ico`
+  qui décide de la taille, en un seul endroit.
+- **La hauteur de la barre n'a pas bougé, et ne doit pas bouger** : 48 px hors zone
+  sûre — vérifié après le changement d'icônes, 82 px au total avec 34 px de zone
+  sûre, exactement comme avant. Soit 1 (filet) + haut + icône + 2 (écart) + 15
+  (libellé). Le padding haut est
+  l'ajustement — 30 px moins l'icône, donc 10 px pour les 20 px actuels, là où les
+  glyphes de 17 px en demandaient 13. Changer `--nav-ico` impose de refaire cette
+  soustraction, sans quoi tout le calage relevé sur capture est perdu.
+- **Une icône en couleur ne peut pas rougir avec le libellé** quand l'onglet devient
+  actif. C'est donc le gris qui porte le repos (`filter: grayscale(0.45)`) et la
+  couleur qui signale l'onglet actif — le même langage que la grille des boîtes, où
+  le gris dit « pas capturé ». Le libellé et la pastille rougissent comme avant.
+- Le liquide de la Potion **déborde volontairement du flacon** et c'est un `clipPath`
+  qui le recoupe sur la silhouette : calculer le tracé à la main sur les courbes du
+  flanc serait à refaire à chaque retouche de la silhouette.
+- Les proportions viennent du **sprite officiel de la Potion** : tête blanche large
+  (≈ 70 % de la base), base ronde, gicleur violet à gauche. Une tête étroite donnait
+  une fiole de laboratoire, pas une Potion.
 - Gestes : tap = capturer, appui long 450 ms ou clic droit = fiche. Un bouton en bas
   inverse le comportement du tap. Swipe horizontal = boîte suivante/précédente.
 - Le swipe est verrouillé sur un axe : au premier mouvement on décide `x` ou `y`, et en

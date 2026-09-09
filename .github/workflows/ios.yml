@@ -23,6 +23,7 @@ on:
       - 'reference/**'
       - 'calage.html'
       - 'icone.html'
+      - 'icones-nav.html'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 

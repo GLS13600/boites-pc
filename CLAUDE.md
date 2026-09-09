@@ -1196,8 +1196,9 @@ vient des sprites**, pas du décor. Toutes les valeurs sont des variables dans `
     survit par `tRNS` — vérifié sur les 40 —, mais un export qui la perdrait
     remplirait les coins arrondis de blanc.
 - **La gén. 5 est recadrée elle aussi** : 156×142 → **156×114**, `band` à 0, calage
-  refait (`{ x: -4.9, y: 0.1, w: 109.9, h: 101.1 }`). Ses fichiers portent en plus un préfixe **`5G_`**, à la demande — donc
-  ses ids ont changé, contrairement à la gén. 4 qui a gardé les siens. Le préfixe
+  refait (`{ x: -4.9, y: 0.1, w: 109.9, h: 101.1 }`). Ses fichiers portent en plus
+  un préfixe **`5G_`**, à la demande — donc ses ids ont changé, contrairement à la
+  gén. 4 qui a gardé les siens. Le préfixe
   fait doublon avec le dossier `5/` ; il est conservé par choix, pas par nécessité.
   - **Une migration reprend les id stockés** (`migrePrefixe5G`) : `Box_Beach_V` devient
     `5G_Box_Beach_V` dans `pcbox.boxes`. Sans elle, une boîte réglée sur un fond de

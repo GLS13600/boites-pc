@@ -46,13 +46,12 @@ export const ALIGNEMENT = {
   // ---- Gén. 7 — 16 fonds (208x192) ---- VALIDÉ à la main.
   7: { x: -4.4, y: -24.8, w: 109.2, h: 129.6 },
 
-  // ---- Gén. 8 : deux formats d'image, calés séparément ----
-  // VALIDÉ à la main.
-  '8:156x150': { x: -4.8, y: -2.5, w: 108.5, h: 110.7 },   // 19 fonds · Épée/Bouclier
+  // ---- Gén. 8 — 32 fonds (420x356) · Diamant Ét./Perle Sc. ----
   // À RÉGLER — valeur encore issue du calage automatique.
-  '8:420x356': { x: -1.3, y: -33.7, w: 102.3, h: 136.4 },  // 32 fonds · Diamant Ét./Perle Sc.
+  '8:420x356': { x: -1.3, y: -33.7, w: 102.3, h: 136.4 },
 
-  // ---- Gén. 9 — 21 fonds (174x131) ----
-  // À RÉGLER — valeur encore issue du calage automatique.
-  9: { x: -4.9, y: -0.4, w: 106.9, h: 103.8 },
+  // Les 19 fonds d'Épée/Bouclier et les 21 d'Écarlate/Violet ont été RETIRÉS : leurs
+  // seules sources sont des captures du menu du jeu, et le recadrage donnait la grille
+  // de la boîte, pas sa tapisserie. La gén. 9 n'a donc plus aucun fond, comme les
+  // gén. 1 et 2 — le sélecteur le dit au lieu de proposer une liste vide.
 };

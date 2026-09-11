@@ -297,16 +297,19 @@ onglets). `render()` y bascule comme pour le combat.
   - **Le menu revient à CHAQUE entrée dans la vue** : on vient choisir quel Pokédex
     regarder, pas reprendre là où l'on s'était arrêté. D'où l'abandon de la
     persistance sous `pcbox.dexgen`, qui ne sert plus.
-  - Chaque carte : nom, compteur (collection ACTIVE, comme partout), barre en dégradé
-    violet → bleu rapporté à la partie remplie, **sceau** quand le Pokédex est complet,
-    et les trois starters de la région en artwork, qui débordent en bas à droite. Le
-    national prend Évoli et Pikachu (`STARTERS_DEX`).
-  - Le sceau est un disque dentelé découpé par `clip-path` (`SCEAU`, calculé une fois) :
-    un SVG aurait exigé un dégradé à identifiant, dupliqué dans chaque carte complète.
-  - **Le menu est SOMBRE**, fidèle à la maquette, alors que le reste de l'appli est
-    clair. C'est une demande explicite : ne pas le « remettre au thème ». La vue
-    sombre remplit toute la zone (`min-height: 100%`) pour ne pas laisser voir le
-    papier sous des cartes courtes.
+  - Chaque carte : nom, compteur (collection ACTIVE, comme partout), barre de
+    progression rouge, **sceau** quand le Pokédex est complet, et les trois starters
+    de la région en artwork, qui débordent en bas à droite. Le national prend Évoli et
+    Pikachu (`STARTERS_DEX`).
+  - Le sceau est un disque dentelé découpé par `clip-path` (`SCEAU`, calculé une fois),
+    dans un simple fond coloré : sa couleur reste réglée par la feuille de style.
+  - **Le menu suit le thème CLAIR de l'appli** : papier, cartes blanches, filets
+    beiges, barre et sceau rouges. Une première version reprenait aussi les COULEURS
+    de la maquette — fond bleu nuit, barre en dégradé violet → bleu — et a été écartée
+    à la demande : elle tranchait avec tout le reste. Seule la disposition vient de la
+    maquette.
+  - Cartes **compactes**, 68 px de haut contre 90 dans la première version (mesuré) :
+    nom en 19 px, barre de 6 px comme celle de la grille, starters en 46 px.
   - Chercher depuis le menu **remplace les cartes** par les résultats, et les cartes
     reviennent quand le champ se vide. Les deux blocs basculent par `hidden`, rendu
     explicite en CSS : un `display: grid` l'emporte sinon sur l'attribut.

@@ -3468,8 +3468,8 @@ const STARTERS_DEX = [[133, 25], [1, 4, 7], [152, 155, 158], [252, 255, 258],
   [387, 390, 393], [495, 498, 501], [650, 653, 656], [722, 725, 728], [810, 813, 816],
   [906, 909, 912]];
 
-// Sceau « complet » : un disque dentelé à 12 pointes, découpé par `clip-path`. Un SVG
-// demanderait un dégradé à identifiant, dupliqué dans chaque carte complète.
+// Sceau « complet » : un disque dentelé à 12 pointes, découpé par `clip-path` dans un
+// simple fond coloré, de sorte que sa couleur reste réglée par la feuille de style.
 const SCEAU = (() => {
   const pts = [];
   for (let i = 0; i < 24; i++) {

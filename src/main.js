@@ -3567,14 +3567,6 @@ function renderPokedex() {
 
   poser(
     h(`
-      <nav class="gens dex-gens" role="tablist" aria-label="Génération">
-        ${[plageDex(0), ...GENS].map((x) => `
-          <button class="gen-tab" role="tab" data-dexgen="${x.n}"
-                  aria-selected="${x.n === n}">
-            ${x.n ? `Gén. ${x.n}` : 'National'}<small>${x.n ? esc(x.name) : 'Tous'}</small>
-          </button>`).join('')}
-      </nav>`),
-    h(`
       <section class="dex">
         <div class="dex-head">
           <button class="dex-retour" data-dex-retour aria-label="Revenir au menu du Pokédex">&lsaquo;</button>
@@ -3602,25 +3594,6 @@ function renderPokedex() {
         </p>
       </section>`),
   );
-
-  // Ces onglets portent la classe `.gen-tab` des Boîtes, dont les gestionnaires,
-  // posés sur `app`, les attrapaient au passage : un clic y écrivait `state.gen = NaN`
-  // et le retour aux Boîtes plantait sur une grille vide. On traite donc le clic ICI,
-  // sur la barre, et on arrête l'événement avant qu'il ne remonte jusqu'à eux —
-  // l'appui long compris, qui aurait armé un portage d'onglet.
-  const barre = app.querySelector('.dex-gens');
-  barre.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const o = e.target.closest('[data-dexgen]');
-    if (!o) return;
-    state.dexQ = '';
-    state.dexGen = +o.dataset.dexgen;
-    render();
-  });
-  barre.addEventListener('pointerdown', (e) => e.stopPropagation());
-
-  app.querySelector('.dex-gens .gen-tab[aria-selected="true"]')
-    ?.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
 
 // La frappe agit SUR LE DOM : reconstruire la vue ferait perdre le focus au champ

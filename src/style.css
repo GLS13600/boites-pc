@@ -1044,7 +1044,9 @@ img { display: block; }
 
 /* La barre des générations reprend le gabarit des boîtes, mais n'affiche que les
    9 générations : un remake n'a pas d'entrée propre au Pokédex national. */
-.dex { margin: 12px; }
+/* L'en-tête est le premier élément de la vue depuis le retrait de la barre
+   d'onglets : c'est donc lui qui porte la zone sûre, que la barre portait avant. */
+.dex { margin: calc(12px + var(--safe-top)) 12px 12px; }
 .dex-head {
   display: flex;
   align-items: center;

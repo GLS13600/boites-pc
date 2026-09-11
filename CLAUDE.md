@@ -313,16 +313,16 @@ onglets). `render()` y bascule comme pour le combat.
   - Chercher depuis le menu **remplace les cartes** par les résultats, et les cartes
     reviennent quand le champ se vide. Les deux blocs basculent par `hidden`, rendu
     explicite en CSS : un `display: grid` l'emporte sinon sur l'attribut.
-- Dans la grille, un bouton **‹** ramène au menu, et la barre d'onglets gagne un
-  onglet **National** en tête (1 025 cases, images en `loading="lazy"`). Un remake
-  n'y a toujours pas d'entrée : il n'en a pas au Pokédex national.
-- **Les onglets du Pokédex arrêtent leurs événements sur leur propre barre.** Ils
-  portent la classe `.gen-tab` des Boîtes, dont les gestionnaires posés sur `app` les
-  attrapaient : un clic y écrivait `state.gen = NaN`, et le retour aux Boîtes plantait
-  sur une grille vide (`Cannot read properties of undefined (reading 'liste')`).
-  Le correctif vit côté Pokédex — clic traité sur la barre puis `stopPropagation`,
-  appui long stoppé aussi —, sans toucher au code des Boîtes. Vérifié : après avoir
-  touché des onglets du Pokédex, les Boîtes rendent leurs 30 cases sans erreur.
+- Dans la grille, un bouton **‹** ramène au menu. **Il n'y a plus de barre d'onglets
+  de génération** : le menu choisit déjà le Pokédex, la barre faisait doublon. On
+  change de Pokédex en repassant par le menu.
+- La barre retirée, l'en-tête de la grille est le premier élément de la vue : c'est
+  `.dex` qui porte désormais la marge de la zone sûre, que la barre portait avant.
+- Cette barre avait causé un plantage : ses onglets portaient la classe `.gen-tab`
+  des Boîtes, dont les gestionnaires posés sur `app` les attrapaient et écrivaient
+  `state.gen = NaN` — le retour aux Boîtes plantait sur une grille vide. **Ne pas
+  réintroduire de `.gen-tab` dans la vue Pokédex** sans arrêter ses événements avant
+  qu'ils ne remontent jusqu'à `app`.
 - **Taux de remplissage** par génération et au total, calculé sur la collection
   ACTIVE (`isCaught`) : il suit donc la bascule normal / chromatique des boîtes.
 - La fiche ouverte est exactement celle des boîtes (`openSheet`) : description,

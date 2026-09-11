@@ -399,10 +399,11 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
 - **Une seule coque dessinée** (`coque()` dans scan.js), retournée en CSS pour le bas.
   Le dessin fait 400×800 : fermé, le Pokédex remplit l'écran et on en voit presque
   tout ; ouvert, seule la bande basse de 150 unités reste visible (`--cap-h`).
-  - Les rainures proches de la lentille sont **découpées à cette bande**
-    (`clipPath`) : entières, elles dessinaient au milieu de l'écran fermé un grand
-    dôme qui faisait Poké Ball et non Pokédex. Les grandes rainures, elles, ne
-    tombent que dans les coins de l'écran fermé.
+  - Les cercles noirs autour de la lentille sont **dessinés ENTIERS** : fermé, les
+    deux moitiés les referment en anneaux complets autour de la lentille ; ouvert, il
+    n'en reste que les coins de la bande. Une version les avait découpés à la bande
+    visible ouverte, ce qui les laissait coupés net au-dessus et en dessous une fois
+    fermé — refusé, ne pas y revenir.
   - L'échancrure est laissée **transparente** : fermé, les deux forment la lentille ;
     ouvert, l'écran y déborde.
 - `.scan` est un **conteneur de taille** (`container-type: size`) : `--cap-h` vaut

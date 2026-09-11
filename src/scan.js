@@ -55,9 +55,6 @@ const coque = (x) => `
       <radialGradient id="pdx-brille-${x}" cx="90" cy="690" r="130" gradientUnits="userSpaceOnUse">
         <stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
       </radialGradient>
-      <!-- Rainures proches, limitées à la bande visible une fois ouvert : fermé, elles
-           dessineraient un grand dôme de Poké Ball au milieu de l'écran. -->
-      <clipPath id="pdx-bord-${x}"><rect y="650" width="400" height="150"/></clipPath>
     </defs>
     <path d="M0 0H400V800H246A46 46 0 0 0 154 800H0Z" fill="url(#pdx-rouge-${x})"/>
     <ellipse cx="90" cy="690" rx="150" ry="46" fill="url(#pdx-brille-${x})"/>
@@ -65,11 +62,11 @@ const coque = (x) => `
       <circle cx="200" cy="800" r="436" stroke="#18181c" stroke-width="16"/>
       <circle cx="200" cy="800" r="445" stroke="#ff8f94" stroke-opacity=".22" stroke-width="2"/>
       <circle cx="200" cy="800" r="468" stroke="#18181c" stroke-width="6"/>
-      <g clip-path="url(#pdx-bord-${x})">
-        <circle cx="200" cy="800" r="206" stroke="#18181c" stroke-width="14"/>
-        <circle cx="200" cy="800" r="215" stroke="#ff8f94" stroke-opacity=".25" stroke-width="2"/>
-        <circle cx="200" cy="800" r="238" stroke="#18181c" stroke-width="6"/>
-      </g>
+      <!-- Cercles ENTIERS autour de la lentille : fermé, les deux moitiés les
+           referment en anneaux complets ; ouvert, il n'en reste que les coins. -->
+      <circle cx="200" cy="800" r="206" stroke="#18181c" stroke-width="14"/>
+      <circle cx="200" cy="800" r="215" stroke="#ff8f94" stroke-opacity=".25" stroke-width="2"/>
+      <circle cx="200" cy="800" r="238" stroke="#18181c" stroke-width="6"/>
     </g>
     <path d="M128 800A72 72 0 0 1 272 800H246A46 46 0 0 0 154 800Z" fill="url(#pdx-noir-${x})"/>
     <path d="M136 800A64 64 0 0 1 264 800" fill="none" stroke="#fff" stroke-opacity=".1" stroke-width="3"/>

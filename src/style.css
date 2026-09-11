@@ -1953,7 +1953,7 @@ img {
   0% { transform: translateY(-70px); opacity: 0; }
   15% { opacity: 1; }
   85% { opacity: 1; }
-  100% { transform: translateY(calc(100cqh - 2 * var(--cap-h) - var(--safe-top))); opacity: 0; }
+  100% { transform: translateY(var(--course-faisceau, 400px)); opacity: 0; }
 }
 
 /* ---- Coques ---- */
@@ -1972,13 +1972,30 @@ img {
   height: auto;
   display: block;
 }
-.pdx-haut { top: 0; transform: translateY(calc(-100% + var(--cap-h) + var(--safe-top))); }
-.pdx-haut svg { bottom: 0; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45)); }
-.pdx-bas { bottom: 0; transform: translateY(calc(100% - var(--cap-h))); }
-.pdx-bas svg { top: 0; transform: scaleY(-1); filter: drop-shadow(0 -4px 10px rgba(0, 0, 0, 0.45)); }
-/* Fermé : les coques se rejoignent au centre, séparées par la seule bande de verre. */
-.scan.ferme .pdx-haut { transform: translateY(calc(var(--fente) / -2)); }
-.scan.ferme .pdx-bas { transform: translateY(calc(var(--fente) / 2)); }
+/* Position ouverte : --haut-ouvert et --bas-ouvert sont posés EN PIXELS par scan.js
+   (majCoques). Le repli en calc ne sert qu'avant le premier calcul ; ne pas animer de
+   calc mêlant %, cqw et env() : Safari iOS y faisait disparaître la coque du haut. */
+.pdx-haut { top: 0; transform: translate3d(0, var(--haut-ouvert, calc(-100% + var(--cap-h) + var(--safe-top))), 0); }
+.pdx-haut svg { bottom: 0; }
+.pdx-bas { bottom: 0; transform: translate3d(0, var(--bas-ouvert, calc(100% - var(--cap-h))), 0); }
+.pdx-bas svg { top: 0; transform: scaleY(-1); }
+.pdx-haut, .pdx-bas { will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+/* Ombre des coques sur l'écran : un dégradé, pas un filtre drop-shadow — calculé sur
+   un dessin de 800 unités de haut à chaque image de l'animation, il pesait lourd. */
+.pdx-haut::before, .pdx-bas::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 14px;
+  pointer-events: none;
+}
+.pdx-haut::before { top: 100%; background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0)); }
+.pdx-bas::before { bottom: 100%; background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.4)); }
+/* Fermé : les coques se rejoignent au centre, séparées par la seule bande de verre
+   (--fente, 22 px). Valeurs en pixels bruts, pour la même raison. */
+.scan.ferme .pdx-haut { transform: translate3d(0, -11px, 0); }
+.scan.ferme .pdx-bas { transform: translate3d(0, 11px, 0); }
 
 /* Liseré lumineux sur le bord intérieur des coques, allumé pendant l'ouverture. */
 .pdx-haut::after, .pdx-bas::after {

@@ -227,8 +227,25 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
   // Un rendu survenu en cours de route (capture cochée dans la fiche) ne la relance
   // pas : seule une entrée réelle, `actif` passant de faux à vrai, le fait.
   let minuteOuverture = 0;
+
+  // Positions des coques ouvertes, en PIXELS. Safari sur iPhone faisait disparaître la
+  // coque du haut pendant l'ouverture : sa position finale mêlait %, unités de
+  // conteneur (cqw) et zone sûre (env()), un mélange que WebKit n'interpole pas dans
+  // une transformation animée. La coque du bas, sans zone sûre, restait visible. On
+  // relève donc les distances sur l'écran réellement posé (`.scan-ecran`), et
+  // l'animation ne manipule plus que des pixels.
+  function majCoques() {
+    const h = el.clientHeight;
+    if (!h) return;
+    const haut = ecran.offsetTop, bas = haut + ecran.offsetHeight;
+    el.style.setProperty('--haut-ouvert', `${haut - h / 2}px`);
+    el.style.setProperty('--bas-ouvert', `${bas - h / 2}px`);
+    el.style.setProperty('--course-faisceau', `${ecran.offsetHeight}px`);
+  }
+
   function animeOuverture() {
     clearTimeout(minuteOuverture);
+    majCoques();
     el.classList.remove('ouvre');
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) { el.classList.remove('ferme'); return; }
     el.classList.add('ferme');
@@ -319,7 +336,7 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
     });
     zoneEl.hidden = false;
   }
-  new ResizeObserver(majZone).observe(el);
+  new ResizeObserver(() => { majCoques(); majZone(); }).observe(el);
 
   // Toucher place le cadre ; deux doigts qui s'écartent ou se rapprochent le
   // redimensionnent. Tant que la décision n'est pas prise, rien ne bouge.

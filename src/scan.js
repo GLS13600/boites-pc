@@ -49,6 +49,14 @@ const MANQUES_MAX = 4;
 // même endroit. Une piste refusée aussi, un Pokémon mal vu au début pouvant se préciser.
 const REVERIFIE_MS = 3000;
 
+// Mode de détection, choisi par le bouton du coin bas-gauche et mémorisé :
+//   'auto'   — suivi en temps réel, chaque Pokémon trouvé reçoit son cadre ;
+//   'manuel' — le fonctionnement d'avant le suivi : on place le cadre, on appuie.
+const MODE_KEY = 'pcbox.scan.mode';
+const lisMode = () => {
+  try { return localStorage.getItem(MODE_KEY) === 'manuel' ? 'manuel' : 'auto'; } catch { return 'auto'; }
+};
+
 // Index de sortie → groupe (numéro de l'espèce ; 0 = « rien »). Calculé une fois.
 const GROUPES = new Map();
 CLASSES.forEach(([, groupe], i) => {
@@ -120,6 +128,7 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
       <p class="scan-etat" hidden></p>
       <p class="scan-toast" role="status" hidden></p>
       <button class="scan-btn" type="button" aria-label="Scanner"><span></span></button>
+      <button class="scan-mode" type="button"><i></i><span><small>Mode</small><b></b></span></button>
     </section>`);
   const video = el.querySelector('video');
   const zoneEl = el.querySelector('.scan-zone');
@@ -129,6 +138,7 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
   const ecran = el.querySelector('.scan-ecran');
   const pistesEl = el.querySelector('.scan-pistes');
   const aide = el.querySelector('.scan-aide');
+  const btnMode = el.querySelector('.scan-mode');
 
   let flux = null;        // MediaStream de la caméra
   let ouverture = false;  // demande d'accès en cours
@@ -347,7 +357,7 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
   const doigts = new Map();
   let pince = null, bouge = false;
   el.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('.scan-btn')) return;
+    if (e.target.closest('.scan-btn, .scan-mode')) return;
     doigts.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY });
     el.setPointerCapture?.(e.pointerId);
     if (doigts.size === 2) {
@@ -582,7 +592,7 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
     }
     for (const n of [...pistesEl.children]) if (!vus.has(n)) n.remove();
     zoneEl.hidden = visibles.length > 0 || !zone.px;
-    aide.textContent = visibles.some((p) => p.etat === 'reconnu')
+    aide.textContent = mode === 'auto' && visibles.some((p) => p.etat === 'reconnu')
       ? 'Touchez un Pokémon pour ouvrir sa fiche'
       : "Touchez l'image pour placer le cadre sur le Pokémon";
   }
@@ -599,10 +609,10 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
   }
 
   async function suis() {
-    if (suiviEnCours) return;
+    if (suiviEnCours || mode !== 'auto') return;
     suiviEnCours = true;
     try {
-      while (actif && el.isConnected && flux) {
+      while (actif && el.isConnected && flux && mode === 'auto') {
         // En pause pendant l'ouverture du Pokédex, sous une fiche, pendant une analyse
         // au bouton, ou appli en arrière-plan : inutile de faire chauffer le téléphone.
         if (document.hidden || estMasque() || occupe || el.classList.contains('ouvre')
@@ -636,7 +646,7 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
     if (occupe) return;
     // Des Pokémon sont suivis et reconnus : le bouton ouvre la fiche du plus grand à
     // l'écran, celui qu'on vise manifestement. Sinon, analyse du cadre comme avant.
-    const vus = pistes.filter((p) => p.etat === 'reconnu');
+    const vus = mode === 'auto' ? pistes.filter((p) => p.etat === 'reconnu') : [];
     if (vus.length) {
       ouvrirFiche(vus.reduce((a, b) => (a.w * a.h >= b.w * b.h ? a : b)).key);
       return;
@@ -678,6 +688,32 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
       return reconnais(pixelsDe(img, img.naturalWidth / 2, img.naturalHeight / 2, cote));
     };
   }
+
+  // ------------------------------------------------------------ mode de détection
+  let mode = lisMode();
+  function majMode() {
+    const auto = mode === 'auto';
+    el.classList.toggle('manuel', !auto);
+    btnMode.querySelector('b').textContent = auto ? 'Auto' : 'Manuel';
+    btnMode.setAttribute('aria-label', auto
+      ? 'Mode temps réel : les Pokémon sont suivis automatiquement. Toucher pour passer en manuel.'
+      : 'Mode manuel : placer le cadre puis appuyer sur la Poké Ball. Toucher pour passer en temps réel.');
+  }
+  btnMode.addEventListener('click', () => {
+    mode = mode === 'auto' ? 'manuel' : 'auto';
+    try { localStorage.setItem(MODE_KEY, mode); } catch { /* mémorisation facultative */ }
+    majMode();
+    if (mode === 'auto') {
+      montreToast('Temps réel : les Pokémon sont suivis');
+      suis();
+    } else {
+      // La boucle s'arrête d'elle-même au tour suivant ; on efface tout de suite.
+      videPistes();
+      aide.textContent = "Touchez l'image pour placer le cadre sur le Pokémon";
+      montreToast('Manuel : appuyez sur la Poké Ball');
+    }
+  });
+  majMode();
 
   return { element: el, demarre, arrete };
 }

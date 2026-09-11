@@ -488,6 +488,15 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
   - Une piste affichée ne s'efface qu'après DEUX vérifications sous 90 %, pour ne pas
     clignoter sur une image floue ; une piste qui n'atteint pas 90 % en trois essais
     est abandonnée. Le bouton garde, lui, le seuil de 0,4 : on y désigne la zone.
+- **Deux modes, au choix de l'utilisateur** : bouton du coin bas-gauche de la coque
+  du bas, voyant cyan **Auto** (suivi en temps réel) ou ambre **Manuel** (le
+  fonctionnement d'avant le suivi : placer le cadre, appuyer sur la Poké Ball).
+  Mémorisé sous `pcbox.scan.mode`, `auto` par défaut.
+  - En manuel, la boucle de suivi ne tourne pas du tout (`suis` refuse de démarrer
+    et sort au tour suivant si on bascule) : ni calcul, ni batterie consommés.
+  - Le bouton est placé dans la bande visible de la coque, à gauche de l'anneau de
+    l'échancrure ; son toucher ne déplace pas le cadre, et il arrive avec le
+    déclencheur pendant l'ouverture.
 - **Pistes** : une boîte est rattachée d'une image à l'autre par recouvrement (IoU),
   et lissée — c'est ce qui fait suivre un cadre au lieu d'en créer un nouveau à chaque
   image. **Hystérésis** : une piste naît au-dessus de 0,5, se maintient au-dessus de

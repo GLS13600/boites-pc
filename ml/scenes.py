@@ -95,10 +95,31 @@ def objet_carte(rnd, racine, cartes):
     return carte, (min(xs), min(ys), max(xs), max(ys))
 
 
-def scene(rnd, classes, racine, cartes, fonds):
+def objet_leurre(rnd, objets):
+    """Un objet réel (COCO) posé comme un Pokémon, SANS boîte : le détecteur doit
+    apprendre qu'un objet net, découpé et collé n'est pas pour autant un Pokémon."""
+    o = D.recadre_alpha(Image.open(rnd.choice(objets)['chemin']).convert('RGBA'))
+    cote = rnd.uniform(40, 260)
+    f = cote / max(o.size)
+    o = o.resize((max(4, int(o.width * f)), max(4, int(o.height * f))), Image.BILINEAR)
+    if rnd.random() < 0.3:
+        o = D.aspect_figurine(rnd, o)
+    angle = D.angle_libre(rnd)
+    if abs(angle) > 0.5:
+        o = D.recadre_alpha(o.rotate(angle, Image.BILINEAR, expand=True))
+    return o
+
+
+def scene(rnd, classes, racine, cartes, fonds, objets=None):
     fond = D.fond_aleatoire(rnd, fonds, HAUTEUR)
     ox = rnd.randint(0, HAUTEUR - LARGEUR)
     img = fond.crop((ox, 0, ox + LARGEUR, HAUTEUR))
+    # Objets réels posés comme des Pokémon, sans boîte : les faux positifs du téléphone.
+    if objets:
+        for _ in range(rnd.choice((0, 1, 1, 2, 3))):
+            o = objet_leurre(rnd, objets)
+            img.paste(o, (rnd.randint(-o.width // 4, LARGEUR - o.width * 3 // 4),
+                          rnd.randint(-o.height // 4, HAUTEUR - o.height * 3 // 4)), o)
     # Leurres : des morceaux de photo collés, sans Pokémon, pour ne pas prendre tout
     # objet net sur un fond flou pour un Pokémon.
     for _ in range(rnd.choice((0, 0, 1, 2))):

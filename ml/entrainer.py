@@ -32,6 +32,7 @@ class Melange(Dataset):
 
     def __init__(self, racine, classes, groupe_de, cartes, taille, graine):
         self.racine = Path(racine)
+        self.objets = None
         self.classes = [c for c in classes if c['refs']]
         self.index_rien = next(c['index'] for c in classes if c['key'] is None)
         self.groupe_de = groupe_de
@@ -45,13 +46,19 @@ class Melange(Dataset):
 
     def __getitem__(self, i):
         if self.fonds is None:  # chargé dans chaque processus, pas copié depuis le parent
-            self.fonds = sorted(str(p) for p in (self.racine / 'imagenette2-160' / 'train').rglob('*.JPEG'))
+            self.objets, photos = D.charge_coco(self.racine, 'train')
+            # Fonds : Imagenette ET les photos de COCO, scènes d'intérieur encombrées.
+            self.fonds = sorted(str(p) for p in (self.racine / 'imagenette2-160' / 'train').rglob('*.JPEG')) + photos
         rnd = random.Random((self.graine * 1_000_003 + i) ^ random.getrandbits(32))
         t = rnd.random()
         try:
-            if t < 0.08:
+            if t < 0.06:
                 img, cls, grp, exact = D.scene_rien(rnd, self.fonds), self.index_rien, self.groupe_de[0], 1
-            elif t < 0.50 and self.cartes:
+            elif t < 0.22 and self.objets:
+                # Un objet réel cadré comme un Pokémon : l'exemple négatif qui manquait.
+                img = D.scene_objet(rnd, rnd.choice(self.objets), self.fonds)
+                cls, grp, exact = self.index_rien, self.groupe_de[0], 1
+            elif t < 0.58 and self.cartes:
                 c = rnd.choice(self.cartes)
                 img = D.scene_carte(rnd, self.racine / 'cartes' / f"{c['id']}.webp", self.fonds)
                 cls, grp, exact = -1, self.groupe_de[c['num']], 0
@@ -61,7 +68,7 @@ class Melange(Dataset):
                 noms = [s for s in D.POIDS_SOURCES if s in sources]
                 src = rnd.choices(noms, [D.POIDS_SOURCES[s] for s in noms])[0]
                 ref = rnd.choice([r for r in k['refs'] if r['source'] == src])
-                img, cls, grp, exact = D.scene_reference(rnd, ref, self.fonds), k['index'], self.groupe_de[k['groupe']], 1
+                img, cls, grp, exact = D.scene_reference(rnd, ref, self.fonds, self.objets), k['index'], self.groupe_de[k['groupe']], 1
         except Exception:
             img, cls, grp, exact = D.scene_rien(rnd, self.fonds), self.index_rien, self.groupe_de[0], 1
         x = torch.from_numpy(np.asarray(img, np.uint8).copy()).permute(2, 0, 1)
@@ -81,6 +88,12 @@ class Evaluation(Dataset):
 
     def __getitem__(self, i):
         rnd = random.Random(10_000 + i)
+        if self.mode == 'objets':
+            if self.fonds is None:
+                self.objets, _ = D.charge_coco(self.racine, 'test')
+                self.fonds = sorted(str(p) for p in (self.racine / 'imagenette2-160' / 'val').rglob('*.JPEG'))
+            o = self.objets[i % len(self.objets)]
+            return torch.from_numpy(np.asarray(D.scene_objet(rnd, o, self.fonds), np.uint8).copy()).permute(2, 0, 1), self.groupe_de[0]
         if self.mode == 'rien':
             if self.fonds is None:
                 self.fonds = sorted(str(p) for p in (self.racine / 'imagenette2-160' / 'val').rglob('*.JPEG'))
@@ -185,11 +198,11 @@ def main():
     suffixe = '-essai' if args.essai else ''
     evals = {
         nom: jeu_evaluation(racine, cartes_test if mode != 'rien' else [], groupe_de, mode,
-                            n_test if mode != 'rien' else (300 if args.essai else 1500),
+                            n_test if mode not in ('rien', 'objets') else (300 if args.essai else 2000),
                             racine / f'eval-{nom}{suffixe}.pt')
         for nom, mode in (('illustration', 'illustration'), ('photo_carte', 'photo'),
                           ('illustration_tournee', 'illustration_tournee'), ('photo_tournee', 'photo_tournee'),
-                          ('rien', 'rien'))
+                          ('rien', 'rien'), ('objets', 'objets'))
     }
     ds = Melange(racine, classes, groupe_de, cartes_train, n_epoque, graine=1)
     charge = DataLoader(ds, batch_size=args.lot, shuffle=False, num_workers=args.ouvriers,
@@ -235,7 +248,21 @@ def main():
         # connus à l'entraînement : c'est la référence de ce qu'on améliore.
         depart = {'epoque': f'départ ({Path(args.reprise).name})'}
         for nom, jeu in evals.items():
-            depart[nom] = round(evalue(ema.module, jeu, membres, dev)[0], 4)
+            acc, justes, conf = evalue(ema.module, jeu, membres, dev)
+            depart[nom] = round(acc, 4)
+            if nom == 'objets':
+                # evalue compte comme juste la prédiction « rien » ; on veut aussi la part
+                # d'objets acceptés comme Pokémon au seuil du cadre et à celui du bouton.
+                X_, _ = jeu
+                with torch.no_grad():
+                    ps = []
+                    for k in range(0, len(X_), 128):
+                        with torch.autocast('cuda', torch.bfloat16):
+                            ps.append(probas_groupes(ema.module(prepare(X_[k:k + 128], dev)), membres).cpu())
+                    P_ = torch.cat(ps)
+                conf_, pred_ = P_.max(-1)
+                for s_ in (0.4, 0.9):
+                    depart[f'objets_acceptes@{s_}'] = round(((conf_ >= s_) & (pred_ != 0)).float().mean().item(), 4)
         journal.append(depart)
         print(json.dumps(depart, ensure_ascii=False), flush=True)
     for ep in range(args.depart_epoque, epoques):
@@ -270,14 +297,28 @@ def main():
             for nom, jeu in evals.items():
                 acc, justes, conf = evalue(ema.module, jeu, membres, dev)
                 res[nom] = round(acc, 4)
-                if nom != 'rien':
+                if nom == 'objets':
+                    # Part des objets qui ouvriraient un cadre (≥ 0,9) ou une fiche au bouton (≥ 0,4).
+                    X_, G_ = jeu
+                    with torch.no_grad():
+                        ps = []
+                        for k in range(0, len(X_), 128):
+                            with torch.autocast('cuda', torch.bfloat16):
+                                ps.append(probas_groupes(ema.module(prepare(X_[k:k + 128], dev)), membres).cpu())
+                        P_ = torch.cat(ps)
+                    conf_, pred_ = P_.max(-1)
+                    for s_ in (0.4, 0.9):
+                        res[f'objets_acceptes@{s_}'] = round(((conf_ >= s_) & (pred_ != 0)).float().mean().item(), 4)
+                if nom not in ('rien', 'objets'):
                     for seuil in (0.3, 0.5, 0.7):
                         garde = conf >= seuil
                         res[f'{nom}@{seuil}'] = {
                             'couverture': round(garde.float().mean().item(), 3),
                             'precision': round(justes[garde].float().mean().item() if garde.any() else 0, 3)}
             # Le meilleur modèle doit tenir DEBOUT et TOURNÉ : on retient la moyenne des deux.
-            score = (res['photo_carte'] + res.get('photo_tournee', res['photo_carte'])) / 2
+            # Tenir debout ET tourné, et ne pas prendre les objets pour des Pokémon.
+            score = (res['photo_carte'] + res.get('photo_tournee', res['photo_carte'])) / 2 \
+                - res.get('objets_acceptes@0.4', 0)
             if score > meilleur:
                 meilleur = score
                 torch.save(ema.module.state_dict(), sortie / 'meilleur.pt')

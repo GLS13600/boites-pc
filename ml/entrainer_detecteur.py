@@ -25,7 +25,7 @@ class Scenes(Dataset):
     def __init__(self, racine, cartes, taille, graine, fixe=False, fonds='train'):
         self.racine, self.cartes, self.taille, self.graine, self.fixe = Path(racine), cartes, taille, graine, fixe
         self.dossier_fonds = fonds
-        self.classes = self.fonds = None
+        self.classes = self.fonds = self.objets = None
 
     def __len__(self):
         return self.taille
@@ -33,13 +33,15 @@ class Scenes(Dataset):
     def __getitem__(self, i):
         if self.classes is None:
             self.classes = [c for c in D.charge_classes(self.racine)[0] if c['refs']]
-            self.fonds = sorted(str(p) for p in (self.racine / 'imagenette2-160' / self.dossier_fonds).rglob('*.JPEG'))
+            part = 'train' if self.dossier_fonds == 'train' else 'test'
+            self.objets, photos = D.charge_coco(self.racine, part)
+            self.fonds = sorted(str(p) for p in (self.racine / 'imagenette2-160' / self.dossier_fonds).rglob('*.JPEG')) + photos
         graine = 50_000 + i if self.fixe else (self.graine * 1_000_003 + i) ^ random.getrandbits(32)
         rnd = random.Random(graine)
         try:
-            img, boites = S.scene(rnd, self.classes, self.racine, self.cartes, self.fonds)
+            img, boites = S.scene(rnd, self.classes, self.racine, self.cartes, self.fonds, self.objets)
         except Exception:
-            img, boites = S.scene(random.Random(graine + 1), self.classes, self.racine, [], self.fonds)
+            img, boites = S.scene(random.Random(graine + 1), self.classes, self.racine, [], self.fonds, self.objets)
         x = torch.from_numpy(np.asarray(img, np.uint8).copy()).permute(2, 0, 1)
         ch, ta, de, ma = S.cibles(boites, PAS)
         b = np.zeros((8, 4), np.float32)  # boîtes brutes pour l'évaluation (8 au plus)
@@ -135,13 +137,15 @@ def main():
     ap.add_argument('--corps', default='mobilenetv4_conv_small.e2400_r224_in1k')
     ap.add_argument('--sortie', required=True)
     ap.add_argument('--essai', action='store_true')
+    ap.add_argument('--reprise', default=None, help='poids de départ (meilleur.pt d\'un run précédent)')
     args = ap.parse_args()
     racine, sortie = Path(args.racine), Path(args.sortie)
     sortie.mkdir(parents=True, exist_ok=True)
     dev = 'cuda'
 
     cartes_train, cartes_test = D.decoupe_cartes(racine)
-    cache = racine / ('eval-detection-essai.pt' if args.essai else 'eval-detection.pt')
+    # v2 : scènes de test peuplées d'objets COCO jamais vus, là où naissent les faux positifs.
+    cache = racine / ('eval-detection-v2-essai.pt' if args.essai else 'eval-detection-v2.pt')
     if cache.exists():
         jeu = torch.load(cache)
     else:
@@ -160,7 +164,11 @@ def main():
     charge = DataLoader(ds, batch_size=args.lot, num_workers=args.ouvriers, pin_memory=True, drop_last=True,
                         persistent_workers=True, prefetch_factor=2)
 
-    modele = Detecteur(args.corps).to(dev).to(memory_format=torch.channels_last)
+    modele = Detecteur(args.corps, pretrained=not args.reprise)
+    if args.reprise:
+        modele.load_state_dict(torch.load(args.reprise, map_location='cpu'))
+        print(f'reprise depuis {args.reprise}', flush=True)
+    modele = modele.to(dev).to(memory_format=torch.channels_last)
     # Moyenne lissée avec montée progressive : sans elle, la moyenne gardait des
     # centaines de pas le poids — et surtout les statistiques de normalisation — du
     # réseau de départ, et répondait « rien nulle part » en évaluation (0,11 partout,

@@ -457,9 +457,21 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
   - Mesures sur 1 200 scènes de test (cartes d'extensions jamais vues) : au seuil
     0,4, **93,5 % des cadres justes pour 81,7 % des Pokémon trouvés** ; au seuil 0,25,
     rappel ~90 %. 0,014 faux cadre par image vide.
+- **Un cadre ne s'affiche qu'à 90 % de certitude** (`SEUIL_AFFICHAGE`), demande
+  explicite après essai sur le téléphone : des objets quelconques y apparaissaient
+  encadrés. Deux raisons, corrigées ensemble :
+  - les pistes EN ATTENTE s'affichaient (coins blancs clignotants) avant même que le
+    classifieur se prononce — elles sont désormais invisibles tant qu'elles ne sont
+    pas reconnues ;
+  - le classifieur n'avait appris « rien » que sur Imagenette, dix catégories de
+    photos : il n'avait jamais vu de tasse, de peluche ou de visage. Voir « Objets
+    COCO » dans `ml/LISEZMOI.md`.
+  - Une piste affichée ne s'efface qu'après DEUX vérifications sous 90 %, pour ne pas
+    clignoter sur une image floue ; une piste qui n'atteint pas 90 % en trois essais
+    est abandonnée. Le bouton garde, lui, le seuil de 0,4 : on y désigne la zone.
 - **Pistes** : une boîte est rattachée d'une image à l'autre par recouvrement (IoU),
   et lissée — c'est ce qui fait suivre un cadre au lieu d'en créer un nouveau à chaque
-  image. **Hystérésis** : une piste naît au-dessus de 0,4, se maintient au-dessus de
+  image. **Hystérésis** : une piste naît au-dessus de 0,5, se maintient au-dessus de
   0,25 ; elle disparaît après 4 images sans détection.
 - **Une piste à la fois** passe au classifieur, les neuves d'abord (les plus grandes
   en premier), puis celles dont la vérification a plus de 3 s — on a pu changer de

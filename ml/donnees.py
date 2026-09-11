@@ -25,6 +25,21 @@ RACINE_APPLI = Path(__file__).resolve().parent.parent
 POIDS_SOURCES = {'home': 0.30, 'artwork': 0.25, 'showdown': 0.20, 'pixel': 0.17, 'dessin': 0.08}
 
 
+def charge_coco(donnees, part):
+    """Objets découpés de COCO (voir coco_objets.py) et photos d'où ils viennent.
+    Des exemples de ce qui N'EST PAS un Pokémon : tasses, peluches, jouets, visages,
+    animaux, meubles. Séparés par photo entre apprentissage et test."""
+    coco = Path(donnees) / 'coco'
+    if not (coco / 'objets.json').exists():
+        return [], []
+    objets = json.loads((coco / 'objets.json').read_text())[part]
+    for o in objets:
+        o['chemin'] = str(coco / 'objets' / o['fichier'])
+        o['photo'] = str(coco / 'val2017' / o['image'])
+    photos = sorted({o['photo'] for o in objets})
+    return objets, photos
+
+
 def charge_classes(donnees):
     classes = json.loads((Path(donnees) / 'classes.json').read_text(encoding='utf8'))
     groupes = sorted({c['groupe'] for c in classes})
@@ -174,7 +189,7 @@ def perspective(rnd, img, force):
 def prise_de_vue(rnd, img):
     """Tout ce que le téléphone ajoute : couleur, exposition, flou, bruit, compression."""
     if rnd.random() < 0.85:
-        img = ImageEnhance.Brightness(img).enhance(rnd.uniform(0.6, 1.35))
+        img = ImageEnhance.Brightness(img).enhance(rnd.uniform(0.35, 1.5) if rnd.random() < 0.25 else rnd.uniform(0.6, 1.35))
         img = ImageEnhance.Contrast(img).enhance(rnd.uniform(0.65, 1.3))
         img = ImageEnhance.Color(img).enhance(rnd.uniform(0.6, 1.35))
     arr = np.asarray(img, np.float32)
@@ -260,8 +275,30 @@ def ouvre_reference(rnd, chemin, source):
     return recadre_alpha(img)
 
 
-def scene_reference(rnd, ref, fonds):
-    """Un sprite ou un artwork détouré, posé dans une scène puis photographié."""
+def occulte(rnd, img, objets, zone):
+    """Pose un objet réel (COCO) à cheval sur `zone` (x0, y0, x1, y1) : une main, une
+    tasse, un autre jouet devant le Pokémon. Il en cache au plus un bon tiers."""
+    if not objets:
+        return img
+    o = Image.open(rnd.choice(objets)['chemin']).convert('RGBA')
+    zw, zh = zone[2] - zone[0], zone[3] - zone[1]
+    cote = max(zw, zh) * rnd.uniform(0.25, 0.6)
+    f = cote / max(o.size)
+    o = o.resize((max(4, int(o.width * f)), max(4, int(o.height * f))), Image.BILINEAR)
+    if rnd.random() < 0.5:
+        o = recadre_alpha(o.rotate(rnd.uniform(0, 360), Image.BILINEAR, expand=True))
+    # Centre de l'occultant sur un bord de la zone, pour ne cacher qu'une partie.
+    cote_choisi = rnd.choice(('g', 'd', 'h', 'b'))
+    cx = {'g': zone[0], 'd': zone[2]}.get(cote_choisi, rnd.uniform(zone[0], zone[2]))
+    cy = {'h': zone[1], 'b': zone[3]}.get(cote_choisi, rnd.uniform(zone[1], zone[3]))
+    img.paste(o, (int(cx - o.width / 2), int(cy - o.height / 2)), o)
+    return img
+
+
+def scene_reference(rnd, ref, fonds, objets=None):
+    """Un sprite ou un artwork détouré, posé dans une scène puis photographié.
+    Sert aussi aux objets COCO (source 'objet') : même mise en scène exactement, pour
+    que rien ne distingue un Pokémon d'un objet sinon ce qu'il représente."""
     obj = ouvre_reference(rnd, ref['chemin'], ref['source'])
     toile = int(TAILLE * 1.2)
     if ref['source'] == 'pixel':
@@ -288,6 +325,9 @@ def scene_reference(rnd, ref, fonds):
         fond.paste(ombre, (x + rnd.randint(-10, 10), y + rnd.randint(4, 16)), ombre)
     fond.paste(obj, (x, y), obj)
     img = fond
+    if objets and rnd.random() < 0.22:
+        for _ in range(rnd.choice((1, 1, 2))):
+            img = occulte(rnd, img, objets, (x, y, x + obj.width, y + obj.height))
     t = rnd.random()
     if t < 0.2:
         img = trame_ecran(rnd, img)
@@ -345,6 +385,22 @@ def scene_carte(rnd, chemin, fonds, evaluation=False, rotation=True, angle=None)
     if rnd.random() < 0.15:
         zone = trame_ecran(rnd, zone)
     return cadrage_final(rnd, prise_de_vue(rnd, zone), miroir=False)
+
+
+def scene_objet(rnd, objet, fonds):
+    """Un objet réel cadré comme le détecteur cadrerait un Pokémon : c'est exactement
+    ce que le classifieur doit apprendre à REFUSER."""
+    if rnd.random() < 0.55:
+        # Dans sa photo d'origine, avec son contexte : le cas réel le plus fréquent.
+        photo = Image.open(objet['photo']).convert('RGB')
+        x, y, w, h = objet['bbox']
+        cote = max(w, h) * rnd.uniform(1.0, 1.4)
+        cx, cy = x + w / 2 + rnd.uniform(-0.1, 0.1) * w, y + h / 2 + rnd.uniform(-0.1, 0.1) * h
+        img = recadre_tourne(rnd, photo, cx, cy, cote, angle_libre(rnd), fonds)
+        img = img.resize((int(TAILLE * 1.2), int(TAILLE * 1.2)), Image.BILINEAR)
+        return cadrage_final(rnd, prise_de_vue(rnd, img))
+    # Détouré et posé sur un fond, exactement comme un sprite de Pokémon.
+    return scene_reference(rnd, {'chemin': objet['chemin'], 'source': 'objet'}, fonds)
 
 
 def scene_rien(rnd, fonds):

@@ -35,7 +35,12 @@ const MOYENNE = [0.485, 0.456, 0.406], ECART = [0.229, 0.224, 0.225]; // ImageNe
 // Hystérésis : une piste NAÎT au-dessus de 0,4 (93,5 % des cadres justes sur les scènes
 // de test), mais une piste existante se contente de 0,25 pour continuer — un Pokémon
 // déjà suivi ne doit pas clignoter dès qu'une image est un peu moins nette.
-const SEUIL_NAISSANCE = 0.4, SEUIL_SUIVI = 0.25;
+const SEUIL_NAISSANCE = 0.5, SEUIL_SUIVI = 0.25;
+// Un cadre ne s'AFFICHE que si le classifieur est sûr à 90 % au moins que c'est ce
+// Pokémon. En dessous, la piste reste suivie mais invisible : un objet quelconque que
+// le détecteur a pris pour un Pokémon ne doit jamais apparaître encadré. (Le bouton,
+// lui, garde SEUIL : on y désigne soi-même la zone.)
+const SEUIL_AFFICHAGE = 0.9;
 const PISTES_MAX = 6;
 // Une piste sans détection pendant ce nombre d'images disparaît.
 const MANQUES_MAX = 4;
@@ -202,13 +207,13 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
       for (const i of idx) s += p[i];
       if (s > conf) { conf = s; meilleur = groupe; }
     }
-    if (!meilleur || conf < SEUIL) return { conf, trouve: null };
+    if (!meilleur || conf < SEUIL) return { conf, trouve: null, groupe: meilleur };
     // Dans le groupe retenu, la forme la plus probable — mais seulement si elle pèse
     // plus de la moitié du groupe. Sinon on ouvre l'espèce, qui ne peut pas être fausse.
     let classe = -1, pc = 0;
     for (const i of GROUPES.get(meilleur)) if (p[i] > pc) { pc = p[i]; classe = i; }
     const key = pc > conf / 2 ? CLASSES[classe][0] : meilleur;
-    return { conf, trouve: key };
+    return { conf, trouve: key, groupe: meilleur };
   }
 
   // ------------------------------------------------------------ caméra
@@ -503,7 +508,7 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
         for (const k of ['x', 'y', 'w', 'h']) meilleure[k] += (b[k] - meilleure[k]) * 0.6;
         meilleure.manques = 0;
       } else if (b.s >= SEUIL_NAISSANCE && pistes.length < PISTES_MAX) {
-        pistes.push({ id: idPiste++, ...b, manques: 0, etat: 'nouvelle', key: null, nom: '', essais: 0, verifieA: 0 });
+        pistes.push({ id: idPiste++, ...b, manques: 0, etat: 'nouvelle', key: null, nom: '', essais: 0, doutes: 0, verifieA: 0 });
       }
     }
     for (const p of libres) p.manques++;
@@ -515,23 +520,30 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
   async function classeUnePiste(g) {
     const maintenant = performance.now();
     const neuves = pistes.filter((p) => p.etat === 'nouvelle').sort((a, b) => b.w * b.h - a.w * a.h);
-    const p = neuves[0] ?? pistes.find((q) => maintenant - q.verifieA > REVERIFIE_MS);
+    const p = neuves.find((q) => q.essais === 0 || maintenant - q.verifieA > 500)
+      ?? pistes.find((q) => q.etat !== 'nouvelle' && maintenant - q.verifieA > REVERIFIE_MS);
     if (!p) return;
     const cote = Math.max(p.w, p.h) * 1.15;
     const cx = (p.x + p.w / 2 - g.ox) / g.e, cy = (p.y + p.h / 2 - g.oy) / g.e;
     const r = await enSerie(() => reconnais(pixelsDe(video, cx, cy, cote / g.e, [1])));
     if (!pistes.includes(p)) return;
     p.verifieA = performance.now();
-    if (r.trouve !== null) {
-      Object.assign(p, { etat: 'reconnu', key: r.trouve, nom: nomDe(r.trouve), essais: 0 });
-    } else if (++p.essais >= 2 || p.etat === 'reconnu') {
-      // Deux refus d'affilée, ou un Pokémon qui ne l'est plus : la piste s'efface.
+    if (r.trouve !== null && r.conf >= SEUIL_AFFICHAGE) {
+      Object.assign(p, { etat: 'reconnu', key: r.trouve, nom: nomDe(r.trouve), essais: 0, doutes: 0 });
+    } else if (p.etat === 'reconnu') {
+      // Déjà affiché : deux vérifications sous 90 % d'affilée pour l'effacer, sans
+      // quoi une seule image floue le ferait clignoter.
+      if (++p.doutes >= 2) Object.assign(p, { etat: 'refusee', key: null, nom: '' });
+    } else if (++p.essais >= 3) {
+      // Trois essais sans jamais atteindre 90 % : la piste s'efface pour de bon.
       Object.assign(p, { etat: 'refusee', key: null, nom: '' });
     }
   }
 
   function dessinePistes() {
-    const visibles = pistes.filter((p) => p.etat !== 'refusee');
+    // Seules les pistes reconnues s'affichent : plus de cadre « en attente » qui
+    // encadrait n'importe quel objet le temps que le classifieur se prononce.
+    const visibles = pistes.filter((p) => p.etat === 'reconnu');
     const vus = new Set();
     for (const p of visibles) {
       let n = pistesEl.querySelector(`[data-piste="${p.id}"]`);

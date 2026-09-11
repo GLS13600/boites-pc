@@ -433,6 +433,54 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
   pour l'effacer : sa promesse peut tarder, et « Ouverture de la caméra… » restait
   affiché par-dessus l'image.
 
+### Suivi en continu : les Pokémon sont trouvés sans appuyer
+
+- Dès que la caméra tourne et que le Pokédex est ouvert, chaque Pokémon à l'écran
+  reçoit **son propre cadre**, qui le suit. Reconnu, le cadre passe au cyan et porte
+  le nom de l'espèce ; le toucher ouvre sa fiche. Plusieurs Pokémon, plusieurs cadres
+  (6 au plus). Le cadre manuel ne revient que quand plus rien n'est suivi.
+- **Deux réseaux, deux rôles.** Le classifieur répond « quel Pokémon » sur un carré
+  qu'on lui donne, mais ne sait pas où chercher. Le **détecteur**
+  (`public/scan/detecteur.onnx`, 6 Mo, `ml/detecteur.py`) ne distingue que
+  « Pokémon ou pas » et rend les boîtes, assez vite pour tourner en boucle :
+  **44 ms** par image dans le moteur web (mesuré dans le navigateur), contre 220 ms
+  pour le classifieur.
+  - MobileNetV4 small, têtes de type CenterNet au pas de 8 sur une entrée 256×384 —
+    portrait, comme l'écran du Pokédex ouvert. Les maxima locaux sont extraits DANS
+    le graphe : l'appli ne lit que les cases retenues.
+  - Normalisation **ImageNet** (moyenne et écart), à la différence du classifieur,
+    qui prend les pixels bruts en [0, 1]. Les deux prétraitements sont distincts
+    dans `scan.js`, ne pas les confondre.
+  - Entraîné sur des scènes simulées (`ml/scenes.py`) : 0 à 4 Pokémon par image,
+    sprites, rendus 3D et cartes tournées, leurres photographiques. Boîtes exactes,
+    relevées sur la transparence ou sur la fenêtre d'illustration transformée.
+  - Mesures sur 1 200 scènes de test (cartes d'extensions jamais vues) : au seuil
+    0,4, **93,5 % des cadres justes pour 81,7 % des Pokémon trouvés** ; au seuil 0,25,
+    rappel ~90 %. 0,014 faux cadre par image vide.
+- **Pistes** : une boîte est rattachée d'une image à l'autre par recouvrement (IoU),
+  et lissée — c'est ce qui fait suivre un cadre au lieu d'en créer un nouveau à chaque
+  image. **Hystérésis** : une piste naît au-dessus de 0,4, se maintient au-dessus de
+  0,25 ; elle disparaît après 4 images sans détection.
+- **Une piste à la fois** passe au classifieur, les neuves d'abord (les plus grandes
+  en premier), puis celles dont la vérification a plus de 3 s — on a pu changer de
+  carte au même endroit. Deux refus d'affilée : la piste reste suivie mais invisible,
+  pour ne pas être réanalysée à chaque image.
+- **Le bouton** ouvre la fiche du plus grand Pokémon reconnu ; sans piste, il analyse
+  le cadre manuel comme avant. Bouton et suivi partagent le moteur : `enSerie` ne
+  laisse passer qu'une demande à la fois, et le Worker traite ses messages en file.
+- **Pause** pendant l'ouverture du Pokédex, sous une fiche (`estMasque`, fourni par
+  main.js), pendant une analyse au bouton et appli en arrière-plan.
+- Le nom affiché est celui de l'ESPÈCE (`nomDe`, fourni par main.js) : plus court
+  qu'un nom de forme sur un cadre. Près du haut de l'écran, il passe **sous** le
+  cadre (`.nom-bas`), sans quoi le bandeau d'aide le recouvrait.
+- Un détecteur absent ou illisible **ne prive pas du scan au bouton** : le Worker
+  signale `suivi: false` et la boucle s'arrête d'elle-même.
+- En développement, `window.__suivi` expose la durée de détection, les boîtes et
+  les pistes. Pour tester sans caméra : remplacer `getUserMedia` par le flux d'un
+  canvas (`captureStream(0)` puis `requestFrame()` après chaque dessin). Dans le
+  panneau de prévisualisation, un clic à l'écran peut tomber à côté — son rendu est
+  parfois réduit — : envoyer les `PointerEvent` directement en coordonnées de page.
+
 ### Moteur
 
 - **onnxruntime-web** (`onnxruntime-web/wasm`), première dépendance d'exécution de

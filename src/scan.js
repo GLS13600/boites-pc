@@ -26,6 +26,23 @@ const ECHELLES = [1, 0.78];
 // Le cadre, en fraction du plus petit côté de la vue.
 const COTE_DEFAUT = 0.62, COTE_MIN = 0.22, COTE_MAX = 1;
 
+// Suivi en continu. Le détecteur (ml/detecteur.py) regarde l'écran du Pokédex en
+// 256×384 et rend une grille au pas de 8 : probabilité d'un centre de Pokémon, taille
+// de sa boîte, décalage dans la case — maxima locaux déjà extraits dans le graphe.
+const DET_L = 256, DET_H = 384, DET_PAS = 8;
+const DET_GL = DET_L / DET_PAS, DET_GH = DET_H / DET_PAS;
+const MOYENNE = [0.485, 0.456, 0.406], ECART = [0.229, 0.224, 0.225]; // ImageNet
+// Hystérésis : une piste NAÎT au-dessus de 0,4 (93,5 % des cadres justes sur les scènes
+// de test), mais une piste existante se contente de 0,25 pour continuer — un Pokémon
+// déjà suivi ne doit pas clignoter dès qu'une image est un peu moins nette.
+const SEUIL_NAISSANCE = 0.4, SEUIL_SUIVI = 0.25;
+const PISTES_MAX = 6;
+// Une piste sans détection pendant ce nombre d'images disparaît.
+const MANQUES_MAX = 4;
+// Une piste reconnue est revérifiée de temps en temps : on a pu changer de carte au
+// même endroit. Une piste refusée aussi, un Pokémon mal vu au début pouvant se préciser.
+const REVERIFIE_MS = 3000;
+
 // Index de sortie → groupe (numéro de l'espèce ; 0 = « rien »). Calculé une fois.
 const GROUPES = new Map();
 CLASSES.forEach(([, groupe], i) => {
@@ -81,12 +98,13 @@ const html = (s) => {
   return t.content.firstElementChild;
 };
 
-export function creeScan({ ouvrirFiche }) {
+export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = () => false }) {
   const el = html(`
     <section class="scan" aria-label="Scanner un Pokémon">
       <video class="scan-video" playsinline muted autoplay></video>
       <div class="scan-ecran" aria-hidden="true"></div>
       <div class="scan-zone" hidden><i></i><i></i><i></i><i></i></div>
+      <div class="scan-pistes" aria-live="polite"></div>
       <div class="pdx-verre" aria-hidden="true"></div>
       <div class="pdx-bande" aria-hidden="true"></div>
       <div class="pdx-lentille" aria-hidden="true"></div>
@@ -103,6 +121,8 @@ export function creeScan({ ouvrirFiche }) {
   const toast = el.querySelector('.scan-toast');
   const btn = el.querySelector('.scan-btn');
   const ecran = el.querySelector('.scan-ecran');
+  const pistesEl = el.querySelector('.scan-pistes');
+  const aide = el.querySelector('.scan-aide');
 
   let flux = null;        // MediaStream de la caméra
   let ouverture = false;  // demande d'accès en cours
@@ -127,7 +147,7 @@ export function creeScan({ ouvrirFiche }) {
   };
 
   // ------------------------------------------------------------ modèle
-  let worker = null, pret = null, suivant = 1;
+  let worker = null, pret = null, suivant = 1, suiviPossible = false;
   const attentes = new Map();
 
   function prepareModele() {
@@ -135,7 +155,7 @@ export function creeScan({ ouvrirFiche }) {
     worker = new Worker(new URL('./scan-worker.js', import.meta.url), { type: 'module' });
     pret = new Promise((ok, ko) => {
       worker.onmessage = ({ data }) => {
-        if (data.type === 'pret') ok();
+        if (data.type === 'pret') { suiviPossible = data.suivi; ok(); }
         else if (data.type === 'resultat') attentes.get(data.id)?.ok(data);
         else if (data.type === 'erreur') {
           if (attentes.has(data.id)) attentes.get(data.id).ko(new Error(data.message));
@@ -145,17 +165,23 @@ export function creeScan({ ouvrirFiche }) {
       };
       worker.onerror = (e) => ko(new Error(e.message || 'Worker du scan en échec'));
     });
-    worker.postMessage({ type: 'charge', url: new URL('scan/modele.onnx', document.baseURI).href });
+    worker.postMessage({
+      type: 'charge',
+      classifieur: new URL('scan/modele.onnx', document.baseURI).href,
+      detecteur: new URL('scan/detecteur.onnx', document.baseURI).href,
+    });
     // Un échec de chargement doit pouvoir être retenté à la prochaine ouverture.
     pret.catch(() => { worker?.terminate(); worker = null; pret = null; });
     return pret;
   }
 
-  const analyse = (pixels, n) => new Promise((ok, ko) => {
+  const demande = (message, transfert) => new Promise((ok, ko) => {
     const id = suivant++;
     attentes.set(id, { ok, ko });
-    worker.postMessage({ type: 'analyse', id, pixels, n, taille: TAILLE }, [pixels.buffer]);
+    worker.postMessage({ ...message, id }, transfert);
   });
+  const analyse = (pixels, n) => demande({ type: 'analyse', pixels, n, taille: TAILLE }, [pixels.buffer]);
+  const detecte = (pixels) => demande({ type: 'detecte', pixels, largeur: DET_L, hauteur: DET_H }, [pixels.buffer]);
 
   // Moyenne des probabilités sur les cadrages, puis somme par groupe : une espèce et
   // ses formes se partagent la ressemblance, et c'est l'espèce qu'on juge d'abord.
@@ -213,7 +239,7 @@ export function creeScan({ ouvrirFiche }) {
     if (entree) animeOuverture();
     majZone();
     prepareModele().catch(() => {});
-    if (flux) { video.play().catch(() => {}); return; }
+    if (flux) { video.play().catch(() => {}); suis(); return; }
     // Chaque rendu rappelle demarre() : sans ce verrou, un rendu survenu pendant la
     // demande d'autorisation ouvrirait un second flux, jamais refermé.
     if (ouverture) return;
@@ -238,6 +264,7 @@ export function creeScan({ ouvrirFiche }) {
       video.play().catch(() => {});
       montreEtat(null);
       majZone();
+      suis();
     } catch (e) {
       montreEtat(e?.name === 'NotAllowedError'
         ? "L'accès à la caméra a été refusé. Autorisez-le dans Réglages › Guiguidex."
@@ -259,6 +286,7 @@ export function creeScan({ ouvrirFiche }) {
     if (!actif) return;
     actif = false;
     coupeFlux();
+    videPistes();
   }
 
   // Appli en arrière-plan : iOS coupe de toute façon la caméra ; on la rouvre au retour.
@@ -321,6 +349,9 @@ export function creeScan({ ouvrirFiche }) {
     doigts.delete(e.pointerId);
     if (!pince && !bouge && e.type === 'pointerup') {
       const r = el.getBoundingClientRect();
+      // Toucher un Pokémon suivi et reconnu ouvre sa fiche.
+      const p = pisteSous(e.clientX - r.left, e.clientY - r.top);
+      if (p) { doigts.delete(e.pointerId); ouvrirFiche(p.key); return; }
       zone.cx = (e.clientX - r.left) / r.width;
       zone.cy = (e.clientY - r.top) / r.height;
       majZone();
@@ -337,11 +368,11 @@ export function creeScan({ ouvrirFiche }) {
 
   // Découpe les cadrages dans une source (vidéo ou image) et les met au format du
   // réseau : RGB en [0, 1], canaux séparés (CHW).
-  function pixelsDe(source, cx, cy, cote) {
-    const n = ECHELLES.length;
+  function pixelsDe(source, cx, cy, cote, echelles = ECHELLES) {
+    const n = echelles.length;
     const px = new Float32Array(n * 3 * TAILLE * TAILLE);
     const plan = TAILLE * TAILLE;
-    ECHELLES.forEach((e, k) => {
+    echelles.forEach((e, k) => {
       const c = cote * e;
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, TAILLE, TAILLE);
@@ -382,18 +413,207 @@ export function creeScan({ ouvrirFiche }) {
       clearTimeout(lent);
       montreEtat(null);
     }
-    const r = await analyse(pixels, ECHELLES.length);
+    const r = await analyse(pixels, pixels.length / (3 * TAILLE * TAILLE));
     return { ...decide(r.logits, r.n), ms: r.ms };
+  }
+
+  // Le bouton et le suivi partagent le moteur : une seule demande à la fois.
+  let verrou = Promise.resolve();
+  const enSerie = (fn) => {
+    const r = verrou.then(fn, fn);
+    verrou = r.catch(() => {});
+    return r;
+  };
+
+  // ------------------------------------------------------------ suivi en continu
+  //
+  // Tant que la caméra tourne, le détecteur regarde l'écran du Pokédex, image après
+  // image. Chaque boîte trouvée devient une PISTE, rattachée d'une image à l'autre par
+  // recouvrement : c'est ce qui fait qu'un cadre suit son Pokémon au lieu d'en créer
+  // un nouveau à chaque image. Une piste neuve est confiée au classifieur ; reconnue,
+  // elle affiche le nom du Pokémon et se touche pour ouvrir sa fiche. Refusée — un
+  // objet qui ressemblait à un Pokémon sans en être un —, elle reste suivie mais
+  // invisible, pour ne pas être réanalysée à chaque image.
+  //
+  // Le cadre manuel ne s'affiche que quand aucun Pokémon n'est suivi.
+  let pistes = [], idPiste = 1, suiviEnCours = false;
+  const attente = (ms) => new Promise((ok) => setTimeout(ok, ms));
+  const iou = (a, b) => {
+    const x0 = Math.max(a.x, b.x), y0 = Math.max(a.y, b.y);
+    const x1 = Math.min(a.x + a.w, b.x + b.w), y1 = Math.min(a.y + a.h, b.y + b.h);
+    const inter = Math.max(0, x1 - x0) * Math.max(0, y1 - y0);
+    return inter / Math.max(1e-6, a.w * a.h + b.w * b.h - inter);
+  };
+
+  // Correspondance vue ↔ vidéo (aperçu en object-fit: cover), et zone analysée : le
+  // plus grand rectangle 2:3 centré dans l'écran du Pokédex.
+  function geometrie() {
+    const w = el.clientWidth, h = el.clientHeight, vw = video.videoWidth, vh = video.videoHeight;
+    if (!w || !h || !vw || !vh) return null;
+    const e = Math.max(w / vw, h / vh), ox = (w - vw * e) / 2, oy = (h - vh * e) / 2;
+    let x0 = ecran.offsetLeft, y0 = ecran.offsetTop, rw = ecran.offsetWidth, rh = ecran.offsetHeight;
+    if (rw / rh > DET_L / DET_H) { const nw = rh * DET_L / DET_H; x0 += (rw - nw) / 2; rw = nw; }
+    else { const nh = rw * DET_H / DET_L; y0 += (rh - nh) / 2; rh = nh; }
+    return { e, ox, oy, x0, y0, rw, rh };
+  }
+
+  const toileDet = document.createElement('canvas');
+  toileDet.width = DET_L;
+  toileDet.height = DET_H;
+  const ctxDet = toileDet.getContext('2d', { willReadFrequently: true });
+
+  function pixelsDetection(g) {
+    ctxDet.drawImage(video, (g.x0 - g.ox) / g.e, (g.y0 - g.oy) / g.e, g.rw / g.e, g.rh / g.e, 0, 0, DET_L, DET_H);
+    const d = ctxDet.getImageData(0, 0, DET_L, DET_H).data;
+    const plan = DET_L * DET_H;
+    const px = new Float32Array(3 * plan);
+    for (let i = 0; i < plan; i++) {
+      px[i] = (d[i * 4] / 255 - MOYENNE[0]) / ECART[0];
+      px[plan + i] = (d[i * 4 + 1] / 255 - MOYENNE[1]) / ECART[1];
+      px[2 * plan + i] = (d[i * 4 + 2] / 255 - MOYENNE[2]) / ECART[2];
+    }
+    return px;
+  }
+
+  // Cases retenues → boîtes en pixels de la vue.
+  function boitesDe(r, g) {
+    const f = g.rw / DET_L, n = DET_GL * DET_GH, boites = [];
+    for (let i = 0; i < n; i++) {
+      const s = r.chaleur[i];
+      if (s < SEUIL_SUIVI) continue;
+      const gx = i % DET_GL, gy = (i - gx) / DET_GL;
+      const w = r.taille[i] * DET_PAS * f, h = r.taille[n + i] * DET_PAS * f;
+      const cx = g.x0 + (gx + r.decalage[i]) * DET_PAS * f, cy = g.y0 + (gy + r.decalage[n + i]) * DET_PAS * f;
+      boites.push({ x: cx - w / 2, y: cy - h / 2, w, h, s });
+    }
+    return boites.sort((a, b) => b.s - a.s).slice(0, PISTES_MAX);
+  }
+
+  function majPistes(boites) {
+    const libres = new Set(pistes);
+    for (const b of boites) {
+      let meilleure = null, recouvre = 0.15;
+      for (const p of libres) {
+        const u = iou(p, b);
+        if (u > recouvre) { recouvre = u; meilleure = p; }
+      }
+      if (meilleure) {
+        libres.delete(meilleure);
+        // Lissage : le cadre rejoint la détection sans trembler d'une image à l'autre.
+        for (const k of ['x', 'y', 'w', 'h']) meilleure[k] += (b[k] - meilleure[k]) * 0.6;
+        meilleure.manques = 0;
+      } else if (b.s >= SEUIL_NAISSANCE && pistes.length < PISTES_MAX) {
+        pistes.push({ id: idPiste++, ...b, manques: 0, etat: 'nouvelle', key: null, nom: '', essais: 0, verifieA: 0 });
+      }
+    }
+    for (const p of libres) p.manques++;
+    pistes = pistes.filter((p) => p.manques < MANQUES_MAX);
+  }
+
+  // Une piste à la fois est confiée au classifieur, la plus urgente d'abord : les
+  // neuves (les plus grandes en premier), puis celles dont la vérification a vieilli.
+  async function classeUnePiste(g) {
+    const maintenant = performance.now();
+    const neuves = pistes.filter((p) => p.etat === 'nouvelle').sort((a, b) => b.w * b.h - a.w * a.h);
+    const p = neuves[0] ?? pistes.find((q) => maintenant - q.verifieA > REVERIFIE_MS);
+    if (!p) return;
+    const cote = Math.max(p.w, p.h) * 1.15;
+    const cx = (p.x + p.w / 2 - g.ox) / g.e, cy = (p.y + p.h / 2 - g.oy) / g.e;
+    const r = await enSerie(() => reconnais(pixelsDe(video, cx, cy, cote / g.e, [1])));
+    if (!pistes.includes(p)) return;
+    p.verifieA = performance.now();
+    if (r.trouve !== null) {
+      Object.assign(p, { etat: 'reconnu', key: r.trouve, nom: nomDe(r.trouve), essais: 0 });
+    } else if (++p.essais >= 2 || p.etat === 'reconnu') {
+      // Deux refus d'affilée, ou un Pokémon qui ne l'est plus : la piste s'efface.
+      Object.assign(p, { etat: 'refusee', key: null, nom: '' });
+    }
+  }
+
+  function dessinePistes() {
+    const visibles = pistes.filter((p) => p.etat !== 'refusee');
+    const vus = new Set();
+    for (const p of visibles) {
+      let n = pistesEl.querySelector(`[data-piste="${p.id}"]`);
+      if (!n) {
+        n = html(`<div class="scan-piste" data-piste="${p.id}"><i></i><i></i><i></i><i></i><b></b></div>`);
+        pistesEl.append(n);
+      }
+      vus.add(n);
+      n.classList.toggle('reconnu', p.etat === 'reconnu');
+      // Près du haut de l'écran, le nom passerait sous le bandeau d'aide ou sous la
+      // coque : il se met alors SOUS le cadre.
+      n.classList.toggle('nom-bas', p.y - ecran.offsetTop < 64);
+      n.querySelector('b').textContent = p.etat === 'reconnu' ? p.nom : '';
+      Object.assign(n.style, { left: `${p.x}px`, top: `${p.y}px`, width: `${p.w}px`, height: `${p.h}px` });
+    }
+    for (const n of [...pistesEl.children]) if (!vus.has(n)) n.remove();
+    zoneEl.hidden = visibles.length > 0 || !zone.px;
+    aide.textContent = visibles.some((p) => p.etat === 'reconnu')
+      ? 'Touchez un Pokémon pour ouvrir sa fiche'
+      : "Touchez l'image pour placer le cadre sur le Pokémon";
+  }
+
+  function videPistes() {
+    pistes = [];
+    pistesEl.replaceChildren();
+    if (zone.px) zoneEl.hidden = false;
+  }
+
+  function pisteSous(x, y) {
+    return pistes.filter((p) => p.etat === 'reconnu' && x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + p.h)
+      .sort((a, b) => a.w * a.h - b.w * b.h)[0] ?? null;
+  }
+
+  async function suis() {
+    if (suiviEnCours) return;
+    suiviEnCours = true;
+    try {
+      while (actif && el.isConnected && flux) {
+        // En pause pendant l'ouverture du Pokédex, sous une fiche, pendant une analyse
+        // au bouton, ou appli en arrière-plan : inutile de faire chauffer le téléphone.
+        if (document.hidden || estMasque() || occupe || el.classList.contains('ouvre')
+          || el.classList.contains('ferme') || video.readyState < 2) {
+          await attente(300);
+          continue;
+        }
+        try { await (pret ?? prepareModele()); } catch { await attente(2000); continue; }
+        if (!suiviPossible) return;
+        const g = geometrie();
+        if (!g) { await attente(300); continue; }
+        const r = await enSerie(() => detecte(pixelsDetection(g)));
+        const boites = boitesDe(r, g);
+        majPistes(boites);
+        // Développement : état du suivi, pour le vérifier sans caméra. Retiré du build.
+        if (import.meta.env.DEV) window.__suivi = { ms: Math.round(r.ms), boites, pistes: pistes.map((p) => ({ etat: p.etat, nom: p.nom, x: Math.round(p.x), y: Math.round(p.y), w: Math.round(p.w), h: Math.round(p.h) })) };
+        dessinePistes();
+        await classeUnePiste(g);
+        dessinePistes();
+        await attente(30);
+      }
+    } catch (e) {
+      console.error('suivi', e);
+    } finally {
+      suiviEnCours = false;
+      videPistes();
+    }
   }
 
   async function scanne() {
     if (occupe) return;
+    // Des Pokémon sont suivis et reconnus : le bouton ouvre la fiche du plus grand à
+    // l'écran, celui qu'on vise manifestement. Sinon, analyse du cadre comme avant.
+    const vus = pistes.filter((p) => p.etat === 'reconnu');
+    if (vus.length) {
+      ouvrirFiche(vus.reduce((a, b) => (a.w * a.h >= b.w * b.h ? a : b)).key);
+      return;
+    }
     if (!flux || video.readyState < 2) { montreToast('La caméra n’est pas prête'); return; }
     occupe = true;
     el.classList.add('analyse');
     try {
       const z = zoneDansVideo();
-      const r = await reconnais(pixelsDe(video, z.cx, z.cy, z.cote));
+      const r = await enSerie(() => reconnais(pixelsDe(video, z.cx, z.cy, z.cote)));
       if (r.trouve !== null) {
         zoneEl.classList.add('ok');
         setTimeout(() => zoneEl.classList.remove('ok'), 500);

@@ -114,6 +114,39 @@ debout, deux fois plus lent — écarté.
 Reprendre le même calendrier après un arrêt : `--reprise <poids> --depart-epoque N`
 avec le même `--epoques` (c'est ainsi que le run debout est allé de 24 à 30).
 
+## Détecteur (suivi en continu)
+
+`detecteur.py`, `scenes.py`, `entrainer_detecteur.py`, `apercu_scenes.py`.
+
+```bash
+python ml/apercu_scenes.py D:/Code/Jeu-scan planche.png   # boîtes dessinées, à vérifier à l'œil
+python ml/entrainer_detecteur.py D:/Code/Jeu-scan --epoques 20 --par-epoque 20000 --sortie D:/Code/Jeu-scan/runs/detecteur-v1
+cp D:/Code/Jeu-scan/runs/detecteur-v1/detecteur.onnx public/scan/detecteur.onnx
+```
+
+- MobileNetV4 small (ImageNet) + fusion des pas 8/16/32 + têtes CenterNet (chaleur,
+  taille en log, décalage). 1,6 M de paramètres, 6 Mo, **43 ms** en WASM un fil.
+  Le medium (7,5 M) prenait 131 ms : trop lent pour suivre.
+- 20 époques de 20 000 scènes, ~25 min. Résultat (moyenne lissée, époque 20) :
+
+  | seuil | précision | rappel | faux cadres par image vide |
+  |---|---|---|---|
+  | 0,2 | 78,4 | 89,9 | 0,083 |
+  | 0,3 | 88,3 | 86,5 | 0,028 |
+  | 0,4 | 93,5 | 81,7 | 0,014 |
+  | 0,5 | 96,5 | 74,5 | 0,007 |
+
+  IoU moyen des boîtes justes : 0,88.
+- **Piège, la moyenne lissée des poids** : sans montée progressive (`use_warmup`),
+  elle gardait des centaines de pas les poids ET les statistiques de normalisation du
+  réseau de départ — zéro détection en évaluation (0,11 partout), alors que le même
+  réseau en mode apprentissage montait déjà à 0,76. On évalue désormais le réseau
+  lissé et le brut, et on garde le meilleur.
+- **Piège, la vitesse des scènes** : tourner et « figuriniser » un rendu HOME de 512 px
+  avant de le réduire à 60 coûtait l'essentiel du temps (100 scènes/s au total, la
+  carte graphique à 1 %). On réduit d'abord, on tourne ensuite : 41 scènes/s par
+  processus au lieu de 14.
+
 ## Pièges rencontrés
 
 - **FastViT s'entraîne deux fois plus vite une fois « reparamétré »** (branches

@@ -3577,7 +3577,14 @@ function especesDex() {
 // son élément dans la vue et lui fournir de quoi ouvrir une fiche — la même que
 // celle du Pokédex. L'élément est créé UNE fois et reposé à chaque rendu : le
 // recréer relancerait la caméra à chaque capture cochée depuis la fiche.
-const scan = creeScan({ ouvrirFiche: (key) => openSheet(key) });
+const scan = creeScan({
+  ouvrirFiche: (key) => openSheet(key),
+  // Le nom affiché sur un Pokémon suivi : celui de l'ESPÈCE, plus court et plus parlant
+  // qu'un nom de forme (« Forme d'Alola ») sur un cadre.
+  nomDe: (key) => pokedex[speciesOf(key)]?.name ?? String(key),
+  // Sous la fiche, le suivi se met en pause.
+  estMasque: () => sheet.classList.contains('open'),
+});
 
 function renderScan() {
   poser(scan.element);

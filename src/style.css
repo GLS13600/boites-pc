@@ -1900,10 +1900,10 @@ img {
    Empilement, du fond vers l'avant : vidéo, cadre de visée, verre, bande et
    lentille (visibles fermé), coques, puis textes et déclencheur.
 
-   `--cap-h` est la hauteur visible d'une coque ouverte : 150 unités de dessin sur
+   `--cap-h` est la hauteur visible d'une coque ouverte : 100 unités de dessin sur
    400 de large, en unités du conteneur (cqw) — .scan est un conteneur de taille. */
 .scan {
-  --cap-h: calc(100cqw * 150 / 400);
+  --cap-h: calc(100cqw * 100 / 400);
   --fente: 22px; /* écart des coques fermées : la bande de verre du Pokédex */
   position: relative;
   height: 100%;

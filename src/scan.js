@@ -37,7 +37,7 @@ CLASSES.forEach(([, groupe], i) => {
 // bas est la même, retournée en CSS. Le dessin est bien plus haut qu'il n'y paraît
 // (400×800) : fermé, le Pokédex occupe tout l'écran et on en voit presque tout —
 // les grandes rainures en dôme autour de la lentille ; ouvert, la coque remonte et
-// seule sa bande basse reste visible (`--cap-h`, 150 unités), où les mêmes rainures
+// seule sa bande basse reste visible (`--cap-h`, 100 unités), où les mêmes rainures
 // ne montrent plus que leurs coins, comme sur l'appareil.
 //
 // L'échancrure centrale (rayon 46) est laissée TRANSPARENTE : fermée, les deux

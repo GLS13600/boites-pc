@@ -398,7 +398,9 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
   caméra. Le déclencheur Poké Ball est logé dans l'échancrure de la coque du bas.
 - **Une seule coque dessinée** (`coque()` dans scan.js), retournée en CSS pour le bas.
   Le dessin fait 400×800 : fermé, le Pokédex remplit l'écran et on en voit presque
-  tout ; ouvert, seule la bande basse de 150 unités reste visible (`--cap-h`).
+  tout ; ouvert, seule la bande basse de **100 unités** reste visible (`--cap-h`) —
+  150 au départ, jugé pas assez ouvert. En dessous de ~80, l'anneau noir de
+  l'échancrure (rayon 75) ne tiendrait plus dans la bande.
   - Les cercles noirs autour de la lentille sont **dessinés ENTIERS** : fermé, les
     deux moitiés les referment en anneaux complets autour de la lentille ; ouvert, il
     n'en reste que les coins de la bande. Une version les avait découpés à la bande

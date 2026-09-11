@@ -109,7 +109,7 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 
 ## Contraintes du poste de travail
 
-- Développement sous **Windows**, pas de Mac. Projet dans `D:\Code\Jeu\`.
+- Développement sous **Windows**, pas de Mac. Projet dans `A:\Code\Pokedex\` (SSD NVMe) — déplacé depuis `D:\Code\Jeu\`, un disque dur mécanique.
 - La compilation iOS se fera plus tard sur **GitHub Actions** (runner macOS) ou avec
   **xtool** ; l'IPA sera produit **non signé**, c'est Sideloadly qui signe avec l'Apple ID
   personnel. Certificat gratuit : 3 apps max, à rafraîchir tous les 7 jours.

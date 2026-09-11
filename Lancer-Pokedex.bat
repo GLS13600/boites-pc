@@ -27,7 +27,7 @@ if not defined PROJET (
 
 if not defined PROJET (
   echo [ERREUR] Aucun package.json trouve.
-  echo Place ce fichier dans D:\Code\Jeu, a cote du dossier du projet.
+  echo Place ce fichier dans A:\Code\Pokedex, a cote du dossier du projet.
   echo.
   pause
   exit /b 1

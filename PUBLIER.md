@@ -7,7 +7,7 @@ Dépôt : <https://github.com/GLS13600/boites-pc>
 
 ## 1. Envoyer les modifications sur GitHub
 
-Depuis `D:\Code\Jeu` :
+Depuis `A:\Code\Pokedex` :
 
 ```bash
 git status            # ce qui a changé

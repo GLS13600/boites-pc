@@ -90,7 +90,12 @@ class Evaluation(Dataset):
                 self.fonds = sorted(str(p) for p in (self.racine / 'imagenette2-160' / 'val').rglob('*.JPEG'))
             c = self.cartes[i]
             chemin = self.racine / 'cartes' / f"{c['id']}.webp"
-            img = D.scene_carte(rnd, chemin, self.fonds, evaluation=(self.mode == 'illustration'))
+            if self.mode == 'illustration':
+                img = D.scene_carte(rnd, chemin, self.fonds, evaluation=True)
+            elif self.mode == 'illustration_tournee':
+                img = D.scene_carte(rnd, chemin, self.fonds, evaluation=True, angle=rnd.uniform(0, 360))
+            else:  # 'photo' : debout, comme les runs précédents ; 'photo_tournee' : rotation libre
+                img = D.scene_carte(rnd, chemin, self.fonds, rotation=(self.mode == 'photo_tournee'))
             grp = self.groupe_de[c['num']]
         return torch.from_numpy(np.asarray(img, np.uint8).copy()).permute(2, 0, 1), grp
 
@@ -147,6 +152,10 @@ def main():
     ap.add_argument('--ouvriers', type=int, default=20)
     ap.add_argument('--essai', action='store_true', help='quelques pas seulement, pour vérifier la chaîne')
     ap.add_argument('--sortie', default=None)
+    ap.add_argument('--depart-epoque', type=int, default=0,
+                    help="avec --reprise : reprendre le MÊME calendrier à cette époque (ex. 24 d'un run de 30)")
+    ap.add_argument('--reprise', default=None,
+                    help="poids d'un run précédent (meilleur.pt) : on repart de là au lieu de MobileCLIP brut")
     args = ap.parse_args()
 
     racine = Path(args.racine)
@@ -178,7 +187,9 @@ def main():
         nom: jeu_evaluation(racine, cartes_test if mode != 'rien' else [], groupe_de, mode,
                             n_test if mode != 'rien' else (300 if args.essai else 1500),
                             racine / f'eval-{nom}{suffixe}.pt')
-        for nom, mode in (('illustration', 'illustration'), ('photo_carte', 'photo'), ('rien', 'rien'))
+        for nom, mode in (('illustration', 'illustration'), ('photo_carte', 'photo'),
+                          ('illustration_tournee', 'illustration_tournee'), ('photo_tournee', 'photo_tournee'),
+                          ('rien', 'rien'))
     }
     ds = Melange(racine, classes, groupe_de, cartes_train, n_epoque, graine=1)
     charge = DataLoader(ds, batch_size=args.lot, shuffle=False, num_workers=args.ouvriers,
@@ -189,6 +200,11 @@ def main():
     # pour l'inférence. On fusionne D'ABORD : l'apprentissage va deux fois plus vite
     # (427 contre 213 img/s mesurés), et le modèle entraîné est déjà celui qu'on exporte.
     modele = reparameterize_model(modele)
+    if args.reprise:
+        # Reprise : les poids déjà spécialisés, et un nouveau cycle de taux d'apprentissage
+        # (échauffement puis décroissance). Les classes doivent être les mêmes.
+        modele.load_state_dict(torch.load(args.reprise, map_location='cpu'))
+        print(f'reprise depuis {args.reprise}', flush=True)
     modele = modele.to(dev).to(memory_format=torch.channels_last)
     ema = ModelEmaV3(modele, decay=0.9995)
     tete = [p for n, p in modele.named_parameters() if n.startswith('head')]
@@ -198,15 +214,31 @@ def main():
     pas_total = epoques * (n_epoque // args.lot)
     echauffe = min(1000, pas_total // 10)
 
+    pas_depart = args.depart_epoque * (n_epoque // args.lot)
+
     def lr_facteur(pas):
         if pas < echauffe:
             return (pas + 1) / echauffe
-        return 0.5 * (1 + math.cos(math.pi * (pas - echauffe) / max(1, pas_total - echauffe)))
+        f = 0.5 * (1 + math.cos(math.pi * (pas - echauffe) / max(1, pas_total - echauffe)))
+        # Reprise en cours de calendrier : les moments d'Adam repartent de zéro, on
+        # remonte donc au taux prévu sur 200 pas plutôt que d'un coup.
+        if pas_depart and pas < pas_depart + 200:
+            f *= (pas - pas_depart + 1) / 200
+        return f
 
-    sched = torch.optim.lr_scheduler.LambdaLR(opt, lr_facteur)
-    meilleur, pas = -1, 0
+    # LambdaLR compte ses pas depuis 0 : on les décale jusqu'au point de reprise.
+    sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda k: lr_facteur(k + pas_depart))
+    meilleur, pas = -1, pas_depart
     journal = []
-    for ep in range(epoques):
+    if args.reprise:
+        # Mesure du modèle de départ sur tous les jeux, y compris ceux qu'il n'a pas
+        # connus à l'entraînement : c'est la référence de ce qu'on améliore.
+        depart = {'epoque': f'départ ({Path(args.reprise).name})'}
+        for nom, jeu in evals.items():
+            depart[nom] = round(evalue(ema.module, jeu, membres, dev)[0], 4)
+        journal.append(depart)
+        print(json.dumps(depart, ensure_ascii=False), flush=True)
+    for ep in range(args.depart_epoque, epoques):
         modele.train()
         ds.graine = ep + 1
         t0, somme, n = time.time(), 0.0, 0
@@ -244,7 +276,8 @@ def main():
                         res[f'{nom}@{seuil}'] = {
                             'couverture': round(garde.float().mean().item(), 3),
                             'precision': round(justes[garde].float().mean().item() if garde.any() else 0, 3)}
-            score = res['photo_carte']
+            # Le meilleur modèle doit tenir DEBOUT et TOURNÉ : on retient la moyenne des deux.
+            score = (res['photo_carte'] + res.get('photo_tournee', res['photo_carte'])) / 2
             if score > meilleur:
                 meilleur = score
                 torch.save(ema.module.state_dict(), sortie / 'meilleur.pt')

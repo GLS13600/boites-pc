@@ -409,11 +409,26 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
   - **Pas la version int8** (13 Mo) : la quantification dynamique coûte près de 4 points
     de reconnaissance (89,7 % → 86,0 % sur 300 photos de cartes), pour une vitesse à
     peine meilleure. Les 36 Mo d'écart valent ces 4 points.
-- **Mesures du modèle actuel** (époque 24 sur 30, arrêté pour un premier essai ;
-  cartes d'extensions jamais vues, deux cadrages, seuil 0,4) : illustrations 91,8 %
-  bonnes / 4,5 % non trouvé / 3,6 % fausses ; photos de cartes simulées 81,9 % /
-  10,0 % / 8,1 % ; scènes sans Pokémon : aucune fiche ouverte. Ce sont des mesures
-  sur cartes : figurines et écrans ne se vérifient que sur le téléphone.
+- **Le Pokémon peut être dans n'importe quel sens.** Le premier modèle, entraîné à
+  ±25° seulement, reconnaissait parfaitement un Pokémon debout et plus du tout un
+  Pokémon tourné — constaté sur le téléphone, puis mesuré : 92 % debout contre 67 %
+  tourné. Le modèle actuel a été réentraîné en **rotation libre** (8 époques depuis
+  le modèle debout) jusqu'à dépasser 90 % tourné, sans rien perdre debout.
+- **Analyser l'image sous quatre orientations n'a PAS été retenu** : mesuré, c'est
+  +1 point tourné mais −2 points debout, pour une analyse deux fois plus longue.
+  Le modèle porte l'invariance, l'appli n'a pas à la simuler.
+- **Mesures du modèle actuel** (cartes d'extensions jamais vues, deux cadrages,
+  seuil 0,4 — bonnes / non trouvé / fausses) :
+
+  | | illustration de carte | photo de carte simulée |
+  |---|---|---|
+  | debout | 92,8 / 3,6 / 3,6 | 82,5 / 10,8 / 6,8 |
+  | tourné | 90,4 / 4,3 / 5,3 | 78,2 / 14,5 / 7,3 |
+
+  Scènes sans Pokémon : aucune fiche ouverte. Ce sont des mesures sur cartes :
+  figurines et écrans ne se vérifient que sur le téléphone.
+- **C'est le modèle de référence pour un bon moment**, par décision explicite : ne
+  pas relancer d'entraînement sans demande.
 - **`NSCameraUsageDescription`** dans `Info.plist` est obligatoire : sans lui, iOS
   ferme l'appli au premier accès à la caméra. Capacitor accorde lui-même l'accès
   côté WebView (`requestMediaCapturePermissionFor`), seule l'invite système reste.

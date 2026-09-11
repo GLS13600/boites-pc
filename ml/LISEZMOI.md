@@ -83,6 +83,37 @@ lumière, flou, reflet…). Échelles 1 et 0,78 moyennées, comme l'appli.
   La courbe montait encore : les 6 époques restantes, ou un run plus long, devraient
   gagner quelques points.
 
+## Rotation libre (run « rotation », modèle actuel)
+
+Constat sur le téléphone : un Pokémon debout était parfaitement reconnu, plus du
+tout une fois tourné. L'entraînement ne tournait les images que de ±25°.
+
+- `angle_libre` : 25 % presque droites (±20°), 20 % en quarts de tour (±10°), le
+  reste au hasard sur 360°. Les cartes tournent autour du point visé, fond compris
+  (`recadre_tourne` : zone 1,5 fois plus grande, puis recadrée — les coins vides
+  tombent dehors).
+- Deux jeux d'évaluation ajoutés, `illustration_tournee` et `photo_tournee`. Le
+  « meilleur » modèle est désormais choisi sur la moyenne photo debout / tournée.
+- Reprise depuis le modèle debout de l'époque 30 (`--reprise`), lr 3e-4, arrêt
+  automatique dès 90 % sur l'illustration tournée : atteint à l'**époque 8**.
+
+| | départ (debout, ép. 30) | ép. 2 | ép. 4 | ép. 6 | **ép. 8** |
+|---|---|---|---|---|---|
+| illustration tournée | 66,9 | 79,0 | 87,2 | 89,8 | **91,0** |
+| photo tournée | 55,9 | 65,6 | 74,9 | 79,4 | **80,8** |
+| illustration debout | 92,5 | 93,3 | 93,8 | 93,3 | **93,2** |
+| photo debout | 84,3 | 84,7 | 84,7 | 84,8 | **84,8** |
+
+Décision de l'appli (deux cadrages, seuil 0,4), bonnes / non trouvé / fausses :
+illustration debout 92,8 / 3,6 / 3,6, tournée 90,4 / 4,3 / 5,3 ; photo debout
+82,5 / 10,8 / 6,8, tournée 78,2 / 14,5 / 7,3. Sans Pokémon : 0 fiche ouverte.
+
+Quatre orientations analysées côté appli (rot90 × 4) : +1 point tourné, −2 points
+debout, deux fois plus lent — écarté.
+
+Reprendre le même calendrier après un arrêt : `--reprise <poids> --depart-epoque N`
+avec le même `--epoques` (c'est ainsi que le run debout est allé de 24 à 30).
+
 ## Pièges rencontrés
 
 - **FastViT s'entraîne deux fois plus vite une fois « reparamétré »** (branches

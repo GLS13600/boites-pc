@@ -15,9 +15,9 @@ import CLASSES from './data/scan-classes.json';
 // Côté du carré analysé, celui de l'entraînement (MobileCLIP2-S0 attend 256 px).
 const TAILLE = 256;
 // En dessous de cette confiance, on préfère « non trouvé » à une fiche fausse. Réglé
-// sur les cartes des extensions jamais vues (ml/LISEZMOI.md) : à 0,4, sur des photos
-// simulées, 82 % de bonnes fiches, 10 % de « non trouvé » et 8 % de fiches fausses ;
-// aucune image sans Pokémon n'ouvre de fiche.
+// sur les cartes des extensions jamais vues (ml/LISEZMOI.md) : à 0,4, illustrations
+// 92,8 % bonnes / 3,6 % fausses, et encore 90,4 % / 5,3 % Pokémon TOURNÉ ; aucune
+// image sans Pokémon n'ouvre de fiche.
 const SEUIL = 0.4;
 // Deux cadrages du même endroit, le cadre tel quel et un peu resserré, dont on
 // moyenne les réponses : un Pokémon mal centré ou trop petit dans le cadre est mieux

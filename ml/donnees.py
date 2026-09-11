@@ -207,6 +207,37 @@ def prise_de_vue(rnd, img):
     return img
 
 
+def angle_libre(rnd):
+    """Orientation du Pokémon dans le cadre : N'IMPORTE LAQUELLE.
+
+    Une carte posée de travers sur la table, une figurine couchée, un téléphone tenu
+    en biais : le Pokémon n'a aucune raison d'être droit. Entraîné seulement à ±25°,
+    le premier modèle reconnaissait parfaitement un Pokémon debout et plus du tout
+    un Pokémon tourné. On garde une part d'images presque droites, le cas le plus
+    courant, des quarts de tour francs (carte posée de côté), et tout le reste au
+    hasard sur 360°."""
+    t = rnd.random()
+    if t < 0.25:
+        return rnd.uniform(-20, 20)
+    if t < 0.45:
+        return rnd.choice((90, 180, 270)) + rnd.uniform(-10, 10)
+    return rnd.uniform(0, 360)
+
+
+def recadre_tourne(rnd, image, cx, cy, cote, angle, fonds):
+    """Carré de côté `cote` centré sur (cx, cy), l'image tournée de `angle` autour de
+    ce centre. On compose d'abord une zone 1,5 fois plus grande (≥ √2) puis on la
+    recadre : les coins laissés vides par la rotation tombent hors du carré."""
+    S = max(8, int(cote * 1.5))
+    zone = fond_aleatoire(rnd, fonds, S)
+    zone.paste(image, (int(S / 2 - cx), int(S / 2 - cy)))
+    if angle % 360:
+        zone = zone.rotate(angle, Image.BICUBIC)
+    c = max(4, int(cote))
+    o = (S - c) // 2
+    return zone.crop((o, o, o + c, o + c))
+
+
 def cadrage_final(rnd, img, miroir=True):
     w, h = img.size
     s = rnd.uniform(0.7, 1.0)
@@ -240,11 +271,14 @@ def scene_reference(rnd, ref, fonds):
     if ref['source'] in ('home', 'artwork', 'dessin') and rnd.random() < 0.3:
         obj = aspect_figurine(rnd, obj)
     fond = fond_aleatoire(rnd, fonds, toile)
+    # Rotation AVANT la mise à l'échelle : c'est la silhouette tournée qui doit tenir
+    # dans la taille visée, sans quoi un Pokémon en diagonale déborderait du cadre.
+    angle = angle_libre(rnd)
+    if abs(angle) > 0.5:
+        obj = recadre_alpha(obj.rotate(angle, Image.BICUBIC, expand=True))
     cible = toile * rnd.uniform(0.45, 0.95)
     f = cible / max(obj.size)
     obj = obj.resize((max(4, int(obj.width * f)), max(4, int(obj.height * f))), Image.BICUBIC)
-    if rnd.random() < 0.35:
-        obj = obj.rotate(rnd.uniform(-25, 25), Image.BICUBIC, expand=True)
     x = int((toile - obj.width) * rnd.uniform(0.15, 0.85)) if obj.width < toile else (toile - obj.width) // 2
     y = int((toile - obj.height) * rnd.uniform(0.15, 0.85)) if obj.height < toile else (toile - obj.height) // 2
     if rnd.random() < 0.35:  # ombre portée
@@ -269,12 +303,19 @@ def scene_reference(rnd, ref, fonds):
 FENETRE = (0.08, 0.10, 0.92, 0.55)
 
 
-def scene_carte(rnd, chemin, fonds, evaluation=False):
+def scene_carte(rnd, chemin, fonds, evaluation=False, rotation=True, angle=None):
+    """`evaluation` : fenêtre d'illustration nette, sans mise en scène — tournée de
+    `angle` si on le donne. `rotation=False` : mise en scène sans rotation libre,
+    pour garder un jeu d'évaluation « debout » comparable aux runs précédents."""
     carte = Image.open(chemin).convert('RGB')
     w, h = carte.size
     if evaluation:
         x0, y0, x1, y1 = FENETRE
-        return carte.crop((int(x0 * w), int(y0 * h), int(x1 * w), int(y1 * h))).resize((TAILLE, TAILLE), Image.BICUBIC)
+        if angle is None:
+            return carte.crop((int(x0 * w), int(y0 * h), int(x1 * w), int(y1 * h))).resize((TAILLE, TAILLE), Image.BICUBIC)
+        cx, cy = (x0 + x1) / 2 * w, (y0 + y1) / 2 * h
+        zone = recadre_tourne(rnd, carte, cx, cy, (y1 - y0) * h * 1.1, angle, fonds)
+        return zone.resize((TAILLE, TAILLE), Image.BICUBIC)
     # Demi-résolution : 300 px de large suffisent pour une zone rendue en 256 px, et
     # tout le reste du traitement va quatre fois plus vite.
     if h > 500:
@@ -286,16 +327,18 @@ def scene_carte(rnd, chemin, fonds, evaluation=False):
         cx = rnd.uniform(x0 + 0.2, x1 - 0.2) * w
         cy = rnd.uniform(y0 + 0.12, y1 - 0.12) * h
         cote = rnd.uniform(0.35, 0.95) * w
-        boite = (cx - cote / 2, cy - cote / 2, cx + cote / 2, cy + cote / 2)
     else:  # carte entière ou large portion, avec ce qui l'entoure
         cote = rnd.uniform(0.9, 1.5) * h
         cx, cy = w / 2 + rnd.uniform(-0.1, 0.1) * w, h / 2 + rnd.uniform(-0.1, 0.1) * h
-        boite = (cx - cote / 2, cy - cote / 2, cx + cote / 2, cy + cote / 2)
     if rnd.random() < 0.3:
         carte = reflet_holo(rnd, carte)
-    # Ce qui entoure la carte n'est fabriqué qu'à la taille de la zone cadrée.
-    zone = fond_aleatoire(rnd, fonds, max(8, int(cote)))
-    zone.paste(carte, (int(-boite[0]), int(-boite[1])))
+    if rotation:
+        # Carte tournée autour du point visé, fond compris : une carte posée de travers.
+        zone = recadre_tourne(rnd, carte, cx, cy, cote, angle_libre(rnd), fonds)
+    else:
+        # Ce qui entoure la carte n'est fabriqué qu'à la taille de la zone cadrée.
+        zone = fond_aleatoire(rnd, fonds, max(8, int(cote)))
+        zone.paste(carte, (int(cote / 2 - cx), int(cote / 2 - cy)))
     zone = zone.resize((int(TAILLE * 1.2), int(TAILLE * 1.2)), Image.BICUBIC)
     if rnd.random() < 0.6:
         zone = perspective(rnd, zone, rnd.uniform(0.03, 0.15))

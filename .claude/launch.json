@@ -5,6 +5,8 @@
       "name": "pokedex",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
+        "--prefix",
+        "A:\\Code\\Pokedex",
         "run",
         "dev"
       ],
@@ -15,6 +17,8 @@
       "name": "apercu",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
+        "--prefix",
+        "A:\\Code\\Pokedex",
         "run",
         "preview"
       ],

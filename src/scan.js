@@ -11,6 +11,7 @@
 // Ce module ne connaît rien du reste de l'appli : il reçoit de quoi ouvrir une fiche,
 // et rend un élément que main.js pose dans la vue.
 import CLASSES from './data/scan-classes.json';
+import { joueOuverture } from './scan-son.js';
 
 // Côté du carré analysé, celui de l'entraînement (MobileCLIP2-S0 attend 256 px).
 const TAILLE = 256;
@@ -252,6 +253,9 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
     void el.offsetWidth; // valide l'état fermé avant de lancer les transitions
     el.classList.add('ouvre');
     el.classList.remove('ferme');
+    // Son calé sur la séquence. On est encore dans le geste qui a ouvert la vue
+    // (toucher l'onglet → render → demarre), condition pour qu'iOS accepte l'audio.
+    joueOuverture();
     minuteOuverture = setTimeout(() => el.classList.remove('ouvre'), 2000);
   }
 

@@ -426,6 +426,23 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
   Tout est en CSS : `ferme` pose l'état de départ sans transition, `ouvre` porte les
   transitions et animations, retirée au bout de 2 s. `prefers-reduced-motion` saute
   directement à l'état ouvert.
+- **Un son accompagne l'ouverture** (`src/scan-son.js`), robotique, façon scanner.
+  - **Synthétisé, aucun fichier audio** : il reprend les éléments typiques des
+    ouvertures de Pokédex sans en copier aucune — les sons des jeux et de l'anime
+    appartiennent à leurs ayants droit, et l'appli doit rester hors ligne. Demande
+    initiale : « se baser sur des sons d'internet » ; ne pas en télécharger.
+  - Couches calées sur la séquence : cascade de bips et montée (charge, 0–0,5 s),
+    deux « pings » (ondes, 0,18 et 0,4 s), souffle filtré et moteur grave (coques,
+    0,5–1,3 s), tonalité modulée (faisceau, 1,0–1,8 s), carillon deux notes (1,25 s).
+  - `joueOuverture()` est appelé dans `animeOuverture`, donc DANS le geste qui ouvre
+    la vue (toucher l'onglet → render → demarre) : iOS n'accepte un contexte audio
+    qu'ouvert dans un geste. Ne pas le déplacer dans un minuteur ou une promesse.
+  - Gain 2,4 et limiteur (seuil −3 dB) : mesuré hors ligne, crête 0,61 sans un seul
+    échantillon saturé ; à gain 0,9 elle plafonnait à 0,24, trop discret.
+  - `programme(ctx, sortie, t0)` accepte un `OfflineAudioContext` : c'est ainsi
+    qu'on vérifie durée, niveaux par couche et saturation sans rien écouter.
+  - Sans animation (mouvement réduit), pas de son non plus : il n'a de sens que calé.
+  - Sur iPhone, le bouton silencieux coupe le son de l'appli.
 - Pour **vérifier une étape** dans le panneau de prévisualisation, où les
   animations ne tournent pas : `document.getAnimations()`, tout mettre en pause, puis
   régler `currentTime` à l'instant voulu avant la capture.

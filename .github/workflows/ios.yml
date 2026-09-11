@@ -24,6 +24,7 @@ on:
       - 'calage.html'
       - 'icone.html'
       - 'icones-nav.html'
+      - 'ml/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 

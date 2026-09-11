@@ -14,6 +14,7 @@ import abilities from './data/abilities.json';
 import items from './data/items.json';
 import NATURES from './data/natures.json';
 import formDesc from './data/form-desc.json';
+import { creeScan } from './scan.js';
 
 // Service worker : il ne sert QUE la version web hébergée. Sous Capacitor la page
 // n'est pas servie en HTTP et tout est déjà embarqué dans l'app — l'enregistrement
@@ -507,8 +508,11 @@ for (const e of CATALOGUE) e.cle = fold(e.name + ' ' + e.sub + ' ' + e.num);
 function render() {
   // La barre du bas commute entre les deux vues. Tout le reste de render() ne
   // concerne que la gestion des boîtes.
+  // Hors de la vue Scan, la caméra est coupée : sans effet si elle l'est déjà.
+  if (state.vue !== 'scan') scan.arrete();
   if (state.vue === 'combat') return renderCombat();
   if (state.vue === 'pokedex') return renderPokedex();
+  if (state.vue === 'scan') return renderScan();
 
   const g = ONGLETS[state.gen];
   const liste = genList(state.gen);
@@ -1068,6 +1072,8 @@ const NAV_AT = 60;    // px au-delà desquels on passe à la fiche voisine
 // Une fiche ouverte depuis une chaîne d'évolution ou une forme peut donc ne pas s'y
 // trouver : le geste ne fait alors rien, plutôt que de sauter n'importe où.
 function voisinFiche(dir) {
+  // Une fiche ouverte par le scan n'a pas de voisins : elle ne vient d'aucune liste.
+  if (state.vue === 'scan') return null;
   // Dans la vue Pokédex, les voisins sont les espèces de la génération affichée,
   // pas le contenu d'une boîte : on parcourt le Pokédex national dans l'ordre.
   if (state.vue === 'pokedex') {
@@ -2364,6 +2370,18 @@ const ICONES = {
       <rect x="14" y="13.2" width="5" height=".95" rx=".47"/><rect x="14" y="15.4" width="3.2" height=".95" rx=".47"/>
     </g>
   </svg>`,
+  // Scan : le viseur d'un appareil photo, une Poké Ball au centre.
+  scan: `<svg viewBox="0 0 24 24" aria-hidden="true">
+    <g fill="none" stroke="#1e2227" stroke-width="1.8" stroke-linecap="round">
+      <path d="M3 8V5.6A2.6 2.6 0 0 1 5.6 3H8"/><path d="M16 3h2.4A2.6 2.6 0 0 1 21 5.6V8"/>
+      <path d="M21 16v2.4a2.6 2.6 0 0 1-2.6 2.6H16"/><path d="M8 21H5.6A2.6 2.6 0 0 1 3 18.4V16"/>
+    </g>
+    <circle cx="12" cy="12" r="5.4" fill="#fff" stroke="#1e2227" stroke-width="1.3"/>
+    <path d="M6.6 12a5.4 5.4 0 0 1 10.8 0z" fill="#d6453c"/>
+    <rect x="6.6" y="11.4" width="10.8" height="1.2" fill="#1e2227"/>
+    <circle cx="12" cy="12" r="5.4" fill="none" stroke="#1e2227" stroke-width="1.3"/>
+    <circle cx="12" cy="12" r="1.75" fill="#fff" stroke="#1e2227" stroke-width="1.1"/>
+  </svg>`,
   // Combat : la Potion des jeux. Le liquide monte en dôme au centre, comme sur le
   // sprite d'origine, et déborde volontairement du flacon : c'est `clipPath` qui le
   // recoupe sur la silhouette, plutôt qu'un tracé calculé à la main sur ses courbes.
@@ -2387,7 +2405,7 @@ const ICONES = {
 function renderNav() {
   return h(`
     <nav class="nav" role="tablist" aria-label="Vue">
-      ${[['boites', 'Boîtes'], ['pokedex', 'Pokédex'], ['combat', 'Combat']].map(([v, lib]) => `
+      ${[['boites', 'Boîtes'], ['pokedex', 'Pokédex'], ['scan', 'Scan'], ['combat', 'Combat']].map(([v, lib]) => `
         <button class="nav-btn ${state.vue === v ? 'on' : ''}" role="tab"
                 aria-selected="${state.vue === v}" data-vue="${v}">
           ${ICONES[v]}<span>${lib}</span>
@@ -3551,6 +3569,19 @@ function especesDex() {
   const f = fold(q);
   return range(1, 1025).filter((id) =>
     String(id).includes(f) || fold(pokedex[id]?.name || '').includes(f));
+}
+
+// ---------- Vue Scan ----------
+//
+// Tout le scan vit dans scan.js : caméra, cadre, analyse. main.js ne fait que poser
+// son élément dans la vue et lui fournir de quoi ouvrir une fiche — la même que
+// celle du Pokédex. L'élément est créé UNE fois et reposé à chaque rendu : le
+// recréer relancerait la caméra à chaque capture cochée depuis la fiche.
+const scan = creeScan({ ouvrirFiche: (key) => openSheet(key) });
+
+function renderScan() {
+  poser(scan.element);
+  scan.demarre();
 }
 
 function renderPokedex() {

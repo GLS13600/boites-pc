@@ -361,6 +361,67 @@ onglets). `render()` y bascule comme pour le combat.
 - `voisinFiche()` connaît cette vue : le glissement horizontal parcourt le Pokédex
   dans l'ordre des numéros, et non le contenu d'une boîte.
 
+## Vue Scan
+
+Quatrième onglet de la barre du bas, **entre Pokédex et Combat**. L'appareil photo
+arrière filme, un cadre désigne la zone à analyser, et un réseau de neurones
+reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouvé ».
+Écran, impression, carte réelle ou figurine : tout se scanne.
+
+- **Tout le scan vit dans `src/scan.js`** (caméra, cadre, décision) et
+  **`src/scan-worker.js`** (inférence). main.js ne fait que poser l'élément
+  (`renderScan`) et fournir `openSheet` : la fiche ouverte est celle du Pokédex.
+  Le reste de l'appli n'a été touché qu'aux points d'accroche indispensables —
+  l'onglet et son icône, une ligne dans `render()`, un garde dans `voisinFiche`
+  (une fiche venue du scan n'a pas de voisins).
+- **L'élément est créé UNE fois et reposé à chaque rendu.** Cocher une capture dans
+  la fiche rappelle `render()` : recréer la vue relancerait la caméra à chaque fois.
+- **La caméra est coupée dès qu'on quitte la vue** (`scan.arrete()` en tête de
+  `render()`), et quand l'appli passe en arrière-plan. Un verrou (`ouverture`)
+  empêche un rendu survenu pendant la demande d'autorisation d'ouvrir un second
+  flux, qui ne serait jamais refermé.
+- La vue n'est **pas restaurée au lancement** (`pcbox.vue` ne l'accepte pas) : une
+  caméra qui s'allume toute seule au démarrage n'est pas souhaitable.
+- **Le cadre** est gardé en fractions de la vue. Toucher le place, pincer le
+  redimensionne (22 % à 100 % du petit côté). L'aperçu est en `object-fit: cover` :
+  `zoneDansVideo` ramène le cadre affiché en pixels de la vidéo, bords rognés compris.
+- **Deux cadrages** du même endroit (le cadre, puis resserré à 78 %) sont analysés
+  ensemble et leurs probabilités moyennées.
+- **Décision** : probabilités additionnées par GROUPE (l'espèce et ses formes), refus
+  sous `SEUIL` ou si c'est la classe « rien ». Dans le groupe retenu, une forme
+  n'est ouverte que si elle pèse plus de la moitié du groupe, sinon l'espèce.
+
+### Moteur
+
+- **onnxruntime-web** (`onnxruntime-web/wasm`), première dépendance d'exécution de
+  l'appli, acceptée pour cette fonction. Chargé **dans le Worker seulement**, donc à
+  la première ouverture du scan : le démarrage n'en paie rien.
+- **Un seul fil** : le multi-fil exige une page isolée (COOP/COEP), ce que ni Pages
+  ni Capacitor ne fournissent.
+- Le Worker est un **module ES** (`worker.format: 'es'` dans vite.config.js) :
+  onnxruntime-web s'appuie sur `import.meta`, que le format iife ne rend pas.
+- Le WASM (14 Mo) est émis dans `assets/` par un import `?url`, et **écarté du
+  préchargement du service worker** (`build-sw.mjs`) : il doublait l'installation
+  pour qui n'ouvre jamais le scan. Il se met en cache à la première analyse.
+- Le modèle vit dans **`public/scan/modele.onnx`** (**49 Mo, en float32**), la
+  table index → [clé, groupe] dans `src/data/scan-classes.json`. Les deux sont
+  **produits par `ml/`**, voir `ml/LISEZMOI.md` — ne pas les éditer à la main.
+  - **Pas la version int8** (13 Mo) : la quantification dynamique coûte près de 4 points
+    de reconnaissance (89,7 % → 86,0 % sur 300 photos de cartes), pour une vitesse à
+    peine meilleure. Les 36 Mo d'écart valent ces 4 points.
+- **Mesures du modèle actuel** (époque 24 sur 30, arrêté pour un premier essai ;
+  cartes d'extensions jamais vues, deux cadrages, seuil 0,4) : illustrations 91,8 %
+  bonnes / 4,5 % non trouvé / 3,6 % fausses ; photos de cartes simulées 81,9 % /
+  10,0 % / 8,1 % ; scènes sans Pokémon : aucune fiche ouverte. Ce sont des mesures
+  sur cartes : figurines et écrans ne se vérifient que sur le téléphone.
+- **`NSCameraUsageDescription`** dans `Info.plist` est obligatoire : sans lui, iOS
+  ferme l'appli au premier accès à la caméra. Capacitor accorde lui-même l'accès
+  côté WebView (`requestMediaCapturePermissionFor`), seule l'invite système reste.
+- La caméra exige une page **sécurisée** : le serveur de dev ouvert par l'IP réseau
+  (http) ne l'aura pas sur l'iPhone. Tester via Pages (https) ou l'IPA.
+- En développement, `window.__scanImage(url)` analyse une image quelconque, sans
+  caméra. Retiré du build.
+
 ## Boîte de combat
 
 Seconde vue de l'application, atteinte par la **barre du bas** (`.nav`, deux onglets :

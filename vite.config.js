@@ -20,4 +20,9 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
   },
+  // Le Worker du scan est un module ES : onnxruntime-web s'appuie sur import.meta,
+  // que le format par défaut des workers (iife) ne sait pas rendre.
+  worker: {
+    format: 'es',
+  },
 });

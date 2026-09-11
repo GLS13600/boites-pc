@@ -15,7 +15,10 @@ const chemin = (u) => u.pathname.replace(/^\/([A-Za-z]:)/, '$1');
 // La coquille : la page, l'icône, et tous les fichiers produits par Vite. Ce sont
 // eux qui font FONCTIONNER l'application ; sprites et fonds sont mis en cache au
 // fil de la navigation, ils sont trop volumineux pour un préchargement d'un bloc.
-const assets = await readdir(new URL('assets/', DIST));
+// Le moteur du scan (onnxruntime-web, 14 Mo de WASM) est écarté du préchargement :
+// il ne sert qu'à qui ouvre le scan, et doublerait l'installation pour tous les autres.
+// Il se met en cache à la première analyse, comme les sprites.
+const assets = (await readdir(new URL('assets/', DIST))).filter((f) => !f.endsWith('.wasm'));
 const shell = ['./', './index.html', './icon.svg', ...assets.map((f) => `./assets/${f}`)];
 
 let octets = 0;

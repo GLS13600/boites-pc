@@ -25,3 +25,4 @@ xcuserdata
 
 # Caches des scripts de rapatriement : reconstructibles, jamais versionnes.
 scripts/.cache
+ml/__pycache__

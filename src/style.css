@@ -381,7 +381,7 @@ img { display: block; }
   flex: 0 0 auto;
   z-index: 12;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
   /* La hauteur totale de la barre ne doit PAS bouger : elle a été relevée sur une
      capture de référence, et tout le reste de l'appli lui réserve --nav-h.
@@ -1890,4 +1890,137 @@ img {
   border-color: var(--ball);
   color: var(--ball);
   background: var(--caught-tint);
+}
+
+/* ---------- Vue Scan ----------
+   L'aperçu de la caméra remplit toute la vue, sous la barre d'état comprise. Le cadre
+   assombrit ce qui l'entoure par une ombre démesurée plutôt que par quatre bandes :
+   un seul élément à déplacer quand on le replace. */
+.scan {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background: #0d0f12;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.scan-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.scan-zone {
+  position: absolute;
+  border-radius: 20px;
+  box-shadow: 0 0 0 200vmax rgba(8, 10, 14, 0.42);
+  transition: left 140ms ease, top 140ms ease, width 140ms ease, height 140ms ease;
+  pointer-events: none;
+}
+/* Quatre coins en équerre, blancs, comme un viseur. */
+.scan-zone i {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 0 solid #fff;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+  transition: border-color 160ms ease;
+}
+.scan-zone i:nth-child(1) { top: -2px; left: -2px; border-width: 4px 0 0 4px; border-top-left-radius: 20px; }
+.scan-zone i:nth-child(2) { top: -2px; right: -2px; border-width: 4px 4px 0 0; border-top-right-radius: 20px; }
+.scan-zone i:nth-child(3) { bottom: -2px; right: -2px; border-width: 0 4px 4px 0; border-bottom-right-radius: 20px; }
+.scan-zone i:nth-child(4) { bottom: -2px; left: -2px; border-width: 0 0 4px 4px; border-bottom-left-radius: 20px; }
+.scan-zone.ok i { border-color: #4bd16b; }
+.scan-zone.ko i { border-color: var(--ball); }
+.scan-zone.ko { animation: scan-non 320ms ease; }
+@keyframes scan-non {
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+.scan-aide, .scan-etat, .scan-toast {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  max-width: calc(100% - 40px);
+  box-sizing: border-box;
+  border-radius: 999px;
+  color: #fff;
+  text-align: center;
+  pointer-events: none;
+}
+.scan-aide {
+  top: calc(12px + var(--safe-top));
+  padding: 7px 14px;
+  background: rgba(8, 10, 14, 0.55);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.scan-etat {
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 12px 18px;
+  border-radius: 16px;
+  background: rgba(8, 10, 14, 0.72);
+  font-size: 14px;
+  line-height: 1.35;
+  width: max-content;
+}
+.scan-toast {
+  bottom: 118px;
+  padding: 10px 18px;
+  background: rgba(30, 34, 39, 0.9);
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.scan-toast.vu { animation: scan-toast 220ms ease-out; }
+@keyframes scan-toast {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+/* Le déclencheur : une Poké Ball dans un anneau blanc, comme le bouton d'un appareil. */
+.scan-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  width: 76px;
+  height: 76px;
+  margin-left: -38px;
+  padding: 0;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+.scan-btn span {
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: linear-gradient(var(--ball) 0 46%, #1e2227 46% 54%, #fff 54%);
+  transition: transform 120ms ease;
+}
+.scan-btn span::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border: 3px solid #1e2227;
+  border-radius: 50%;
+  background: #fff;
+  box-sizing: border-box;
+}
+.scan-btn:active span { transform: scale(0.9); }
+/* Pendant l'analyse, la Poké Ball tourne. */
+.scan.analyse .scan-btn span { animation: scan-tourne 700ms linear infinite; }
+@keyframes scan-tourne { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .scan-zone.ko, .scan-toast.vu, .scan.analyse .scan-btn span { animation: none; }
 }

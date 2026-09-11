@@ -247,7 +247,7 @@ const state = {
   // Boîte de combat : vue active, jeu de référence, équipe de six, panneau ouvert.
   vue: ['combat', 'pokedex'].includes(localStorage.getItem('pcbox.vue'))
     ? localStorage.getItem('pcbox.vue') : 'boites',
-  dexGen: Math.min(9, Math.max(1, Number(localStorage.getItem('pcbox.dexgen')) || 1)),
+  dexGen: null, // Pokédex affiché : null = menu, 0 = national, 1 à 9 = une génération
   jeu: localStorage.getItem('pcbox.jeu') || 'scarlet-violet',
   // Une équipe par version de jeu : on garde une composition distincte pour chaque
   // opus, puisque attaques, talents et objets n'y sont pas les mêmes.
@@ -1071,7 +1071,7 @@ function voisinFiche(dir) {
   // Dans la vue Pokédex, les voisins sont les espèces de la génération affichée,
   // pas le contenu d'une boîte : on parcourt le Pokédex national dans l'ordre.
   if (state.vue === 'pokedex') {
-    const g = GENS[state.dexGen - 1];
+    const g = plageDex(state.dexGen ?? 0);
     const id = Number(state.open);
     if (!Number.isInteger(id) || id < g.from || id > g.to) return null;
     const j = id + dir;
@@ -2430,6 +2430,9 @@ nav.addEventListener('click', (e) => {
   fermeLesPanneaux();
   state.vue = b.dataset.vue;
   localStorage.setItem(VUE_KEY, state.vue);
+  // Entrer dans le Pokédex ramène TOUJOURS à son menu : on vient choisir quel
+  // Pokédex regarder, pas reprendre là où l'on s'était arrêté.
+  if (state.vue === 'pokedex') { state.dexGen = null; state.dexQ = ''; }
   render();
 });
 
@@ -3441,15 +3444,81 @@ app.addEventListener('click', (e) => {
 // La fiche ouverte ici est exactement celle des boîtes (`openSheet`) : description,
 // famille d'évolution, formes, talents, attaques et lieux de capture.
 
-const DEXGEN_KEY = 'pcbox.dexgen';
+// Plage d'un Pokédex : 0 est le national, 1 à 9 les générations. Déclarée en
+// fonction, donc disponible partout — `voisinFiche` compris.
+function plageDex(n) {
+  return n ? GENS[n - 1] : { n: 0, name: 'National', from: 1, to: 1025 };
+}
 
-// Taux de remplissage d'une génération, d'après la collection ACTIVE — donc le
+// Taux de remplissage d'un Pokédex, d'après la collection ACTIVE — donc le
 // Pokédex chromatique quand la vue chromatique est allumée, comme dans les boîtes.
 function progresDex(n) {
-  const g = GENS[n - 1];
+  const g = plageDex(n);
   let pris = 0;
   for (let id = g.from; id <= g.to; id++) if (isCaught(id)) pris++;
   return { pris, total: g.to - g.from + 1 };
+}
+
+const texteRes = (n) => (n === 0 ? 'Aucun Pokémon ne correspond.'
+  : `${n} résultat${n > 1 ? 's' : ''} sur les neuf générations`);
+
+// Illustrations des cartes du menu : les trois starters de chaque région, dans
+// l'ordre Plante, Feu, Eau. Le national prend Évoli et Pikachu.
+const STARTERS_DEX = [[133, 25], [1, 4, 7], [152, 155, 158], [252, 255, 258],
+  [387, 390, 393], [495, 498, 501], [650, 653, 656], [722, 725, 728], [810, 813, 816],
+  [906, 909, 912]];
+
+// Sceau « complet » : un disque dentelé à 12 pointes, découpé par `clip-path`. Un SVG
+// demanderait un dégradé à identifiant, dupliqué dans chaque carte complète.
+const SCEAU = (() => {
+  const pts = [];
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2;
+    const r = i % 2 ? 42 : 50;
+    pts.push(`${(50 + r * Math.sin(a)).toFixed(1)}% ${(50 - r * Math.cos(a)).toFixed(1)}%`);
+  }
+  return `polygon(${pts.join(', ')})`;
+})();
+
+function carteDex(n) {
+  const g = plageDex(n);
+  const { pris, total } = progresDex(n);
+  const fini = pris === total;
+  const sh = shinyView();
+  return `
+    <button class="dexc" data-dexgen="${n}"
+            aria-label="${esc(g.name)}, ${pris} sur ${total}${fini ? ', complet' : ''}">
+      <span class="dexc-txt">
+        <span class="dexc-haut">
+          <span class="dexc-nom">${esc(g.name)}</span>
+          <span class="dexc-cpt"><b>${pris}</b>/${total.toLocaleString('fr-FR')}</span>
+        </span>
+        <span class="dexc-bas">
+          <span class="dexc-bar"><i style="width:${(100 * pris) / total}%"></i></span>
+          ${fini ? `<span class="dexc-ok" style="clip-path:${SCEAU}" aria-hidden="true"><svg
+            viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9"/></svg></span>` : ''}
+        </span>
+      </span>
+      <span class="dexc-img" aria-hidden="true">${STARTERS_DEX[n].map((id) =>
+        `<img src="${sprites.art(id, sh)}" alt="" loading="lazy" ${imgFallback(id, sh)} />`).join('')}</span>
+    </button>`;
+}
+
+// Menu du Pokédex, repris de la maquette fournie : le champ de recherche en tête,
+// puis une carte par Pokédex — le national, puis les neuf régions. Toucher une carte
+// ouvre la grille habituelle ; chercher remplace les cartes par les résultats.
+function renderMenuDex() {
+  const q = state.dexQ.trim();
+  const ids = especesDex();
+  poser(h(`
+    <section class="dexm">
+      <input class="dexm-rech" type="search" data-dexq placeholder="Rechercher un Pokémon"
+             value="${esc(state.dexQ)}" aria-label="Rechercher un Pokémon"
+             autocomplete="off" autocorrect="off" spellcheck="false" />
+      <p class="dex-res" ${q ? '' : 'hidden'}>${q ? texteRes(ids.length) : ''}</p>
+      <div class="dex-grid" ${q ? '' : 'hidden'}>${ids.map(caseDex).join('')}</div>
+      <div class="dex-cartes" ${q ? 'hidden' : ''}>${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(carteDex).join('')}</div>
+    </section>`));
 }
 
 const caseDex = (id) => {
@@ -3474,49 +3543,56 @@ const caseDex = (id) => {
 // « ecaiglaire » doit trouver Écaiglaire.
 function especesDex() {
   const q = state.dexQ.trim();
-  if (!q) { const g = GENS[state.dexGen - 1]; return range(g.from, g.to); }
+  if (!q) {
+    if (state.dexGen === null) return []; // dans le menu, sans recherche : les cartes
+    const g = plageDex(state.dexGen);
+    return range(g.from, g.to);
+  }
   const f = fold(q);
   return range(1, 1025).filter((id) =>
     String(id).includes(f) || fold(pokedex[id]?.name || '').includes(f));
 }
 
 function renderPokedex() {
+  if (state.dexGen === null) return renderMenuDex();
   const n = state.dexGen;
-  const g = GENS[n - 1];
+  const g = plageDex(n);
   const { pris, total } = progresDex(n);
   // Le total national, pour situer la génération dans l'ensemble.
   let prisTout = 0;
   for (let id = 1; id <= 1025; id++) if (isCaught(id)) prisTout++;
 
-  const cases = especesDex().map(caseDex).join('');
+  const ids = especesDex();
+  const cases = ids.map(caseDex).join('');
 
   poser(
     h(`
       <nav class="gens dex-gens" role="tablist" aria-label="Génération">
-        ${GENS.map((x) => `
+        ${[plageDex(0), ...GENS].map((x) => `
           <button class="gen-tab" role="tab" data-dexgen="${x.n}"
                   aria-selected="${x.n === n}">
-            Gén. ${x.n}<small>${esc(x.name)}</small>
+            ${x.n ? `Gén. ${x.n}` : 'National'}<small>${x.n ? esc(x.name) : 'Tous'}</small>
           </button>`).join('')}
       </nav>`),
     h(`
       <section class="dex">
         <div class="dex-head">
-          <div>
+          <button class="dex-retour" data-dex-retour aria-label="Revenir au menu du Pokédex">&lsaquo;</button>
+          <div class="dex-titre">
             <b>${esc(g.name)}</b>
             <small>N° ${g.from} à ${g.to}</small>
           </div>
           <div class="dex-compte"><b>${pris}</b>/${total}</div>
         </div>
         <div class="bar dex-bar"><span style="width:${total ? (100 * pris) / total : 0}%"></span></div>
-        <p class="dex-tout">${prisTout} sur 1025 au total${shinyView() ? ' · Pokédex chromatique' : ''}</p>
+        <p class="dex-tout">${n ? `${prisTout} sur 1025 au total` : 'Toutes générations'}${shinyView() ? ' · Pokédex chromatique' : ''}</p>
 
         <div class="dex-rech">
           <input type="search" data-dexq placeholder="Chercher un nom ou un numéro"
                  value="${esc(state.dexQ)}" aria-label="Chercher un Pokémon"
                  autocomplete="off" autocorrect="off" spellcheck="false" />
         </div>
-        <p class="dex-res" ${state.dexQ.trim() ? '' : 'hidden'}></p>
+        <p class="dex-res" ${state.dexQ.trim() ? '' : 'hidden'}>${state.dexQ.trim() ? texteRes(ids.length) : ''}</p>
 
         <div class="dex-grid">${cases}</div>
 
@@ -3527,7 +3603,23 @@ function renderPokedex() {
       </section>`),
   );
 
-  app.querySelector('.gen-tab[aria-selected="true"]')
+  // Ces onglets portent la classe `.gen-tab` des Boîtes, dont les gestionnaires,
+  // posés sur `app`, les attrapaient au passage : un clic y écrivait `state.gen = NaN`
+  // et le retour aux Boîtes plantait sur une grille vide. On traite donc le clic ICI,
+  // sur la barre, et on arrête l'événement avant qu'il ne remonte jusqu'à eux —
+  // l'appui long compris, qui aurait armé un portage d'onglet.
+  const barre = app.querySelector('.dex-gens');
+  barre.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const o = e.target.closest('[data-dexgen]');
+    if (!o) return;
+    state.dexQ = '';
+    state.dexGen = +o.dataset.dexgen;
+    render();
+  });
+  barre.addEventListener('pointerdown', (e) => e.stopPropagation());
+
+  app.querySelector('.dex-gens .gen-tab[aria-selected="true"]')
     ?.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
 
@@ -3538,24 +3630,30 @@ app.addEventListener('input', (e) => {
   if (!champ) return;
   state.dexQ = champ.value;
   const ids = especesDex();
+  const q = state.dexQ.trim();
   const grille = app.querySelector('.dex-grid');
   if (grille) grille.innerHTML = ids.map(caseDex).join('');
   const info = app.querySelector('.dex-res');
-  if (info) {
-    const q = state.dexQ.trim();
-    info.hidden = !q;
-    info.textContent = ids.length === 0 ? 'Aucun Pokémon ne correspond.'
-      : `${ids.length} résultat${ids.length > 1 ? 's' : ''} sur les neuf générations`;
-  }
+  if (info) { info.hidden = !q; info.textContent = q ? texteRes(ids.length) : ''; }
+  // Dans le menu, les résultats prennent la place des cartes, qui reviennent quand
+  // le champ se vide.
+  const cartes = app.querySelector('.dex-cartes');
+  if (cartes && grille) { cartes.hidden = !!q; grille.hidden = !q; }
 });
 
 app.addEventListener('click', (e) => {
   const onglet = e.target.closest('[data-dexgen]');
   if (onglet) {
-    // Changer de génération sort de la recherche : on vient voir CET onglet.
+    // Carte du menu : ouvrir ce Pokédex sort de la recherche. Les onglets de la
+    // grille, eux, sont traités sur leur propre barre.
     state.dexQ = '';
     state.dexGen = +onglet.dataset.dexgen;
-    localStorage.setItem(DEXGEN_KEY, String(state.dexGen));
+    render();
+    return;
+  }
+  if (e.target.closest('[data-dex-retour]')) {
+    state.dexGen = null;
+    state.dexQ = '';
     render();
     return;
   }

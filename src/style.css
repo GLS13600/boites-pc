@@ -1054,6 +1054,21 @@ img { display: block; }
 }
 .dex-head b { font-size: 16px; }
 .dex-head small { display: block; font-size: 11px; color: var(--muted); }
+.dex-titre { flex: 1 1 auto; min-width: 0; }
+/* Retour au menu du Pokédex. */
+.dex-retour {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+}
 .dex-compte { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .dex-compte b { font-size: 19px; color: var(--ink); }
 
@@ -1086,6 +1101,91 @@ img { display: block; }
 .sb-total { margin-top: 2px; }
 .sb-total .sb-lib, .sb-total .sb-val { color: var(--ink); }
 .sb-total .sb-piste { background: none; }
+
+/* ---------- Menu du Pokédex ----------
+   Repris de la maquette fournie : vue sombre, champ de recherche noir, une carte par
+   Pokédex avec son nom en gras, son compteur, une barre en dégradé violet → bleu, un
+   sceau quand il est complet, et les starters qui débordent en bas à droite. */
+.dexm {
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: calc(14px + var(--safe-top)) 16px 20px;
+  background: #0a0c1d;
+  color: #fff;
+}
+.dexm-rech {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  height: 44px;
+  margin: 0 0 14px;
+  padding: 0 16px;
+  border: 1.5px solid #2c3356;
+  border-radius: 14px;
+  background: #000;
+  color: #fff;
+  font: inherit;
+  font-size: 16px; /* en dessous, iOS zoome tout seul à la saisie */
+  -webkit-appearance: none;
+  appearance: none;
+}
+.dexm-rech::placeholder { color: #fff; opacity: 1; }
+.dexm .dex-res { color: #aab0cc; }
+.dex-cartes { display: grid; gap: 13px; }
+/* `hidden` ne l'emporte pas sur un `display: grid` : on le rend explicite. */
+.dex-grid[hidden], .dex-cartes[hidden] { display: none; }
+.dexc {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 76px;
+  padding: 0;
+  overflow: hidden;
+  border: 1.5px solid #2c3356;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #161c3a 0%, #0b0f27 55%, #070a1e 100%);
+  color: #fff;
+  text-align: left;
+  font: inherit;
+}
+.dexc:active { filter: brightness(1.15); }
+.dexc-txt {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 0 16px 16px;
+}
+.dexc-haut { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.dexc-nom { font-size: 25px; font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
+.dexc-cpt { font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dexc-cpt b { font-size: 16px; font-weight: 700; }
+.dexc-bas { display: flex; align-items: center; gap: 6px; height: 22px; }
+.dexc-bar { flex: 1 1 auto; height: 8px; border-radius: 4px; background: #dcdde6; overflow: hidden; }
+/* Le dégradé est rapporté à la partie REMPLIE, comme sur la maquette : il finit
+   toujours bleu à l'extrémité, quelle que soit la progression. */
+.dexc-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #a434b4, #4d8ff2); }
+.dexc-ok {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  background: linear-gradient(135deg, #a434b4, #4d8ff2);
+}
+.dexc-ok svg { width: 14px; height: 14px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.dexc-img {
+  flex: 0 0 41%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-right: 4px;
+}
+/* Les starters mordent sur le bas de la carte, rognés par son `overflow`. */
+.dexc-img img { width: 60px; height: 60px; object-fit: contain; margin-left: -16px; transform: translateY(7px); }
+.dexc-img img:first-child { margin-left: 0; }
 
 .dex-tout { margin: 6px 0 12px; font-size: 11.5px; color: var(--muted); }
 

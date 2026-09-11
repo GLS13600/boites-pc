@@ -288,8 +288,38 @@ onglets). `render()` y bascule comme pour le combat.
   fiche, qui les liste déjà et permet de les ranger en boîte.
 - **Trois par ligne**, sprite de 68 px : sur 375 px chaque case fait ~111 px, de quoi
   loger le numéro et le nom sans troncature.
-- Neuf onglets de génération seulement — un remake n'a pas d'entrée au Pokédex
-  national. Le choix est persisté sous `pcbox.dexgen`.
+- **La vue s'ouvre sur un MENU** (`renderMenuDex`), repris d'une maquette fournie :
+  le champ de recherche en tête, puis une carte par Pokédex — **National**, puis les
+  neuf régions. Toucher une carte ouvre la grille habituelle, à trois par ligne.
+  - `state.dexGen` vaut `null` pour le menu, `0` pour le national, `1` à `9` pour une
+    génération. `plageDex(n)` donne la plage correspondante ; ne plus lire
+    `GENS[dexGen - 1]` directement, qui vaut `undefined` pour le national.
+  - **Le menu revient à CHAQUE entrée dans la vue** : on vient choisir quel Pokédex
+    regarder, pas reprendre là où l'on s'était arrêté. D'où l'abandon de la
+    persistance sous `pcbox.dexgen`, qui ne sert plus.
+  - Chaque carte : nom, compteur (collection ACTIVE, comme partout), barre en dégradé
+    violet → bleu rapporté à la partie remplie, **sceau** quand le Pokédex est complet,
+    et les trois starters de la région en artwork, qui débordent en bas à droite. Le
+    national prend Évoli et Pikachu (`STARTERS_DEX`).
+  - Le sceau est un disque dentelé découpé par `clip-path` (`SCEAU`, calculé une fois) :
+    un SVG aurait exigé un dégradé à identifiant, dupliqué dans chaque carte complète.
+  - **Le menu est SOMBRE**, fidèle à la maquette, alors que le reste de l'appli est
+    clair. C'est une demande explicite : ne pas le « remettre au thème ». La vue
+    sombre remplit toute la zone (`min-height: 100%`) pour ne pas laisser voir le
+    papier sous des cartes courtes.
+  - Chercher depuis le menu **remplace les cartes** par les résultats, et les cartes
+    reviennent quand le champ se vide. Les deux blocs basculent par `hidden`, rendu
+    explicite en CSS : un `display: grid` l'emporte sinon sur l'attribut.
+- Dans la grille, un bouton **‹** ramène au menu, et la barre d'onglets gagne un
+  onglet **National** en tête (1 025 cases, images en `loading="lazy"`). Un remake
+  n'y a toujours pas d'entrée : il n'en a pas au Pokédex national.
+- **Les onglets du Pokédex arrêtent leurs événements sur leur propre barre.** Ils
+  portent la classe `.gen-tab` des Boîtes, dont les gestionnaires posés sur `app` les
+  attrapaient : un clic y écrivait `state.gen = NaN`, et le retour aux Boîtes plantait
+  sur une grille vide (`Cannot read properties of undefined (reading 'liste')`).
+  Le correctif vit côté Pokédex — clic traité sur la barre puis `stopPropagation`,
+  appui long stoppé aussi —, sans toucher au code des Boîtes. Vérifié : après avoir
+  touché des onglets du Pokédex, les Boîtes rendent leurs 30 cases sans erreur.
 - **Taux de remplissage** par génération et au total, calculé sur la collection
   ACTIVE (`isCaught`) : il suit donc la bascule normal / chromatique des boîtes.
 - La fiche ouverte est exactement celle des boîtes (`openSheet`) : description,

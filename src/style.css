@@ -1427,6 +1427,27 @@ img { display: block; }
   color: var(--muted);
 }
 .shiny-btn.on { color: var(--shiny); border-color: var(--shiny); background: #fdf7e6; }
+/* Écouter le cri : au coin bas-gauche du portrait, en miroir du bouton chromatique.
+   Pendant la lecture, il passe au rouge et ses ondes battent. */
+.cri-btn {
+  position: absolute;
+  left: -2px;
+  bottom: -2px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.cri-btn svg { width: 17px; height: 17px; }
+.cri-btn.joue { color: var(--ball); border-color: var(--ball); background: var(--caught-tint); }
+.cri-btn.joue svg path:last-child { animation: cri-ondes 420ms ease-in-out infinite alternate; }
+@keyframes cri-ondes { from { opacity: 0.35; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cri-btn.joue svg path:last-child { animation: none; } }
 
 .sheet-name { font-size: 22px; font-weight: 800; margin: 0; line-height: 1.1; }
 .sheet-name small { font-weight: 500; color: var(--muted); font-size: 14px; margin-left: 6px; font-variant-numeric: tabular-nums; }

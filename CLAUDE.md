@@ -159,6 +159,8 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `scripts/fetch-extras.mjs` | Produit les trois ci-dessus (`npm run fetch-extras`) |
 | `public/types/` | Les 18 symboles de type, **générés**, 22 Ko |
 | `public/sprites/` | Les 5 291 sprites, **générés**, 40 Mo |
+| `public/cries/` | Les 1 351 cris des Pokémon en MP3, **générés**, 17,8 Mo |
+| `scripts/fetch-cries.mjs` | Rapatrie les cris de PokéAPI et les convertit en MP3 |
 
 ## Données
 
@@ -217,6 +219,30 @@ Règles d'affichage, à ne pas casser :
   reconstruit l'URL qui vient justement d'échouer : le repli ne servait alors à rien,
   et les 25 formes sans sprite s'affichaient en image cassée.
 - Les sprites dépendent du seul numéro, donc la grille est complète même sans `pokedex.json`.
+
+## Cris
+
+- Un bouton **haut-parleur** au coin bas-gauche du portrait de la fiche fait écouter
+  le cri du Pokémon, en miroir du bouton chromatique. La fiche des boîtes et celle du
+  Pokédex sont la même (`openSheet`) : le bouton sert aux deux.
+- Source : **github.com/PokeAPI/cries**, le dépôt de PokéAPI qui publie les cris comme
+  celui des sprites publie les images. Cri « latest » (jeux récents), à défaut
+  « legacy ».
+- **Embarqués dans `public/cries/`**, comme les sprites : l'appli ne fait aucune
+  requête au runtime. `npm run fetch-cries` télécharge et convertit, et **reprend** :
+  un MP3 déjà présent n'est pas refait. **1 351 cris, 17,8 Mo** : les 1025 espèces et
+  326 formes, tous en version « latest », aucun absent chez PokéAPI.
+- Comme les sprites, ils ne sont **pas préchargés** par le service worker : chacun se
+  met en cache à sa première écoute.
+- **Convertis de l'OGG en MP3** (mono, 64 kb/s) : PokéAPI les publie en OGG Vorbis, que
+  Safari sur iPhone ne lit pas de façon fiable. La conversion passe par
+  **`ffmpeg-static`**, dépendance de DÉVELOPPEMENT seulement — aucun ffmpeg n'est
+  installé sur le poste, et rien n'est embarqué dans l'appli.
+- Espèces 1 à 1025 et formes à **clé numérique** (Méga, régionales…), qui ont souvent
+  leur propre cri. Les formes cosmétiques, à clé slug, n'en ont pas : `joueCri`
+  demande le cri de la clé, puis celui de l'espèce.
+- Un nouvel appui relance le cri au lieu de superposer deux lectures ; pendant la
+  lecture, le bouton passe au rouge et ses ondes battent.
 
 ## Évolutions et formes
 

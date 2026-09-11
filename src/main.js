@@ -771,6 +771,37 @@ function renderStatsBase(key) {
     </div>`;
 }
 
+// ---------- Cri du Pokémon ----------
+//
+// Les cris viennent de PokéAPI (github.com/PokeAPI/cries) et sont EMBARQUÉS dans
+// public/cries/, convertis en MP3 par scripts/fetch-cries.mjs : l'appli ne fait aucune
+// requête au runtime, et Safari sur iPhone ne lit pas l'OGG d'origine de façon fiable.
+//
+// Une forme à clé numérique a souvent son propre cri (`10034.mp3`) ; une forme
+// cosmétique, à clé slug, n'en a jamais : on demande le cri de la clé, et à défaut
+// celui de l'espèce.
+const ICONE_CRI = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.6v12.8l-4.8-3.9H4z" fill="currentColor"/><path d="M15.4 8.6a4.8 4.8 0 0 1 0 6.8M17.9 6.1a8.4 8.4 0 0 1 0 11.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>`;
+let criEnCours = null;
+
+function joueCri(cle, bouton) {
+  // Un nouvel appui relance le cri depuis le début au lieu de superposer deux lectures.
+  if (criEnCours) { criEnCours.pause(); criEnCours = null; }
+  const espece = speciesOf(cle);
+  const sources = [...new Set([String(cle), String(espece)])]
+    .filter((c) => /^\d+$/.test(c))
+    .map((c) => `cries/${c}.mp3`);
+  const essaie = (i) => {
+    if (i >= sources.length) { bouton?.classList.remove('joue'); return; }
+    const son = new Audio(sources[i]);
+    criEnCours = son;
+    son.addEventListener('ended', () => { bouton?.classList.remove('joue'); if (criEnCours === son) criEnCours = null; });
+    son.addEventListener('error', () => { if (criEnCours === son) essaie(i + 1); });
+    bouton?.classList.add('joue');
+    son.play().catch(() => { if (criEnCours === son) essaie(i + 1); });
+  };
+  essaie(0);
+}
+
 function openSheet(id) {
   // Nouveau Pokémon : on repart en haut. Simple bascule (shiny, capture) : on garde la place.
   const keepScroll = state.open === id ? sheetBody.scrollTop : 0;
@@ -807,6 +838,7 @@ function openSheet(id) {
         <img src="${portrait}" alt="${p.name || id}" ${portraitFallback(id, sh)} />
         <button class="shiny-btn ${sh ? 'on' : ''}" data-act="shiny" aria-pressed="${sh}"
                 title="${sh ? 'Voir la forme normale' : 'Voir la forme chromatique'}">&#10022;</button>
+        <button class="cri-btn" data-act="cri" title="Écouter le cri" aria-label="Écouter le cri de ${esc(p.name || ('N° ' + base))}">${ICONE_CRI}</button>
       </div>
       <div>
         <h2 class="sheet-name">${esc(forme ? forme.name : (p.name || `N° ${id}`))}<small>#${String(base).padStart(4, '0')}</small></h2>
@@ -1862,6 +1894,7 @@ sheet.addEventListener('click', (e) => {
   const act = e.target.closest('[data-act]')?.dataset.act;
   if (act === 'toggle') { toggle(state.open); openSheet(state.open); }
   if (act === 'shiny') { state.shiny = !state.shiny; openSheet(state.open); }
+  if (act === 'cri') joueCri(state.open, e.target.closest('[data-act="cri"]'));
   const ajout = e.target.closest('[data-form-add]');
   if (ajout) {
     const k = asKey(ajout.dataset.formAdd);

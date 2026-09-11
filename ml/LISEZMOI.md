@@ -114,6 +114,37 @@ debout, deux fois plus lent — écarté.
 Reprendre le même calendrier après un arrêt : `--reprise <poids> --depart-epoque N`
 avec le même `--epoques` (c'est ainsi que le run debout est allé de 24 à 30).
 
+## Objets COCO : apprendre ce qui N'EST PAS un Pokémon
+
+Sur le téléphone, tasses, peluches et visages étaient encadrés comme des Pokémon. La
+classe « rien » n'avait vu qu'Imagenette, dix catégories de photos.
+
+```bash
+# COCO val2017 (images + annotations, ~1 Go), puis découpe des objets détourés
+python ml/coco_objets.py D:/Code/Jeu-scan      # 14 791 objets d'apprentissage, 3 533 de test
+python ml/entrainer.py D:/Code/Jeu-scan --epoques 10 --lr 2e-4 --ouvriers 14 \
+  --reprise D:/Code/Jeu-scan/runs/final/meilleur.pt --sortie D:/Code/Jeu-scan/runs/fiable
+```
+
+- Séparation par PHOTO (4 000 / 1 000) : un objet de test ne partage jamais sa photo
+  avec un objet d'apprentissage.
+- Classifieur : 16 % des tirages sont un objet COCO cadré comme le détecteur cadrerait
+  un Pokémon (dans sa photo d'origine, ou détouré et posé comme un sprite — même mise
+  en scène exactement) ; 22 % des Pokémon reçoivent un ou deux occultants réels ; les
+  photos COCO s'ajoutent aux fonds ; expositions plus sombres et plus claires.
+- Jeu d'évaluation `eval-objets.pt` (2 000 objets de test) et deux mesures : part des
+  objets acceptés au seuil du cadre (0,9) et du bouton (0,4). Le « meilleur » modèle
+  est choisi sur la moyenne photo debout/tournée MOINS la part d'objets acceptés à 0,4.
+- Résultat (époque 8) : objets acceptés 5,75 % → **0,30 %** à 0,4, 0,25 % → **0 %** à
+  0,9, sans perte sur les Pokémon (photo tournée 79,0 → 82,3 % à 0,4).
+- **Piège : la mémoire vive.** Les photos COCO (640 px) décodées dans 14 processus,
+  plus les jeux d'évaluation en mémoire, ont épuisé la RAM pendant l'époque 9
+  (`MemoryError` dans un chargeur). L'époque 8 était sauvegardée et retenue. Le
+  détecteur est relancé avec 12 processus.
+- Détecteur : 0 à 3 objets COCO détourés posés SANS boîte dans chaque scène, photos
+  COCO en fond ; nouveau jeu d'évaluation `eval-detection-v2.pt` peuplé d'objets de
+  test.
+
 ## Détecteur (suivi en continu)
 
 `detecteur.py`, `scenes.py`, `entrainer_detecteur.py`, `apercu_scenes.py`.

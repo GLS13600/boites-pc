@@ -547,7 +547,24 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
   Scènes sans Pokémon : aucune fiche ouverte. Ce sont des mesures sur cartes :
   figurines et écrans ne se vérifient que sur le téléphone.
 - **C'est le modèle de référence pour un bon moment**, par décision explicite : ne
-  pas relancer d'entraînement sans demande.
+  pas relancer d'entraînement sans demande. (Réentraîné depuis, À LA DEMANDE, pour
+  refuser les objets du quotidien — voir ci-dessous.)
+- **Réentraînement « fiable »** (objets COCO comme négatifs, occultants, scènes
+  réelles ; 8 époques depuis le modèle tourné) — mesures à UN cadrage, comme le suivi,
+  bons / faux :
+
+  | | seuil 0,4 (bouton) | seuil 0,9 (cadre du suivi) |
+  |---|---|---|
+  | illustration debout | 92,2 / 4,6 | 85,8 / 0,6 |
+  | illustration tournée | 91,7 / 5,9 | 86,6 / 1,0 |
+  | photo debout | 83,4 / 9,3 | 73,4 / 1,6 |
+  | photo tournée | 82,3 / 9,6 | 71,1 / 1,1 |
+  | **objets réels acceptés** | **0,30 %** (5,75 avant) | **0 %** (0,25 avant) |
+
+  Au seuil de 90 %, un cadre affiché est juste dans ~98 % des cas ; le prix est
+  qu'environ un Pokémon sur quatre, sur photo, n'est pas encadré tout de suite — la
+  revérification (toutes les 0,5 s tant qu'il n'est pas reconnu) le rattrape souvent
+  sous un meilleur angle.
 - **`NSCameraUsageDescription`** dans `Info.plist` est obligatoire : sans lui, iOS
   ferme l'appli au premier accès à la caméra. Capacitor accorde lui-même l'accès
   côté WebView (`requestMediaCapturePermissionFor`), seule l'invite système reste.

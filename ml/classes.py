@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 RACINE_APPLI = Path(__file__).resolve().parent.parent
-DONNEES = Path(sys.argv[1]) if len(sys.argv) > 1 else Path('D:/Code/Jeu-scan')
+DONNEES = Path(sys.argv[1]) if len(sys.argv) > 1 else Path('A:/Jeu-scan')
 SPRITES_API = DONNEES / 'pokeapi-sprites' / 'sprites' / 'pokemon'
 SPRITES_APPLI = RACINE_APPLI / 'public' / 'sprites'
 

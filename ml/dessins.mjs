@@ -4,7 +4,7 @@ import sharp from 'sharp';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const racine = process.argv[2] ?? 'D:/Code/Jeu-scan';
+const racine = process.argv[2] ?? 'A:/Jeu-scan';
 const src = path.join(racine, 'pokeapi-sprites/sprites/pokemon/other/dream-world');
 const dst = path.join(racine, 'dream-world-png');
 fs.mkdirSync(dst, { recursive: true });

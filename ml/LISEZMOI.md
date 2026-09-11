@@ -18,7 +18,7 @@ build : ce sont des outils de PC.
   probabilités d'un groupe avant de décider : une espèce et ses formes se partagent
   la ressemblance.
 
-## Données (hors dépôt, dans `D:\Code\Jeu-scan`)
+## Données (hors dépôt, dans `A:\Jeu-scan`)
 
 | Source | Rôle |
 |---|---|
@@ -48,21 +48,21 @@ directionnel, reflets spéculaires, ombre portée), reflet holographique sur car
 
 ```bash
 # 1. Données
-node ml/fetch-cartes.mjs D:/Code/Jeu-scan
-node ml/dessins.mjs D:/Code/Jeu-scan
-python ml/classes.py D:/Code/Jeu-scan
+node ml/fetch-cartes.mjs A:/Jeu-scan
+node ml/dessins.mjs A:/Jeu-scan
+python ml/classes.py A:/Jeu-scan
 # 2. Entraînement (RTX 5060 Ti : ~2 min par époque)
-python ml/entrainer.py D:/Code/Jeu-scan --epoques 30 --ouvriers 14 --sortie D:/Code/Jeu-scan/runs/v1
+python ml/entrainer.py A:/Jeu-scan --epoques 30 --ouvriers 14 --sortie A:/Jeu-scan/runs/v1
 # 3. Export, mesure, calibration du seuil
-python ml/exporter.py D:/Code/Jeu-scan/runs/v1 --quantifie
-python ml/evaluer.py D:/Code/Jeu-scan/runs/v1/modele-int8.onnx D:/Code/Jeu-scan --echelles 1,0.78
-node ml/vitesse-web.mjs D:/Code/Jeu-scan/runs/v1/modele-int8.onnx 2
+python ml/exporter.py A:/Jeu-scan/runs/v1 --quantifie
+python ml/evaluer.py A:/Jeu-scan/runs/v1/modele-int8.onnx A:/Jeu-scan --echelles 1,0.78
+node ml/vitesse-web.mjs A:/Jeu-scan/runs/v1/modele-int8.onnx 2
 # 4. Copie dans l'appli
-cp D:/Code/Jeu-scan/runs/v1/modele.onnx public/scan/modele.onnx   # float32 : l'int8 perd ~4 points
-cp D:/Code/Jeu-scan/runs/v1/scan-classes.json src/data/scan-classes.json
+cp A:/Jeu-scan/runs/v1/modele.onnx public/scan/modele.onnx   # float32 : l'int8 perd ~4 points
+cp A:/Jeu-scan/runs/v1/scan-classes.json src/data/scan-classes.json
 ```
 
-Environnement Python : `D:\Code\Jeu-scan\.venv` (Python 3.14, PyTorch 2.14 cu130,
+Environnement Python : `A:\Jeu-scan\.venv` (Python 3.14, PyTorch 2.14 cu130,
 timm, onnx, onnxruntime).
 
 ## Résultats (run v1, arrêté à l'époque 24)
@@ -121,9 +121,9 @@ classe « rien » n'avait vu qu'Imagenette, dix catégories de photos.
 
 ```bash
 # COCO val2017 (images + annotations, ~1 Go), puis découpe des objets détourés
-python ml/coco_objets.py D:/Code/Jeu-scan      # 14 791 objets d'apprentissage, 3 533 de test
-python ml/entrainer.py D:/Code/Jeu-scan --epoques 10 --lr 2e-4 --ouvriers 14 \
-  --reprise D:/Code/Jeu-scan/runs/final/meilleur.pt --sortie D:/Code/Jeu-scan/runs/fiable
+python ml/coco_objets.py A:/Jeu-scan      # 14 791 objets d'apprentissage, 3 533 de test
+python ml/entrainer.py A:/Jeu-scan --epoques 10 --lr 2e-4 --ouvriers 14 \
+  --reprise A:/Jeu-scan/runs/final/meilleur.pt --sortie A:/Jeu-scan/runs/fiable
 ```
 
 - Séparation par PHOTO (4 000 / 1 000) : un objet de test ne partage jamais sa photo
@@ -150,7 +150,7 @@ python ml/entrainer.py D:/Code/Jeu-scan --epoques 10 --lr 2e-4 --ouvriers 14 \
   Les données d'entraînement ont été copiées sur le SSD NVMe `A:\Jeu-scan` (5,4 Go
   en 106 s) et `classes.json` y a été régénéré (`python ml/classes.py A:/Jeu-scan`),
   pour que les chemins des références pointent aussi vers le SSD. **Entraîner depuis
-  `A:/Jeu-scan`** ; `D:/Code/Jeu-scan` garde l'original, l'environnement Python et
+  `A:/Jeu-scan`** ; `A:/Jeu-scan` garde l'original, l'environnement Python et
   les runs. Effet : ~215 img/s au lieu de ~60, 15 époques en ~30 min.
 - Détecteur v2 (15 époques depuis v1, lr 1e-3, 12 processus), comparé à v1 sur le
   MÊME jeu `eval-detection-v2.pt`, peuplé d'objets de test :
@@ -169,9 +169,9 @@ python ml/entrainer.py D:/Code/Jeu-scan --epoques 10 --lr 2e-4 --ouvriers 14 \
 `detecteur.py`, `scenes.py`, `entrainer_detecteur.py`, `apercu_scenes.py`.
 
 ```bash
-python ml/apercu_scenes.py D:/Code/Jeu-scan planche.png   # boîtes dessinées, à vérifier à l'œil
-python ml/entrainer_detecteur.py D:/Code/Jeu-scan --epoques 20 --par-epoque 20000 --sortie D:/Code/Jeu-scan/runs/detecteur-v1
-cp D:/Code/Jeu-scan/runs/detecteur-v1/detecteur.onnx public/scan/detecteur.onnx
+python ml/apercu_scenes.py A:/Jeu-scan planche.png   # boîtes dessinées, à vérifier à l'œil
+python ml/entrainer_detecteur.py A:/Jeu-scan --epoques 20 --par-epoque 20000 --sortie A:/Jeu-scan/runs/detecteur-v1
+cp A:/Jeu-scan/runs/detecteur-v1/detecteur.onnx public/scan/detecteur.onnx
 ```
 
 - MobileNetV4 small (ImageNet) + fusion des pas 8/16/32 + têtes CenterNet (chaleur,

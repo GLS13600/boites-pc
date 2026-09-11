@@ -17,7 +17,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-racine = Path(sys.argv[1] if len(sys.argv) > 1 else 'D:/Code/Jeu-scan')
+racine = Path(sys.argv[1] if len(sys.argv) > 1 else 'A:/Jeu-scan')
 coco = racine / 'coco'
 ann = json.loads((coco / 'annotations' / 'instances_val2017.json').read_text())
 categories = {c['id']: c['name'] for c in ann['categories']}

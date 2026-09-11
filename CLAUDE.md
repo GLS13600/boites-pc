@@ -303,7 +303,7 @@ onglets). `render()` y bascule comme pour le combat.
     Pikachu (`STARTERS_DEX`).
   - Le sceau est un disque dentelé découpé par `clip-path` (`SCEAU`, calculé une fois),
     dans un simple fond coloré : sa couleur reste réglée par la feuille de style.
-  - **Le menu suit le thème CLAIR de l'appli** : cartes blanches sur la vitre, filets
+  - **Le menu suit le thème CLAIR de l'appli** : papier, cartes blanches, filets
     beiges, barre et sceau rouges. Une première version reprenait aussi les COULEURS
     de la maquette — fond bleu nuit, barre en dégradé violet → bleu — et a été écartée
     à la demande : elle tranchait avec tout le reste. Seule la disposition vient de la
@@ -316,25 +316,8 @@ onglets). `render()` y bascule comme pour le combat.
 - Dans la grille, un bouton **‹** ramène au menu. **Il n'y a plus de barre d'onglets
   de génération** : le menu choisit déjà le Pokédex, la barre faisait doublon. On
   change de Pokédex en repassant par le menu.
-- **La vue est présentée comme l'intérieur d'un Pokédex de Kalos** (`ecranDex`) :
-  un capot rouge en haut et en bas — voûte noire, rainure, liseré argent, voyant —
-  et entre les deux un écran de verre bleuté. Menu et grille passent tous deux par
-  cet écran.
-  - **Seul l'écran défile** (`.pdx-ecran`), les capots restent posés par-dessus. Le
-    contenu passe SOUS eux et réapparaît dans l'arrondi de verre laissé transparent
-    au centre de chacun : c'est ce qui donne l'impression de faire défiler l'écran
-    de l'appareil tenu en main, et non une page.
-  - Un seul dessin (`capotDex`), retourné en CSS pour le bas. Ses dégradés portent un
-    suffixe `h` / `b` : les deux capots cohabitent, deux `id` identiques seraient
-    invalides.
-  - Les marges de l'écran valent la hauteur d'un capot, **min(20,5vw, 114,8 px)** —
-    82/400, rapport du dessin, plafonné car `#app` s'arrête à 560 px. Changer le
-    `viewBox` impose de refaire ce calcul. La zone sûre du haut est portée par l'écran
-    et le capot, qui remonte en rouge sous la barre d'état ; `.dex` et `.dexm` n'en
-    portent plus.
-  - Les parties peintes des capots arrêtent les touchers — on ne touche pas une carte
-    cachée dessous —, mais l'arrondi transparent les laisse passer (`pointer-events`
-    à `none` sur le conteneur, `visiblePainted` sur les tracés).
+- La barre retirée, l'en-tête de la grille est le premier élément de la vue : c'est
+  `.dex` qui porte désormais la marge de la zone sûre, que la barre portait avant.
 - Cette barre avait causé un plantage : ses onglets portaient la classe `.gen-tab`
   des Boîtes, dont les gestionnaires posés sur `app` les attrapaient et écrivaient
   `state.gen = NaN` — le retour aux Boîtes plantait sur une grille vide. **Ne pas

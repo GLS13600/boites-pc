@@ -1044,7 +1044,9 @@ img { display: block; }
 
 /* La barre des générations reprend le gabarit des boîtes, mais n'affiche que les
    9 générations : un remake n'a pas d'entrée propre au Pokédex national. */
-.dex { margin: 12px; }
+/* L'en-tête est le premier élément de la vue depuis le retrait de la barre
+   d'onglets : c'est donc lui qui porte la zone sûre, que la barre portait avant. */
+.dex { margin: calc(12px + var(--safe-top)) 12px 12px; }
 .dex-head {
   display: flex;
   align-items: center;
@@ -1102,52 +1104,6 @@ img { display: block; }
 .sb-total .sb-lib, .sb-total .sb-val { color: var(--ink); }
 .sb-total .sb-piste { background: none; }
 
-/* ---------- Écran du Pokédex ----------
-   La vue est présentée comme l'intérieur d'un Pokédex de Kalos tenu en main : un
-   capot rouge en haut et en bas, chacun avec sa voûte noire et son liseré argent, et
-   entre les deux un écran de verre bleuté. Le contenu défile SOUS les capots et
-   réapparaît dans l'arrondi de verre qui mord dans chacun d'eux. */
-.pdx {
-  position: relative;
-  height: 100%;
-  overflow: hidden;
-  background:
-    linear-gradient(115deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 38%),
-    linear-gradient(180deg, #bfe6ec 0%, #e3f4f6 35%, #eef8f9 60%, #cde5ea 100%);
-}
-/* Seul l'écran défile ; les capots restent posés par-dessus. Ses marges haute et
-   basse valent la hauteur d'un capot — 82/400 de la largeur, rapport du dessin, soit
-   20,5vw, plafonnés à 114,8 px parce que #app ne dépasse pas 560 px de large. */
-.pdx-ecran {
-  position: absolute;
-  inset: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-  box-sizing: border-box;
-  padding: calc(var(--safe-top) + min(20.5vw, 114.8px) + 4px) 0 calc(min(20.5vw, 114.8px) + 8px);
-}
-.pdx-haut, .pdx-bas {
-  position: absolute;
-  left: 0;
-  right: 0;
-  z-index: 2;
-  pointer-events: none;
-}
-/* Les parties PEINTES des capots arrêtent les touchers — on ne touche pas par
-   mégarde une carte cachée dessous —, mais l'arrondi de verre, transparent, les
-   laisse passer jusqu'au contenu visible au travers. */
-.pdx-haut path, .pdx-haut circle, .pdx-bas path, .pdx-bas circle { pointer-events: visiblePainted; }
-/* Le capot du haut remonte sous la barre d'état, dans la couleur de sa coque. */
-.pdx-haut {
-  top: 0;
-  padding-top: var(--safe-top);
-  background: linear-gradient(#e2323a, #e2323a) top / 100% calc(var(--safe-top) + 1px) no-repeat;
-}
-.pdx-bas { bottom: 0; }
-.pdx-haut svg, .pdx-bas svg { display: block; width: 100%; height: auto; }
-.pdx-bas svg { transform: scaleY(-1); }
-
 /* ---------- Menu du Pokédex ----------
    Disposition reprise d'une maquette — recherche en tête, une carte par Pokédex avec
    son nom, son compteur, sa barre, un sceau quand il est complet et les starters en
@@ -1156,7 +1112,10 @@ img { display: block; }
    les couleurs de la maquette, fond bleu nuit et dégradé violet → bleu : elle
    tranchait avec tout le reste et a été écartée. */
 .dexm {
-  padding: 6px 12px 16px;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: calc(12px + var(--safe-top)) 12px 16px;
+  background: var(--paper);
   color: var(--ink);
 }
 /* Même champ que celui de la grille : pilule blanche, filet beige. */

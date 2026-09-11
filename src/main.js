@@ -3507,46 +3507,10 @@ function carteDex(n) {
 // Menu du Pokédex, repris de la maquette fournie : le champ de recherche en tête,
 // puis une carte par Pokédex — le national, puis les neuf régions. Toucher une carte
 // ouvre la grille habituelle ; chercher remplace les cartes par les résultats.
-// Capot du Pokédex, dessiné d'après le Pokédex de Kalos : coque rouge, rainure, voûte
-// noire, liseré argent et voyant. Le même dessin sert en haut et, retourné en CSS, en
-// bas. L'arrondi central est laissé TRANSPARENT : le contenu qui défile dessous y
-// reste visible, comme à travers la vitre de l'appareil.
-//
-// Le suffixe distingue les identifiants des dégradés : les deux capots cohabitent
-// dans la page, et deux `id` identiques y seraient invalides.
-const capotDex = (x) => `
-  <svg viewBox="0 0 400 82" aria-hidden="true">
-    <defs>
-      <linearGradient id="pdx-rouge-${x}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#e2323a"/><stop offset="1" stop-color="#b0101b"/>
-      </linearGradient>
-      <linearGradient id="pdx-noir-${x}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#3a3b40"/><stop offset=".55" stop-color="#151518"/><stop offset="1" stop-color="#232327"/>
-      </linearGradient>
-    </defs>
-    <path d="M0 0H400V80H244A44 44 0 0 0 156 80H0Z" fill="url(#pdx-rouge-${x})"/>
-    <path d="M24 80C24 34 68 2 128 2H272C332 2 376 34 376 80" fill="none" stroke="#7a0b12" stroke-opacity=".55" stroke-width="2.5"/>
-    <path d="M44 80C44 44 80 16 128 16H272C320 16 356 44 356 80H244A44 44 0 0 0 156 80Z" fill="url(#pdx-noir-${x})"/>
-    <path d="M0 80H156A44 44 0 0 1 244 80H400" fill="none" stroke="#e9edf1" stroke-width="2.5"/>
-    <circle cx="200" cy="8.5" r="2.6" fill="#4a0a0f"/>
-  </svg>`;
-
-// La vue Pokédex vit DANS un écran : les capots restent en place, seul le contenu
-// défile entre eux et passe dessous. C'est ce qui donne l'impression de faire défiler
-// l'écran de l'appareil lui-même, et non une page.
-function ecranDex(html) {
-  return h(`
-    <div class="pdx">
-      <div class="pdx-ecran">${html}</div>
-      <div class="pdx-haut">${capotDex('h')}</div>
-      <div class="pdx-bas">${capotDex('b')}</div>
-    </div>`);
-}
-
 function renderMenuDex() {
   const q = state.dexQ.trim();
   const ids = especesDex();
-  poser(ecranDex(`
+  poser(h(`
     <section class="dexm">
       <input class="dexm-rech" type="search" data-dexq placeholder="Rechercher un Pokémon"
              value="${esc(state.dexQ)}" aria-label="Rechercher un Pokémon"
@@ -3602,7 +3566,7 @@ function renderPokedex() {
   const cases = ids.map(caseDex).join('');
 
   poser(
-    ecranDex(`
+    h(`
       <section class="dex">
         <div class="dex-head">
           <button class="dex-retour" data-dex-retour aria-label="Revenir au menu du Pokédex">&lsaquo;</button>

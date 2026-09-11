@@ -1893,13 +1893,22 @@ img {
 }
 
 /* ---------- Vue Scan ----------
-   L'aperçu de la caméra remplit toute la vue, sous la barre d'état comprise. Le cadre
-   assombrit ce qui l'entoure par une ombre démesurée plutôt que par quatre bandes :
-   un seul élément à déplacer quand on le replace. */
+   La vue est un Pokédex de Kalos OUVERT : une coque rouge en haut, une en bas, et
+   entre elles l'écran de verre où passe la caméra. À chaque entrée dans la vue, il
+   s'ouvre sous les yeux (voir animeOuverture dans scan.js).
+
+   Empilement, du fond vers l'avant : vidéo, cadre de visée, verre, bande et
+   lentille (visibles fermé), coques, puis textes et déclencheur.
+
+   `--cap-h` est la hauteur visible d'une coque ouverte : 150 unités de dessin sur
+   400 de large, en unités du conteneur (cqw) — .scan est un conteneur de taille. */
 .scan {
+  --cap-h: calc(100cqw * 150 / 400);
+  --fente: 22px; /* écart des coques fermées : la bande de verre du Pokédex */
   position: relative;
   height: 100%;
   overflow: hidden;
+  container-type: size;
   background: #0d0f12;
   touch-action: none;
   -webkit-touch-callout: none;
@@ -1913,8 +1922,204 @@ img {
   height: 100%;
   object-fit: cover;
 }
+/* L'écran entre les deux coques. Invisible : il sert de repère au cadre de visée. */
+.scan-ecran {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--safe-top) + var(--cap-h));
+  bottom: var(--cap-h);
+  pointer-events: none;
+  /* Léger reflet de vitre, pour qu'on sente le verre sans gêner la visée. */
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.09) 0 22%, transparent 22% 100%);
+}
+
+/* Faisceau de balayage : une fois les coques écartées, une ligne lumineuse descend
+   l'écran, comme un affichage qui s'initialise. Au-dessus de la vidéo, sous les coques. */
+.scan-ecran::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 70px;
+  z-index: 3;
+  opacity: 0;
+  background: linear-gradient(rgba(111, 230, 255, 0), rgba(111, 230, 255, 0.28) 85%, #e6fdff 97%, rgba(111, 230, 255, 0));
+  filter: drop-shadow(0 0 6px #6fe6ff);
+}
+.scan.ouvre .scan-ecran::after { animation: pdx-faisceau 760ms cubic-bezier(0.45, 0, 0.35, 1) 1020ms both; }
+@keyframes pdx-faisceau {
+  0% { transform: translateY(-70px); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateY(calc(100cqh - 2 * var(--cap-h) - var(--safe-top))); opacity: 0; }
+}
+
+/* ---- Coques ---- */
+.pdx-haut, .pdx-bas {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50%;
+  z-index: 4;
+  pointer-events: none;
+}
+.pdx-haut svg, .pdx-bas svg {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.pdx-haut { top: 0; transform: translateY(calc(-100% + var(--cap-h) + var(--safe-top))); }
+.pdx-haut svg { bottom: 0; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45)); }
+.pdx-bas { bottom: 0; transform: translateY(calc(100% - var(--cap-h))); }
+.pdx-bas svg { top: 0; transform: scaleY(-1); filter: drop-shadow(0 -4px 10px rgba(0, 0, 0, 0.45)); }
+/* Fermé : les coques se rejoignent au centre, séparées par la seule bande de verre. */
+.scan.ferme .pdx-haut { transform: translateY(calc(var(--fente) / -2)); }
+.scan.ferme .pdx-bas { transform: translateY(calc(var(--fente) / 2)); }
+
+/* Liseré lumineux sur le bord intérieur des coques, allumé pendant l'ouverture. */
+.pdx-haut::after, .pdx-bas::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #d9fbff;
+  box-shadow: 0 0 10px 3px #6fe6ff, 0 0 26px 8px rgba(80, 220, 255, 0.55);
+  opacity: 0;
+}
+.pdx-haut::after { bottom: 0; }
+.pdx-bas::after { top: 0; }
+
+/* ---- Verre : couvre la caméra tant que le Pokédex est fermé ---- */
+.pdx-verre {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 24px),
+    linear-gradient(115deg, rgba(255, 255, 255, 0.55) 0 18%, transparent 18% 32%, rgba(255, 255, 255, 0.25) 32% 36%, transparent 36%),
+    radial-gradient(circle at 50% 50%, #e9fdff 0, #a9e8f3 38%, #5fc4d8 100%);
+}
+.scan.ferme .pdx-verre { opacity: 1; }
+
+/* Bande de verre entre les coques fermées, et le reflet qui la balaie. */
+.pdx-bande {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - var(--fente) / 2);
+  height: var(--fente);
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(#f4feff, #b8eef7 45%, #8fdbe9);
+  box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 rgba(0, 60, 80, 0.25);
+}
+.pdx-bande::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  left: -40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent);
+}
+.scan.ferme .pdx-bande { opacity: 1; }
+
+/* Lentille centrale : visible par les deux échancrures quand le Pokédex est fermé. */
+.pdx-lentille {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(100cqw * 92 / 400);
+  height: calc(100cqw * 92 / 400);
+  margin: calc(100cqw * -46 / 400) 0 0 calc(100cqw * -46 / 400);
+  border-radius: 50%;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle at 38% 34%, #ffffff 0 10%, #bff6ff 22%, #39c6e6 58%, #0b7ea3 100%);
+  box-shadow: 0 0 18px 6px rgba(111, 230, 255, 0.75);
+}
+.pdx-lentille::before, .pdx-lentille::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid #bff8ff;
+  box-shadow: 0 0 12px #6fe6ff;
+  opacity: 0;
+}
+.scan.ferme .pdx-lentille { opacity: 1; }
+
+/* ---- La séquence d'ouverture ----
+   0 → 0,5 s  la lentille se charge, deux ondes en partent, un reflet balaie la bande ;
+   0,5 → 1,3 s  les coques s'écartent sur un liseré lumineux ;
+   0,95 → 1,6 s  le verre s'éclaircit, le cadre, l'aide et le déclencheur arrivent. */
+.scan.ouvre .pdx-lentille {
+  transition: opacity 280ms ease 820ms;
+  animation: pdx-charge 760ms cubic-bezier(0.3, 0.7, 0.3, 1) both;
+}
+.scan.ouvre .pdx-lentille::before { animation: pdx-onde 900ms ease-out 180ms both; }
+.scan.ouvre .pdx-lentille::after { animation: pdx-onde 900ms ease-out 400ms both; }
+.scan.ouvre .pdx-bande { transition: opacity 260ms ease 760ms; }
+.scan.ouvre .pdx-bande::after { animation: pdx-balaye 620ms cubic-bezier(0.5, 0, 0.3, 1) 80ms both; }
+.scan.ouvre .pdx-haut, .scan.ouvre .pdx-bas { transition: transform 780ms cubic-bezier(0.77, 0, 0.18, 1) 500ms; }
+.scan.ouvre .pdx-haut::after, .scan.ouvre .pdx-bas::after { animation: pdx-lueur 1000ms ease-out 460ms both; }
+.scan.ouvre .pdx-verre {
+  transition: opacity 650ms ease 950ms;
+  animation: pdx-grille 1400ms linear both;
+}
+.scan.ouvre .scan-zone {
+  transition: left 140ms ease, top 140ms ease, width 140ms ease, height 140ms ease,
+    opacity 420ms ease 1150ms, transform 520ms cubic-bezier(0.2, 0.9, 0.25, 1) 1150ms;
+}
+.scan.ouvre .scan-aide { transition: opacity 360ms ease 1280ms, transform 360ms ease 1280ms; }
+.scan.ouvre .scan-btn { transition: opacity 300ms ease 1100ms, transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1) 1100ms; }
+.scan.ferme .scan-zone { opacity: 0; transform: scale(1.25); }
+.scan.ferme .scan-aide { opacity: 0; transform: translate(-50%, -10px); }
+.scan.ferme .scan-btn { opacity: 0; transform: scale(0.3); }
+/* Un message d'état attend que le Pokédex soit ouvert. */
+.scan.ferme .scan-etat { opacity: 0; }
+.scan.ouvre .scan-etat { transition: opacity 300ms ease 1250ms; }
+
+@keyframes pdx-charge {
+  0% { transform: scale(0.55); filter: brightness(0.7); }
+  45% { transform: scale(1.12); filter: brightness(1.6); }
+  100% { transform: scale(1); filter: brightness(1.15); }
+}
+@keyframes pdx-onde {
+  0% { transform: scale(0.6); opacity: 0.95; }
+  100% { transform: scale(3.4); opacity: 0; }
+}
+@keyframes pdx-balaye {
+  from { transform: translateX(0); }
+  to { transform: translateX(350%); }
+}
+@keyframes pdx-lueur {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  70% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+/* La grille du verre défile, comme un écran qui s'initialise. */
+@keyframes pdx-grille {
+  from { background-position: 0 0, 0 0, 0 0, 0 0; }
+  to { background-position: 0 -96px, 48px 0, 0 0, 0 0; }
+}
+
+/* ---- Cadre de visée ---- */
 .scan-zone {
   position: absolute;
+  z-index: 1;
   border-radius: 20px;
   box-shadow: 0 0 0 200vmax rgba(8, 10, 14, 0.42);
   transition: left 140ms ease, top 140ms ease, width 140ms ease, height 140ms ease;
@@ -1940,9 +2145,12 @@ img {
   20%, 60% { transform: translateX(-6px); }
   40%, 80% { transform: translateX(6px); }
 }
+
+/* ---- Textes ---- */
 .scan-aide, .scan-etat, .scan-toast {
   position: absolute;
   left: 50%;
+  z-index: 5;
   transform: translateX(-50%);
   margin: 0;
   max-width: calc(100% - 40px);
@@ -1953,7 +2161,7 @@ img {
   pointer-events: none;
 }
 .scan-aide {
-  top: calc(12px + var(--safe-top));
+  top: calc(var(--safe-top) + var(--cap-h) + 12px);
   padding: 7px 14px;
   background: rgba(8, 10, 14, 0.55);
   font-size: 13px;
@@ -1971,7 +2179,7 @@ img {
   width: max-content;
 }
 .scan-toast {
-  bottom: 118px;
+  bottom: calc(var(--cap-h) + 52px);
   padding: 10px 18px;
   background: rgba(30, 34, 39, 0.9);
   font-size: 15px;
@@ -1983,23 +2191,25 @@ img {
   from { opacity: 0; transform: translate(-50%, 10px); }
   to { opacity: 1; transform: translate(-50%, 0); }
 }
-/* Le déclencheur : une Poké Ball dans un anneau blanc, comme le bouton d'un appareil. */
+
+/* ---- Déclencheur : une Poké Ball logée dans l'échancrure de la coque du bas ---- */
 .scan-btn {
   position: absolute;
   left: 50%;
-  bottom: 22px;
+  bottom: calc(var(--cap-h) - 38px);
+  z-index: 5;
   width: 76px;
   height: 76px;
   margin-left: -38px;
   padding: 0;
-  border: 4px solid #fff;
+  border: 4px solid #e3e7ec;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  background: #1b1c20;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35), 0 0 16px rgba(111, 230, 255, 0.55);
 }
 .scan-btn span {
   position: absolute;
-  inset: 5px;
+  inset: 4px;
   border-radius: 50%;
   background: linear-gradient(var(--ball) 0 46%, #1e2227 46% 54%, #fff 54%);
   transition: transform 120ms ease;

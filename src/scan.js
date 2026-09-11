@@ -33,6 +33,51 @@ CLASSES.forEach(([, groupe], i) => {
   GROUPES.get(groupe).push(i);
 });
 
+// Coque du Pokédex de Kalos, une moitié. Dessinée pour la moitié du HAUT ; celle du
+// bas est la même, retournée en CSS. Le dessin est bien plus haut qu'il n'y paraît
+// (400×800) : fermé, le Pokédex occupe tout l'écran et on en voit presque tout —
+// les grandes rainures en dôme autour de la lentille ; ouvert, la coque remonte et
+// seule sa bande basse reste visible (`--cap-h`, 150 unités), où les mêmes rainures
+// ne montrent plus que leurs coins, comme sur l'appareil.
+//
+// L'échancrure centrale (rayon 46) est laissée TRANSPARENTE : fermée, les deux
+// échancrures forment la lentille ; ouverte, l'écran — la caméra — y déborde.
+// Le suffixe distingue les identifiants de dégradés des deux moitiés.
+const coque = (x) => `
+  <svg viewBox="0 0 400 800" aria-hidden="true">
+    <defs>
+      <linearGradient id="pdx-rouge-${x}" gradientUnits="userSpaceOnUse" x1="0" y1="380" x2="0" y2="800">
+        <stop offset="0" stop-color="#e63a42"/><stop offset=".62" stop-color="#cf1d28"/><stop offset="1" stop-color="#a50f19"/>
+      </linearGradient>
+      <linearGradient id="pdx-noir-${x}" gradientUnits="userSpaceOnUse" x1="0" y1="728" x2="0" y2="800">
+        <stop offset="0" stop-color="#4a4c54"/><stop offset=".5" stop-color="#1b1c20"/><stop offset="1" stop-color="#0c0c0e"/>
+      </linearGradient>
+      <radialGradient id="pdx-brille-${x}" cx="90" cy="690" r="130" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </radialGradient>
+      <!-- Rainures proches, limitées à la bande visible une fois ouvert : fermé, elles
+           dessineraient un grand dôme de Poké Ball au milieu de l'écran. -->
+      <clipPath id="pdx-bord-${x}"><rect y="650" width="400" height="150"/></clipPath>
+    </defs>
+    <path d="M0 0H400V800H246A46 46 0 0 0 154 800H0Z" fill="url(#pdx-rouge-${x})"/>
+    <ellipse cx="90" cy="690" rx="150" ry="46" fill="url(#pdx-brille-${x})"/>
+    <g fill="none">
+      <circle cx="200" cy="800" r="436" stroke="#18181c" stroke-width="16"/>
+      <circle cx="200" cy="800" r="445" stroke="#ff8f94" stroke-opacity=".22" stroke-width="2"/>
+      <circle cx="200" cy="800" r="468" stroke="#18181c" stroke-width="6"/>
+      <g clip-path="url(#pdx-bord-${x})">
+        <circle cx="200" cy="800" r="206" stroke="#18181c" stroke-width="14"/>
+        <circle cx="200" cy="800" r="215" stroke="#ff8f94" stroke-opacity=".25" stroke-width="2"/>
+        <circle cx="200" cy="800" r="238" stroke="#18181c" stroke-width="6"/>
+      </g>
+    </g>
+    <path d="M128 800A72 72 0 0 1 272 800H246A46 46 0 0 0 154 800Z" fill="url(#pdx-noir-${x})"/>
+    <path d="M136 800A64 64 0 0 1 264 800" fill="none" stroke="#fff" stroke-opacity=".1" stroke-width="3"/>
+    <path d="M125 800A75 75 0 0 1 275 800" fill="none" stroke="#e3e7ec" stroke-width="4"/>
+    <path d="M154 800A46 46 0 0 1 246 800" fill="none" stroke="#a8f1fb" stroke-width="2.5"/>
+    <path d="M0 798H125M275 798H400" stroke="#e3e7ec" stroke-width="4"/>
+  </svg>`;
+
 const html = (s) => {
   const t = document.createElement('template');
   t.innerHTML = s.trim();
@@ -43,7 +88,13 @@ export function creeScan({ ouvrirFiche }) {
   const el = html(`
     <section class="scan" aria-label="Scanner un Pokémon">
       <video class="scan-video" playsinline muted autoplay></video>
+      <div class="scan-ecran" aria-hidden="true"></div>
       <div class="scan-zone" hidden><i></i><i></i><i></i><i></i></div>
+      <div class="pdx-verre" aria-hidden="true"></div>
+      <div class="pdx-bande" aria-hidden="true"></div>
+      <div class="pdx-lentille" aria-hidden="true"></div>
+      <div class="pdx-haut" aria-hidden="true">${coque('h')}</div>
+      <div class="pdx-bas" aria-hidden="true">${coque('b')}</div>
       <p class="scan-aide">Touchez l'image pour placer le cadre sur le Pokémon</p>
       <p class="scan-etat" hidden></p>
       <p class="scan-toast" role="status" hidden></p>
@@ -54,13 +105,16 @@ export function creeScan({ ouvrirFiche }) {
   const etat = el.querySelector('.scan-etat');
   const toast = el.querySelector('.scan-toast');
   const btn = el.querySelector('.scan-btn');
+  const ecran = el.querySelector('.scan-ecran');
 
   let flux = null;        // MediaStream de la caméra
   let ouverture = false;  // demande d'accès en cours
   let actif = false;      // la vue est affichée
   let occupe = false;     // une analyse est en cours
   // Cadre en FRACTIONS de la vue : il reste au même endroit si la vue change de taille.
-  const zone = { cx: 0.5, cy: 0.45, cote: COTE_DEFAUT };
+  // `cy` est posé au premier affichage, au milieu de l'écran entre les deux coques ;
+  // `px` est le côté réellement affiché, que la capture relit.
+  const zone = { cx: 0.5, cy: null, cote: COTE_DEFAUT, px: 0 };
 
   // ------------------------------------------------------------ messages
   const montreEtat = (texte) => { etat.textContent = texte ?? ''; etat.hidden = !texte; };
@@ -135,8 +189,31 @@ export function creeScan({ ouvrirFiche }) {
   }
 
   // ------------------------------------------------------------ caméra
+  // ------------------------------------------------------------ ouverture du Pokédex
+  //
+  // À chaque ENTRÉE dans la vue, le Pokédex s'ouvre : fermé plein écran, sa lentille
+  // se charge et lance des ondes, un reflet balaie la bande de verre, puis les deux
+  // coques s'écartent sur un liseré lumineux et l'écran de verre s'éclaircit jusqu'à
+  // laisser voir la caméra. Tout est en CSS : la classe `ferme` pose l'état de départ
+  // sans transition, `ouvre` porte les transitions et animations de la séquence.
+  // Un rendu survenu en cours de route (capture cochée dans la fiche) ne la relance
+  // pas : seule une entrée réelle, `actif` passant de faux à vrai, le fait.
+  let minuteOuverture = 0;
+  function animeOuverture() {
+    clearTimeout(minuteOuverture);
+    el.classList.remove('ouvre');
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { el.classList.remove('ferme'); return; }
+    el.classList.add('ferme');
+    void el.offsetWidth; // valide l'état fermé avant de lancer les transitions
+    el.classList.add('ouvre');
+    el.classList.remove('ferme');
+    minuteOuverture = setTimeout(() => el.classList.remove('ouvre'), 2000);
+  }
+
   async function demarre() {
+    const entree = !actif;
     actif = true;
+    if (entree) animeOuverture();
     majZone();
     prepareModele().catch(() => {});
     if (flux) { video.play().catch(() => {}); return; }
@@ -160,7 +237,8 @@ export function creeScan({ ouvrirFiche }) {
       if (!actif) { f.getTracks().forEach((t) => t.stop()); return; }
       flux = f;
       video.srcObject = f;
-      await video.play().catch(() => {});
+      // Sans attendre play() : sa promesse peut tarder, et le message resterait affiché.
+      video.play().catch(() => {});
       montreEtat(null);
       majZone();
     } catch (e) {
@@ -196,12 +274,16 @@ export function creeScan({ ouvrirFiche }) {
   function majZone() {
     const w = el.clientWidth, h = el.clientHeight;
     if (!w || !h) return;
-    const cote = zone.cote * Math.min(w, h);
-    // Le cadre reste entièrement dans la vue.
+    // Le cadre reste dans l'ÉCRAN du Pokédex, entre les deux coques : placé dessous,
+    // il désignerait une zone que l'on ne voit pas.
+    const haut = ecran.offsetTop, bas = haut + ecran.offsetHeight;
+    const cote = Math.min(zone.cote * Math.min(w, bas - haut), w, bas - haut);
+    if (zone.cy === null) zone.cy = (haut + bas) / 2 / h;
     const cx = Math.min(Math.max(zone.cx * w, cote / 2), w - cote / 2);
-    const cy = Math.min(Math.max(zone.cy * h, cote / 2), h - cote / 2);
+    const cy = Math.min(Math.max(zone.cy * h, haut + cote / 2), bas - cote / 2);
     zone.cx = cx / w;
     zone.cy = cy / h;
+    zone.px = cote;
     Object.assign(zoneEl.style, {
       width: `${cote}px`, height: `${cote}px`, left: `${cx - cote / 2}px`, top: `${cy - cote / 2}px`,
     });
@@ -290,7 +372,7 @@ export function creeScan({ ouvrirFiche }) {
     return {
       cx: (zone.cx * w - ox) / e,
       cy: (zone.cy * h - oy) / e,
-      cote: (zone.cote * Math.min(w, h)) / e,
+      cote: zone.px / e,
     };
   }
 

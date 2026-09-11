@@ -391,6 +391,45 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
   sous `SEUIL` ou si c'est la classe « rien ». Dans le groupe retenu, une forme
   n'est ouverte que si elle pèse plus de la moitié du groupe, sinon l'espèce.
 
+### Design : un Pokédex de Kalos qui s'ouvre
+
+- La vue est un **Pokédex de Kalos ouvert**, d'après l'illustration officielle fournie :
+  une coque rouge en haut, une en bas, et entre elles l'écran de verre où passe la
+  caméra. Le déclencheur Poké Ball est logé dans l'échancrure de la coque du bas.
+- **Une seule coque dessinée** (`coque()` dans scan.js), retournée en CSS pour le bas.
+  Le dessin fait 400×800 : fermé, le Pokédex remplit l'écran et on en voit presque
+  tout ; ouvert, seule la bande basse de 150 unités reste visible (`--cap-h`).
+  - Les rainures proches de la lentille sont **découpées à cette bande**
+    (`clipPath`) : entières, elles dessinaient au milieu de l'écran fermé un grand
+    dôme qui faisait Poké Ball et non Pokédex. Les grandes rainures, elles, ne
+    tombent que dans les coins de l'écran fermé.
+  - L'échancrure est laissée **transparente** : fermé, les deux forment la lentille ;
+    ouvert, l'écran y déborde.
+- `.scan` est un **conteneur de taille** (`container-type: size`) : `--cap-h` vaut
+  `100cqw × 150/400`, la hauteur réelle de la bande du dessin à la largeur de l'écran.
+  Déclarée sur `.scan` mais résolue chez ses enfants, qui ont bien `.scan` pour
+  conteneur.
+- **Le cadre de visée reste dans l'écran**, entre les coques : `.scan-ecran`,
+  invisible, sert de repère à `majZone`. Placé sous une coque, il désignerait une
+  zone que l'on ne voit pas. `zone.px` garde le côté réellement affiché, que la
+  capture relit.
+- **La séquence d'ouverture** (~1,8 s), rejouée à chaque ENTRÉE dans la vue, jamais
+  sur un simple rendu (`actif` passant de faux à vrai) :
+  1. fermé : lentille qui se charge et lance deux ondes, reflet qui balaie la bande
+     de verre ;
+  2. les coques s'écartent (`cubic-bezier(.77,0,.18,1)`) sur un liseré lumineux ;
+  3. le verre quadrillé s'éclaircit sur la caméra, un faisceau descend l'écran ;
+  4. le cadre, l'aide et le déclencheur arrivent.
+  Tout est en CSS : `ferme` pose l'état de départ sans transition, `ouvre` porte les
+  transitions et animations, retirée au bout de 2 s. `prefers-reduced-motion` saute
+  directement à l'état ouvert.
+- Pour **vérifier une étape** dans le panneau de prévisualisation, où les
+  animations ne tournent pas : `document.getAnimations()`, tout mettre en pause, puis
+  régler `currentTime` à l'instant voulu avant la capture.
+- Le message d'état attend l'ouverture, et `demarre` n'attend plus `video.play()`
+  pour l'effacer : sa promesse peut tarder, et « Ouverture de la caméra… » restait
+  affiché par-dessus l'image.
+
 ### Moteur
 
 - **onnxruntime-web** (`onnxruntime-web/wasm`), première dépendance d'exécution de

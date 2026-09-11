@@ -2130,6 +2130,38 @@ function slide(dir, dx = 0) {
 
 // ---------- Sauvegarde ----------
 
+// Remet un fichier JSON à l'utilisateur, sur le web comme dans l'appli iPhone.
+//
+// Sur le web, un lien `download` vers un blob suffit. Dans l'appli, la vue web de
+// Capacitor l'IGNORE en silence : aucun téléchargement, aucune erreur — les boutons
+// Exporter ne faisaient tout simplement rien sur l'iPhone. On y écrit donc le
+// fichier dans le cache (@capacitor/filesystem), puis on ouvre la feuille de partage
+// d'iOS (@capacitor/share) : « Enregistrer dans Fichiers », AirDrop, Mail…
+// Les plugins sont lus sur `window.Capacitor`, comme Haptics : rien à embarquer
+// dans le bundle web.
+async function remetFichier(nom, objet) {
+  const texte = JSON.stringify(objet);
+  const { Filesystem, Share } = window.Capacitor?.Plugins ?? {};
+  if (window.Capacitor?.isNativePlatform?.() && Filesystem && Share) {
+    try {
+      const { uri } = await Filesystem.writeFile({ path: nom, data: texte, directory: 'CACHE', encoding: 'utf8' });
+      await Share.share({ title: nom, files: [uri] });
+    } catch (e) {
+      // Refermer la feuille de partage n'est pas une erreur.
+      if (!/cancel/i.test(e?.message ?? '')) alert(`Export impossible : ${e?.message ?? e}`);
+    }
+    return;
+  }
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([texte], { type: 'application/json' })),
+    download: nom,
+  });
+  a.click();
+  // Libéré au tour suivant : révoqué aussitôt, certains navigateurs n'ont pas
+  // encore lu le blob quand le téléchargement démarre.
+  setTimeout(() => URL.revokeObjectURL(a.href), 0);
+}
+
 function exportProgress() {
   // Format actuel : objet. Les anciens exports étaient un simple tableau d'IDs.
   const payload = {
@@ -2138,13 +2170,7 @@ function exportProgress() {
     boxes: state.boxes,
     order: state.order,
   };
-  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-  const a = Object.assign(document.createElement('a'), {
-    href: URL.createObjectURL(blob),
-    download: `pcbox-${new Date().toISOString().slice(0, 10)}.json`,
-  });
-  a.click();
-  URL.revokeObjectURL(a.href);
+  remetFichier(`pcbox-${new Date().toISOString().slice(0, 10)}.json`, payload);
 }
 function importProgress() {
   const input = Object.assign(document.createElement('input'), { type: 'file', accept: '.json' });
@@ -2314,13 +2340,7 @@ function poolAttaques(key, jeu) {
 
 function exportEquipes() {
   const payload = { type: 'boitespc-equipes', v: 1, equipes: state.equipes };
-  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-  const a = Object.assign(document.createElement('a'), {
-    href: URL.createObjectURL(blob),
-    download: `equipes-${new Date().toISOString().slice(0, 10)}.json`,
-  });
-  a.click();
-  URL.revokeObjectURL(a.href);
+  remetFichier(`equipes-${new Date().toISOString().slice(0, 10)}.json`, payload);
 }
 
 // L'import FUSIONNE : il remplace les équipes des versions présentes dans le

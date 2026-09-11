@@ -1552,6 +1552,20 @@ vient des sprites**, pas du décor. Toutes les valeurs sont des variables dans `
   Export/import JSON prévus pour survivre aux réinstallations tous les 7 jours.
 - L'export est un objet `{ caught, boxes }`. Les anciens exports étaient un tableau nu
   d'IDs : l'import accepte **les deux**, ne pas retirer ce repli.
+- **Les deux exports (boîtes, équipes) passent par `remetFichier`.** Sur le web, un
+  lien `download` vers un blob. **Dans l'appli iPhone, ce lien ne fait RIEN** : la vue
+  web de Capacitor ignore l'attribut `download`, sans erreur — les boutons Exporter
+  y étaient inertes. On écrit donc le fichier dans le cache avec
+  **`@capacitor/filesystem`**, puis on ouvre la feuille de partage d'iOS avec
+  **`@capacitor/share`** (« Enregistrer dans Fichiers », AirDrop…). Refermer la
+  feuille n'est pas une erreur. Ne pas revenir au seul lien `download`.
+  - Les plugins sont lus sur `window.Capacitor.Plugins`, comme Haptics : aucun
+    import, rien dans le bundle web.
+  - Ajouter un plugin impose `npx cap update ios` : c'est ce qui l'inscrit dans
+    `ios/App/CapApp-SPM/Package.swift`, versionné. Sans cette ligne, l'IPA est
+    compilé sans le code natif et `Capacitor.Plugins.X` n'existe pas.
+  - L'import, lui, marchait déjà : un `<input type="file">` ouvre bien le
+    sélecteur de fichiers dans l'appli.
 - Marges de sécurité iOS via `env(safe-area-inset-*)` : à conserver sur la barre du haut
   et le bas de page.
 - Respecter `prefers-reduced-motion` (déjà en place en fin de feuille de style).

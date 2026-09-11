@@ -471,9 +471,11 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
   - Entraîné sur des scènes simulées (`ml/scenes.py`) : 0 à 4 Pokémon par image,
     sprites, rendus 3D et cartes tournées, leurres photographiques. Boîtes exactes,
     relevées sur la transparence ou sur la fenêtre d'illustration transformée.
-  - Mesures sur 1 200 scènes de test (cartes d'extensions jamais vues) : au seuil
-    0,4, **93,5 % des cadres justes pour 81,7 % des Pokémon trouvés** ; au seuil 0,25,
-    rappel ~90 %. 0,014 faux cadre par image vide.
+  - **Réentraîné (v2) avec des objets COCO posés comme leurres** : le premier
+    détecteur, jamais confronté à de vrais objets, en prenait beaucoup pour des
+    Pokémon. Mesures sur 1 200 scènes de test PEUPLÉES d'objets jamais vus, au seuil
+    0,5 de naissance d'une piste — avant → après : **précision 79,0 → 96,1 %**, rappel
+    68,5 → 70,6 %, **faux cadres par image vide 0,59 → 0,035** (17 fois moins).
 - **Un cadre ne s'affiche qu'à 90 % de certitude** (`SEUIL_AFFICHAGE`), demande
   explicite après essai sur le téléphone : des objets quelconques y apparaissaient
   encadrés. Deux raisons, corrigées ensemble :

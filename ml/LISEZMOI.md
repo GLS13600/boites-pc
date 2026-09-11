@@ -144,6 +144,25 @@ python ml/entrainer.py D:/Code/Jeu-scan --epoques 10 --lr 2e-4 --ouvriers 14 \
 - Détecteur : 0 à 3 objets COCO détourés posés SANS boîte dans chaque scène, photos
   COCO en fond ; nouveau jeu d'évaluation `eval-detection-v2.pt` peuplé d'objets de
   test.
+- **Piège : le disque dur.** `D:` est un disque MÉCANIQUE (WD 1 To). Avec les
+  18 000 petits PNG d'objets lus au hasard par 12 processus, le détecteur tombait à
+  ~60 img/s, carte graphique à 2 %, processeur à 23 % : tout attendait le disque.
+  Les données d'entraînement ont été copiées sur le SSD NVMe `A:\Jeu-scan` (5,4 Go
+  en 106 s) et `classes.json` y a été régénéré (`python ml/classes.py A:/Jeu-scan`),
+  pour que les chemins des références pointent aussi vers le SSD. **Entraîner depuis
+  `A:/Jeu-scan`** ; `D:/Code/Jeu-scan` garde l'original, l'environnement Python et
+  les runs. Effet : ~215 img/s au lieu de ~60, 15 époques en ~30 min.
+- Détecteur v2 (15 époques depuis v1, lr 1e-3, 12 processus), comparé à v1 sur le
+  MÊME jeu `eval-detection-v2.pt`, peuplé d'objets de test :
+
+  | seuil | v1 précision / rappel / faux par image vide | v2 précision / rappel / faux par image vide |
+  |---|---|---|
+  | 0,3 | 64,9 / 84,3 / 1,007 | 87,5 / 84,6 / 0,181 |
+  | 0,4 | 73,4 / 78,2 / 0,757 | 93,7 / 79,0 / 0,097 |
+  | 0,5 | 79,0 / 68,5 / 0,590 | **96,1 / 70,6 / 0,035** |
+
+  Les chiffres « 93,5 % à 0,4 » du v1 plus haut valaient sur des scènes SANS objets
+  réels : ils masquaient le défaut constaté sur le téléphone.
 
 ## Détecteur (suivi en continu)
 

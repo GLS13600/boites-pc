@@ -1,5 +1,8 @@
 {
   "appId": "com.guillaume.boitespc",
   "appName": "Guiguidex",
-  "webDir": "dist"
+  "webDir": "dist",
+  "ios": {
+    "scrollEnabled": false
+  }
 }

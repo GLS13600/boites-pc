@@ -8,6 +8,22 @@ d'`index.html` pour le navigateur et l'ajout à l'écran d'accueil depuis Safari
 `CFBundleName` reste à `$(PRODUCT_NAME)`, soit « App » : c'est un nom interne, jamais
 affiché.
 
+### Réglages natifs iOS
+
+- **Portrait seulement sur iPhone** : `UISupportedInterfaceOrientations` d'`Info.plist`
+  ne garde que `UIInterfaceOrientationPortrait` (les deux paysages retirés, à la
+  demande). La liste `~ipad` est laissée intacte : iPadOS exige toutes les
+  orientations pour le multitâche. La version web, elle, ne peut pas bloquer la
+  rotation — Safari iOS n'implémente pas `screen.orientation.lock`.
+- **`ios.scrollEnabled: false`** dans `capacitor.config.json` (recopié par
+  `npx cap sync ios` dans le workflow). Sans lui, la vue web native d'iOS gardait son
+  propre défilement élastique : un appui sur la Poké Ball du scan faisait descendre
+  puis remonter toute la page, en laissant voir une bande blanche en haut de l'écran.
+  Côté web rien ne défilait — `html`/`body` sont en `overflow: hidden` et
+  `overscroll-behavior: none`, mesuré : `.vue` ne déborde pas —, le rebond venait
+  bien de la vue native. Les zones qui défilent (`.vue`, les panneaux) continuent de
+  défiler : ce réglage ne coupe que le défilement de la vue web elle-même.
+
 Application web perso pour suivre un Living Dex, présentée comme les boîtes PC des jeux
 Pokémon. Destinée à finir en `.ipa` sideloadée sur iPhone via Sideloadly.
 

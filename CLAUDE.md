@@ -563,7 +563,12 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
   panneau de prévisualisation, un clic à l'écran peut tomber à côté — son rendu est
   parfois réduit — : envoyer les `PointerEvent` directement en coordonnées de page.
 
-### Mode IA (bonus, en essai sur la branche `mode-ia`)
+### Mode IA (bonus, en essai)
+
+**Préparé sur la branche `mode-ia`, puis fusionné dans `main` le 13/09/2026 à la
+demande** : l'utilisateur ne pouvait pas installer d'IPA ce soir-là et voulait essayer
+le mode IA dans Safari, sur le site. Dans Safari il tourne sur le moteur web de
+secours : il y teste la logique (12 pistes, lots, cumul des vues), pas la puce.
 
 Troisième position du bouton de mode : **Auto → Manuel → IA**, voyant violet. Demandé
 comme un BONUS : isolé pour pouvoir être retiré, et fusionné avec le Manuel seulement

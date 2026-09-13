@@ -26,8 +26,16 @@ const MODELES = {
   detecteur: { chemin: 'scan/detecteur.onnx', largeur: 256, hauteur: 384, pas: 8 },
 };
 const PISTES_MAX = 12;
-const LOT_MAX = 8;                 // cadres envoyés ensemble au classifieur
-const SEUIL_NAISSANCE = 0.45, SEUIL_SUIVI = 0.25, MANQUES_MAX = 5;
+const LOT_MAX = 8;                 // cadres envoyés ensemble au classifieur, au plus
+// Temps accordé à la reconnaissance à chaque tour. Le lot s'y adapte d'après la durée
+// mesurée par cadre : 8 sur la puce de l'iPhone, 1 ou 2 sur le moteur web. Sans ce
+// budget, la détection attendait la fin de 8 analyses et les cadres suivaient mal.
+const BUDGET_MS = 200;
+// Naissance basse : sur une grille d'images à l'écran, Rondoudou ne dépassait pas 0,26–0,38.
+// Le risque de faux cadre est tenu par la reconnaissance (90 %, aucun objet accepté aux
+// mesures), et par la confirmation : deux détections avant d'analyser une piste.
+const SEUIL_NAISSANCE = 0.3, SEUIL_SUIVI = 0.25, MANQUES_MAX = 5;
+const CONFIRMATIONS = 2;
 const SEUIL_AFFICHAGE = 0.9;       // même exigence que le mode Auto
 const SEUIL_VUE_UNIQUE = 0.97;     // une seule vue suffit si elle est quasi certaine
 const VUES_MAX = 5;                // vues cumulées par piste
@@ -169,6 +177,7 @@ export function creeModeIA({ el, video, ecran, nomDe, poserPistes, estActif, est
   const plugin = window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins?.ScanIa : null;
   const moteur = plugin ? moteurNatif(plugin) : secours ? moteurWeb(secours) : null;
   let enCours = false, pistes = [], idPiste = 100_000;
+  let msParZone = 60; // durée mesurée d'une reconnaissance, lissée
 
   // Vue ↔ vidéo (aperçu en object-fit: cover), et zone analysée : le plus grand
   // rectangle aux proportions du détecteur, centré dans l'écran du Pokédex.
@@ -207,8 +216,10 @@ export function creeModeIA({ el, video, ecran, nomDe, poserPistes, estActif, est
         libres.delete(meilleure);
         for (const k of ['x', 'y', 'w', 'h']) meilleure[k] += (b[k] - meilleure[k]) * 0.6;
         meilleure.manques = 0;
+        meilleure.s = b.s;
+        meilleure.vu++;
       } else if (b.s >= SEUIL_NAISSANCE && pistes.length < PISTES_MAX) {
-        pistes.push({ id: idPiste++, ...b, manques: 0, etat: 'nouvelle', key: null, nom: '', vues: [], essais: 0, verifieA: 0 });
+        pistes.push({ id: idPiste++, ...b, manques: 0, vu: 1, etat: 'nouvelle', key: null, nom: '', vues: [], essais: 0, verifieA: 0 });
       }
     }
     for (const p of libres) p.manques++;
@@ -217,12 +228,13 @@ export function creeModeIA({ el, video, ecran, nomDe, poserPistes, estActif, est
 
   // Les pistes à regarder ce tour-ci : les pas encore reconnues (grandes d'abord), puis
   // les reconnues dont la vérification a vieilli. Les ignorées reviennent toutes les 3 s.
-  function aVerifier() {
+  function aVerifier(n) {
     const t = performance.now();
-    const attente = pistes.filter((p) => p.etat === 'nouvelle').sort((a, b) => b.w * b.h - a.w * a.h);
+    const enAttente = pistes.filter((p) => p.etat === 'nouvelle' && p.vu >= CONFIRMATIONS)
+      .sort((a, b) => b.w * b.h - a.w * a.h);
     const vieilles = pistes.filter((p) => (p.etat === 'reconnu' && t - p.verifieA > REVERIFIE_MS)
       || (p.etat === 'ignoree' && t - p.verifieA > 2 * REVERIFIE_MS));
-    return [...attente, ...vieilles].slice(0, LOT_MAX);
+    return [...enAttente, ...vieilles].slice(0, n);
   }
 
   function dessinDe(p, g) {
@@ -271,16 +283,25 @@ export function creeModeIA({ el, video, ecran, nomDe, poserPistes, estActif, est
         const r = await moteur.detecte(dessinDet);
         if (!estActif()) break;
         majPistes(boitesDe(r, g, dims.detecteur));
-        const lot = aVerifier();
+        const lot = aVerifier(Math.max(1, Math.min(LOT_MAX, Math.floor(BUDGET_MS / msParZone))));
         let msClasse = 0;
         if (lot.length) {
           const a = await moteur.analyse(lot.map((p) => dessinDe(p, g)));
           msClasse = a.ms;
+          msParZone = msParZone * 0.5 + (a.ms / lot.length) * 0.5;
           const C = CLASSES.length;
           lot.forEach((p, k) => { if (pistes.includes(p)) integre(p, softmax(a.logits, k, C)); });
         }
         if (!estActif()) break;
         poserPistes(pistes);
+        // Développement : état du mode IA, pour le vérifier sans téléphone. Retiré du build.
+        if (import.meta.env.DEV) {
+          window.__ia = {
+            detection: Math.round(r.ms), reconnaissance: Math.round(msClasse), lot: lot.length,
+            msParZone: Math.round(msParZone),
+            pistes: pistes.map((p) => ({ etat: p.etat, nom: p.nom, vu: p.vu, vues: p.vues.length, s: +p.s.toFixed(2) })),
+          };
+        }
         const reconnus = pistes.filter((p) => p.etat === 'reconnu').length;
         montreDiag(`IA · ${moteur.nom} · détection ${Math.round(r.ms)} ms · reconnaissance ${Math.round(msClasse)} ms`
           + ` (${lot.length}) · ${reconnus}/${pistes.length} reconnus`);

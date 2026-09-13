@@ -591,6 +591,27 @@ API** — exigence explicite.
 - Différences avec Auto : 12 pistes au lieu de 6, tous les cadres à vérifier partent
   **ensemble** au classifieur (8 par lot), et une piste n'est validée qu'en **cumulant
   les vues** (probabilités moyennées sur les 5 dernières ; une seule vue suffit à 0,97).
+- **Premier essai sur iPhone (Safari, 13/09)** : aucune erreur de reconnaissance, mais
+  détection lente, suivi saccadé, et sur une grille d'images à l'écran (Osselait,
+  Fantominus, Rondoudou, Voltali) seul Voltali était encadré. Mesuré sur une
+  reproduction : la reconnaissance donnait 91 à 99 % au bon Pokémon sur les quatre ;
+  c'était la DÉTECTION — Rondoudou à 0,38 (détecteur actuel) et 0,26 (détecteur IA en
+  cours), sous le seuil de naissance de 0,45. Corrections :
+  - **naissance à 0,3**, mais une piste n'est confiée au classifieur qu'après
+    **deux détections** (`CONFIRMATIONS`) ; le 90 % de la reconnaissance tient les faux ;
+  - **lot adapté au moteur** (`BUDGET_MS` = 200 ms de reconnaissance par tour, d'après la
+    durée mesurée par cadre) : sur le moteur web, 1 cadre par tour au lieu de 8, et la
+    détection garde son rythme (~60 ms) au lieu d'attendre ~2 s ;
+  - **scènes « ia2 »** du détecteur (`SCAN_DET=ia2`) : 22 % de **grilles d'écran**
+    (tuiles claires, 1 à 4 colonnes, grille coupée aux bords, tuiles d'objets réels),
+    et Pokémon gardés dès **35 % visibles** au lieu de 60 %. Reprise du détecteur IA sur
+    8 époques (`A:\Jeu-scan\suite-ia2.ps1`).
+  - Vérifié dans l'aperçu sur la reproduction : Rondoudou et Fantominus encadrés et
+    reconnus, lot 3 puis 1 (≈ 290 ms par cadre sur le moteur web).
+  - **Piège de l'aperçu** : panneau masqué, `document.hidden` vaut vrai et l'appli coupe
+    la caméra ; même forcé, le flux ne rend que des images de 2×2. Pour tester, forcer
+    `document.hidden`, substituer le canevas à la vidéo dans `drawImage` et annoncer
+    `videoWidth`/`videoHeight`. `window.__ia` expose l'état du mode en développement.
 - **WebGPU écarté** : actif dans WKWebView depuis iOS 26, mais onnxruntime-web ne le
   prend pas en charge sur iOS (issue microsoft/onnxruntime#22776).
 - **Modèles plus gros, entraînés pour ce mode seulement** (`ml/`) :

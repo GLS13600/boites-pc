@@ -11,10 +11,10 @@ import math
 import random
 
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter
 
 import donnees as D
-from detecteur import HAUTEUR, IA, LARGEUR
+from detecteur import HAUTEUR, IA, IA2, LARGEUR, MAX_BOITES
 
 NOMBRE = ((0, 0.12), (1, 0.43), (2, 0.25), (3, 0.12), (4, 0.08))
 if IA:
@@ -116,7 +116,55 @@ def objet_leurre(rnd, objets):
     return o
 
 
+def scene_grille(rnd, classes, fonds, objets=None):
+    """Grille d'images comme sur un écran — résultats de recherche, galerie, appli : des
+    Pokémon sur des tuiles claires, la grille décalée au hasard donc coupée aux bords.
+    Constat sur iPhone : sur une telle grille, seul Voltali était détecté."""
+    page = rnd.choice(((18, 18, 20), (40, 40, 44), (72, 72, 74), (240, 240, 240), (255, 255, 255), (28, 30, 58)))
+    img = Image.new('RGB', (LARGEUR, HAUTEUR), page)
+    d = ImageDraw.Draw(img)
+    colonnes = rnd.choice((1, 2, 2, 3, 3, 4))
+    ecart = int(rnd.uniform(0.015, 0.06) * LARGEUR)
+    large = (LARGEUR - ecart * (colonnes + 1)) / colonnes * rnd.uniform(0.85, 1.3)
+    haut = large * rnd.choice((1.0, 1.0, 1.15, 1.3, 0.8))
+    rayon = int(large * rnd.uniform(0, 0.08))
+    teinte = rnd.choice(((255, 255, 255), (255, 255, 255), (238, 238, 238), None))
+    y = rnd.uniform(-haut * 0.7, ecart)
+    x0 = rnd.uniform(-large * 0.5, ecart)
+    boites = []
+    while y < HAUTEUR:
+        x = x0
+        while x < LARGEUR:
+            fond_tuile = teinte or tuple(rnd.randint(150, 255) for _ in range(3))
+            d.rounded_rectangle((x, y, x + large, y + haut), radius=rayon, fill=fond_tuile)
+            t = rnd.random()
+            if t < 0.82 and len(boites) < MAX_BOITES:
+                obj, _ = objet_sprite(rnd, classes, min(large, haut) * rnd.uniform(0.7, 0.98))
+                px = int(x + (large - obj.width) / 2 + rnd.uniform(-0.04, 0.04) * large)
+                py = int(y + (haut - obj.height) / 2 + rnd.uniform(-0.04, 0.04) * haut)
+                img.paste(obj, (px, py), obj)
+                boite = [px, py, px + obj.width, py + obj.height]
+                visible = [max(0, boite[0]), max(0, boite[1]), min(LARGEUR, boite[2]), min(HAUTEUR, boite[3])]
+                aire = lambda r: max(0, r[2] - r[0]) * max(0, r[3] - r[1])
+                if aire(visible) >= 0.35 * aire(boite):
+                    boites.append(visible)
+            elif t < 0.92 and objets:
+                # Une tuile d'objet réel : une grille d'écran ne montre pas que des Pokémon.
+                o = objet_leurre(rnd, objets)
+                f = min(large, haut) * 0.85 / max(o.size)
+                o = o.resize((max(4, int(o.width * f)), max(4, int(o.height * f))), Image.BILINEAR)
+                img.paste(o, (int(x + (large - o.width) / 2), int(y + (haut - o.height) / 2)), o)
+            x += large + ecart
+        y += haut + ecart
+    if rnd.random() < 0.6:
+        img = D.trame_ecran(rnd, img)
+    img = D.prise_de_vue(rnd, img)
+    return img, boites
+
+
 def scene(rnd, classes, racine, cartes, fonds, objets=None):
+    if IA2 and rnd.random() < 0.22:
+        return scene_grille(rnd, classes, fonds, objets)
     fond = D.fond_aleatoire(rnd, fonds, HAUTEUR)
     ox = rnd.randint(0, HAUTEUR - LARGEUR)
     img = fond.crop((ox, 0, ox + LARGEUR, HAUTEUR))
@@ -150,13 +198,15 @@ def scene(rnd, classes, racine, cartes, fonds, objets=None):
                 obj, b = objet_sprite(rnd, classes, 250 * ECHELLE * reduction)
             bw, bh = b[2] - b[0], b[3] - b[1]
             # Position : le centre de la boîte dans l'image, jusqu'à 25 % hors cadre.
-            cx = rnd.uniform(bw * 0.25, LARGEUR - bw * 0.25) if bw < LARGEUR else LARGEUR / 2
-            cy = rnd.uniform(bh * 0.25, HAUTEUR - bh * 0.25) if bh < HAUTEUR else HAUTEUR / 2
+            # ia2 : un Pokémon peut sortir à moitié du cadre (coupé par le bord de l'écran).
+            bord = 0.0 if IA2 else 0.25
+            cx = rnd.uniform(bw * bord, LARGEUR - bw * bord) if bw < LARGEUR else LARGEUR / 2
+            cy = rnd.uniform(bh * bord, HAUTEUR - bh * bord) if bh < HAUTEUR else HAUTEUR / 2
             px, py = int(cx - (b[0] + b[2]) / 2), int(cy - (b[1] + b[3]) / 2)
             boite = [b[0] + px, b[1] + py, b[2] + px, b[3] + py]
             visible = [max(0, boite[0]), max(0, boite[1]), min(LARGEUR, boite[2]), min(HAUTEUR, boite[3])]
             aire = lambda r: max(0, r[2] - r[0]) * max(0, r[3] - r[1])
-            if aire(visible) < 0.6 * aire(boite) or any(iou(visible, o) > 0.35 for o in boites):
+            if aire(visible) < (0.35 if IA2 else 0.6) * aire(boite) or any(iou(visible, o) > 0.35 for o in boites):
                 continue
             if rnd.random() < 0.3:
                 ombre = Image.new('RGBA', obj.size, (0, 0, 0, 0))

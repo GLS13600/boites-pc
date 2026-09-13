@@ -21,7 +21,9 @@ import torch.nn.functional as F
 
 # Mode IA (SCAN_DET=ia) : entrée plus grande, pour les petits Pokémon d'une scène
 # peuplée. Sans la variable, le détecteur des modes Auto et Manuel, inchangé.
-IA = os.environ.get('SCAN_DET') == 'ia'
+IA = os.environ.get('SCAN_DET') in ('ia', 'ia2')
+# ia2 : mêmes dimensions, scènes enrichies de grilles d'écran et de Pokémon coupés.
+IA2 = os.environ.get('SCAN_DET') == 'ia2'
 LARGEUR, HAUTEUR = (384, 576) if IA else (256, 384)   # portrait, comme l'écran du Pokédex ouvert
 MAX_BOITES = 16 if IA else 8  # boîtes gardées par scène pour l'évaluation
 PAS = 8                       # une case de sortie = 8 px → grille 32 × 48

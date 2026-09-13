@@ -582,7 +582,9 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
   function dessinePistes() {
     // Seules les pistes reconnues s'affichent : plus de cadre « en attente » qui
     // encadrait n'importe quel objet le temps que le classifieur se prononce.
-    const visibles = pistes.filter((p) => p.etat === 'reconnu');
+    // Mode IA : aussi les cadres « en analyse » (Pokémon nettement détecté, pas encore
+    // reconnu). Le mode Auto ne produit jamais cet état.
+    const visibles = pistes.filter((p) => p.etat === 'reconnu' || p.etat === 'analyse');
     const vus = new Set();
     for (const p of visibles) {
       let n = pistesEl.querySelector(`[data-piste="${p.id}"]`);
@@ -592,6 +594,7 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
       }
       vus.add(n);
       n.classList.toggle('reconnu', p.etat === 'reconnu');
+      n.classList.toggle('analyse', p.etat === 'analyse');
       // Près du haut de l'écran, le nom passerait sous le bandeau d'aide ou sous la
       // coque : il se met alors SOUS le cadre.
       n.classList.toggle('nom-bas', p.y - ecran.offsetTop < 64);

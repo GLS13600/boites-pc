@@ -2211,6 +2211,12 @@ img {
 .scan-piste { animation: scan-apparait 220ms ease-out; }
 @keyframes scan-apparait { from { opacity: 0; transform: scale(1.15); } }
 .scan-piste.reconnu i { border-color: #6fe6ff; filter: drop-shadow(0 0 5px rgba(111, 230, 255, 0.8)); }
+/* Mode IA : cadre « en analyse », discret, en attendant la reconnaissance ; et plus de
+   transition CSS, les positions arrivant à chaque image d'affichage (elle ferait traîner). */
+.scan-piste.analyse i { border-color: rgba(255, 255, 255, 0.7); border-width: 2px; }
+.scan-piste.analyse { animation: scan-analyse 900ms ease-in-out infinite alternate; }
+@keyframes scan-analyse { from { opacity: 0.45; } to { opacity: 0.9; } }
+.scan.ia .scan-piste { transition: none; }
 .scan-piste b {
   position: absolute;
   left: 50%;

@@ -625,6 +625,35 @@ API** — exigence explicite.
   - Vérifié dans l'aperçu : détecteur rendu AVEUGLE, Pikachu trouvé et reconnu en 3 s par
     les fenêtres ; image sans Pokémon (fond texturé, disque, texte), aucun cadre ;
     grille, Rondoudou par une fenêtre et Fantominus par le détecteur, sans doublon.
+- **Troisième retour (13/09, ~20 h 40)** — Blindalys (n° 268) sur l'écran de Saphir
+  Alpha : reconnu à chaque appui sur la Poké Ball, jamais encadré en mode IA. Détecté
+  pourtant (0,63 et 0,56), mais la reconnaissance hésite avec Armulys (n° 266), son
+  jumeau, autour de 40–60 % : les 90 % n'étaient jamais atteints. Demande explicite
+  ensuite : un correctif GÉNÉRAL — un cadre sur chaque Pokémon détecté, un suivi fluide ;
+  la reconnaissance marche, on n'y touche pas. Fait :
+  - **Réponse constante** : une piste s'affiche aussi quand la moyenne de ses vues
+    désigne le même Pokémon trois fois d'affilée au seuil du bouton (0,4), sans que
+    « rien » dépasse 25 %. Le cadre manuel est analysé à 1 et 0,78, comme le bouton.
+  - **Doublons** : suppression des boîtes qui se recouvrent (IoU > 0,4 ou incluses à
+    70 %) et fusion des pistes sur un même Pokémon, en gardant la plus avancée et le cadre
+    du détecteur. Le test sur Blindalys montrait deux cadres pour un seul.
+  - **Changement de Pokémon** : une vue seule à 70 % pour un AUTRE Pokémon efface le
+    passé de la piste, et une détection ×2,5 plus grande ou plus petite n'est plus
+    rattachée. Sans ça, le cadre de Fantominus a suivi Pikachu ~4 s avec le mauvais nom.
+    Les pistes qui bougent sont revérifiées 2,5 fois plus souvent.
+  - **Suivi fluide** : les cadres glissent à chaque image d'affichage
+    (requestAnimationFrame) vers leur position prolongée par leur vitesse (300 ms au
+    plus), plus de transition CSS en mode IA. Sur un moteur lent, un tour sur deux ne
+    fait que détecter.
+  - **Cadre « en analyse »** : discret, sans nom, pulsant, sur une détection nette (0,55)
+    et confirmée (3 fois) en attente de reconnaissance. État `analyse`, que le mode Auto
+    ne produit jamais.
+  - Vérifié dans l'aperçu : capture de Blindalys, UN cadre « Blindalys » ; grille,
+    Rondoudou, Fantominus et Osselait sans nom erroné ; Pikachu en mouvement, nommé
+    correctement dès le changement de scène et suivi.
+  - **Le détecteur IA (384×576) est trop lent pour le moteur web** : ~360 ms par image en
+    WASM contre ~50 ms pour l'actuel (`ml/vitesse-web.mjs`). Dans Safari, le mode IA
+    garde le détecteur rapide ; le détecteur IA est pour la puce (IPA).
   - **Piège de l'aperçu** : panneau masqué, `document.hidden` vaut vrai et l'appli coupe
     la caméra ; même forcé, le flux ne rend que des images de 2×2. Pour tester, forcer
     `document.hidden`, substituer le canevas à la vidéo dans `drawImage` et annoncer

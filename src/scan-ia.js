@@ -40,14 +40,33 @@ const SEUIL_NAISSANCE = 0.3, SEUIL_SUIVI = 0.25, MANQUES_MAX = 5;
 const CONFIRMATIONS = 2;
 const SEUIL_AFFICHAGE = 0.9;       // même exigence que le mode Auto
 const SEUIL_VUE_UNIQUE = 0.97;     // une seule vue suffit si elle est quasi certaine
+// …ou une réponse CONSTANTE : le même Pokémon en tête de la moyenne trois fois d'affilée,
+// au seuil du bouton (0,4), sans que « rien » pèse. Blindalyce, sur l'écran de Saphir
+// Alpha, partageait ~40 % avec Chrysacier, son jumeau : le bouton le trouvait à chaque
+// fois, les 90 % ne l'atteignaient jamais, et le mode IA n'affichait aucun cadre.
+const SEUIL_CONSTANT = 0.4, REPONSES_CONSTANTES = 3, RIEN_CONSTANT = 0.25;
 const VUES_MAX = 5;                // vues cumulées par piste
-const REFUS_APRES = 3;             // vues sans atteindre le seuil : piste ignorée (revue toutes les 3 s)
+const REFUS_APRES = 5;             // vues sans être reconnue : piste ignorée (revue toutes les 3 s)
 const RIEN_MAX = 0.6;              // « rien » à 60 % sur deux vues : ignorée sans attendre
-// Balayage par fenêtres : dès 0,6 une fenêtre ouvre ou nourrit une piste, qui ne s'affiche
-// qu'aux mêmes 90 % cumulés que les autres.
-const SEUIL_FENETRE = 0.6;
+// Balayage par fenêtres : dès 0,35 une fenêtre ouvre ou nourrit une piste, qui ne s'affiche
+// qu'aux mêmes conditions que les autres (90 % cumulés, ou réponse constante).
+const SEUIL_FENETRE = 0.35;
 const FENETRE_DUREE_MS = 4000;     // une piste née d'une fenêtre vit ce temps sans détection
 const REVERIFIE_MS = 1500;
+// Doublons : deux boîtes (ou deux pistes) désignent le même Pokémon au-delà de ce
+// recouvrement, ou quand l'une est contenue à 70 % dans l'autre.
+const DOUBLON_IOU = 0.4, DOUBLON_INCLUS = 0.7;
+// Une vue seule qui désigne un AUTRE Pokémon au moins à ce niveau efface le passé de la
+// piste : le Pokémon a changé sous le cadre. Plus haut que les ~40–60 % d'hésitation entre
+// jumeaux (Blindalys / Armulys), pour ne pas effacer une piste qui hésite.
+const CHANGEMENT = 0.7;
+// Rattacher une détection à une piste : pas si sa taille change de plus de ×2,5.
+const RAPPORT_TAILLE = 2.5;
+// Cadre « en analyse » : détection nette et confirmée, pas encore reconnue.
+const ANALYSE_SCORE = 0.55, ANALYSE_VU = 3;
+// Suivi : part du chemin parcourue par image d'affichage (à 60 i/s), et prolongement
+// du mouvement entre deux analyses, au plus ce temps-là.
+const GLISSE = 0.3, PREDICTION_MS = 300, VITESSE_MAX = 2; // px par ms
 const IMAGENET = { moyenne: [0.485, 0.456, 0.406], ecart: [0.229, 0.224, 0.225] };
 const BRUT = { moyenne: [0, 0, 0], ecart: [1, 1, 1] };
 
@@ -94,6 +113,15 @@ function moyenneVues(vues) {
   for (const v of vues) for (let i = 0; i < p.length; i++) p[i] += v[i] / vues.length;
   return p;
 }
+
+// Part de la plus petite des deux boîtes couverte par l'autre.
+const inclusion = (a, b) => {
+  const x0 = Math.max(a.x, b.x), y0 = Math.max(a.y, b.y);
+  const x1 = Math.min(a.x + a.w, b.x + b.w), y1 = Math.min(a.y + a.h, b.y + b.h);
+  const inter = Math.max(0, x1 - x0) * Math.max(0, y1 - y0);
+  return inter / Math.max(1e-6, Math.min(a.w * a.h, b.w * b.h));
+};
+const doublon = (a, b) => iou(a, b) > DOUBLON_IOU || inclusion(a, b) > DOUBLON_INCLUS;
 
 const iou = (a, b) => {
   const x0 = Math.max(a.x, b.x), y0 = Math.max(a.y, b.y);
@@ -188,7 +216,7 @@ export function creeModeIA({ el, video, ecran, nomDe, zoneVue, poserPistes, estA
   const moteur = plugin ? moteurNatif(plugin) : secours ? moteurWeb(secours) : null;
   let enCours = false, pistes = [], idPiste = 100_000;
   let msParZone = 60; // durée mesurée d'une reconnaissance, lissée
-  let cycle = 0, iTuile = 0, alterne = 0;
+  let cycle = 0, iTuile = 0, iZone = 0, alterne = 0, tour = 0, rafId = 0, dernierRaf = 0;
 
   // Vue ↔ vidéo (aperçu en object-fit: cover), et zone analysée : le plus grand
   // rectangle aux proportions du détecteur, centré dans l'écran du Pokédex.
@@ -212,7 +240,13 @@ export function creeModeIA({ el, video, ecran, nomDe, zoneVue, poserPistes, estA
       const cx = g.x0 + (gx + r.decalage[i]) * det.pas * f, cy = g.y0 + (gy + r.decalage[n + i]) * det.pas * f;
       boites.push({ x: cx - w / 2, y: cy - h / 2, w, h, s });
     }
-    return boites.sort((a, b) => b.s - a.s).slice(0, PISTES_MAX);
+    // Un même Pokémon donne parfois deux pics (deux tailles de boîte) : on garde le plus sûr.
+    const gardees = [];
+    for (const b of boites.sort((a, c) => c.s - a.s)) {
+      if (!gardees.some((k) => doublon(k, b))) gardees.push(b);
+      if (gardees.length >= PISTES_MAX) break;
+    }
+    return gardees;
   }
 
   const actives = () => pistes.filter((p) => p.etat !== 'ignoree').length;
@@ -240,7 +274,10 @@ export function creeModeIA({ el, video, ecran, nomDe, zoneVue, poserPistes, estA
       let meilleure = null, recouvre = 0.15;
       for (const p of libres) {
         const u = iou(p, b);
-        if (u > recouvre) { recouvre = u; meilleure = p; }
+        // Taille trop différente : ce n'est pas le même objet, même s'ils se recouvrent (un
+        // petit Pokémon posé là où était un grand).
+        const rapport = (b.w * b.h) / Math.max(1, p.w * p.h);
+        if (u > recouvre && rapport < RAPPORT_TAILLE && rapport > 1 / RAPPORT_TAILLE) { recouvre = u; meilleure = p; }
       }
       // Une piste née d'une fenêtre est plus grande que son Pokémon : une détection dont le
       // centre tombe dedans lui revient, et lui donne un cadre à sa taille.
@@ -251,7 +288,16 @@ export function creeModeIA({ el, video, ecran, nomDe, zoneVue, poserPistes, estA
       }
       if (meilleure) {
         libres.delete(meilleure);
-        for (const k of ['x', 'y', 'w', 'h']) meilleure[k] += (b[k] - meilleure[k]) * 0.6;
+        const avant = { x: meilleure.x, y: meilleure.y };
+        for (const k of ['x', 'y', 'w', 'h']) meilleure[k] += (b[k] - meilleure[k]) * 0.8;
+        // Vitesse du cadre, lissée : l'affichage prolonge le mouvement entre deux analyses.
+        const dt = t - (meilleure.majA ?? t);
+        if (dt > 0 && dt < 1000) {
+          const borne = (v) => Math.max(-VITESSE_MAX, Math.min(VITESSE_MAX, v));
+          meilleure.vx = borne(0.5 * (meilleure.vx ?? 0) + 0.5 * (meilleure.x - avant.x) / dt);
+          meilleure.vy = borne(0.5 * (meilleure.vy ?? 0) + 0.5 * (meilleure.y - avant.y) / dt);
+        }
+        meilleure.majA = t;
         meilleure.manques = 0;
         meilleure.s = b.s;
         meilleure.vu++;
@@ -259,8 +305,60 @@ export function creeModeIA({ el, video, ecran, nomDe, zoneVue, poserPistes, estA
         ajoute({ ...b, vu: 1 });
       }
     }
-    for (const p of libres) p.manques++;
+    for (const p of libres) { p.manques++; p.vx = (p.vx ?? 0) * 0.5; p.vy = (p.vy ?? 0) * 0.5; }
     pistes = pistes.filter((p) => p.manques < MANQUES_MAX || (p.fenetre && p.vivantJusqua > t));
+    fusionne();
+  }
+
+  // Deux pistes sur le même Pokémon (une du détecteur, une d'une fenêtre, ou deux boîtes
+  // successives) n'en font qu'une : on garde la plus avancée — reconnue, puis la plus vue —
+  // avec le cadre du détecteur plutôt que celui, trop grand, d'une fenêtre.
+  function fusionne() {
+    const rang = (p) => (p.etat === 'reconnu' ? 3 : p.etat === 'nouvelle' ? 2 : 1) * 100 + p.vues.length * 10 + p.s;
+    const actives_ = pistes.filter((p) => p.etat !== 'ignoree').sort((a, b) => rang(b) - rang(a));
+    const retirees = new Set();
+    for (let i = 0; i < actives_.length; i++) {
+      const a = actives_[i];
+      if (retirees.has(a)) continue;
+      for (let j = i + 1; j < actives_.length; j++) {
+        const b = actives_[j];
+        if (retirees.has(b) || !doublon(a, b)) continue;
+        // Deux Pokémon DIFFÉRENTS reconnus l'un sur l'autre (un petit devant un grand) : on
+        // ne fusionne pas des réponses qui se contredisent.
+        if (a.etat === 'reconnu' && b.etat === 'reconnu' && a.key !== b.key) continue;
+        if (a.fenetre && !b.fenetre) Object.assign(a, { x: b.x, y: b.y, w: b.w, h: b.h, s: b.s, fenetre: false, manques: 0 });
+        if (!a.vues.length && b.vues.length) Object.assign(a, { vues: b.vues, reponses: b.reponses });
+        retirees.add(b);
+      }
+    }
+    if (retirees.size) pistes = pistes.filter((p) => !retirees.has(p));
+  }
+
+  // Affichage : chaque cadre glisse vers sa position, prolongée par sa vitesse, à chaque
+  // image d'affichage — le suivi paraît continu même quand l'analyse ne tourne que 3 fois
+  // par seconde. Les pistes nettement détectées mais pas encore reconnues ont un cadre
+  // « en analyse », sans nom.
+  function affiche(t = performance.now()) {
+    const dt = dernierRaf ? Math.min(100, t - dernierRaf) : 16;
+    dernierRaf = t;
+    const k = 1 - Math.pow(1 - GLISSE, dt / 16);
+    const vues = [];
+    for (const p of pistes) {
+      const avance = Math.min(PREDICTION_MS, t - (p.majA ?? t));
+      const x = p.x + (p.vx ?? 0) * avance, y = p.y + (p.vy ?? 0) * avance;
+      if (p.ax === undefined) Object.assign(p, { ax: x, ay: y, aw: p.w, ah: p.h });
+      p.ax += (x - p.ax) * k; p.ay += (y - p.ay) * k; p.aw += (p.w - p.aw) * k; p.ah += (p.h - p.ah) * k;
+      const enAnalyse = p.etat === 'nouvelle' && !p.fenetre && p.s >= ANALYSE_SCORE && p.vu >= ANALYSE_VU;
+      if (p.etat === 'reconnu' || enAnalyse) {
+        vues.push({ ...p, x: p.ax, y: p.ay, w: p.aw, h: p.ah, etat: enAnalyse ? 'analyse' : p.etat });
+      }
+    }
+    poserPistes(vues);
+  }
+  function animeAffichage(t) {
+    if (!enCours) { rafId = 0; return; }
+    affiche(t);
+    rafId = requestAnimationFrame(animeAffichage);
   }
 
   // Les pistes à regarder ce tour-ci : les pas encore reconnues — celles nées d'une fenêtre
@@ -272,8 +370,12 @@ export function creeModeIA({ el, video, ecran, nomDe, zoneVue, poserPistes, estA
     const priorite = (p) => (p.fenetre ? 2 : p.s);
     const enAttente = pistes.filter((p) => p.etat === 'nouvelle' && (p.vu >= CONFIRMATIONS || p.fenetre))
       .sort((a, b) => priorite(b) - priorite(a));
-    const vieilles = pistes.filter((p) => (p.etat === 'reconnu' && t - p.verifieA > REVERIFIE_MS)
-      || (p.etat === 'ignoree' && t - p.verifieA > 2 * REVERIFIE_MS));
+    // Une piste reconnue qui BOUGE est revérifiée plus souvent : c'est là qu'un autre
+    // Pokémon peut prendre sa place. Les plus anciennement vérifiées d'abord.
+    const delai = (p) => (Math.hypot(p.vx ?? 0, p.vy ?? 0) > 0.15 ? REVERIFIE_MS * 0.4 : REVERIFIE_MS);
+    const vieilles = pistes.filter((p) => (p.etat === 'reconnu' && t - p.verifieA > delai(p))
+      || (p.etat === 'ignoree' && t - p.verifieA > 2 * REVERIFIE_MS))
+      .sort((a, b) => a.verifieA - b.verifieA);
     return [...enAttente, ...vieilles].slice(0, n);
   }
 
@@ -284,7 +386,10 @@ export function creeModeIA({ el, video, ecran, nomDe, zoneVue, poserPistes, estA
     for (let i = 0; i < k; i++) {
       const etape = cycle++ % 3, z = zoneVue?.();
       if (etape === 0 && z) {
-        sortie.push({ x: z.cx - z.cote / 2, y: z.cy - z.cote / 2, w: z.cote, h: z.cote });
+        // Le cadre manuel, tel quel puis resserré à 78 %, en alternance : les deux cadrages
+        // du bouton, qui reconnaît si bien.
+        const c = z.cote * (iZone++ % 2 ? 0.78 : 1);
+        sortie.push({ x: z.cx - c / 2, y: z.cy - c / 2, w: c, h: c });
       } else if (etape === 1) {
         const c = Math.min(g.rw, g.rh) * 0.9;
         sortie.push({ x: g.x0 + (g.rw - c) / 2, y: g.y0 + (g.rh - c) / 2, w: c, h: c });
@@ -335,19 +440,33 @@ export function creeModeIA({ el, video, ecran, nomDe, zoneVue, poserPistes, estA
   }
 
   function integre(p, probas) {
+    // Le Pokémon a CHANGÉ sous le cadre (carte remplacée, caméra déplacée) : une vue nette
+    // qui contredit la réponse de la piste efface son passé. Sans ça, cinq vues anciennes
+    // imposaient l'ancien nom plusieurs secondes.
+    const seule = juge(probas);
+    const reference = p.etat === 'reconnu' ? p.key : p.reponses?.[p.reponses.length - 1];
+    if (reference != null && seule.trouve !== null && seule.trouve !== reference && seule.conf >= CHANGEMENT) {
+      Object.assign(p, { etat: 'nouvelle', key: null, nom: '', vues: [], reponses: [], essais: 0 });
+    }
     p.vues.push(probas);
     if (p.vues.length > VUES_MAX) p.vues.shift();
     p.verifieA = performance.now();
     const moyenne = moyenneVues(p.vues);
     const j = juge(moyenne);
+    // Réponse de la moyenne à chaque vue : c'est sa STABILITÉ qui compte pour « constant ».
+    p.reponses = [...(p.reponses ?? []), j.trouve].slice(-REPONSES_CONSTANTES);
     const sur = j.trouve !== null && j.conf >= SEUIL_AFFICHAGE
       && (p.vues.length >= 2 || j.conf >= SEUIL_VUE_UNIQUE);
-    if (sur) {
+    const constant = j.trouve !== null && j.conf >= SEUIL_CONSTANT && rien(moyenne) < RIEN_CONSTANT
+      && p.reponses.length >= REPONSES_CONSTANTES && p.reponses.every((k) => k === j.trouve);
+    if (sur || constant) {
       Object.assign(p, { etat: 'reconnu', key: j.trouve, nom: nomDe(j.trouve), essais: 0 });
       if (p.fenetre) p.vivantJusqua = p.verifieA + FENETRE_DUREE_MS;
     } else if (p.etat === 'reconnu') {
-      // La moyenne des vues retombe sous le seuil : on efface, sans clignoter pour une image.
-      if (j.conf < SEUIL_AFFICHAGE * 0.9 || j.trouve === null) Object.assign(p, { etat: 'nouvelle', key: null, nom: '', vues: [] });
+      // Effacé seulement si la réponse CHANGE ou retombe franchement : pas pour une image floue.
+      if (j.trouve === null || j.trouve !== p.key || j.conf < SEUIL_CONSTANT * 0.75) {
+        Object.assign(p, { etat: 'nouvelle', key: null, nom: '', vues: [], reponses: [] });
+      }
     } else if (++p.essais >= REFUS_APRES || (p.vues.length >= 2 && rien(moyenne) >= RIEN_MAX)) {
       Object.assign(p, { etat: 'ignoree', vues: [], essais: 0 });
     }
@@ -370,12 +489,16 @@ export function creeModeIA({ el, video, ecran, nomDe, zoneVue, poserPistes, estA
         const r = await moteur.detecte(dessinDet);
         if (!estActif()) break;
         majPistes(boitesDe(r, g, dims.detecteur));
-        const n = Math.max(1, Math.min(LOT_MAX, Math.floor(BUDGET_MS / msParZone)));
+        // Moteur lent (le web) : un tour sur deux ne fait QUE détecter, pour que les cadres
+        // suivent deux fois plus souvent. Sur la puce, détection et reconnaissance à chaque tour.
+        const lent = msParZone > 120;
+        const classe = !lent || tour++ % 2 === 0;
+        const n = classe ? Math.max(1, Math.min(LOT_MAX, Math.floor(BUDGET_MS / msParZone))) : 0;
         // Fenêtres : une tous les deux tours sur un moteur lent, deux par tour au moins sur un
         // moteur rapide, et toute place que les pistes laissent libre.
-        const reserve = n >= 3 ? 2 : (alterne++ % 2 === 0 ? 1 : 0);
+        const reserve = n >= 3 ? 2 : n ? (alterne++ % 2 === 0 ? 1 : 0) : 0;
         const lot = aVerifier(n - reserve);
-        const fen = prochainesFenetres(n - lot.length, g);
+        const fen = prochainesFenetres(Math.max(0, n - lot.length), g);
         const dessins = [...lot.map((p) => dessinDe(p, g)), ...fen.map((f) => dessinDe(f, g, 1))];
         let msClasse = 0;
         if (dessins.length) {
@@ -385,15 +508,22 @@ export function creeModeIA({ el, video, ecran, nomDe, zoneVue, poserPistes, estA
           const C = CLASSES.length;
           lot.forEach((p, k) => { if (pistes.includes(p)) integre(p, softmax(a.logits, k, C)); });
           fen.forEach((f, k) => integreFenetre(f, softmax(a.logits, lot.length + k, C)));
+          fusionne();
         }
         if (!estActif()) break;
-        poserPistes(pistes);
+        // L'affichage vit sa vie par requestAnimationFrame ; on le rafraîchit aussi ici, pour
+        // les navigateurs qui suspendent les images d'affichage (onglet en arrière-plan).
+        affiche();
+        if (!rafId) rafId = requestAnimationFrame(animeAffichage);
         // Développement : état du mode IA, pour le vérifier sans téléphone. Retiré du build.
         if (import.meta.env.DEV) {
           window.__ia = {
             detection: Math.round(r.ms), reconnaissance: Math.round(msClasse), lot: lot.length, fenetres: fen.length,
             msParZone: Math.round(msParZone),
-            pistes: pistes.map((p) => ({ etat: p.etat, nom: p.nom, vu: p.vu, vues: p.vues.length, s: +p.s.toFixed(2), fenetre: p.fenetre })),
+            pistes: pistes.map((p) => ({
+              etat: p.etat, nom: p.nom, vu: p.vu, vues: p.vues.length, s: +p.s.toFixed(2), fenetre: p.fenetre,
+              reponses: p.reponses ?? [],
+            })),
           };
         }
         const reconnus = pistes.filter((p) => p.etat === 'reconnu').length;
@@ -406,6 +536,8 @@ export function creeModeIA({ el, video, ecran, nomDe, zoneVue, poserPistes, estA
       montreDiag(`Mode IA en erreur : ${e?.message ?? e}`);
     } finally {
       enCours = false;
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = 0;
       pistes = [];
       poserPistes(null); // null : le mode IA s'en va, scan.js efface s'il est encore affiché
     }

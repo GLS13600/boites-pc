@@ -12,12 +12,18 @@ de 8 — probabilité qu'un centre de Pokémon soit là, taille de sa boîte (en
 décalage du centre à l'intérieur de la case. Les maxima locaux sont extraits DANS le
 graphe (max-pool 3×3), l'appli n'a plus qu'à lire les cases retenues.
 """
+import os
+
 import timm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-LARGEUR, HAUTEUR = 256, 384   # portrait, comme l'écran du Pokédex ouvert
+# Mode IA (SCAN_DET=ia) : entrée plus grande, pour les petits Pokémon d'une scène
+# peuplée. Sans la variable, le détecteur des modes Auto et Manuel, inchangé.
+IA = os.environ.get('SCAN_DET') == 'ia'
+LARGEUR, HAUTEUR = (384, 576) if IA else (256, 384)   # portrait, comme l'écran du Pokédex ouvert
+MAX_BOITES = 16 if IA else 8  # boîtes gardées par scène pour l'évaluation
 PAS = 8                       # une case de sortie = 8 px → grille 32 × 48
 
 

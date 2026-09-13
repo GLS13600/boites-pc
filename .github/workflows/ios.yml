@@ -15,7 +15,9 @@ name: IPA non signé
 # coûteux, il faudrait alors revenir au lancement manuel.
 on:
   push:
-    branches: [main]
+    # mode-ia : branche d'essai du troisième mode de scan. Elle produit un IPA de TEST,
+    # téléchargeable depuis l'exécution, sans release ni mise à jour de la source SideStore.
+    branches: [main, mode-ia]
     # Une modification de documentation ne change pas l'application : inutile de
     # mobiliser un runner macOS 15 minutes et de publier une release pour ça.
     paths-ignore:
@@ -31,7 +33,7 @@ on:
 # Deux poussées rapprochées ne doivent pas produire deux IPA concurrents : seule
 # la plus récente compte, on annule celle qui est déjà en cours.
 concurrency:
-  group: ios
+  group: ios-${{ github.ref }}
   cancel-in-progress: true
 
 # `contents` pour créer la release, `actions` pour relancer ensuite le workflow
@@ -101,11 +103,13 @@ jobs:
           ls -lh Guiguidex.ipa
 
       - name: Écrire le manifeste de source
+        if: github.ref == 'refs/heads/main'
         run: node scripts/build-source.mjs ios/App/build/Guiguidex.ipa "$APP_VERSION" ios/App/build/source.json
 
       # L'IPA et le manifeste sont attachés à la MÊME release : l'URL
       # releases/latest/download/ pointera donc toujours sur le couple cohérent.
       - name: Publier la release
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -122,7 +126,7 @@ jobs:
       # supprimée, et sert de repli pour une installation au câble.
       - uses: actions/upload-artifact@v4
         with:
-          name: Guiguidex-ipa
+          name: Guiguidex-ipa-${{ github.ref_name }}
           path: ios/App/build/Guiguidex.ipa
           retention-days: 30
 
@@ -130,6 +134,7 @@ jobs:
       # faut redéployer Pages maintenant qu'elle existe, sinon il resterait une
       # version en arrière jusqu'à la poussée suivante.
       - name: Republier le manifeste sur le site
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run pages.yml --ref main

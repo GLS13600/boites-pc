@@ -18,7 +18,9 @@ import entrainer as E
 
 
 def charge(run, C):
-    m = timm.create_model(E.MODELE, pretrained=False, num_classes=C)
+    # Les runs d'avant le mode IA n'ont pas de modele.txt : c'était toujours MobileCLIP2-S0.
+    nom = (run / 'modele.txt').read_text(encoding='utf8').strip() if (run / 'modele.txt').exists() else E.MODELE
+    m = timm.create_model(nom, pretrained=False, num_classes=C)
     m = reparameterize_model(m)
     m.load_state_dict(torch.load(run / 'meilleur.pt', map_location='cpu'))
     return m.eval()
@@ -28,15 +30,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('run')
     ap.add_argument('--quantifie', action='store_true')
+    ap.add_argument('--lot-fixe', type=int, default=None,
+                    help="mode IA : taille de lot figée — Core ML compile mieux une forme statique")
     args = ap.parse_args()
     run = Path(args.run)
     classes = json.loads((run / 'classes.json').read_text(encoding='utf8'))
     m = charge(run, len(classes))
 
-    x = torch.rand(2, 3, 256, 256)
-    sortie = run / 'modele.onnx'
+    x = torch.rand(args.lot_fixe or 2, 3, 256, 256)
+    sortie = run / (f'modele-lot{args.lot_fixe}.onnx' if args.lot_fixe else 'modele.onnx')
     torch.onnx.export(m, x, sortie, input_names=['image'], output_names=['logits'],
-                      dynamic_axes={'image': {0: 'lot'}, 'logits': {0: 'lot'}},
+                      dynamic_axes=None if args.lot_fixe else {'image': {0: 'lot'}, 'logits': {0: 'lot'}},
                       opset_version=17, dynamo=False)
     print(f'{sortie.name} : {sortie.stat().st_size / 1e6:.1f} Mo')
 

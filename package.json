@@ -30,6 +30,7 @@
     "@capacitor/haptics": "^8.0.2",
     "@capacitor/ios": "^8.5.1",
     "@capacitor/share": "^8.0.1",
+    "@guiguidex/scan-ia": "file:plugins/scan-ia",
     "onnxruntime-web": "^1.29.0"
   }
 }

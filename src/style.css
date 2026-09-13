@@ -2312,6 +2312,26 @@ img {
   transition: background 200ms ease, box-shadow 200ms ease;
 }
 .scan.manuel .scan-mode i { background: #ffb347; box-shadow: 0 0 8px 2px rgba(255, 179, 71, 0.75); }
+/* Mode IA (bonus, branche mode-ia) : voyant violet, et une ligne de diagnostic sous
+   le bandeau d'aide — temps de calcul et nombre de Pokémon reconnus. Posée en bas,
+   elle passait sous la Poké Ball. */
+.scan.ia .scan-mode i { background: #b98cff; box-shadow: 0 0 8px 2px rgba(185, 140, 255, 0.8); }
+.scan-diag {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: calc(var(--safe-top) + var(--cap-h) + 50px);
+  z-index: 5;
+  margin: 0;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(8, 10, 14, 0.6);
+  color: #dccbff;
+  font: 600 10px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-align: center;
+  pointer-events: none;
+}
+.scan.ferme .scan-diag { opacity: 0; }
 .scan-mode span { display: flex; flex-direction: column; line-height: 1.05; }
 .scan-mode small { font-size: 9px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; }
 .scan-mode b { font-size: 13px; font-weight: 800; }

@@ -164,6 +164,8 @@ def main():
     ap.add_argument('--lr', type=float, default=5e-4)
     ap.add_argument('--ouvriers', type=int, default=20)
     ap.add_argument('--essai', action='store_true', help='quelques pas seulement, pour vérifier la chaîne')
+    ap.add_argument('--modele', default=MODELE,
+                    help="réseau timm de départ ; le mode IA prend fastvit_mci2.apple_mclip2_dfndr2b (MobileCLIP2-S2)")
     ap.add_argument('--sortie', default=None)
     ap.add_argument('--depart-epoque', type=int, default=0,
                     help="avec --reprise : reprendre le MÊME calendrier à cette époque (ex. 24 d'un run de 30)")
@@ -188,6 +190,8 @@ def main():
 
     cartes_train, cartes_test = D.decoupe_cartes(racine)
     print(f'{C} classes, {G} groupes, cartes : {len(cartes_train)} apprentissage / {len(cartes_test)} test')
+    # Le nom du réseau voyage avec le run : l'export doit reconstruire le même.
+    (sortie / 'modele.txt').write_text(args.modele, encoding='utf8')
     (sortie / 'classes.json').write_text(json.dumps(
         [{'index': c['index'], 'key': c['key'], 'groupe': c['groupe'], 'nom': c['nom']} for c in classes],
         ensure_ascii=False), encoding='utf8')
@@ -208,7 +212,11 @@ def main():
     charge = DataLoader(ds, batch_size=args.lot, shuffle=False, num_workers=args.ouvriers,
                         pin_memory=True, drop_last=True, persistent_workers=True, prefetch_factor=2)
 
-    modele = timm.create_model(MODELE, pretrained=True, num_classes=C)
+    modele = timm.create_model(args.modele, pretrained=True, num_classes=C)
+    # MobileCLIP2-S0 et S2 lisent les pixels bruts en [0, 1] ; S3 et S4 attendent la
+    # normalisation de CLIP, que `prepare` ne fait pas : on refuse plutôt que d'entraîner faux.
+    if tuple(modele.pretrained_cfg.get('mean', (0, 0, 0))) != (0.0, 0.0, 0.0):
+        raise SystemExit(f"{args.modele} attend une normalisation que prepare() n'applique pas")
     # FastViT s'entraîne d'ordinaire avec des branches parallèles, fusionnées ensuite
     # pour l'inférence. On fusionne D'ABORD : l'apprentissage va deux fois plus vite
     # (427 contre 213 img/s mesurés), et le modèle entraîné est déjà celui qu'on exporte.

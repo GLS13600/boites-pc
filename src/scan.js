@@ -12,6 +12,7 @@
 // et rend un élément que main.js pose dans la vue.
 import CLASSES from './data/scan-classes.json';
 import { joueOuverture } from './scan-son.js';
+import { creeModeIA } from './scan-ia.js';
 
 // Côté du carré analysé, celui de l'entraînement (MobileCLIP2-S0 attend 256 px).
 const TAILLE = 256;
@@ -51,10 +52,14 @@ const REVERIFIE_MS = 3000;
 
 // Mode de détection, choisi par le bouton du coin bas-gauche et mémorisé :
 //   'auto'   — suivi en temps réel, chaque Pokémon trouvé reçoit son cadre ;
-//   'manuel' — le fonctionnement d'avant le suivi : on place le cadre, on appuie.
+//   'manuel' — le fonctionnement d'avant le suivi : on place le cadre, on appuie ;
+//   'ia'     — BONUS en essai : suivi de nombreux Pokémon sur la puce (scan-ia.js).
 const MODE_KEY = 'pcbox.scan.mode';
 const lisMode = () => {
-  try { return localStorage.getItem(MODE_KEY) === 'manuel' ? 'manuel' : 'auto'; } catch { return 'auto'; }
+  try {
+    const m = localStorage.getItem(MODE_KEY);
+    return m === 'manuel' || m === 'ia' ? m : 'auto';
+  } catch { return 'auto'; }
 };
 
 // Index de sortie → groupe (numéro de l'espèce ; 0 = « rien »). Calculé une fois.
@@ -127,6 +132,7 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
       <p class="scan-aide">Touchez l'image pour placer le cadre sur le Pokémon</p>
       <p class="scan-etat" hidden></p>
       <p class="scan-toast" role="status" hidden></p>
+      <p class="scan-diag" hidden></p>
       <button class="scan-btn" type="button" aria-label="Scanner"><span></span></button>
       <button class="scan-mode" type="button"><i></i><span><small>Mode</small><b></b></span></button>
     </section>`);
@@ -139,6 +145,7 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
   const pistesEl = el.querySelector('.scan-pistes');
   const aide = el.querySelector('.scan-aide');
   const btnMode = el.querySelector('.scan-mode');
+  const diag = el.querySelector('.scan-diag');
 
   let flux = null;        // MediaStream de la caméra
   let ouverture = false;  // demande d'accès en cours
@@ -275,7 +282,7 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
     if (entree) animeOuverture();
     majZone();
     prepareModele().catch(() => {});
-    if (flux) { video.play().catch(() => {}); suis(); return; }
+    if (flux) { video.play().catch(() => {}); suis(); ia.demarre(); return; }
     // Chaque rendu rappelle demarre() : sans ce verrou, un rendu survenu pendant la
     // demande d'autorisation ouvrirait un second flux, jamais refermé.
     if (ouverture) return;
@@ -301,6 +308,7 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
       montreEtat(null);
       majZone();
       suis();
+      ia.demarre();
     } catch (e) {
       montreEtat(e?.name === 'NotAllowedError'
         ? "L'accès à la caméra a été refusé. Autorisez-le dans Réglages › Guiguidex."
@@ -592,7 +600,7 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
     }
     for (const n of [...pistesEl.children]) if (!vus.has(n)) n.remove();
     zoneEl.hidden = visibles.length > 0 || !zone.px;
-    aide.textContent = mode === 'auto' && visibles.some((p) => p.etat === 'reconnu')
+    aide.textContent = mode !== 'manuel' && visibles.some((p) => p.etat === 'reconnu')
       ? 'Touchez un Pokémon pour ouvrir sa fiche'
       : "Touchez l'image pour placer le cadre sur le Pokémon";
   }
@@ -646,7 +654,7 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
     if (occupe) return;
     // Des Pokémon sont suivis et reconnus : le bouton ouvre la fiche du plus grand à
     // l'écran, celui qu'on vise manifestement. Sinon, analyse du cadre comme avant.
-    const vus = mode === 'auto' ? pistes.filter((p) => p.etat === 'reconnu') : [];
+    const vus = mode !== 'manuel' ? pistes.filter((p) => p.etat === 'reconnu') : [];
     if (vus.length) {
       ouvrirFiche(vus.reduce((a, b) => (a.w * a.h >= b.w * b.h ? a : b)).key);
       return;
@@ -691,26 +699,58 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
 
   // ------------------------------------------------------------ mode de détection
   let mode = lisMode();
+  const NOMS_MODES = { auto: 'Auto', manuel: 'Manuel', ia: 'IA' };
   function majMode() {
-    const auto = mode === 'auto';
-    el.classList.toggle('manuel', !auto);
-    btnMode.querySelector('b').textContent = auto ? 'Auto' : 'Manuel';
-    btnMode.setAttribute('aria-label', auto
-      ? 'Mode temps réel : les Pokémon sont suivis automatiquement. Toucher pour passer en manuel.'
-      : 'Mode manuel : placer le cadre puis appuyer sur la Poké Ball. Toucher pour passer en temps réel.');
+    el.classList.toggle('manuel', mode === 'manuel');
+    el.classList.toggle('ia', mode === 'ia');
+    btnMode.querySelector('b').textContent = NOMS_MODES[mode];
+    btnMode.setAttribute('aria-label', {
+      auto: 'Mode temps réel : les Pokémon sont suivis automatiquement. Toucher pour passer en manuel.',
+      manuel: 'Mode manuel : placer le cadre puis appuyer sur la Poké Ball. Toucher pour passer au mode IA.',
+      ia: 'Mode IA, en essai : plusieurs Pokémon reconnus sur la puce du téléphone. Toucher pour revenir au temps réel.',
+    }[mode]);
+    if (mode !== 'ia') diag.hidden = true;
   }
+
+  // ------------------------------------------------------------ mode IA (bonus)
+  // Module à part (scan-ia.js) : il pose ses pistes dans le même affichage, et le
+  // bouton, le toucher d'un cadre et l'aide fonctionnent donc comme en Auto.
+  const ia = creeModeIA({
+    el, video, ecran, nomDe,
+    poserPistes: (liste) => {
+      if (liste === null) { if (mode === 'ia') videPistes(); return; }
+      if (mode !== 'ia') return;
+      pistes = liste;
+      dessinePistes();
+    },
+    estActif: () => actif && el.isConnected && !!flux && mode === 'ia',
+    estEnPause: () => document.hidden || estMasque() || occupe || el.classList.contains('ouvre')
+      || el.classList.contains('ferme') || video.readyState < 2,
+    montreDiag: (texte) => { diag.textContent = texte ?? ''; diag.hidden = mode !== 'ia' || !texte; },
+    // Hors appli iPhone : le Worker du scan et ses modèles, pour exercer la logique.
+    secours: {
+      pret: () => pret ?? prepareModele(),
+      analyse,
+      detecte,
+      dims: { detecteur: { largeur: DET_L, hauteur: DET_H, pas: DET_PAS }, classifieur: { taille: TAILLE } },
+    },
+  });
+
   btnMode.addEventListener('click', () => {
-    mode = mode === 'auto' ? 'manuel' : 'auto';
+    mode = { auto: 'manuel', manuel: 'ia', ia: 'auto' }[mode];
     try { localStorage.setItem(MODE_KEY, mode); } catch { /* mémorisation facultative */ }
     majMode();
+    // La boucle du mode quitté s'arrête d'elle-même au tour suivant ; on efface tout de suite.
+    videPistes();
     if (mode === 'auto') {
       montreToast('Temps réel : les Pokémon sont suivis');
       suis();
-    } else {
-      // La boucle s'arrête d'elle-même au tour suivant ; on efface tout de suite.
-      videPistes();
+    } else if (mode === 'manuel') {
       aide.textContent = "Touchez l'image pour placer le cadre sur le Pokémon";
       montreToast('Manuel : appuyez sur la Poké Ball');
+    } else {
+      montreToast('Mode IA (essai) : plusieurs Pokémon à la fois');
+      ia.demarre();
     }
   });
   majMode();

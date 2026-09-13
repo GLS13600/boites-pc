@@ -14,9 +14,15 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 import donnees as D
-from detecteur import HAUTEUR, LARGEUR
+from detecteur import HAUTEUR, IA, LARGEUR
 
 NOMBRE = ((0, 0.12), (1, 0.43), (2, 0.25), (3, 0.12), (4, 0.08))
+if IA:
+    # Mode IA : on vise « 6 Pokémon et plus » d'un coup, jusqu'à 15 dans une scène.
+    NOMBRE = ((0, 0.06), (1, 0.14), (2, 0.14), (3, 0.12), (4, 0.10), (5, 0.08), (6, 0.10),
+              (7, 0.07), (8, 0.07), (10, 0.06), (12, 0.04), (15, 0.02))
+# Tailles pensées pour 256 px de large : on les suit quand l'image grandit.
+ECHELLE = LARGEUR / 256
 
 
 def tire_nombre(rnd):
@@ -47,14 +53,14 @@ def tourne_points(points, w, h, angle, W2, H2):
     return sortie
 
 
-def objet_sprite(rnd, classes):
+def objet_sprite(rnd, classes, cote_max=250):
     k = rnd.choice(classes)
     sources = {r['source'] for r in k['refs']}
     noms = [s for s in D.POIDS_SOURCES if s in sources]
     src = rnd.choices(noms, [D.POIDS_SOURCES[s] for s in noms])[0]
     ref = rnd.choice([r for r in k['refs'] if r['source'] == src])
     obj = D.ouvre_reference(rnd, ref['chemin'], ref['source'])
-    cote = rnd.uniform(40, 250)
+    cote = rnd.uniform(min(40 * ECHELLE, cote_max * 0.6), cote_max)
     # Mise à la taille visée AVANT tout traitement : tourner et « figuriniser » un
     # rendu HOME de 512 px pour le réduire ensuite à 60 coûtait l'essentiel du temps.
     f = cote / max(obj.size)
@@ -74,14 +80,14 @@ def objet_sprite(rnd, classes):
     return obj, (0, 0, obj.width, obj.height)
 
 
-def objet_carte(rnd, racine, cartes):
+def objet_carte(rnd, racine, cartes, reduction=1.0):
     c = rnd.choice(cartes)
     carte = Image.open(racine / 'cartes' / f"{c['id']}.webp").convert('RGB')
     if carte.height > 500:
         carte = carte.reduce(2)
     if rnd.random() < 0.3:
         carte = D.reflet_holo(rnd, carte)
-    hauteur = rnd.uniform(0.35, 1.05) * HAUTEUR
+    hauteur = rnd.uniform(0.35, 1.05) * HAUTEUR * reduction
     f = hauteur / carte.height
     carte = carte.resize((max(8, int(carte.width * f)), max(8, int(hauteur))), Image.BICUBIC).convert('RGBA')
     w, h = carte.size
@@ -132,12 +138,16 @@ def scene(rnd, classes, racine, cartes, fonds, objets=None):
                   leurre if leurre.mode == 'RGBA' else None)
 
     boites = []
-    for _ in range(tire_nombre(rnd)):
-        for _essai in range(4):
+    n = tire_nombre(rnd)
+    # Plus la scène est peuplée, plus chaque Pokémon est petit : sinon 12 sprites de
+    # 250 px ne tiendraient jamais sans se recouvrir.
+    reduction = min(1.0, math.sqrt(4 / n)) if n > 4 else 1.0
+    for _ in range(n):
+        for _essai in range(8 if n > 4 else 4):
             if cartes and rnd.random() < 0.25:
-                obj, b = objet_carte(rnd, racine, cartes)
+                obj, b = objet_carte(rnd, racine, cartes, reduction)
             else:
-                obj, b = objet_sprite(rnd, classes)
+                obj, b = objet_sprite(rnd, classes, 250 * ECHELLE * reduction)
             bw, bh = b[2] - b[0], b[3] - b[1]
             # Position : le centre de la boîte dans l'image, jusqu'à 25 % hors cadre.
             cx = rnd.uniform(bw * 0.25, LARGEUR - bw * 0.25) if bw < LARGEUR else LARGEUR / 2

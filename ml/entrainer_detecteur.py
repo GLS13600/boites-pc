@@ -18,7 +18,7 @@ from torch.utils.data import DataLoader, Dataset
 
 import donnees as D
 import scenes as S
-from detecteur import HAUTEUR, LARGEUR, PAS, Detecteur, PourExport
+from detecteur import HAUTEUR, IA, LARGEUR, MAX_BOITES, PAS, Detecteur, PourExport
 
 
 class Scenes(Dataset):
@@ -44,8 +44,8 @@ class Scenes(Dataset):
             img, boites = S.scene(random.Random(graine + 1), self.classes, self.racine, [], self.fonds, self.objets)
         x = torch.from_numpy(np.asarray(img, np.uint8).copy()).permute(2, 0, 1)
         ch, ta, de, ma = S.cibles(boites, PAS)
-        b = np.zeros((8, 4), np.float32)  # boîtes brutes pour l'évaluation (8 au plus)
-        for k, bb in enumerate(boites[:8]):
+        b = np.zeros((MAX_BOITES, 4), np.float32)  # boîtes brutes pour l'évaluation
+        for k, bb in enumerate(boites[:MAX_BOITES]):
             b[k] = bb
         return x, torch.from_numpy(ch), torch.from_numpy(ta), torch.from_numpy(de), torch.from_numpy(ma), torch.from_numpy(b), len(boites)
 
@@ -145,7 +145,8 @@ def main():
 
     cartes_train, cartes_test = D.decoupe_cartes(racine)
     # v2 : scènes de test peuplées d'objets COCO jamais vus, là où naissent les faux positifs.
-    cache = racine / ('eval-detection-v2-essai.pt' if args.essai else 'eval-detection-v2.pt')
+    nom = 'eval-detection-ia' if IA else 'eval-detection-v2'
+    cache = racine / (f'{nom}-essai.pt' if args.essai else f'{nom}.pt')
     if cache.exists():
         jeu = torch.load(cache)
     else:

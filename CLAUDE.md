@@ -563,6 +563,47 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
   panneau de prévisualisation, un clic à l'écran peut tomber à côté — son rendu est
   parfois réduit — : envoyer les `PointerEvent` directement en coordonnées de page.
 
+### Mode IA (bonus, en essai sur la branche `mode-ia`)
+
+Troisième position du bouton de mode : **Auto → Manuel → IA**, voyant violet. Demandé
+comme un BONUS : isolé pour pouvoir être retiré, et fusionné avec le Manuel seulement
+s'il donne de meilleurs résultats. **Tout tourne sur le téléphone, aucun réseau, aucune
+API** — exigence explicite.
+
+- **`src/scan-ia.js`** porte toute la logique ; scan.js ne fait que l'accrocher
+  (bouton à trois positions, ligne de diagnostic `.scan-diag`, pistes posées dans le
+  même affichage). Les modes Auto et Manuel gardent leur code et leurs modèles.
+- **Moteur natif `plugins/scan-ia`** (paquet npm local `@guiguidex/scan-ia`, inscrit
+  par `npx cap update ios` dans `CapApp-SPM/Package.swift`) : **ONNX Runtime iOS
+  (SPM) + fournisseur Core ML** au format ML Program, donc Neural Engine et carte
+  graphique. Il lit les MÊMES `.onnx` que le web. Pourquoi pas Core ML directement :
+  `coremltools` ne tourne pas sous Windows, et le poste n'a ni Mac ni WSL.
+  - Les zones partent en JPEG base64 (~20 Ko), les sorties reviennent en flottants
+    base64 : les pixels bruts en flottants pèseraient 800 Ko par zone sur le pont.
+  - `charge`, `execute`, `decharge` ; lu sur `Capacitor.Plugins.ScanIa`.
+- **Hors appli** (navigateur, serveur de dev), pas de module natif : le mode retombe
+  sur le Worker web du scan. C'est ce qui permet de vérifier la logique dans l'aperçu.
+- Différences avec Auto : 12 pistes au lieu de 6, tous les cadres à vérifier partent
+  **ensemble** au classifieur (8 par lot), et une piste n'est validée qu'en **cumulant
+  les vues** (probabilités moyennées sur les 5 dernières ; une seule vue suffit à 0,97).
+- **WebGPU écarté** : actif dans WKWebView depuis iOS 26, mais onnxruntime-web ne le
+  prend pas en charge sur iOS (issue microsoft/onnxruntime#22776).
+- **Modèles plus gros, entraînés pour ce mode seulement** (`ml/`) :
+  - classifieur **MobileCLIP2-S2** (`--modele fastvit_mci2.apple_mclip2_dfndr2b`),
+    37 M de paramètres, mêmes pixels bruts en [0, 1] que S0. Mesuré sur la RTX 5060 Ti :
+    193 img/s à 256 px. S3 (127 M) attend la normalisation de CLIP — refusée par
+    `entrainer.py` —, S4 (324 M) sature les 16 Go (11 img/s) ;
+  - détecteur **384×576** sur MobileNetV4 medium, scènes de 0 à 15 Pokémon :
+    `SCAN_DET=ia` (détecteur.py, scenes.py, entrainer_detecteur.py). Sans la
+    variable, les scripts produisent exactement le détecteur actuel ;
+  - `exporter.py --lot-fixe 8` : forme statique, que Core ML compile mieux.
+  - Lancement : `A:\Jeu-scan\lance-ia.cmd`, qui lit une COPIE des scripts
+    (`A:\Jeu-scan\ml-ia`) pour qu'un changement de branche ne touche pas un
+    entraînement en cours.
+- **IPA de test** : `ios.yml` compile aussi la branche `mode-ia`, sans release ni mise à
+  jour de la source SideStore ; l'IPA est l'artefact `Guiguidex-ipa-mode-ia`.
+- Retirer le mode : voir l'en-tête de `src/scan-ia.js`.
+
 ### Moteur
 
 - **onnxruntime-web** (`onnxruntime-web/wasm`), première dépendance d'exécution de

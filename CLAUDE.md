@@ -608,6 +608,23 @@ API** — exigence explicite.
     8 époques (`A:\Jeu-scan\suite-ia2.ps1`).
   - Vérifié dans l'aperçu sur la reproduction : Rondoudou et Fantominus encadrés et
     reconnus, lot 3 puis 1 (≈ 290 ms par cadre sur le moteur web).
+- **Deuxième retour (13/09, ~20 h 30)** : « même avec un Pokémon à l'écran il n'arrive
+  pas à détecter ». Réponse : le classifieur **cherche aussi lui-même**, par **balayage de
+  fenêtres**, sans attendre le détecteur — le cadre manuel, une grande fenêtre centrale,
+  puis six tuiles qui se recouvrent (`prochainesFenetres`).
+  - Une fenêtre à 0,6 au moins ouvre une piste (ou nourrit la seule piste qu'elle
+    contient), affichée aux mêmes 90 % cumulés. Elle vit 4 s sans détection, et une
+    détection dont le centre tombe dedans lui donne un cadre à la taille du Pokémon.
+  - Une fenêtre contenant plusieurs pistes ne nourrit rien, et ne contredit jamais une
+    piste reconnue.
+  - Place du lot : une fenêtre un tour sur deux sur un moteur lent, deux par tour sur la
+    puce, et toute place que les pistes laissent libre.
+  - Pistes de fond : ignorées après 3 vues (6 avant) ou dès que « rien » dépasse 60 % sur
+    deux vues, et elles ne comptent plus dans les 12 places — elles occupaient la place
+    d'un vrai Pokémon.
+  - Vérifié dans l'aperçu : détecteur rendu AVEUGLE, Pikachu trouvé et reconnu en 3 s par
+    les fenêtres ; image sans Pokémon (fond texturé, disque, texte), aucun cadre ;
+    grille, Rondoudou par une fenêtre et Fantominus par le détecteur, sans doublon.
   - **Piège de l'aperçu** : panneau masqué, `document.hidden` vaut vrai et l'appli coupe
     la caméra ; même forcé, le flux ne rend que des images de 2×2. Pour tester, forcer
     `document.hidden`, substituer le canevas à la vidéo dans `drawImage` et annoncer

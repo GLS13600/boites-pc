@@ -8,7 +8,9 @@
 //   - jusqu'à 12 pistes, et TOUS les cadres à vérifier partent ensemble au classifieur,
 //     au lieu d'un seul par tour ;
 //   - une piste n'est validée qu'après avoir cumulé plusieurs vues : les probabilités
-//     des dernières images sont moyennées, ce qui rattrape un angle ou un flou.
+//     des dernières images sont moyennées, ce qui rattrape un angle ou un flou ;
+//   - le classifieur balaie AUSSI des fenêtres fixes (cadre manuel, centre, six tuiles)
+//     sans attendre le détecteur : un Pokémon que celui-ci ne voit pas est trouvé quand même.
 //
 // Hors de l'appli iPhone (navigateur, serveur de dev), le module natif n'existe pas :
 // le mode retombe sur le moteur web du scan, plus lent, qui sert à vérifier la logique.
@@ -39,7 +41,12 @@ const CONFIRMATIONS = 2;
 const SEUIL_AFFICHAGE = 0.9;       // même exigence que le mode Auto
 const SEUIL_VUE_UNIQUE = 0.97;     // une seule vue suffit si elle est quasi certaine
 const VUES_MAX = 5;                // vues cumulées par piste
-const REFUS_APRES = 6;             // vues sans jamais atteindre le seuil : piste ignorée
+const REFUS_APRES = 3;             // vues sans atteindre le seuil : piste ignorée (revue toutes les 3 s)
+const RIEN_MAX = 0.6;              // « rien » à 60 % sur deux vues : ignorée sans attendre
+// Balayage par fenêtres : dès 0,6 une fenêtre ouvre ou nourrit une piste, qui ne s'affiche
+// qu'aux mêmes 90 % cumulés que les autres.
+const SEUIL_FENETRE = 0.6;
+const FENETRE_DUREE_MS = 4000;     // une piste née d'une fenêtre vit ce temps sans détection
 const REVERIFIE_MS = 1500;
 const IMAGENET = { moyenne: [0.485, 0.456, 0.406], ecart: [0.229, 0.224, 0.225] };
 const BRUT = { moyenne: [0, 0, 0], ecart: [1, 1, 1] };
@@ -50,6 +57,9 @@ CLASSES.forEach(([, groupe], i) => {
   if (!GROUPES.has(groupe)) GROUPES.set(groupe, []);
   GROUPES.get(groupe).push(i);
 });
+
+const INDEX_RIEN = GROUPES.get(0) ?? [];
+const rien = (p) => INDEX_RIEN.reduce((s, i) => s + p[i], 0);
 
 const attente = (ms) => new Promise((ok) => setTimeout(ok, ms));
 
@@ -173,11 +183,12 @@ function moteurWeb({ pret, analyse, detecte, dims }) {
 
 // ------------------------------------------------------------ boucle du mode IA
 
-export function creeModeIA({ el, video, ecran, nomDe, poserPistes, estActif, estEnPause, montreDiag, secours }) {
+export function creeModeIA({ el, video, ecran, nomDe, zoneVue, poserPistes, estActif, estEnPause, montreDiag, secours }) {
   const plugin = window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins?.ScanIa : null;
   const moteur = plugin ? moteurNatif(plugin) : secours ? moteurWeb(secours) : null;
   let enCours = false, pistes = [], idPiste = 100_000;
   let msParZone = 60; // durée mesurée d'une reconnaissance, lissée
+  let cycle = 0, iTuile = 0, alterne = 0;
 
   // Vue ↔ vidéo (aperçu en object-fit: cover), et zone analysée : le plus grand
   // rectangle aux proportions du détecteur, centré dans l'écran du Pokédex.
@@ -204,7 +215,26 @@ export function creeModeIA({ el, video, ecran, nomDe, poserPistes, estActif, est
     return boites.sort((a, b) => b.s - a.s).slice(0, PISTES_MAX);
   }
 
+  const actives = () => pistes.filter((p) => p.etat !== 'ignoree').length;
+
+  // Les pistes ignorées (fonds, objets) ne doivent jamais empêcher un vrai Pokémon de
+  // naître : elles ne comptent pas dans la place, et la plus ancienne cède la sienne.
+  function ajoute(champs) {
+    if (pistes.length >= PISTES_MAX * 2) {
+      const i = pistes.findIndex((p) => p.etat === 'ignoree');
+      if (i < 0) return null;
+      pistes.splice(i, 1);
+    }
+    const p = {
+      id: idPiste++, s: 0, manques: 0, vu: 1, etat: 'nouvelle', key: null, nom: '', vues: [],
+      essais: 0, verifieA: 0, fenetre: false, vivantJusqua: 0, ...champs,
+    };
+    pistes.push(p);
+    return p;
+  }
+
   function majPistes(boites) {
+    const t = performance.now();
     const libres = new Set(pistes);
     for (const b of boites) {
       let meilleure = null, recouvre = 0.15;
@@ -212,33 +242,88 @@ export function creeModeIA({ el, video, ecran, nomDe, poserPistes, estActif, est
         const u = iou(p, b);
         if (u > recouvre) { recouvre = u; meilleure = p; }
       }
+      // Une piste née d'une fenêtre est plus grande que son Pokémon : une détection dont le
+      // centre tombe dedans lui revient, et lui donne un cadre à sa taille.
+      if (!meilleure) {
+        const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+        meilleure = [...libres].find((p) => p.fenetre && cx >= p.x && cx <= p.x + p.w && cy >= p.y && cy <= p.y + p.h) ?? null;
+        if (meilleure) Object.assign(meilleure, { x: b.x, y: b.y, w: b.w, h: b.h, fenetre: false });
+      }
       if (meilleure) {
         libres.delete(meilleure);
         for (const k of ['x', 'y', 'w', 'h']) meilleure[k] += (b[k] - meilleure[k]) * 0.6;
         meilleure.manques = 0;
         meilleure.s = b.s;
         meilleure.vu++;
-      } else if (b.s >= SEUIL_NAISSANCE && pistes.length < PISTES_MAX) {
-        pistes.push({ id: idPiste++, ...b, manques: 0, vu: 1, etat: 'nouvelle', key: null, nom: '', vues: [], essais: 0, verifieA: 0 });
+      } else if (b.s >= SEUIL_NAISSANCE && actives() < PISTES_MAX) {
+        ajoute({ ...b, vu: 1 });
       }
     }
     for (const p of libres) p.manques++;
-    pistes = pistes.filter((p) => p.manques < MANQUES_MAX);
+    pistes = pistes.filter((p) => p.manques < MANQUES_MAX || (p.fenetre && p.vivantJusqua > t));
   }
 
-  // Les pistes à regarder ce tour-ci : les pas encore reconnues (grandes d'abord), puis
-  // les reconnues dont la vérification a vieilli. Les ignorées reviennent toutes les 3 s.
+  // Les pistes à regarder ce tour-ci : les pas encore reconnues — celles nées d'une fenêtre
+  // d'abord, qui ont déjà une vue prometteuse, puis les mieux détectées —, ensuite les
+  // reconnues dont la vérification a vieilli. Les ignorées reviennent toutes les 3 s.
   function aVerifier(n) {
+    if (n <= 0) return [];
     const t = performance.now();
-    const enAttente = pistes.filter((p) => p.etat === 'nouvelle' && p.vu >= CONFIRMATIONS)
-      .sort((a, b) => b.w * b.h - a.w * a.h);
+    const priorite = (p) => (p.fenetre ? 2 : p.s);
+    const enAttente = pistes.filter((p) => p.etat === 'nouvelle' && (p.vu >= CONFIRMATIONS || p.fenetre))
+      .sort((a, b) => priorite(b) - priorite(a));
     const vieilles = pistes.filter((p) => (p.etat === 'reconnu' && t - p.verifieA > REVERIFIE_MS)
       || (p.etat === 'ignoree' && t - p.verifieA > 2 * REVERIFIE_MS));
     return [...enAttente, ...vieilles].slice(0, n);
   }
 
-  function dessinDe(p, g) {
-    const cote = Math.max(p.w, p.h) * 1.15 / g.e;
+  // Balayage : fenêtres fixes que le classifieur regarde sans attendre le détecteur — le
+  // cadre manuel, une grande fenêtre centrale, puis six tuiles qui se recouvrent.
+  function prochainesFenetres(k, g) {
+    const sortie = [];
+    for (let i = 0; i < k; i++) {
+      const etape = cycle++ % 3, z = zoneVue?.();
+      if (etape === 0 && z) {
+        sortie.push({ x: z.cx - z.cote / 2, y: z.cy - z.cote / 2, w: z.cote, h: z.cote });
+      } else if (etape === 1) {
+        const c = Math.min(g.rw, g.rh) * 0.9;
+        sortie.push({ x: g.x0 + (g.rw - c) / 2, y: g.y0 + (g.rh - c) / 2, w: c, h: c });
+      } else {
+        const s = g.rw * 0.62, k6 = iTuile++ % 6, fx = k6 % 2, fy = ((k6 - fx) / 2) / 2;
+        sortie.push({ x: g.x0 + (g.rw - s) * fx, y: g.y0 + (g.rh - s) * fy, w: s, h: s });
+      }
+    }
+    return sortie;
+  }
+
+  function integreFenetre(f, probas) {
+    const j = juge(probas);
+    if (j.trouve === null || j.conf < SEUIL_FENETRE) return;
+    const t = performance.now();
+    const dedans = (p) => {
+      const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
+      return cx >= f.x && cx <= f.x + f.w && cy >= f.y && cy <= f.y + f.h;
+    };
+    const suivies = pistes.filter((p) => p.etat !== 'ignoree' && dedans(p));
+    // Une fenêtre contient souvent PLUSIEURS Pokémon : elle ne nourrit une piste que si
+    // elle est seule dedans, et ne contredit jamais une piste déjà reconnue.
+    if (suivies.length > 1) return;
+    let p = suivies[0];
+    if (p?.etat === 'reconnu') {
+      if (p.key === j.trouve && p.fenetre) p.vivantJusqua = t + FENETRE_DUREE_MS;
+      return;
+    }
+    if (!p) {
+      if (actives() >= PISTES_MAX) return;
+      p = ajoute({ x: f.x, y: f.y, w: f.w, h: f.h, vu: CONFIRMATIONS, fenetre: true, vivantJusqua: t + FENETRE_DUREE_MS });
+      if (!p) return;
+    }
+    if (p.fenetre) p.vivantJusqua = t + FENETRE_DUREE_MS;
+    integre(p, probas);
+  }
+
+  function dessinDe(p, g, marge = 1.15) {
+    const cote = Math.max(p.w, p.h) * marge / g.e;
     const cx = (p.x + p.w / 2 - g.ox) / g.e, cy = (p.y + p.h / 2 - g.oy) / g.e;
     return (c, l, h) => {
       c.fillStyle = '#000';
@@ -253,15 +338,17 @@ export function creeModeIA({ el, video, ecran, nomDe, poserPistes, estActif, est
     p.vues.push(probas);
     if (p.vues.length > VUES_MAX) p.vues.shift();
     p.verifieA = performance.now();
-    const j = juge(moyenneVues(p.vues));
+    const moyenne = moyenneVues(p.vues);
+    const j = juge(moyenne);
     const sur = j.trouve !== null && j.conf >= SEUIL_AFFICHAGE
       && (p.vues.length >= 2 || j.conf >= SEUIL_VUE_UNIQUE);
     if (sur) {
       Object.assign(p, { etat: 'reconnu', key: j.trouve, nom: nomDe(j.trouve), essais: 0 });
+      if (p.fenetre) p.vivantJusqua = p.verifieA + FENETRE_DUREE_MS;
     } else if (p.etat === 'reconnu') {
       // La moyenne des vues retombe sous le seuil : on efface, sans clignoter pour une image.
       if (j.conf < SEUIL_AFFICHAGE * 0.9 || j.trouve === null) Object.assign(p, { etat: 'nouvelle', key: null, nom: '', vues: [] });
-    } else if (++p.essais >= REFUS_APRES) {
+    } else if (++p.essais >= REFUS_APRES || (p.vues.length >= 2 && rien(moyenne) >= RIEN_MAX)) {
       Object.assign(p, { etat: 'ignoree', vues: [], essais: 0 });
     }
   }
@@ -283,28 +370,35 @@ export function creeModeIA({ el, video, ecran, nomDe, poserPistes, estActif, est
         const r = await moteur.detecte(dessinDet);
         if (!estActif()) break;
         majPistes(boitesDe(r, g, dims.detecteur));
-        const lot = aVerifier(Math.max(1, Math.min(LOT_MAX, Math.floor(BUDGET_MS / msParZone))));
+        const n = Math.max(1, Math.min(LOT_MAX, Math.floor(BUDGET_MS / msParZone)));
+        // Fenêtres : une tous les deux tours sur un moteur lent, deux par tour au moins sur un
+        // moteur rapide, et toute place que les pistes laissent libre.
+        const reserve = n >= 3 ? 2 : (alterne++ % 2 === 0 ? 1 : 0);
+        const lot = aVerifier(n - reserve);
+        const fen = prochainesFenetres(n - lot.length, g);
+        const dessins = [...lot.map((p) => dessinDe(p, g)), ...fen.map((f) => dessinDe(f, g, 1))];
         let msClasse = 0;
-        if (lot.length) {
-          const a = await moteur.analyse(lot.map((p) => dessinDe(p, g)));
+        if (dessins.length) {
+          const a = await moteur.analyse(dessins);
           msClasse = a.ms;
-          msParZone = msParZone * 0.5 + (a.ms / lot.length) * 0.5;
+          msParZone = msParZone * 0.5 + (a.ms / dessins.length) * 0.5;
           const C = CLASSES.length;
           lot.forEach((p, k) => { if (pistes.includes(p)) integre(p, softmax(a.logits, k, C)); });
+          fen.forEach((f, k) => integreFenetre(f, softmax(a.logits, lot.length + k, C)));
         }
         if (!estActif()) break;
         poserPistes(pistes);
         // Développement : état du mode IA, pour le vérifier sans téléphone. Retiré du build.
         if (import.meta.env.DEV) {
           window.__ia = {
-            detection: Math.round(r.ms), reconnaissance: Math.round(msClasse), lot: lot.length,
+            detection: Math.round(r.ms), reconnaissance: Math.round(msClasse), lot: lot.length, fenetres: fen.length,
             msParZone: Math.round(msParZone),
-            pistes: pistes.map((p) => ({ etat: p.etat, nom: p.nom, vu: p.vu, vues: p.vues.length, s: +p.s.toFixed(2) })),
+            pistes: pistes.map((p) => ({ etat: p.etat, nom: p.nom, vu: p.vu, vues: p.vues.length, s: +p.s.toFixed(2), fenetre: p.fenetre })),
           };
         }
         const reconnus = pistes.filter((p) => p.etat === 'reconnu').length;
         montreDiag(`IA · ${moteur.nom} · détection ${Math.round(r.ms)} ms · reconnaissance ${Math.round(msClasse)} ms`
-          + ` (${lot.length}) · ${reconnus}/${pistes.length} reconnus`);
+          + ` (${lot.length} + ${fen.length} fenêtres) · ${reconnus}/${actives()} reconnus`);
         await attente(15);
       }
     } catch (e) {

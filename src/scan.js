@@ -717,6 +717,8 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
   // bouton, le toucher d'un cadre et l'aide fonctionnent donc comme en Auto.
   const ia = creeModeIA({
     el, video, ecran, nomDe,
+    // Le cadre manuel, en pixels de la vue : le mode IA l'analyse aussi de lui-même.
+    zoneVue: () => (zone.px ? { cx: zone.cx * el.clientWidth, cy: zone.cy * el.clientHeight, cote: zone.px } : null),
     poserPistes: (liste) => {
       if (liste === null) { if (mode === 'ia') videPistes(); return; }
       if (mode !== 'ia') return;

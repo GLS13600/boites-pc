@@ -799,6 +799,16 @@ les attaques sans passer par un membre d'équipe. Il ouvre un panneau du même
   Ténèbres/Spéciale en gén. 2 et 3, Ténèbres/Physique ensuite. Vérifié dans l'aperçu.
 - L'index d'une génération (attaque → Pokémon → jeux) est construit une fois, à la
   première ouverture de cette génération.
+- **Glisser de gauche à droite = revenir en arrière**, dans tout le panneau de combat
+  (`glisseRetourCombat`, branché sur `enableSwipeClose` comme la navigation de la
+  fiche du Pokédex) : fiche d'une attaque → liste des attaques ; choix d'attaque, de
+  talent, d'objet ou de nature → détail du Pokémon ; ailleurs, le panneau se ferme.
+  Vers la gauche, rien : le contenu ne suit qu'au tiers.
+  - Même animation que `navFiche`, dans le sens du retour, et même seuil (`NAV_AT`,
+    60 px). Le bouton « ‹ Toutes les attaques » passe par la même `retourMenuAttaques`.
+  - **Un glissement qui part des onglets de génération, de la table des types ou d'un
+    champ leur appartient** (`horizontalLocal` dans `enableSwipeClose`) : sans ça,
+    faire défiler les onglets revenait en arrière. La règle vaut pour tous les panneaux.
 - Limite : la description reste celle des jeux récents.
 
 ### Movesets par version

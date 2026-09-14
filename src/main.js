@@ -1159,7 +1159,7 @@ function navFiche(dir) {
 
 function enableSwipeClose(el, close, nav = null) {
   const body = el.querySelector('.sheet-body');
-  let startY = 0, startX = 0, startTop = 0, fromGrip = false, drag = null;
+  let startY = 0, startX = 0, startTop = 0, fromGrip = false, drag = null, horizontalLocal = false;
 
   el.addEventListener('touchstart', (e) => {
     if (!el.classList.contains('open') || e.touches.length !== 1) { drag = 'no'; return; }
@@ -1167,6 +1167,9 @@ function enableSwipeClose(el, close, nav = null) {
     startX = e.touches[0].clientX;
     startTop = body.scrollTop;
     fromGrip = !e.target.closest('.sheet-body');
+    // Les onglets de génération et la table des types défilent de côté : un glissement
+    // horizontal qui part de là leur appartient, il ne doit ni naviguer ni revenir.
+    horizontalLocal = !!e.target.closest('.paper-gens, .tt-wrap, input, select, textarea');
     drag = null;
   }, { passive: true });
 
@@ -1184,7 +1187,7 @@ function enableSwipeClose(el, close, nav = null) {
         drag = dy > 0 && (fromGrip || atTop) ? 'close' : 'no';
         if (drag === 'close') el.style.transition = 'none';
       } else {
-        drag = nav ? 'nav' : 'no';
+        drag = nav && !horizontalLocal ? 'nav' : 'no';
         if (drag === 'nav') body.style.transition = 'none';
       }
       if (drag === 'no') return;
@@ -2931,7 +2934,54 @@ function renderAnalyse() {
 const battleSheet = h(`<aside class="sheet" role="dialog" aria-modal="true"><div class="sheet-grip"></div><div class="sheet-body"></div></aside>`);
 document.body.append(battleSheet);
 const battleBody = battleSheet.querySelector('.sheet-body');
-enableSwipeClose(battleSheet, closeBattleSheet);
+// Glisser de gauche à droite = revenir en arrière : de la fiche d'une attaque à la
+// liste des attaques, d'un choix d'attaque, de talent, d'objet ou de nature au détail
+// du Pokémon, et sinon fermer le panneau. Vers la gauche il n'y a rien : le contenu ne
+// suit qu'au tiers, comme la fiche du Pokédex en bout de boîte.
+enableSwipeClose(battleSheet, closeBattleSheet, {
+  voisin: (dir) => (dir === -1 && state.bs ? true : null),
+  aller: (dir) => { if (dir === -1) glisseRetourCombat(); },
+});
+
+let retourCombatEnCours = false;
+function glisseRetourCombat() {
+  const bs = state.bs;
+  if (!bs || retourCombatEnCours) return;
+  const action = bs.mode === 'infoAttaque' ? retourMenuAttaques
+    : SOUS_PANNEAUX.has(bs.mode) ? () => openBattleSheet('detail', bs.slot)
+    : null;
+  // Rien derrière : le retour ferme le panneau, avec sa propre sortie vers le bas.
+  if (!action) { closeBattleSheet(); return; }
+  retourCombatEnCours = true;
+  // Même mouvement que le passage d'une fiche à l'autre (navFiche), dans le sens du
+  // retour : le contenu part à droite, le précédent revient de la gauche.
+  const b = battleBody;
+  const w = b.getBoundingClientRect().width || 340;
+  b.style.transition = `transform ${NAV_OUT}ms ease-in, opacity ${NAV_OUT}ms ease-in`;
+  b.style.transform = `translateX(${w * 0.45}px)`;
+  b.style.opacity = '0';
+  setTimeout(() => {
+    action();
+    b.style.transition = 'none';
+    b.style.transform = `translateX(${-w * 0.4}px)`;
+    b.style.opacity = '0';
+    void b.offsetWidth; // pas de requestAnimationFrame, comme pour navFiche
+    b.style.transition = `transform ${NAV_IN}ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity ${NAV_IN}ms ease-out`;
+    b.style.transform = '';
+    b.style.opacity = '';
+    setTimeout(() => { b.style.transition = ''; retourCombatEnCours = false; }, NAV_IN);
+  }, NAV_OUT);
+}
+
+// Retour de la fiche d'une attaque à la liste. Recherche et position relues AVANT de
+// rouvrir la liste, qui les remettrait à zéro.
+function retourMenuAttaques() {
+  const { q, y } = filtreAttaques;
+  openBattleSheet('attaques');
+  state.bs.q = q;
+  renderBattleSheet();
+  battleBody.scrollTop = y;
+}
 
 function closeBattleSheet() {
   battleSheet.classList.remove('open');
@@ -3632,15 +3682,7 @@ battleBody.addEventListener('click', (e) => {
     openBattleSheet('infoAttaque', +infoAtq.dataset.infoatq);
     return;
   }
-  if (e.target.closest('[data-act="atq-retour"]')) {
-    // Recherche et position relues AVANT de rouvrir la liste, qui les remettrait à zéro.
-    const { q, y } = filtreAttaques;
-    openBattleSheet('attaques');
-    state.bs.q = q;
-    renderBattleSheet();
-    battleBody.scrollTop = y;
-    return;
-  }
+  if (e.target.closest('[data-act="atq-retour"]')) { retourMenuAttaques(); return; }
 
   const jeu = e.target.closest('[data-jeu]');
   if (jeu) {

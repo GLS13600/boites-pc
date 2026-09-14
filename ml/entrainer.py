@@ -227,7 +227,10 @@ def main():
         modele.load_state_dict(torch.load(args.reprise, map_location='cpu'))
         print(f'reprise depuis {args.reprise}', flush=True)
     modele = modele.to(dev).to(memory_format=torch.channels_last)
-    ema = ModelEmaV3(modele, decay=0.9995)
+    # Montée progressive de la moyenne lissée, comme pour le détecteur : sans elle, à
+    # l'époque 2 du premier essai de S2 la moyenne valait encore surtout les poids de départ
+    # (0 % d'exactitude), et ses sauvegardes ne permettaient pas de reprendre après une pause.
+    ema = ModelEmaV3(modele, decay=0.9995, use_warmup=True)
     tete = [p for n, p in modele.named_parameters() if n.startswith('head')]
     corps = [p for n, p in modele.named_parameters() if not n.startswith('head')]
     opt = torch.optim.AdamW([{'params': corps, 'lr': args.lr}, {'params': tete, 'lr': args.lr * 5}],

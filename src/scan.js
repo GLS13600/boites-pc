@@ -203,7 +203,12 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
     attentes.set(id, { ok, ko });
     worker.postMessage({ ...message, id }, transfert);
   });
-  const analyse = (pixels, n) => demande({ type: 'analyse', pixels, n, taille: TAILLE }, [pixels.buffer]);
+  const analyse = (pixels, n, modele) => demande({ type: 'analyse', pixels, n, taille: TAILLE, modele }, [pixels.buffer]);
+  // Classifieur S2 du mode IA, chargé une fois, à sa première utilisation.
+  let pretIA = null;
+  const prepareIA = () => (pretIA ??= (pret ?? prepareModele())
+    .then(() => demande({ type: 'charge-ia', url: new URL('scan-ia/classifieur.onnx', document.baseURI).href }))
+    .catch((e) => { pretIA = null; throw e; }));
   const detecte = (pixels) => demande({ type: 'detecte', pixels, largeur: DET_L, hauteur: DET_H }, [pixels.buffer]);
 
   // Moyenne des probabilités sur les cadrages, puis somme par groupe : une espèce et
@@ -734,8 +739,8 @@ export function creeScan({ ouvrirFiche, nomDe = (k) => String(k), estMasque = ()
     montreDiag: (texte) => { diag.textContent = texte ?? ''; diag.hidden = mode !== 'ia' || !texte; },
     // Hors appli iPhone : le Worker du scan et ses modèles, pour exercer la logique.
     secours: {
-      pret: () => pret ?? prepareModele(),
-      analyse,
+      pret: prepareIA,
+      analyse: (pixels, n) => analyse(pixels, n, 'ia'),
       detecte,
       dims: { detecteur: { largeur: DET_L, hauteur: DET_H, pas: DET_PAS }, classifieur: { taille: TAILLE } },
     },

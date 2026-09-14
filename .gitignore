@@ -26,3 +26,7 @@ xcuserdata
 # Caches des scripts de rapatriement : reconstructibles, jamais versionnes.
 scripts/.cache
 ml/__pycache__
+
+# Modèles trop gros pour GitHub (plus de 100 Mo) : versionnés en morceaux dans
+# modeles/, ré-assemblés ici par scripts/assemble-modeles.mjs à chaque build et dev.
+public/scan-ia/classifieur.onnx

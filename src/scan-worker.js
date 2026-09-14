@@ -36,10 +36,18 @@ async function traite(data) {
         try { sessions.detecteur = await ouvre(data.detecteur); } catch { sessions.detecteur = null; }
       }
       self.postMessage({ type: 'pret', suivi: !!sessions.detecteur });
+    } else if (data.type === 'charge-ia') {
+      // Classifieur du mode IA (MobileCLIP2-S2, 147 Mo) : chargé seulement quand ce mode
+      // sert, pour que le mode Auto n'en paie ni le téléchargement ni la mémoire.
+      const t0 = performance.now();
+      if (!sessions.ia) sessions.ia = await ouvre(data.url);
+      self.postMessage({ type: 'resultat', id: data.id, ms: performance.now() - t0 });
     } else if (data.type === 'analyse') {
       const t0 = performance.now();
       const entree = new ort.Tensor('float32', data.pixels, [data.n, 3, data.taille, data.taille]);
-      const { logits } = await sessions.classifieur.run({ image: entree });
+      // `modele: 'ia'` vise S2 ; tout le reste — Auto, Manuel, bouton — reste sur S0.
+      const session = (data.modele === 'ia' && sessions.ia) || sessions.classifieur;
+      const { logits } = await session.run({ image: entree });
       const sortie = new Float32Array(logits.data);
       self.postMessage({ type: 'resultat', id: data.id, logits: sortie, n: data.n, ms: performance.now() - t0 },
         [sortie.buffer]);

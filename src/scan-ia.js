@@ -20,11 +20,11 @@
 // défaire le bloc « mode IA » de scan.js (bouton à deux positions) et de style.css.
 import CLASSES from './data/scan-classes.json';
 
-// Modèles du mode IA. Phase 0 : les modèles ACTUELS, pour mesurer ce qu'apporte le
-// moteur seul ; les modèles plus gros (ml/, MobileCLIP2-S2 et détecteur 384×576)
-// prendront leur place ici.
+// Modèles du mode IA. Classifieur : MobileCLIP2-S2 (147 Mo, ré-assemblé à la compilation
+// depuis modeles/scan-ia/), le mode Auto gardant S0. Détecteur : l'actuel — le
+// détecteur IA 384×576 fait ~360 ms par image sur le moteur web, trop lent pour suivre.
 const MODELES = {
-  classifieur: { chemin: 'scan/modele.onnx', taille: 256 },
+  classifieur: { chemin: 'scan-ia/classifieur.onnx', taille: 256 },
   detecteur: { chemin: 'scan/detecteur.onnx', largeur: 256, hauteur: 384, pas: 8 },
 };
 const PISTES_MAX = 12;
@@ -154,7 +154,7 @@ function moteurNatif(plugin) {
   };
   let chargement = null;
   return {
-    nom: 'puce de l’iPhone',
+    nom: 'puce de l’iPhone · S2',
     charge() {
       chargement ??= plugin.charge({
         modeles: { classifieur: MODELES.classifieur.chemin, detecteur: MODELES.detecteur.chemin },
@@ -197,7 +197,7 @@ function moteurWeb({ pret, analyse, detecte, dims }) {
     return px;
   };
   return {
-    nom: 'moteur web (secours)',
+    nom: 'moteur web (secours) · S2',
     async charge() { await pret(); return dims; },
     detecte: (dessin) => detecte(pixels(dessin, dims.detecteur.largeur, dims.detecteur.hauteur, IMAGENET)),
     analyse(dessins) {

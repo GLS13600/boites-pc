@@ -161,6 +161,8 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `public/sprites/` | Les 5 291 sprites, **générés**, 40 Mo |
 | `public/cries/` | Les 1 351 cris des Pokémon en MP3, **générés**, 17,8 Mo |
 | `scripts/fetch-cries.mjs` | Rapatrie les cris de PokéAPI et les convertit en MP3 |
+| `modeles/scan-ia/` | Classifieur S2 du mode IA en morceaux de 95 Mo (GitHub refuse plus de 100 Mo) |
+| `scripts/assemble-modeles.mjs` | Ré-assemble ces morceaux dans `public/scan-ia/` avant chaque build et dev |
 | `scripts/fetch-moves-gen.mjs` | Complète moves.json : toutes les attaques des 21 jeux, génération d'apparition, valeurs par génération |
 
 ## Données
@@ -659,6 +661,34 @@ API** — exigence explicite.
     la caméra ; même forcé, le flux ne rend que des images de 2×2. Pour tester, forcer
     `document.hidden`, substituer le canevas à la vidéo dans `drawImage` et annoncer
     `videoWidth`/`videoHeight`. `window.__ia` expose l'état du mode en développement.
+- **Classifieur S2 intégré au mode IA (14/09/2026, à la demande)** ; les modes Auto et
+  Manuel et le bouton gardent S0.
+  - Mesures (mêmes jeux d'évaluation, un cadrage, meilleure époque 28 sur 30) — S0 → S2 :
+    illustration 92,8 → 92,9 %, photo 84,6 → 85,2 %, illustration tournée 92,2 → 93,8 %,
+    photo tournée 83,4 → 84,7 %, objets acceptés à 0,4 : 0,30 → 0,05 % (0 % à 0,9 pour les
+    deux). Gain modeste, sous l'estimation de 86–90 % sur photo ; la courbe plafonnait
+    dès l'époque 26 — entraîner plus longtemps n'apporterait presque rien. Pour aller
+    plus loin : de VRAIES photos plutôt qu'un modèle plus gros.
+  - **147 Mo : GitHub refuse les fichiers de plus de 100 Mo.** Le modèle est versionné en
+    deux morceaux (`modeles/scan-ia/classifieur.onnx.1` et `.2`, empreinte SHA-256 à
+    côté) et ré-assemblé par `scripts/assemble-modeles.mjs` dans
+    `public/scan-ia/classifieur.onnx`, ignoré par git. `npm run build` (donc les deux
+    workflows) et `npm run dev` (predev) le lancent ; il vérifie l'empreinte et ne
+    refait rien si le fichier est déjà bon. Au runtime, un seul fichier : rien ne change
+    pour le Worker ni pour le module natif. Git LFS écarté : son quota de bande passante
+    gratuit (1 Go par mois) partirait en trois poussées, chaque workflow retéléchargeant
+    le modèle.
+  - **Vitesse sur le moteur web : ~600 ms par cadre**, contre ~210 ms pour S0
+    (`ml/vitesse-web.mjs`). Dans Safari, le mode IA reconnaît donc ~3 fois moins vite ;
+    son lot adaptatif reste à un cadre par tour et la détection garde son rythme. Sur
+    l'IPA, c'est la puce qui calcule.
+  - Chargé **à la première utilisation du mode IA** (message `charge-ia` du Worker, session
+    `ia`), pour que le mode Auto n'en paie ni le téléchargement ni la mémoire. `analyse`
+    vise S2 avec `modele: 'ia'`, S0 sinon. Même table de classes que S0 (vérifié
+    identique octet pour octet), donc `scan-classes.json` sert aux deux.
+  - Poids de l'appli : +147 Mo dans `dist/`, sur le site comme dans l'IPA.
+  - Vérifié dans l'aperçu : en Auto, Pikachu et Fantominus reconnus par S0 ; en IA, le
+    diagnostic annonce « S2 », ~600 ms par cadre, les deux reconnus en ~5 s.
 - **WebGPU écarté** : actif dans WKWebView depuis iOS 26, mais onnxruntime-web ne le
   prend pas en charge sur iOS (issue microsoft/onnxruntime#22776).
 - **Modèles plus gros, entraînés pour ce mode seulement** (`ml/`) :

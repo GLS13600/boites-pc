@@ -161,6 +161,7 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `public/sprites/` | Les 5 291 sprites, **générés**, 40 Mo |
 | `public/cries/` | Les 1 351 cris des Pokémon en MP3, **générés**, 17,8 Mo |
 | `scripts/fetch-cries.mjs` | Rapatrie les cris de PokéAPI et les convertit en MP3 |
+| `scripts/fetch-moves-gen.mjs` | Complète moves.json : toutes les attaques des 21 jeux, génération d'apparition, valeurs par génération |
 
 ## Données
 
@@ -759,6 +760,46 @@ la fonction ne concerne que la gestion des boîtes.
 - **Capturé = couleur, non capturé = gris**, dans le sélecteur comme dans les cartes.
   C'est le même signal que la grille des boîtes, on ne l'invente pas ici.
 - Persistance : `pcbox.vue`, `pcbox.jeu`, `pcbox.equipe`.
+
+### Menu des attaques
+
+Bouton **« Attaques »** sous l'en-tête de la boîte de combat, demandé pour consulter
+les attaques sans passer par un membre d'équipe. Il ouvre un panneau du même
+`battleSheet` (modes `attaques` et `infoAttaque`).
+
+- **Une génération choisie en tête** (onglets Gén. 1 à 9, celle du jeu courant par
+  défaut). Une attaque « disponible » dans une génération = apprenable dans au moins un
+  de ses jeux jouables (`learnsets-vg.json`) : 164 en gén. 1, 679 en gén. 9.
+- **Liste** : nom, type, catégorie, puissance, précision, PP, nombre de Pokémon qui
+  l'apprennent. Recherche, filtres type / catégorie et tri (nom, puissance, précision,
+  PP, nombre de Pokémon) en listes déroulantes, en 16 px contre le zoom d'iOS.
+- **Fiche d'une attaque** : ses valeurs DE LA GÉNÉRATION choisie, ce qui a changé
+  depuis (« Aujourd'hui : puissance 40 »), puis **qui l'apprend**, en quatre groupes
+  repliables — par niveau, par CT/CS, par œuf, par maître. Un Pokémon par ligne, avec
+  son niveau ou sa CT : une seule mention si tous les jeux de la génération où il
+  apparaît s'accordent, sinon suivie des sigles des jeux (« N.26 J » : Pikachu apprend
+  Tonnerre par niveau dans Jaune seulement) ou détaillée jeu par jeu.
+- Les onglets de génération restent sur la fiche : on compare la même attaque d'une
+  génération à l'autre. Le retour à la liste rend la recherche, les filtres et la
+  position.
+- **Valeurs par génération** : `moves.json` porte `g` (génération d'apparition) et
+  `h` (écarts par génération : puissance, précision, PP, type), produits par
+  **`npm run fetch-moves-gen`**, à relancer APRÈS fetch-moves et fetch-battle —
+  fetch-moves seul ramènerait le fichier à ses seules attaques citées.
+  - `past_values` de PokéAPI porte les valeurs EN VIGUEUR AVANT son version group ; un
+    champ `null` n'a pas changé. Le script part des valeurs actuelles et remonte le
+    temps, puis **vérifie six faits connus** avant d'écrire (Charge 35/95 en gén. 1 et
+    50 en gén. 6, Morsure Normal en gén. 1, Charme Normal jusqu'en gén. 5…).
+  - Il manquait **102 attaques** dans `moves.json`, qui ne gardait que celles citées par
+    la fiche du Pokédex (jeu le plus récent) : surtout celles retirées d'Écarlate /
+    Violet. 833 attaques désormais, dont 148 avec un historique, 167 Ko.
+- **Catégorie avant la gén. 4** : physique ou spéciale dépendait du TYPE (Normal,
+  Combat, Vol, Poison, Sol, Roche, Insecte, Spectre, Acier physiques ; les autres
+  spéciaux). `attaqueEnGen` l'applique : Morsure est Normal/Physique en gén. 1,
+  Ténèbres/Spéciale en gén. 2 et 3, Ténèbres/Physique ensuite. Vérifié dans l'aperçu.
+- L'index d'une génération (attaque → Pokémon → jeux) est construit une fois, à la
+  première ouverture de cette génération.
+- Limite : la description reste celle des jeux récents.
 
 ### Movesets par version
 

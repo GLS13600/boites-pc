@@ -2557,6 +2557,13 @@ function renderCombat() {
           <div class="combat-compte"><b>${pleines}</b>/6</div>
         </div>
 
+        <!-- Menu des attaques : toutes celles d'une génération, et qui les apprend. -->
+        <button class="menu-atq" data-act="menu-attaques">
+          <span class="menu-atq-i" aria-hidden="true">&#9876;</span>
+          <span><b>Attaques</b><small>Par génération : valeurs, et qui les apprend</small></span>
+          <span class="menu-atq-chev" aria-hidden="true">&#8250;</span>
+        </button>
+
         <div class="equipe">
           ${equipe().map(renderEquipeSlot).join('')}
         </div>
@@ -2965,6 +2972,8 @@ function renderBattleSheet(gardeFocus) {
     : bs.mode === 'nature' ? htmlChoixNature()
     : bs.mode === 'talent' ? htmlChoixTalent()
     : bs.mode === 'objet' ? htmlChoixObjet()
+    : bs.mode === 'attaques' ? htmlMenuAttaques()
+    : bs.mode === 'infoAttaque' ? htmlInfoAttaque()
     : htmlChoixAttaque();
   if (gardeFocus) {
     const c = battleBody.querySelector('.bs-name');
@@ -3244,6 +3253,239 @@ function htmlDetail() {
   `;
 }
 
+// ---------- Menu des attaques ----------
+//
+// Toutes les attaques qu'on peut apprendre dans les jeux d'une génération — choisie en
+// tête du menu —, avec leurs valeurs DE CETTE GÉNÉRATION. Toucher une attaque montre
+// qui l'apprend, et comment : niveau, CT/CS, œuf ou maître, jeu par jeu quand ça diffère.
+//
+// « Disponible dans une génération » = apprenable dans au moins un de ses jeux jouables
+// (learnsets-vg.json). Les valeurs sont celles de moves.json, corrigées par génération
+// par son champ « h » (scripts/fetch-moves-gen.mjs) : Charge valait 35 de puissance en
+// gén. 1, Morsure était Normal. Avant la gén. 4, physique ou spéciale dépendait du TYPE.
+
+const TYPES_PHYSIQUES_AVANT_G4 = new Set(['normal', 'fighting', 'flying', 'poison', 'ground', 'rock', 'bug', 'ghost', 'steel']);
+// Sigles des jeux, pour dire en une ligne où un niveau ou une CT diffère.
+const SIGLE_JEU = {
+  'red-blue': 'RB', yellow: 'J', 'gold-silver': 'OA', crystal: 'C', 'ruby-sapphire': 'RS', emerald: 'É',
+  'firered-leafgreen': 'RFVF', 'diamond-pearl': 'DP', platinum: 'Pt', 'heartgold-soulsilver': 'HGSS',
+  'black-white': 'NB', 'black-2-white-2': 'N2B2', 'x-y': 'XY', 'omega-ruby-alpha-sapphire': 'ROSA',
+  'sun-moon': 'SL', 'ultra-sun-ultra-moon': 'USUL', 'lets-go-pikachu-lets-go-eevee': 'LGPE',
+  'sword-shield': 'ÉB', 'brilliant-diamond-shining-pearl': 'DÉPS', 'legends-arceus': 'LPA', 'scarlet-violet': 'ÉV',
+};
+const GROUPES_APPRENTISSAGE = ['Par niveau', 'Par CT / CS', 'Par œuf', 'Par maître'];
+
+// Filtres du menu, gardés en passant à la fiche d'une attaque et en revenant.
+const filtreAttaques = { gen: null, type: '', cat: '', tri: 'nom', q: '', y: 0 };
+
+// Valeurs d'une attaque dans une génération.
+function attaqueEnGen(id, gen) {
+  const b = moves[id];
+  if (!b) return null;
+  const v = { ...b, ...(b.h?.[gen] || {}) };
+  if (gen < 4 && v.c !== 'status' && v.t) v.c = TYPES_PHYSIQUES_AVANT_G4.has(v.t) ? 'physical' : 'special';
+  return v;
+}
+
+// Index d'une génération : attaque → (clé → { jeu: [sources] }). Construit une fois par
+// génération, à la première ouverture.
+const INDEX_ATTAQUES = new Map();
+function indexAttaques(gen) {
+  if (INDEX_ATTAQUES.has(gen)) return INDEX_ATTAQUES.get(gen);
+  const jeux = JEUX.filter((v) => NUM_GEN[v.gen] === gen).map((v) => v.k);
+  const index = new Map();
+  const note = (id, key, jeu, src) => {
+    let parCle = index.get(id);
+    if (!parCle) index.set(id, (parCle = new Map()));
+    let e = parCle.get(key);
+    if (!e) parCle.set(key, (e = {}));
+    (e[jeu] ??= []).push(src);
+  };
+  for (const [k, parJeu] of Object.entries(LEARN_VG)) {
+    const key = asKey(k);
+    for (const jeu of jeux) {
+      const l = parJeu[jeu];
+      if (!l) continue;
+      for (const [id, lv] of l.n) note(id, key, jeu, { r: 0, t: lv > 0 ? `N.${lv}` : 'Dép.', n: lv });
+      for (const [id, lab] of l.m) note(id, key, jeu, { r: 1, t: String(lab), n: Number(String(lab).replace(/\D/g, '')) || 0 });
+      for (const id of l.o) note(id, key, jeu, { r: 2, t: 'Œuf', n: 0 });
+      for (const id of l.t) note(id, key, jeu, { r: 3, t: 'Maître', n: 0 });
+    }
+  }
+  const res = { jeux, index };
+  INDEX_ATTAQUES.set(gen, res);
+  return res;
+}
+
+function ongletsGenAttaques(gen) {
+  return `<div class="paper-gens" role="tablist">
+    ${GENS.map((g) => `
+      <button class="paper-gen ${g.n === gen ? 'on' : ''}" role="tab" aria-selected="${g.n === gen}" data-atqgen="${g.n}">
+        Gén. ${g.n}<small>${g.name}</small>
+      </button>`).join('')}
+  </div>`;
+}
+
+function ouvreMenuAttaques() {
+  openBattleSheet('attaques');
+  if (!LEARN_VG) chargeVG().then(() => { if (state.bs && ['attaques', 'infoAttaque'].includes(state.bs.mode)) renderBattleSheet(); });
+}
+
+function htmlMenuAttaques() {
+  const f = filtreAttaques;
+  f.gen ??= genDuJeu();
+  f.q = state.bs.q || '';
+  const tete = `<h2 class="bs-title">Attaques</h2>${ongletsGenAttaques(f.gen)}`;
+  if (!LEARN_VG) return `${tete}<p class="paper-note">Chargement des attaques par version…</p>`;
+  const { index, jeux } = indexAttaques(f.gen);
+  const q = fold(f.q);
+  const toutes = [...index.keys()].map((id) => ({ id, v: attaqueEnGen(id, f.gen), qui: index.get(id).size })).filter((x) => x.v);
+  const res = toutes.filter(({ v }) => (!q || fold(v.n).includes(q)) && (!f.type || v.t === f.type) && (!f.cat || v.c === f.cat));
+  const nom = (a, b) => a.v.n.localeCompare(b.v.n, 'fr');
+  const parValeur = (k) => (a, b) => (b.v[k] ?? -1) - (a.v[k] ?? -1) || nom(a, b);
+  res.sort(f.tri === 'puissance' ? parValeur('p') : f.tri === 'precision' ? parValeur('a')
+    : f.tri === 'pp' ? parValeur('pp') : f.tri === 'qui' ? (a, b) => b.qui - a.qui || nom(a, b) : nom);
+  const nomsJeux = jeux.map((k) => JEUX.find((v) => v.k === k)?.nom).filter(Boolean).join(', ');
+  const option = (valeur, libelle, courant) => `<option value="${valeur}" ${valeur === courant ? 'selected' : ''}>${libelle}</option>`;
+  return `
+    ${tete}
+    <p class="paper-note">${toutes.length} attaques apprenables en génération ${f.gen} (${esc(nomsJeux)}),
+      avec leurs valeurs de cette génération. Touchez une attaque pour voir qui l'apprend.</p>
+    <label class="bs-field">
+      <span>Rechercher</span>
+      <input class="bs-name bs-q" type="text" value="${esc(f.q)}" placeholder="Nom d'attaque…" autocomplete="off" />
+    </label>
+    <div class="atq-filtres">
+      <select data-atqfiltre="type" aria-label="Type">
+        ${option('', 'Type', f.type)}
+        ${typesDeGen(f.gen).map((t) => option(t, TYPES[t]?.[0] || t, f.type)).join('')}
+      </select>
+      <select data-atqfiltre="cat" aria-label="Catégorie">
+        ${option('', 'Catégorie', f.cat)}
+        ${Object.entries(CLASSES).map(([k, [n]]) => option(k, n, f.cat)).join('')}
+      </select>
+      <select data-atqfiltre="tri" aria-label="Trier">
+        ${option('nom', 'Tri : nom', f.tri)}
+        ${option('puissance', 'Puissance', f.tri)}
+        ${option('precision', 'Précision', f.tri)}
+        ${option('pp', 'PP', f.tri)}
+        ${option('qui', 'Nb de Pokémon', f.tri)}
+      </select>
+    </div>
+    <p class="atq-compte">${res.length === toutes.length ? '' : `${res.length} sur ${toutes.length}`}</p>
+    <ul class="mlist">
+      ${res.map(({ id, v, qui }) => {
+        const [tn, tc] = TYPES[v.t] || [v.t || '—', '#888'];
+        const [cn, cc] = CLASSES[v.c] || [v.c || '—', '#888'];
+        return `
+          <li class="mrow">
+            <button class="move" data-infoatq="${id}">
+              <span class="mmain">
+                <span class="mtitre">
+                  <span class="mname">${esc(v.n)}</span>
+                  <span class="type mini" style="--t:${tc}">${tn}</span>
+                </span>
+                <span class="mmeta">
+                  <span class="mcls" style="--c:${cc}">${cn}</span>
+                  <span>Puis. <b>${v.p ?? '—'}</b></span>
+                  <span>Préc. <b>${v.a ?? '—'}</b></span>
+                  <span>PP <b>${v.pp ?? '—'}</b></span>
+                  <span>${qui} Pokémon</span>
+                </span>
+              </span>
+              <span class="mchev">›</span>
+            </button>
+          </li>`;
+      }).join('')}
+    </ul>
+    ${res.length ? '' : '<p class="paper-note">Aucune attaque ne correspond.</p>'}`;
+}
+
+// Fiche d'une attaque : ses valeurs dans la génération choisie, et qui l'apprend.
+function htmlInfoAttaque() {
+  const id = state.bs.slot;
+  const gen = filtreAttaques.gen ?? genDuJeu();
+  const v = attaqueEnGen(id, gen);
+  if (!v) return '<p class="none">Attaque inconnue.</p>';
+  const retour = '<button class="atq-retour" data-act="atq-retour">‹ Toutes les attaques</button>';
+  if (!LEARN_VG) return `${retour}<p class="paper-note">Chargement des attaques par version…</p>`;
+  const { index, jeux } = indexAttaques(gen);
+  const parCle = index.get(id) || new Map();
+  const [tn, tc] = TYPES[v.t] || [v.t || '—', '#888'];
+  const [cn, cc] = CLASSES[v.c] || [v.c || '—', '#888'];
+
+  // Ce qui a changé depuis, pour ne pas laisser croire à une erreur.
+  const actuel = attaqueEnGen(id, 9);
+  const changes = [];
+  if (actuel.p !== v.p) changes.push(`puissance ${actuel.p ?? '—'}`);
+  if (actuel.a !== v.a) changes.push(`précision ${actuel.a ?? '—'}`);
+  if (actuel.pp !== v.pp) changes.push(`${actuel.pp} PP`);
+  if (actuel.t !== v.t) changes.push(`type ${TYPES[actuel.t]?.[0] || actuel.t}`);
+  if (actuel.c !== v.c) changes.push((CLASSES[actuel.c]?.[0] || actuel.c).toLowerCase());
+
+  // Un groupe par mode d'apprentissage ; dans chaque groupe, un Pokémon par ligne, avec
+  // son niveau ou sa CT — une seule fois si tous les jeux de la génération s'accordent,
+  // jeu par jeu sinon.
+  const groupes = GROUPES_APPRENTISSAGE.map(() => []);
+  for (const [key, parJeu] of parCle) {
+    for (let r = 0; r < 4; r++) {
+      const parJeuR = jeux
+        .map((j) => [j, (parJeu[j] || []).filter((s) => s.r === r)])
+        .filter(([, s]) => s.length);
+      if (!parJeuR.length) continue;
+      const libelle = (s) => s.map((x) => x.t).join(' / ');
+      const differents = new Set(parJeuR.map(([, s]) => libelle(s)));
+      // Une seule mention si TOUS les jeux où le Pokémon apparaît s'accordent ; sinon on
+      // dit dans lesquels — Pikachu apprend Tonnerre au N.26 dans Rouge/Bleu, pas dans Jaune.
+      const present = jeux.filter((j) => LEARN_VG[key]?.[j] || LEARN_VG[speciesOf(key)]?.[j]).length;
+      const texte = differents.size === 1
+        ? [...differents][0] + (parJeuR.length < present ? ` ${parJeuR.map(([j]) => SIGLE_JEU[j] || j).join(' ')}` : '')
+        : parJeuR.map(([j, s]) => `${libelle(s)} ${SIGLE_JEU[j] || j}`).join(' · ');
+      const tri = Math.min(...parJeuR.flatMap(([, s]) => s.map((x) => x.n)));
+      groupes[r].push({ key, texte, tri });
+    }
+  }
+  const ordre = (a, b) => a.tri - b.tri || speciesOf(a.key) - speciesOf(b.key) || String(a.key).localeCompare(String(b.key));
+  const nomsJeux = jeux.map((k) => `${SIGLE_JEU[k] || k} = ${JEUX.find((x) => x.k === k)?.nom || k}`).join(' · ');
+  const nbGroupes = groupes.filter((g) => g.length).length;
+
+  return `
+    ${retour}
+    ${ongletsGenAttaques(gen)}
+    <h2 class="bs-title atq-titre">${esc(v.n)}</h2>
+    <div class="atq-types-ligne">
+      <span class="type" style="--t:${tc}">${tn}</span>
+      <span class="mcls" style="--c:${cc}">${cn}</span>
+    </div>
+    <dl class="atq-fiche">
+      <div><dt>Puissance</dt><dd>${v.p ?? '—'}</dd></div>
+      <div><dt>Précision</dt><dd>${v.a != null ? `${v.a} %` : '—'}</dd></div>
+      <div><dt>PP</dt><dd>${v.pp ?? '—'}</dd></div>
+      <div><dt>Catégorie</dt><dd style="color:${cc}">${cn}</dd></div>
+    </dl>
+    ${v.d ? `<p class="atq-desc">${esc(v.d)}</p>` : ''}
+    <p class="paper-note">Valeurs de la génération ${gen}${v.g ? `, attaque apparue en génération ${v.g}` : ''}.${changes.length
+      ? ` Aujourd'hui : ${esc(changes.join(', '))}.` : ''}${gen < 4 && v.c !== 'status'
+      ? " Avant la gén. 4, physique ou spéciale dépendait du type de l'attaque." : ''}</p>
+
+    <h3>Qui l'apprend en génération ${gen} <small>${parCle.size} Pokémon</small></h3>
+    ${parCle.size ? `<p class="paper-note">${esc(nomsJeux)}</p>`
+      : `<p class="none">${v.g && v.g > gen ? `Cette attaque n'existe pas encore : elle apparaît en génération ${v.g}.`
+        : `Aucun Pokémon ne l'apprend dans les jeux de la génération ${gen}.`}</p>`}
+    ${groupes.map((liste, r) => (liste.length ? `
+      <details class="mgroup" ${r === 0 || nbGroupes === 1 ? 'open' : ''}>
+        <summary>${GROUPES_APPRENTISSAGE[r]} <b>${liste.length}</b></summary>
+        <div class="picks appr">
+          ${liste.sort(ordre).map((x) => `
+            <div class="pick ${isCaught(x.key) ? '' : 'gris'}">
+              <img src="${sprites.still(spriteKey(x.key))}" alt="" loading="lazy" ${imgFallback(speciesOf(x.key), false)} />
+              <span>${esc(monName(x.key))}<i>n° ${speciesOf(x.key)}</i></span>
+              <span class="appr-src">${esc(x.texte)}</span>
+            </div>`).join('')}
+        </div>
+      </details>` : '')).join('')}`;
+}
+
 // Choix d'une attaque parmi celles apprenables dans le jeu courant.
 function htmlChoixAttaque() {
   const m = equipe()[state.bs.slot];
@@ -3369,9 +3611,36 @@ function majEtiquetteIv(cellule, m, cle) {
     ? calcPV(base, niv, espece, ev) : calcStat(base, niv, ev, mult));
 }
 
+// Menu des attaques : type, catégorie et tri se choisissent dans des listes déroulantes.
+battleBody.addEventListener('change', (e) => {
+  const filtre = e.target.closest('[data-atqfiltre]');
+  if (!filtre || state.bs?.mode !== 'attaques') return;
+  filtreAttaques[filtre.dataset.atqfiltre] = filtre.value;
+  renderBattleSheet();
+});
+
 battleBody.addEventListener('click', (e) => {
   const bs = state.bs;
   if (!bs) return;
+
+  // ---- Menu des attaques
+  const genAtq = e.target.closest('[data-atqgen]');
+  if (genAtq) { filtreAttaques.gen = +genAtq.dataset.atqgen; renderBattleSheet(); battleBody.scrollTop = 0; return; }
+  const infoAtq = e.target.closest('[data-infoatq]');
+  if (infoAtq) {
+    filtreAttaques.y = battleBody.scrollTop;
+    openBattleSheet('infoAttaque', +infoAtq.dataset.infoatq);
+    return;
+  }
+  if (e.target.closest('[data-act="atq-retour"]')) {
+    // Recherche et position relues AVANT de rouvrir la liste, qui les remettrait à zéro.
+    const { q, y } = filtreAttaques;
+    openBattleSheet('attaques');
+    state.bs.q = q;
+    renderBattleSheet();
+    battleBody.scrollTop = y;
+    return;
+  }
 
   const jeu = e.target.closest('[data-jeu]');
   if (jeu) {
@@ -3496,6 +3765,7 @@ app.addEventListener('click', (e) => {
   if (e.target.closest('[data-act="choix-jeu"]')) { openBattleSheet('version'); return; }
   if (e.target.closest('[data-act="eq-export"]')) { exportEquipes(); return; }
   if (e.target.closest('[data-act="eq-import"]')) { importEquipes(); return; }
+  if (e.target.closest('[data-act="menu-attaques"]')) { ouvreMenuAttaques(); return; }
 
   const eq = e.target.closest('[data-eq]');
   if (eq) {

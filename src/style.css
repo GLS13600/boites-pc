@@ -481,6 +481,67 @@ img { display: block; }
 }
 .combat-compte b { color: var(--ink); font-size: 17px; }
 
+/* ---- Menu des attaques : bouton d'entrée, filtres, fiche d'une attaque ---- */
+.menu-atq {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--ink);
+  text-align: left;
+}
+.menu-atq:active { background: var(--slot); }
+.menu-atq-i {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--caught-tint);
+  color: var(--ball);
+  font-size: 18px;
+}
+.menu-atq b { display: block; font-size: 15px; }
+.menu-atq small { display: block; font-size: 11px; color: var(--muted); }
+.menu-atq-chev { margin-left: auto; color: var(--muted); font-size: 22px; line-height: 1; }
+/* Trois listes déroulantes côte à côte ; 16 px, sans quoi iOS zoome à l'ouverture. */
+.atq-filtres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: -8px 0 6px; }
+.atq-filtres select {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 16px;
+}
+.atq-compte { margin: 0 0 6px; font-size: 12px; color: var(--muted); min-height: 1px; }
+.atq-retour { display: block; margin: 0 0 10px; padding: 0; border: 0; background: none; color: var(--ball); font-size: 14px; font-weight: 600; }
+.atq-titre { margin-bottom: 6px; }
+.atq-types-ligne { display: flex; align-items: center; gap: 8px; }
+.atq-fiche { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 12px 0 10px; }
+.atq-fiche div { padding: 8px 4px; border: 1px solid var(--rule-soft); border-radius: 10px; background: var(--panel); text-align: center; }
+.atq-fiche dt { font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.atq-fiche dd { margin: 2px 0 0; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.atq-desc { margin: 0 0 8px; font-size: 13px; line-height: 1.45; }
+.mgroup .picks.appr { padding: 2px 8px 8px; }
+.appr .pick { cursor: default; }
+.appr .pick .appr-src {
+  margin-left: auto;
+  padding-left: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 /* L'écran d'équipe de Noir 2 / Blanc 2 : panneaux en parallélogramme cernés d'un
    épais liseré blanc, fond bleu nuit quadrillé, et la colonne de droite décalée
    vers le bas. Le liseré est obtenu par un fond blanc sur .eq et un ::before en

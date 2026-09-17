@@ -163,6 +163,7 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `scripts/fetch-cries.mjs` | Rapatrie les cris de PokéAPI et les convertit en MP3 |
 | `modeles/scan-ia/` | Classifieur S2 du mode IA en morceaux de 95 Mo (GitHub refuse plus de 100 Mo) |
 | `scripts/assemble-modeles.mjs` | Ré-assemble ces morceaux dans `public/scan-ia/` avant chaque build et dev |
+| `src/scan-voix.js` | Voix du Pokédex : lit la fiche ouverte depuis le scan |
 | `scripts/fetch-moves-gen.mjs` | Complète moves.json : toutes les attaques des 21 jeux, génération d'apparition, valeurs par génération |
 
 ## Données
@@ -494,6 +495,33 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
 - Le message d'état attend l'ouverture, et `demarre` n'attend plus `video.play()`
   pour l'effacer : sa promesse peut tarder, et « Ouverture de la caméra… » restait
   affiché par-dessus l'image.
+
+### Voix du Pokédex
+
+- **Une fiche ouverte DEPUIS LE SCAN est lue à voix haute** (`src/scan-voix.js`), dans les
+  trois modes : cadre touché, Poké Ball, analyse du cadre manuel. Nom, catégorie, types
+  puis description — « Fantominus. Le Pokémon Gaz. Type Spectre et Poison. … ». Demande
+  explicite : une voix féminine façon Pokédex de l'anime, et **seulement depuis le scan**
+  — Boîtes et Pokédex restent muets. Le branchement vit dans `ouvrirFiche` de main.js.
+- **Synthèse vocale du système** (`speechSynthesis`) : voix sur l'appareil, aucun
+  réseau, aucun fichier audio. Voix française féminine choisie par nom (Audrey, Aurélie,
+  Amélie, Marie… ; Julie ou Hortense sous Windows), les « améliorées » d'abord, les voix
+  masculines en dernier recours. Ton un peu plus aigu et vif (hauteur 1,15, débit 1,05).
+  Sur iPhone, installer une voix **Audrey (améliorée)** dans Réglages › Accessibilité ›
+  Contenu énoncé › Voix la rend bien plus naturelle ; sinon iOS peut retomber sur Thomas.
+- **La description est celle de la fiche** (`flavor` : la DERNIÈRE en français chez
+  PokéAPI, en général Épée/Bouclier). Demandée « de la 9e génération », mais **PokéAPI ne
+  publie les textes d'Écarlate / Violet qu'en anglais** — vérifié sur Fantominus, Pikachu
+  et Poussacha. Les 127 espèces sans description française n'annoncent que nom,
+  catégorie et types.
+- **iOS ne parle qu'après une lecture lancée dans un geste** : le premier toucher de la
+  vue Scan (`pointerdown` en capture) lit une phrase vide et muette. Sans ça, le mode
+  Manuel, qui ouvre la fiche après une analyse asynchrone, resterait silencieux.
+- La voix **se tait à la fermeture de la fiche** (`closeSheet`), et une nouvelle fiche
+  coupe la lecture précédente. Le bouton silencieux de l'iPhone ne coupe pas la synthèse
+  vocale : c'est le volume qui la règle.
+- Vérifié dans l'aperçu (caméra simulée sur Fantominus) : fiche ouverte, phrase exacte,
+  voix « Microsoft Julie » choisie parmi Hortense, Julie et Paul ; fermeture = arrêt.
 
 ### Suivi en continu : les Pokémon sont trouvés sans appuyer
 

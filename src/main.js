@@ -15,6 +15,7 @@ import items from './data/items.json';
 import NATURES from './data/natures.json';
 import formDesc from './data/form-desc.json';
 import { creeScan } from './scan.js';
+import { litFiche, taisVoix, debloqueVoix } from './scan-voix.js';
 
 // Service worker : il ne sert QUE la version web hébergée. Sous Capacitor la page
 // n'est pas servie en HTTP et tout est déjà embarqué dans l'app — l'enregistrement
@@ -1085,6 +1086,7 @@ function renderEncounters(p) {
 }
 
 function closeSheet() {
+  taisVoix(); // la voix du scan se tait avec la fiche
   sheet.classList.remove('open');
   state.open = null;
   syncBackdrop();
@@ -3943,13 +3945,23 @@ function especesDex() {
 // celle du Pokédex. L'élément est créé UNE fois et reposé à chaque rendu : le
 // recréer relancerait la caméra à chaque capture cochée depuis la fiche.
 const scan = creeScan({
-  ouvrirFiche: (key) => openSheet(key),
+  // La fiche ouverte depuis le scan est LUE à voix haute, comme le Pokédex de l'anime :
+  // nom, catégorie, types et description. Seulement ici, pas depuis les Boîtes ni le Pokédex.
+  ouvrirFiche: (key) => {
+    openSheet(key);
+    const e = pokedex[speciesOf(key)];
+    if (e) litFiche({ nom: e.name, categorie: e.genus, types: (e.types ?? []).map((t) => TYPES[t]?.[0] ?? t), description: e.flavor });
+  },
   // Le nom affiché sur un Pokémon suivi : celui de l'ESPÈCE, plus court et plus parlant
   // qu'un nom de forme (« Forme d'Alola ») sur un cadre.
   nomDe: (key) => pokedex[speciesOf(key)]?.name ?? String(key),
   // Sous la fiche, le suivi se met en pause.
   estMasque: () => sheet.classList.contains('open'),
 });
+
+// iOS ne laisse parler qu'après une lecture lancée dans un geste : le premier toucher
+// de la vue Scan débloque la voix, pour le mode Manuel qui ouvre la fiche hors du geste.
+scan.element.addEventListener('pointerdown', debloqueVoix, { passive: true, capture: true });
 
 function renderScan() {
   poser(scan.element);

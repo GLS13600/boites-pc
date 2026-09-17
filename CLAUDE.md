@@ -164,6 +164,8 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `modeles/scan-ia/` | Classifieur S2 du mode IA en morceaux de 95 Mo (GitHub refuse plus de 100 Mo) |
 | `scripts/assemble-modeles.mjs` | Ré-assemble ces morceaux dans `public/scan-ia/` avant chaque build et dev |
 | `src/scan-voix.js` | Voix du Pokédex : lit la fiche ouverte depuis le scan |
+| `public/voix/` | Les 1025 descriptions lues, **générées**, 43 Mo |
+| `ml/voix/` | Chaîne qui les produit (XTTS-v2, vérification Whisper, effet) |
 | `scripts/fetch-moves-gen.mjs` | Complète moves.json : toutes les attaques des 21 jeux, génération d'apparition, valeurs par génération |
 
 ## Données
@@ -500,15 +502,24 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
 
 - **Une fiche ouverte DEPUIS LE SCAN est lue à voix haute** (`src/scan-voix.js`), dans les
   trois modes : cadre touché, Poké Ball, analyse du cadre manuel. Nom, catégorie, types
-  puis description — « Fantominus. Le Pokémon Gaz. Type Spectre et Poison. … ». Demande
+  puis description — « Fantominus, le Pokémon Gaz, de type Spectre et Poison. … ». Demande
   explicite : une voix féminine façon Pokédex de l'anime, et **seulement depuis le scan**
   — Boîtes et Pokédex restent muets. Le branchement vit dans `ouvrirFiche` de main.js.
-- **Synthèse vocale du système** (`speechSynthesis`) : voix sur l'appareil, aucun
-  réseau, aucun fichier audio. Voix française féminine choisie par nom (Audrey, Aurélie,
-  Amélie, Marie… ; Julie ou Hortense sous Windows), les « améliorées » d'abord, les voix
-  masculines en dernier recours. Ton un peu plus aigu et vif (hauteur 1,15, débit 1,05).
-  Sur iPhone, installer une voix **Audrey (améliorée)** dans Réglages › Accessibilité ›
-  Contenu énoncé › Voix la rend bien plus naturelle ; sinon iOS peut retomber sur Thomas.
+- **La voix est ENREGISTRÉE**, un MP3 par espèce dans `public/voix/<numéro>.mp3`
+  (1025 fichiers, **43 Mo**), produit sur le PC par `ml/voix/` — voir son LISEZMOI pour
+  la chaîne et les réglages. Embarqué comme les sprites et les cris : aucune requête au
+  runtime. La synthèse vocale du système (`speechSynthesis`, voix féminine choisie par
+  nom) reste en **secours** si un fichier manque.
+  - Pourquoi : la voix d'iOS a été jugée **trop robotique** à l'écoute, et elle prononce
+    mal (« Shurikan » pour « Sheauriken »). Surtout, **on ne peut lui appliquer aucun
+    effet** : son son ne passe pas par Web Audio. Une voix enregistrée permet le ton
+    « objet » demandé — double bip, haut-parleur métallique, écho court.
+  - Réglages retenus à l'écoute (17/09/2026, après comparaison de 4 voix et 3 effets) :
+    **XTTS-v2 voix « Sofia »**, **vitesse ×1,3**, effet **« marqué clair »**.
+  - **Pas de lecture depuis le fichier sur iOS sans geste** : le même élément `Audio` sert
+    à toutes les lectures et il est débloqué par un silence au premier toucher de la vue
+    Scan. En recréer un par lecture le rendrait muet en mode Manuel, qui ouvre la fiche
+    hors du geste.
 - **La description est celle de la fiche** (`flavor` : la DERNIÈRE en français chez
   PokéAPI, en général Épée/Bouclier). Demandée « de la 9e génération », mais **PokéAPI ne
   publie les textes d'Écarlate / Violet qu'en anglais** — vérifié sur Fantominus, Pikachu
@@ -519,8 +530,8 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
   Manuel, qui ouvre la fiche après une analyse asynchrone, resterait silencieux.
 - La voix **se tait à la fermeture de la fiche** (`closeSheet`), et une nouvelle fiche
   coupe la lecture précédente.
-- Vérifié dans l'aperçu (caméra simulée sur Fantominus) : fiche ouverte, phrase exacte,
-  voix « Microsoft Julie » choisie parmi Hortense, Julie et Paul ; fermeture = arrêt.
+- Vérifié dans l'aperçu (caméra simulée) : Fantominus ouvre sa fiche et joue   sans passer par la synthèse, Gromago (gén. 9, sans description) joue son clip de 4 s, et
+  la fermeture de la fiche arrête la lecture.
 
 ### Suivi en continu : les Pokémon sont trouvés sans appuyer
 

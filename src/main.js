@@ -3950,7 +3950,7 @@ const scan = creeScan({
   ouvrirFiche: (key) => {
     openSheet(key);
     const e = pokedex[speciesOf(key)];
-    if (e) litFiche({ nom: e.name, categorie: e.genus, types: (e.types ?? []).map((t) => TYPES[t]?.[0] ?? t), description: e.flavor });
+    if (e) litFiche({ numero: speciesOf(key), nom: e.name, categorie: e.genus, types: (e.types ?? []).map((t) => TYPES[t]?.[0] ?? t), description: e.flavor });
   },
   // Le nom affiché sur un Pokémon suivi : celui de l'ESPÈCE, plus court et plus parlant
   // qu'un nom de forme (« Forme d'Alola ») sur un cadre.

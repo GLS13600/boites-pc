@@ -689,6 +689,33 @@ API** — exigence explicite.
   - Poids de l'appli : +147 Mo dans `dist/`, sur le site comme dans l'IPA.
   - Vérifié dans l'aperçu : en Auto, Pikachu et Fantominus reconnus par S0 ; en IA, le
     diagnostic annonce « S2 », ~600 ms par cadre, les deux reconnus en ~5 s.
+- **Quatrième retour (17/09/2026)** : en passant d'un Pokémon à son voisin, le cadre suivait
+  le nouveau mais gardait un moment l'ANCIEN nom. Reproduit dans l'aperçu par un banc qui
+  balaie une rangée de quatre artworks (arrêt de 3 s, trajet de 0,7 s) et relève
+  l'affichage toutes les 100 ms : **57 % du temps un nom faux, jusqu'à 3,4 s d'affilée**.
+  Deux causes : un cadre rattaché par simple recouvrement glissait sur le voisin avec son
+  nom, et sur le moteur web une reconnaissance bloque ~600 ms sans aucune détection.
+  - **Signature visuelle par piste** (`signature`) : histogramme des couleurs du cœur du
+    cadre (70 % du côté, réduit à 16×16, 4 niveaux par canal, 64 cases), relevé AU MÊME
+    INSTANT que l'image analysée et gardé (`sigRef`) quand une vue confirme le nom. Une
+    piste nommée par une fenêtre la reçoit à sa première détection immobile.
+  - **Rattachement** : une détection dont la signature ressemble à moins de 50 %
+    (intersection d'histogrammes, `SIG_MEME`) n'est pas rattachée à la piste ; si
+    aucune autre ne la reprend, la piste s'efface aussitôt, nom compris. Le voisin reçoit
+    une piste neuve, sans nom tant qu'il n'est pas reconnu.
+  - **Garde à l'affichage** (`GARDE_MS`, 100 ms) : la signature est aussi contrôlée là
+    où le cadre S'AFFICHE ; un cadre nommé qui ne recouvre plus son Pokémon se cache sans
+    attendre la détection suivante. Pendant une reconnaissance, un minuteur tient
+    l'affichage à jour si requestAnimationFrame est suspendu.
+  - Reconnaissance un peu plus rapide : une vue seule suffit à **0,9** (au lieu de 0,97),
+    ou deux réponses identiques d'affilée à 0,55 ; les vues d'une piste alternent trois
+    cadrages (marges 1,15, 0,95, 1,35) ; le Pokémon au centre de l'écran est vérifié en
+    premier.
+  - Mesuré sur le banc, moteur web S2 — avant → après : noms faux **57 → 1,3 %** (0,3 % en
+    régime établi), pire série **3 400 → 400 ms**, Pokémon visé encadré avec son bon nom
+    **23 → 44–61 %** du temps (plafonné par les ~600 ms de S2 sur le web), recouvrement du
+    cadre juste 0,73 → 0,76. Pokémon immobile : cadre affiché 100 % du temps, sans
+    clignotement. Les modes Auto et Manuel ne sont pas touchés.
 - **WebGPU écarté** : actif dans WKWebView depuis iOS 26, mais onnxruntime-web ne le
   prend pas en charge sur iOS (issue microsoft/onnxruntime#22776).
 - **Modèles plus gros, entraînés pour ce mode seulement** (`ml/`) :

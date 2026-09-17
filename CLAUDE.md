@@ -518,8 +518,7 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
   vue Scan (`pointerdown` en capture) lit une phrase vide et muette. Sans ça, le mode
   Manuel, qui ouvre la fiche après une analyse asynchrone, resterait silencieux.
 - La voix **se tait à la fermeture de la fiche** (`closeSheet`), et une nouvelle fiche
-  coupe la lecture précédente. Le bouton silencieux de l'iPhone ne coupe pas la synthèse
-  vocale : c'est le volume qui la règle.
+  coupe la lecture précédente.
 - Vérifié dans l'aperçu (caméra simulée sur Fantominus) : fiche ouverte, phrase exacte,
   voix « Microsoft Julie » choisie parmi Hortense, Julie et Paul ; fermeture = arrêt.
 

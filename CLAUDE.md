@@ -530,7 +530,8 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
   Manuel, qui ouvre la fiche après une analyse asynchrone, resterait silencieux.
 - La voix **se tait à la fermeture de la fiche** (`closeSheet`), et une nouvelle fiche
   coupe la lecture précédente.
-- Vérifié dans l'aperçu (caméra simulée) : Fantominus ouvre sa fiche et joue   sans passer par la synthèse, Gromago (gén. 9, sans description) joue son clip de 4 s, et
+- Vérifié dans l'aperçu (caméra simulée) : Fantominus ouvre sa fiche et joue son MP3 sans
+  passer par la synthèse, Gromago (gén. 9, sans description) joue son clip de 4 s, et
   la fermeture de la fiche arrête la lecture.
 
 ### Suivi en continu : les Pokémon sont trouvés sans appuyer

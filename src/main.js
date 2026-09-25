@@ -2410,89 +2410,189 @@ function importEquipes() {
 // une barre « ‹ Accueil » l'y ramène. Les dessins sont inline, comme les icônes qu'ils
 // remplacent : l'appli ne fait aucune requête au runtime.
 const ART = {
-  // Le Pokédex de la maquette : lentille bleue, trois voyants, charnière en biais.
+  // Le Pokédex de la maquette, détaillé : lentille à reflet, voyants cerclés de noir,
+  // charnière en relief, grille de haut-parleur. Les contours sombres et les ombres
+  // portées donnent le contraste qui manquait aux premiers aplats.
   pokedex: `
     <svg class="tuile-art" viewBox="0 0 320 150" aria-hidden="true">
-      <circle cx="46" cy="40" r="28" fill="#fdf1f0"/>
-      <circle cx="46" cy="40" r="21" fill="#5aa9f5"/>
-      <circle cx="39" cy="33" r="7" fill="#fff" opacity=".35"/>
-      <circle cx="96" cy="32" r="11" fill="#fdf1f0"/><circle cx="96" cy="32" r="8" fill="#e2584f"/>
-      <circle cx="128" cy="32" r="11" fill="#fdf1f0"/><circle cx="128" cy="32" r="8" fill="#ecb22e"/>
-      <circle cx="160" cy="32" r="11" fill="#fdf1f0"/><circle cx="160" cy="32" r="8" fill="#43c15c"/>
-      <path d="M0 96h110l26-26h184" fill="none" stroke="#c9352d" stroke-width="13" stroke-linejoin="round"/>
-      <path d="M22 112l26 15-26 15z" fill="#f4c33f"/>
+      <defs>
+        <radialGradient id="t-lentille" cx="36%" cy="30%" r="78%">
+          <stop offset="0" stop-color="#bfe4ff"/><stop offset="45%" stop-color="#4f9ef0"/>
+          <stop offset="100%" stop-color="#14508f"/>
+        </radialGradient>
+        <linearGradient id="t-verre" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <!-- Relief de la coque : une ombre douce en haut, un creux sous la charnière. -->
+      <path d="M0 0h320v58H0z" fill="#fff" opacity=".07"/>
+      <path d="M0 104h320v46H0z" fill="#8e241d" opacity=".18"/>
+      <!-- Charnière en biais, avec son liseré clair. -->
+      <path d="M-4 96h112l26-26h190" fill="none" stroke="#a62a22" stroke-width="15" stroke-linejoin="round"/>
+      <path d="M-4 89h112l26-26h190" fill="none" stroke="#ff8b80" stroke-width="3" stroke-linejoin="round" opacity=".55"/>
+      <!-- Grande lentille : cerclage noir, anneau blanc, verre bleu et reflet. -->
+      <circle cx="48" cy="42" r="33" fill="#2b1512" opacity=".35"/>
+      <circle cx="48" cy="40" r="32" fill="#1d2227"/>
+      <circle cx="48" cy="40" r="28" fill="#fdf1f0"/>
+      <circle cx="48" cy="40" r="22" fill="url(#t-lentille)"/>
+      <path d="M26 40a22 22 0 0 1 44 0z" fill="url(#t-verre)"/>
+      <circle cx="39" cy="31" r="6" fill="#fff" opacity=".8"/>
+      <!-- Trois voyants, cerclés et vitrés. -->
+      <g stroke="#1d2227" stroke-width="2.5">
+        <circle cx="98" cy="30" r="11" fill="#e2584f"/>
+        <circle cx="130" cy="30" r="11" fill="#ecb22e"/>
+        <circle cx="162" cy="30" r="11" fill="#43c15c"/>
+      </g>
+      <g fill="#fff" opacity=".55">
+        <circle cx="94" cy="26" r="3.4"/><circle cx="126" cy="26" r="3.4"/><circle cx="158" cy="26" r="3.4"/>
+      </g>
+      <!-- Grille du haut-parleur, à droite de la charnière. -->
+      <g fill="#8e241d" opacity=".45">
+        <rect x="236" y="20" width="60" height="5" rx="2.5"/>
+        <rect x="236" y="32" width="60" height="5" rx="2.5"/>
+        <rect x="236" y="44" width="60" height="5" rx="2.5"/>
+      </g>
+      <!-- Bouton triangulaire, posé sur son creux. -->
+      <circle cx="40" cy="121" r="22" fill="#8e241d" opacity=".3"/>
+      <path d="M31 108l26 14-26 14z" fill="#f4c33f" stroke="#8a6a12" stroke-width="2.5" stroke-linejoin="round"/>
     </svg>`,
-  // Les trois catégories d'attaque : physique, spéciale, statut.
+  // Les trois catégories d'attaque, cerclées de noir et vernies, avec leur ombre.
   attaques: `
     <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
-      <circle cx="68" cy="46" r="32" fill="#e8562b"/>
-      <path d="M68 24l7 14 15-4-9 13 13 9-15 3 2 15-13-9-13 9 2-15-15-3 13-9-9-13 15 4z" fill="#f6c34a"/>
-      <circle cx="41" cy="103" r="32" fill="#9aa3ab"/>
-      <path d="M41 83c9 0 16 9 16 20s-7 20-16 20a20 20 0 0 1 0-40z" fill="#f2f3f4"/>
-      <circle cx="41" cy="95" r="4" fill="#9aa3ab"/>
-      <circle cx="101" cy="103" r="32" fill="#2f6fd0"/>
-      <circle cx="101" cy="103" r="21" fill="none" stroke="#dbe9fb" stroke-width="7"/>
-      <circle cx="101" cy="103" r="9" fill="#dbe9fb"/>
+      <defs>
+        <linearGradient id="t-lustre" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset="55%" stop-color="#fff" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <g fill="#7a5a10" opacity=".22">
+        <ellipse cx="68" cy="82" rx="31" ry="7"/><ellipse cx="41" cy="139" rx="31" ry="7"/><ellipse cx="101" cy="139" rx="31" ry="7"/>
+      </g>
+      <!-- Physique : l'étoile d'impact. -->
+      <circle cx="68" cy="46" r="32" fill="#e8562b" stroke="#1d2227" stroke-width="3.5"/>
+      <path d="M68 22l7.5 15.5L92 33l-9.5 14L96 56l-16 3.5 2 16.5-14-9.5L54 76l2-16.5L40 56l13.5-9L44 33l16.5 4.5z"
+            fill="#ffd166" stroke="#8a3b14" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="68" cy="46" r="32" fill="url(#t-lustre)"/>
+      <!-- Statut : la goutte enroulée. -->
+      <circle cx="41" cy="103" r="32" fill="#9aa3ab" stroke="#1d2227" stroke-width="3.5"/>
+      <path d="M41 81c10 0 18 10 18 22s-8 22-18 22a22 22 0 0 1 0-44z" fill="#f4f6f8" stroke="#4a5560" stroke-width="2.5"/>
+      <circle cx="41" cy="94" r="5" fill="#9aa3ab" stroke="#4a5560" stroke-width="2"/>
+      <circle cx="41" cy="103" r="32" fill="url(#t-lustre)"/>
+      <!-- Spéciale : les ondes concentriques. -->
+      <circle cx="101" cy="103" r="32" fill="#2f6fd0" stroke="#1d2227" stroke-width="3.5"/>
+      <circle cx="101" cy="103" r="22" fill="none" stroke="#dbe9fb" stroke-width="6"/>
+      <circle cx="101" cy="103" r="13" fill="none" stroke="#dbe9fb" stroke-width="4"/>
+      <circle cx="101" cy="103" r="5" fill="#dbe9fb"/>
+      <circle cx="101" cy="103" r="32" fill="url(#t-lustre)"/>
     </svg>`,
-  // Les boîtes du PC : le disque de rangement, comme sur la maquette.
+  // Les boîtes du PC : le disque de rangement, cerclé, avec ses secteurs et son éclat.
   boites: `
     <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
-      <circle cx="58" cy="52" r="46" fill="#eef2ee"/>
-      <g stroke="#dfe7df" stroke-width="3">
-        <path d="M58 6v92M12 52h92M26 20l64 64M90 20L26 84"/>
+      <defs>
+        <linearGradient id="t-disque" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#ffffff"/><stop offset="55%" stop-color="#e7eee8"/><stop offset="100%" stop-color="#c3d2c5"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="75" cy="112" rx="50" ry="9" fill="#1d3a1c" opacity=".22"/>
+      <circle cx="75" cy="64" r="52" fill="#1d2227" opacity=".25"/>
+      <circle cx="75" cy="62" r="52" fill="url(#t-disque)" stroke="#2c5c2a" stroke-width="3"/>
+      <g stroke="#b9c9bb" stroke-width="3" stroke-linecap="round">
+        <path d="M75 13v98M26 62h98M40 27l70 70M110 27L40 97"/>
       </g>
-      <circle cx="58" cy="52" r="15" fill="#48b93f"/>
-      <circle cx="58" cy="52" r="8" fill="#eef2ee"/>
+      <path d="M75 13a49 49 0 0 1 35 15l-10 10A35 35 0 0 0 75 27z" fill="#fff" opacity=".85"/>
+      <circle cx="75" cy="62" r="19" fill="#3fae37" stroke="#1f5c1c" stroke-width="3"/>
+      <circle cx="75" cy="62" r="9" fill="#eef4ee" stroke="#1f5c1c" stroke-width="2.5"/>
     </svg>`,
-  // L'équipe : une grande Poké Ball et les cinq autres autour.
+  // L'équipe : la Poké Ball ouverte sur ses cinq compagnes, toutes cerclées de noir.
   equipes: `
     <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
+      <defs>
+        <linearGradient id="t-ball" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ff7a70"/><stop offset="100%" stop-color="#c2352c"/>
+        </linearGradient>
+        <linearGradient id="t-blanc" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffffff"/><stop offset="100%" stop-color="#d8dee6"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="46" cy="98" rx="42" ry="8" fill="#12405f" opacity=".2"/>
+      <circle cx="46" cy="52" r="42" fill="url(#t-blanc)" stroke="#1e2227" stroke-width="5"/>
+      <path d="M4 52a42 42 0 0 1 84 0z" fill="url(#t-ball)" stroke="#1e2227" stroke-width="5"/>
+      <path d="M4 52h84" stroke="#1e2227" stroke-width="5"/>
+      <circle cx="46" cy="52" r="14" fill="#fff" stroke="#1e2227" stroke-width="5"/>
+      <circle cx="46" cy="52" r="6" fill="#e6ebf2" stroke="#1e2227" stroke-width="2.5"/>
+      <path d="M22 28a34 34 0 0 1 17-10" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none" opacity=".6"/>
       <g>
-        <circle cx="46" cy="52" r="42" fill="#fff" stroke="#1e2227" stroke-width="5"/>
-        <path d="M4 52a42 42 0 0 1 84 0z" fill="#d6453c" stroke="#1e2227" stroke-width="5"/>
-        <circle cx="46" cy="52" r="13" fill="#fff" stroke="#1e2227" stroke-width="5"/>
-      </g>
-      <g>
-        <circle cx="112" cy="30" r="11" fill="#fff" stroke="#1e2227" stroke-width="3"/>
-        <path d="M101 30a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3"/>
-        <circle cx="120" cy="70" r="11" fill="#fff" stroke="#1e2227" stroke-width="3"/>
-        <path d="M109 70a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3"/>
-        <circle cx="96" cy="104" r="11" fill="#fff" stroke="#1e2227" stroke-width="3"/>
-        <path d="M85 104a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3"/>
-        <circle cx="52" cy="122" r="11" fill="#fff" stroke="#1e2227" stroke-width="3"/>
-        <path d="M41 122a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3"/>
-        <circle cx="16" cy="118" r="11" fill="#fff" stroke="#1e2227" stroke-width="3"/>
-        <path d="M5 118a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3"/>
+        <g><circle cx="112" cy="30" r="12" fill="#fff" stroke="#1e2227" stroke-width="3.5"/>
+           <path d="M100 30a12 12 0 0 1 24 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3.5"/>
+           <circle cx="112" cy="30" r="4" fill="#fff" stroke="#1e2227" stroke-width="2.5"/></g>
+        <g><circle cx="121" cy="72" r="12" fill="#fff" stroke="#1e2227" stroke-width="3.5"/>
+           <path d="M109 72a12 12 0 0 1 24 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3.5"/>
+           <circle cx="121" cy="72" r="4" fill="#fff" stroke="#1e2227" stroke-width="2.5"/></g>
+        <g><circle cx="97" cy="108" r="12" fill="#fff" stroke="#1e2227" stroke-width="3.5"/>
+           <path d="M85 108a12 12 0 0 1 24 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3.5"/>
+           <circle cx="97" cy="108" r="4" fill="#fff" stroke="#1e2227" stroke-width="2.5"/></g>
+        <g><circle cx="52" cy="124" r="12" fill="#fff" stroke="#1e2227" stroke-width="3.5"/>
+           <path d="M40 124a12 12 0 0 1 24 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3.5"/>
+           <circle cx="52" cy="124" r="4" fill="#fff" stroke="#1e2227" stroke-width="2.5"/></g>
+        <g><circle cx="16" cy="118" r="12" fill="#fff" stroke="#1e2227" stroke-width="3.5"/>
+           <path d="M4 118a12 12 0 0 1 24 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3.5"/>
+           <circle cx="16" cy="118" r="4" fill="#fff" stroke="#1e2227" stroke-width="2.5"/></g>
       </g>
     </svg>`,
-  // Les réglages : le PC des Centres Pokémon, écran et Poké Ball.
-  reglages: `
-    <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
-      <rect x="18" y="16" width="114" height="80" rx="10" fill="#eceff3"/>
-      <rect x="27" y="25" width="96" height="56" rx="6" fill="#3b4a5e"/>
-      <circle cx="75" cy="53" r="19" fill="#f6f7f9" stroke="#2a3443" stroke-width="4"/>
-      <path d="M56 53a19 19 0 0 1 38 0z" fill="#d6453c" stroke="#2a3443" stroke-width="4"/>
-      <circle cx="75" cy="53" r="6" fill="#f6f7f9" stroke="#2a3443" stroke-width="4"/>
-      <rect x="60" y="96" width="30" height="12" fill="#d3d8df"/>
-      <rect x="30" y="108" width="90" height="16" rx="6" fill="#eceff3"/>
-      <g fill="#b9c1cb">
-        <rect x="40" y="113" width="12" height="6" rx="2"/>
-        <rect x="58" y="113" width="34" height="6" rx="2"/>
-        <rect x="98" y="113" width="12" height="6" rx="2"/>
-      </g>
-    </svg>`,
-  // Le scan : la lentille du Pokédex dans un cadre de visée.
+  // Le scan : la lentille du Pokédex dans un cadre de visée, avec sa ligne de balayage.
   scan: `
     <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
-      <g fill="none" stroke="#f3eefd" stroke-width="7" stroke-linecap="round">
-        <path d="M14 44V22a8 8 0 0 1 8-8h22"/>
-        <path d="M106 14h22a8 8 0 0 1 8 8v22"/>
-        <path d="M136 106v22a8 8 0 0 1-8 8h-22"/>
-        <path d="M44 136H22a8 8 0 0 1-8-8v-22"/>
+      <defs>
+        <radialGradient id="t-iris" cx="35%" cy="30%" r="80%">
+          <stop offset="0" stop-color="#e4d8ff"/><stop offset="40%" stop-color="#8a6ae0"/>
+          <stop offset="100%" stop-color="#2f1f6b"/>
+        </radialGradient>
+      </defs>
+      <!-- Coins de visée, doublés d'un liseré sombre pour trancher sur le violet. -->
+      <g fill="none" stroke="#3b2a78" stroke-width="11" stroke-linecap="round">
+        <path d="M14 44V22a8 8 0 0 1 8-8h22"/><path d="M106 14h22a8 8 0 0 1 8 8v22"/>
+        <path d="M136 106v22a8 8 0 0 1-8 8h-22"/><path d="M44 136H22a8 8 0 0 1-8-8v-22"/>
       </g>
-      <circle cx="75" cy="75" r="32" fill="#f3eefd"/>
-      <circle cx="75" cy="75" r="23" fill="#7b5fd4"/>
-      <circle cx="66" cy="66" r="8" fill="#fff" opacity=".45"/>
+      <g fill="none" stroke="#f6f2ff" stroke-width="7" stroke-linecap="round">
+        <path d="M14 44V22a8 8 0 0 1 8-8h22"/><path d="M106 14h22a8 8 0 0 1 8 8v22"/>
+        <path d="M136 106v22a8 8 0 0 1-8 8h-22"/><path d="M44 136H22a8 8 0 0 1-8-8v-22"/>
+      </g>
+      <!-- Ligne de balayage. -->
+      <rect x="20" y="72" width="110" height="5" rx="2.5" fill="#ffffff" opacity=".45"/>
+      <circle cx="75" cy="75" r="36" fill="#3b2a78" opacity=".45"/>
+      <circle cx="75" cy="75" r="33" fill="#f3eefd" stroke="#3b2a78" stroke-width="3"/>
+      <circle cx="75" cy="75" r="24" fill="url(#t-iris)"/>
+      <circle cx="75" cy="75" r="9" fill="#1b1340" opacity=".75"/>
+      <circle cx="65" cy="65" r="7" fill="#fff" opacity=".7"/>
+      <circle cx="86" cy="88" r="3.5" fill="#fff" opacity=".4"/>
+    </svg>`,
+  // Les réglages : le PC des Centres Pokémon, écran allumé et clavier en relief.
+  reglages: `
+    <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
+      <defs>
+        <linearGradient id="t-ecran" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#4b6480"/><stop offset="100%" stop-color="#26313f"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="75" cy="130" rx="52" ry="8" fill="#22282f" opacity=".3"/>
+      <rect x="16" y="14" width="118" height="84" rx="12" fill="#f2f5f8" stroke="#2a3443" stroke-width="4"/>
+      <rect x="26" y="24" width="98" height="60" rx="7" fill="url(#t-ecran)"/>
+      <!-- Cases de boîte affichées à l'écran, et la Poké Ball sélectionnée. -->
+      <g fill="#8fa3ba" opacity=".55">
+        <rect x="33" y="31" width="16" height="16" rx="4"/><rect x="53" y="31" width="16" height="16" rx="4"/>
+        <rect x="101" y="31" width="16" height="16" rx="4"/><rect x="33" y="61" width="16" height="16" rx="4"/>
+        <rect x="101" y="61" width="16" height="16" rx="4"/>
+      </g>
+      <circle cx="75" cy="54" r="19" fill="#f6f7f9" stroke="#2a3443" stroke-width="4"/>
+      <path d="M56 54a19 19 0 0 1 38 0z" fill="#d6453c" stroke="#2a3443" stroke-width="4"/>
+      <circle cx="75" cy="54" r="6.5" fill="#f6f7f9" stroke="#2a3443" stroke-width="3"/>
+      <path d="M26 24h98v10H26z" fill="#fff" opacity=".18"/>
+      <!-- Pied et clavier. -->
+      <path d="M62 98h26l4 12H58z" fill="#d3d8df" stroke="#2a3443" stroke-width="3.5" stroke-linejoin="round"/>
+      <rect x="24" y="110" width="102" height="18" rx="7" fill="#f2f5f8" stroke="#2a3443" stroke-width="4"/>
+      <g fill="#aab4c0">
+        <rect x="34" y="116" width="13" height="6" rx="2"/><rect x="52" y="116" width="46" height="6" rx="2"/>
+        <rect x="103" y="116" width="13" height="6" rx="2"/>
+      </g>
     </svg>`,
 };
 

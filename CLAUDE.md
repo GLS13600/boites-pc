@@ -1474,7 +1474,14 @@ occasion — tout part d'ici, et une barre ferait doublon.
   n'aurait plus eu de point d'entrée. Choix explicite de l'utilisateur entre trois
   propositions.
 - Les dessins sont des **SVG inline** (`ART`), comme les icônes de barre qu'ils
-  remplacent : aucun fichier de plus, aucune requête au runtime. Le dessin s'arrête
+  remplacent : aucun fichier de plus, aucune requête au runtime.
+  - **Détaillés et contrastés à la demande (25/09/2026)** : contours sombres, dégradés
+    de volume, reflets et ombres portées, là où c'étaient d'abord des aplats. Le fond
+    des tuiles est lui aussi un dégradé, et un voile sombre sous le libellé le décolle
+    du dessin (`.tuile::after`, le libellé passant devant en `z-index: 1`).
+  - Les deux cases de boîte posées au coin de la tuile verte ont été retirées : à cette
+    taille elles se lisaient comme des taches à côté du libellé. Le disque, agrandi et
+    centré, dit déjà la boîte. Le dessin s'arrête
   40 px au-dessus du bas de la tuile pour laisser la place au libellé — sans cette
   réserve le nom se posait sur les Poké Balls. La tuile du Pokédex fait exception : son
   dessin va d'un bord à l'autre et son nom occupe la zone vide à droite, comme sur la

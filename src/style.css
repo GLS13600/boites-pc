@@ -430,17 +430,29 @@ img { display: block; }
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
 .tuile:active { transform: scale(0.97); box-shadow: 0 1px 4px rgb(30 34 39 / 14%); }
+/* Voile sombre sous le libellé : il le décolle du dessin, désormais plus détaillé. */
+.tuile::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 46%;
+  background: linear-gradient(to top, rgb(20 23 27 / 34%), transparent);
+  pointer-events: none;
+}
 /* Le libellé se pose en bas, par-dessus le dessin, avec une ombre portée pour tenir
    sur les tuiles claires (le jaune et le bleu). */
 .tuile > span {
   position: absolute;
+  z-index: 1;
   left: 16px;
   right: 12px;
   bottom: 12px;
   font-size: 22px;
   font-weight: 800;
   letter-spacing: -0.3px;
-  text-shadow: 0 1px 3px rgb(30 34 39 / 30%);
+  text-shadow: 0 2px 4px rgb(20 23 27 / 45%);
 }
 /* Le dessin s'arrête au-dessus du libellé : sans cette réserve, le nom se posait
    sur les Poké Balls et devenait illisible. La tuile du Pokédex garde son dessin
@@ -452,14 +464,16 @@ img { display: block; }
 .tuile.t-pokedex {
   grid-column: 1 / -1;
   aspect-ratio: 16 / 7;
-  background: #e8453c;
+  background: linear-gradient(155deg, #f2564c, #cf3229);
 }
 .tuile.t-pokedex > span { left: auto; right: 18px; font-size: 30px; }
-.tuile.t-attaques { background: #f0c43c; }
-.tuile.t-boites { background: #4fc247; }
-.tuile.t-equipes { background: #7dbdf0; }
-.tuile.t-scan { background: #8a6fe0; }
-.tuile.t-reglages { background: #6b7688; }
+/* Fonds en dégradé plutôt qu'en aplat : le dessin s'y détache mieux, et la tuile
+   gagne un volume que le plat n'avait pas. */
+.tuile.t-attaques { background: linear-gradient(155deg, #f8d465, #e2a91d); }
+.tuile.t-boites { background: linear-gradient(155deg, #66d65c, #33a12c); }
+.tuile.t-equipes { background: linear-gradient(155deg, #97cff8, #5b9fdd); }
+.tuile.t-scan { background: linear-gradient(155deg, #a186ec, #6d50c8); }
+.tuile.t-reglages { background: linear-gradient(155deg, #808c9e, #545f6e); }
 
 /* ---------- Réglages ---------- */
 

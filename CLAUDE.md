@@ -855,7 +855,8 @@ la fonction ne concerne que la gestion des boîtes.
   détail (niveau, stats calculées, quatre attaques, retrait).
 - **Capturé = couleur, non capturé = gris**, dans le sélecteur comme dans les cartes.
   C'est le même signal que la grille des boîtes, on ne l'invente pas ici.
-- Persistance : `pcbox.vue`, `pcbox.jeu`, `pcbox.equipe`.
+- Persistance : `pcbox.jeu`, `pcbox.equipe`. **La vue n'est plus retenue** : l'appli
+  s'ouvre toujours sur l'accueil, `pcbox.vue` n'est donc plus ni lu ni écrit.
 
 ### Movesets par version
 
@@ -1484,8 +1485,8 @@ occasion — tout part d'ici, et une barre ferait doublon.
 - **Une barre « ‹ Accueil » coiffe toutes les autres vues** (`.retour`, construite une
   fois, hors de la zone qui défile). Elle porte désormais la marge de zone sûre du haut,
   que les vues portaient elles-mêmes. Y revenir **ferme les panneaux ouverts**.
-- Vérifié dans l'aperçu à 375 px : les cinq tuiles ouvrent la bonne vue, « Attaques »
-  ouvre le panneau des attaques, et le retour ramène à l'accueil depuis chacune.
+- Vérifié dans l'aperçu à 375 px : les cinq tuiles ouvrent la bonne vue et le retour
+  ramène à l'accueil depuis chacune.
 
 ## Page des attaques
 

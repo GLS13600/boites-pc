@@ -194,7 +194,6 @@ const SHINY_KEY = 'pcbox.caught.shiny';
 const BOXES_KEY = 'pcbox.boxes';
 const ORDER_KEY = 'pcbox.order';
 const VIEW_KEY = 'pcbox.view';
-const VUE_KEY = 'pcbox.vue';
 const EQUIPES_KEY = 'pcbox.equipes';
 const JEU_KEY = 'pcbox.jeu';
 const ONGLETS_KEY = 'pcbox.onglets';
@@ -2509,7 +2508,6 @@ function vaVers(vue) {
   if (vue === state.vue) return;
   fermeLesPanneaux();
   state.vue = vue;
-  localStorage.setItem(VUE_KEY, vue);
   // Entrer dans le Pokédex ramène TOUJOURS à son menu : on vient choisir quel
   // Pokédex regarder, pas reprendre là où l'on s'était arrêté.
   if (vue === 'pokedex') { state.dexGen = null; state.dexQ = ''; }

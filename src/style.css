@@ -2078,10 +2078,13 @@ img {
    Empilement, du fond vers l'avant : vidéo, cadre de visée, verre, bande et
    lentille (visibles fermé), coques, puis textes et déclencheur.
 
-   `--cap-h` est la hauteur visible d'une coque ouverte : 100 unités de dessin sur
-   400 de large, en unités du conteneur (cqw) — .scan est un conteneur de taille. */
+   `--cap-h` est la hauteur visible d'une coque ouverte : des unités du dessin (400 de
+   large) rapportées à la largeur du conteneur (cqw) — .scan est un conteneur de taille.
+   La coque du HAUT est plus basse que celle du bas (`--cap-haut`, à la demande) : elle
+   ne porte ni déclencheur ni bouton de mode, et mangeait de l'image pour rien. */
 .scan {
   --cap-h: calc(100cqw * 100 / 400);
+  --cap-haut: calc(100cqw * 58 / 400);
   --fente: 22px; /* écart des coques fermées : la bande de verre du Pokédex */
   position: relative;
   height: 100%;
@@ -2105,7 +2108,7 @@ img {
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(var(--safe-top) + var(--cap-h));
+  top: calc(var(--safe-top) + var(--cap-haut));
   bottom: var(--cap-h);
   pointer-events: none;
   /* Léger reflet de vitre, pour qu'on sente le verre sans gêner la visée. */
@@ -2153,7 +2156,7 @@ img {
 /* Position ouverte : --haut-ouvert et --bas-ouvert sont posés EN PIXELS par scan.js
    (majCoques). Le repli en calc ne sert qu'avant le premier calcul ; ne pas animer de
    calc mêlant %, cqw et env() : Safari iOS y faisait disparaître la coque du haut. */
-.pdx-haut { top: 0; transform: translate3d(0, var(--haut-ouvert, calc(-100% + var(--cap-h) + var(--safe-top))), 0); }
+.pdx-haut { top: 0; transform: translate3d(0, var(--haut-ouvert, calc(-100% + var(--cap-haut) + var(--safe-top))), 0); }
 .pdx-haut svg { bottom: 0; }
 .pdx-bas { bottom: 0; transform: translate3d(0, var(--bas-ouvert, calc(100% - var(--cap-h))), 0); }
 .pdx-bas svg { top: 0; transform: scaleY(-1); }
@@ -2411,7 +2414,7 @@ img {
   pointer-events: none;
 }
 .scan-aide {
-  top: calc(var(--safe-top) + var(--cap-h) + 12px);
+  top: calc(var(--safe-top) + var(--cap-haut) + 12px);
   padding: 7px 14px;
   background: rgba(8, 10, 14, 0.55);
   font-size: 13px;
@@ -2483,7 +2486,7 @@ img {
   position: absolute;
   left: 8px;
   right: 8px;
-  top: calc(var(--safe-top) + var(--cap-h) + 50px);
+  top: calc(var(--safe-top) + var(--cap-haut) + 50px);
   z-index: 5;
   margin: 0;
   padding: 3px 8px;

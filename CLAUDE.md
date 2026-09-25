@@ -444,6 +444,12 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
 - La vue est un **Pokédex de Kalos ouvert**, d'après l'illustration officielle fournie :
   une coque rouge en haut, une en bas, et entre elles l'écran de verre où passe la
   caméra. Le déclencheur Poké Ball est logé dans l'échancrure de la coque du bas.
+- **La coque du HAUT est plus basse que celle du bas** depuis le 25/09/2026, à la
+  demande : `--cap-haut` vaut 58 unités de dessin contre 100 pour `--cap-h`, soit
+  54 px au lieu de 94 px sur un écran de 375 (mesuré). Elle ne porte ni déclencheur ni
+  bouton de mode : la place qu'elle prenait était mangée sur l'image. Tout ce qui se
+  cale sur le HAUT (l'écran de visée, le bandeau d'aide, la ligne de diagnostic, la
+  position ouverte de la coque) lit `--cap-haut` ; le bas garde `--cap-h`.
 - **Une seule coque dessinée** (`coque()` dans scan.js), retournée en CSS pour le bas.
   Le dessin fait 400×800 : fermé, le Pokédex remplit l'écran et on en voit presque
   tout ; ouvert, seule la bande basse de **100 unités** reste visible (`--cap-h`) —

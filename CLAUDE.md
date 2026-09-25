@@ -1503,6 +1503,40 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 - L'export contient `caught`, `caughtShiny`, `boxes` et `order`. Le repli sur les
   anciens exports (tableau nu d'IDs) reste en place.
 
+## Page d'accueil
+
+Première vue de l'application, **d'après une maquette fournie le 25/09/2026** : une
+planche de tuiles colorées, une par vue. **La barre du bas a été retirée** à cette
+occasion — tout part d'ici, et une barre ferait doublon.
+
+- Cinq tuiles (`TUILES` dans main.js) : **Pokédex** (large, en tête), **Attaques**,
+  **Boîtes**, **Équipes**, **Scan**. « Attaques » et « Équipes » mènent toutes deux à la
+  boîte de combat ; la première y ouvre en plus le menu des attaques (`vaVers(vue, menu)`).
+- **La tuile Scan a été ajoutée à la maquette**, qui n'en montrait pas : sans elle le scan
+  n'aurait plus eu de point d'entrée. Choix explicite de l'utilisateur entre trois
+  propositions.
+- Les dessins sont des **SVG inline** (`ART`), comme les icônes de barre qu'ils
+  remplacent : aucun fichier de plus, aucune requête au runtime. Le dessin s'arrête
+  40 px au-dessus du bas de la tuile pour laisser la place au libellé — sans cette
+  réserve le nom se posait sur les Poké Balls. La tuile du Pokédex fait exception : son
+  dessin va d'un bord à l'autre et son nom occupe la zone vide à droite, comme sur la
+  maquette.
+  - **Un `<svg>` avec `viewBox` garde son rapport quand largeur ET hauteur sont
+    `auto`** : poser les quatre décalages ne suffit pas à le contraindre, il faut lui
+    donner une hauteur explicite (`calc(100% - 48px)`). Vérifié, c'était la cause du
+    chevauchement qui subsistait après le premier correctif.
+- **C'est le seul endroit où la couleur vient du décor** et non des sprites : rouge
+  `#e8453c`, jaune `#f0c43c`, vert `#4fc247`, bleu `#7dbdf0`, violet `#8a6fe0` —
+  celui du mode IA. Le reste de l'appli garde son thème clair.
+- **L'appli s'ouvre TOUJOURS sur l'accueil**, quelle que soit la vue quittée : c'est le
+  point de départ de tout, et la règle « la vue Scan ne se restaure pas » (une caméra qui
+  s'allume seule au lancement) devient inutile.
+- **Une barre « ‹ Accueil » coiffe toutes les autres vues** (`.retour`, construite une
+  fois, hors de la zone qui défile). Elle porte désormais la marge de zone sûre du haut,
+  que les vues portaient elles-mêmes. Y revenir **ferme les panneaux ouverts**.
+- Vérifié dans l'aperçu à 375 px : les cinq tuiles ouvrent la bonne vue, « Attaques »
+  ouvre le panneau des attaques, et le retour ramène à l'accueil depuis chacune.
+
 ## Interface
 
 - 9 onglets de génération, boîtes de **30** en grille 6×5, comme le PC des jeux.
@@ -1510,82 +1544,20 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 - **Coquille d'application** : `#app` fait la hauteur de l'écran, le contenu de
   chaque vue défile dans une zone `.vue` (`flex: 1; overflow-y: auto`), et la barre du
   bas est le dernier élément du flux. **Le corps ne défile plus du tout.**
-- **Ne pas remettre la barre en `position: fixed`.** Sur iPhone, un élément fixe
-  combiné à `env(safe-area-inset-bottom)` ne se place pas au même endroit selon que la
-  page peut défiler ou non : la barre descendait sur le Pokédex, long, et remontait
-  sur Boîtes et Combat, trop courts pour défiler. Trois tentatives ont échoué avant
-  de comprendre que le problème venait de là et non du style de la barre.
-- `.vue` a besoin de `min-height: 0` : sans lui, un enfant flex refuse de rétrécir
-  sous la taille de son contenu et la zone ne défile pas.
-- La barre garde `position: relative` et son `z-index: 12` pour rester au-dessus des
-  panneaux, qui sont en position fixe avec un `z-index` moindre.
-- **La barre du bas est construite qu'une
-  fois. Recréée à l'intérieur de `#app` — un conteneur flex en `min-height: 100%`
-  dont la hauteur suit le contenu — elle s'ancrait différemment selon la vue et
-  remontait d'autant que la page était courte. `majNav()` n'en rafraîchit que l'état
-  actif, et l'écoute du changement de vue vit sur la barre elle-même.
-- **Deux variables, deux rôles** : `--nav-h` (48 px) couvre le contenu de la barre,
-  filet compris ; `--nav-bas` la marge sous les libellés. Les panneaux réservent la
-  somme des deux. Les valeurs exactes et leur histoire sont juste en dessous.
-- **La barre du bas est OPAQUE, dans la couleur du papier** (`--paper`). Translucide
-  avec un `backdrop-filter`, elle changeait d'aspect selon la page : sur le Pokédex la
-  grille défile dessous et le flou la fondait dans la page, alors que sur Boîtes et
-  Combat — dont le contenu est trop court pour défiler — elle n'avait que du fond
-  derrière elle et virait au blanc franc, formant une bande visible. Ne pas la
-  repasser en translucide.
-- **Tout panneau réserve la hauteur de la barre du bas** (`--nav-h` + `--nav-bas`)
-  dans le `padding-bottom` de `.sheet-body`. Les panneaux sont en position fixe et
-  passent DEVANT la barre : sans cette réserve, elle recouvrait leurs derniers pixels.
-  Le bouton « Retirer de l'équipe » finissait dessous et, le contenu tenant dans la
-  hauteur, aucun défilement ne pouvait aller le chercher — il était inaccessible.
-  Tenir les deux valeurs à jour ensemble si la barre change de gabarit.
-- **Gabarit de la barre : 82 px** avec une zone sûre de 34 px, soit `--nav-h`
-  (48 px, contenu et filet) plus `--nav-bas`, qui vaut la **zone sûre ENTIÈRE**.
-  **Ces valeurs sont RELEVÉES sur une capture d'écran de référence**, pas estimées :
-  iPhone 16 Pro, 1206×2622 donc ×3, filet séparateur à y=2421 → 201 px image,
-  soit 67 px CSS. Repères secondaires de cette capture, en points CSS : 15 px
-  au-dessus de l'encre de l'icône, 12 px d'encre d'icône, 7,7 px jusqu'au libellé,
-  8,7 px d'encre de libellé, **23 px sous l'encre du libellé**.
-  - Le réglage a coûté quatre allers-retours à l'estime (68 → 49 → 59) avant d'être
-    mesuré. **Mesurer la capture d'abord**, c'est cinq minutes contre plusieurs
-    tours : à l'œil, on juge la marge basse et on se trompe sur la hauteur totale.
-  - Attention au piège de mesure : les 23 px de la capture partent de **l'encre** du
-    libellé, alors que `getBoundingClientRect()` donne sa **boîte**, ~3,5 px plus bas.
-    Confondre les deux fait viser 3,5 px trop généreux.
-  - Les deux variables se règlent séparément : `--nav-h` décide de la taille des
-    boutons, `--nav-bas` de la distance au bord.
-  - **La capture de référence n'a PAS été le mot de la fin** : une fois ses 67 px
-    obtenus au pixel près, la barre a encore été jugée trop basse et on a ajouté
-    15 px, ce qui revient à réserver la zone sûre entière (34 px sous les libellés
-    au lieu de 19). Le goût a tranché contre la mesure — c'est une préférence
-    explicite, pas un oubli : ne pas « corriger » ce réglage vers la capture.
-
-### Icônes des onglets
-
-- Les trois glyphes (`▦ ◉ ⚔`) ont laissé place à des **SVG en couleur**, écrits dans
-  `ICONES` au-dessus de `renderNav()` : la grille du PC portant une Poké Ball, le
-  Pokédex rouge avec sa lentille et sa fiche, la Potion des jeux. Ils sont dessinés
-  dans `main.js` et non chargés depuis `public/` : trois fichiers de plus pour 2 Ko,
-  alors que l'appli ne fait aucune requête au runtime.
-- Ils sont en `viewBox 0 0 24 24` **sans `width` ni `height`** : c'est `--nav-ico`
-  qui décide de la taille, en un seul endroit.
-- **La hauteur de la barre n'a pas bougé, et ne doit pas bouger** : 48 px hors zone
-  sûre — vérifié après le changement d'icônes, 82 px au total avec 34 px de zone
-  sûre, exactement comme avant. Soit 1 (filet) + haut + icône + 2 (écart) + 15
-  (libellé). Le padding haut est
-  l'ajustement — 30 px moins l'icône, donc 10 px pour les 20 px actuels, là où les
-  glyphes de 17 px en demandaient 13. Changer `--nav-ico` impose de refaire cette
-  soustraction, sans quoi tout le calage relevé sur capture est perdu.
-- **Une icône en couleur ne peut pas rougir avec le libellé** quand l'onglet devient
-  actif. C'est donc le gris qui porte le repos (`filter: grayscale(0.45)`) et la
-  couleur qui signale l'onglet actif — le même langage que la grille des boîtes, où
-  le gris dit « pas capturé ». Le libellé et la pastille rougissent comme avant.
-- Le liquide de la Potion **déborde volontairement du flacon** et c'est un `clipPath`
-  qui le recoupe sur la silhouette : calculer le tracé à la main sur les courbes du
-  flanc serait à refaire à chaque retouche de la silhouette.
-- Les proportions viennent du **sprite officiel de la Potion** : tête blanche large
-  (≈ 70 % de la base), base ronde, gicleur violet à gauche. Une tête étroite donnait
-  une fiole de laboratoire, pas une Potion.
+- **Il n'y a plus de barre du bas** : voir « Page d'accueil ». Ce qu'elle a coûté à
+  régler mérite d'être gardé en tête si une barre revient un jour — elle était en
+  `position: fixed`, et sur iPhone un élément fixe combiné à
+  `env(safe-area-inset-bottom)` ne se place pas au même endroit selon que la page peut
+  défiler ou non : elle descendait sur le Pokédex, long, et remontait sur Boîtes et
+  Combat, trop courts. Remise dans le flux de la coquille, elle était identique partout.
+  Son gabarit (82 px, dont 34 de zone sûre) avait été RELEVÉ sur une capture d'écran de
+  référence après quatre réglages à l'estime : **mesurer la capture d'abord**.
+- `.vue` a besoin de `min-height: 0` : sans lui, un enfant flex refuse de rétrécir sous
+  la taille de son contenu et la zone ne défile pas.
+- **Tout panneau garde une réserve en bas** (`--nav-h` + `--nav-bas`) dans le
+  `padding-bottom` de `.sheet-body`. `--nav-h` vaut **0** depuis le retrait de la barre,
+  `--nav-bas` la zone sûre : les panneaux sont en position fixe et leurs derniers
+  boutons finiraient sinon sous le bord de l'écran.
 - Gestes : tap = capturer, appui long 450 ms ou clic droit = fiche. Un bouton en bas
   inverse le comportement du tap. Swipe horizontal = boîte suivante/précédente.
 - Le swipe est verrouillé sur un axe : au premier mouvement on décide `x` ou `y`, et en

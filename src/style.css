@@ -12,11 +12,10 @@
   --shiny: #b98b18;
   --font: ui-rounded, "SF Pro Rounded", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
-  --nav-h: 48px; /* hauteur du contenu de la barre du bas, filet compris */
-  --nav-ico: 20px; /* taille des icônes de cette barre, voir .nav */
-  /* Marge sous les icônes : la zone sûre ENTIÈRE. On n'en réservait d'abord qu'une
-     fraction, pour ne pas décoller la barre du bord de l'écran — puis la barre a été
-     jugée trop basse et on est passé au total. Préférence explicite, pas un oubli. */
+  /* La barre du bas a été retirée au profit de la page d'accueil : les panneaux, qui
+     lui réservaient sa hauteur en bas de leur contenu, n'ont plus qu'à s'écarter du
+     bord de l'écran. Les deux variables restent, lues par les panneaux. */
+  --nav-h: 0px;
   --nav-bas: var(--safe-bottom);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -370,64 +369,99 @@ img { display: block; }
   color: var(--muted);
 }
 
-/* ---------- Barre du bas : commutation des deux vues ---------- */
+/* ---------- Accueil : la planche de tuiles ---------- */
 
-/* Fixée, donc hors du flux : le bas de page doit lui réserver sa hauteur, sinon
-   elle recouvrirait les derniers boutons. */
-.nav {
-  /* Dans le flux, en bas de la coquille. `relative` et le z-index la gardent
-     au-dessus des panneaux, qui sont en position fixe avec un z-index moindre. */
-  position: relative;
-  flex: 0 0 auto;
-  z-index: 12;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  /* La hauteur totale de la barre ne doit PAS bouger : elle a été relevée sur une
-     capture de référence, et tout le reste de l'appli lui réserve --nav-h.
-     Elle vaut 1 (filet) + haut + icône + 2 (écart) + 15 (libellé) + --nav-bas, soit
-     48 px hors zone sûre. Le haut est donc l'ajustement : 30 px moins l'icône.
-     Les glyphes d'avant faisaient 17 px pour 13 px de marge ; à 20 px d'icône il en
-     reste 10. Changer --nav-ico impose de refaire cette soustraction. */
-  padding: 10px 10px var(--nav-bas);
-  /* OPAQUE, et dans la couleur du papier. Translucide avec un flou d'arrière-plan,
-     la barre changeait d'aspect selon la page : sur le Pokédex la grille défilait
-     dessous et le flou la fondait dans la page, tandis que sur Boîtes et Combat —
-     dont le contenu est trop court pour défiler — elle n'avait que du fond derrière
-     elle et virait au blanc franc, formant une bande qui tranchait sur le papier.
-     Opaque, elle est identique partout. */
-  background: var(--paper);
-  border-top: 1px solid var(--rule);
+/* Plus de barre du bas : chaque vue s'ouvre depuis une tuile, et la barre de retour
+   ramène ici. Tuiles pleines et colorées, d'après la maquette fournie — c'est le seul
+   endroit de l'appli où la couleur vient du décor et non des sprites. */
+.accueil {
+  padding: calc(10px + var(--safe-top)) 12px calc(12px + var(--safe-bottom));
 }
-.nav-btn {
+.accueil-titre {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 0;
-  border: 0;
-  border-radius: 12px;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 150ms ease, color 150ms ease;
+  align-items: baseline;
+  gap: 8px;
+  margin: 2px 4px 12px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
 }
-/* Les icônes sont en couleur : elles ne peuvent pas rougir avec le libellé quand
-   l'onglet devient actif. C'est le gris qui porte le repos, comme dans la grille des
-   boîtes où le gris dit « pas capturé » — et la couleur revient sur l'onglet actif. */
-.nav-btn svg {
+/* La version reste lisible ici : les mises à jour arrivant sans fil, c'est le seul
+   moyen de savoir quel build tourne sur le téléphone. */
+.accueil-titre small { font-size: 11px; font-weight: 600; color: var(--muted); }
+
+.tuiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.tuile {
+  position: relative;
+  overflow: hidden;
   display: block;
-  width: var(--nav-ico);
-  height: var(--nav-ico);
-  filter: grayscale(0.45);
-  opacity: 0.82;
-  transition: filter 150ms ease, opacity 150ms ease;
+  width: 100%;
+  /* Carré, comme dans la maquette : la tuile du Pokédex s'étale, les autres non. */
+  aspect-ratio: 1;
+  border-radius: 22px;
+  color: #fff;
+  text-align: left;
+  box-shadow: 0 2px 8px rgb(30 34 39 / 12%);
+  transition: transform 120ms ease, box-shadow 120ms ease;
 }
-.nav-btn.on { background: var(--caught-tint); color: var(--ball); }
-.nav-btn.on svg { filter: none; opacity: 1; }
+.tuile:active { transform: scale(0.97); box-shadow: 0 1px 4px rgb(30 34 39 / 14%); }
+/* Le libellé se pose en bas, par-dessus le dessin, avec une ombre portée pour tenir
+   sur les tuiles claires (le jaune et le bleu). */
+.tuile > span {
+  position: absolute;
+  left: 16px;
+  right: 12px;
+  bottom: 12px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  text-shadow: 0 1px 3px rgb(30 34 39 / 30%);
+}
+/* Le dessin s'arrête au-dessus du libellé : sans cette réserve, le nom se posait
+   sur les Poké Balls et devenait illisible. La tuile du Pokédex garde son dessin
+   pleine page, son nom vivant dans la zone vide à droite. */
+.tuile-art { position: absolute; top: 8px; left: 8px; width: calc(100% - 16px); height: calc(100% - 48px); }
+.tuile.t-pokedex .tuile-art { top: 0; left: 0; width: 100%; height: 100%; }
+
+/* Le Pokédex prend toute la largeur et porte son nom à droite, comme la maquette. */
+.tuile.t-pokedex {
+  grid-column: 1 / -1;
+  aspect-ratio: 16 / 7;
+  background: #e8453c;
+}
+.tuile.t-pokedex > span { left: auto; right: 18px; font-size: 30px; }
+.tuile.t-attaques { background: #f0c43c; }
+.tuile.t-boites { background: #4fc247; }
+.tuile.t-equipes { background: #7dbdf0; }
+.tuile.t-scan { background: #8a6fe0; }
+
+/* ---------- Barre de retour : présente dans toutes les vues sauf l'accueil ---------- */
+
+.retour {
+  position: relative;
+  z-index: 12;
+  flex: 0 0 auto;
+  padding: calc(6px + var(--safe-top)) 8px 4px;
+  background: var(--paper);
+}
+.retour button {
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.retour button:active { background: var(--rule-soft); color: var(--ink); }
+/* Les vues qui portent déjà leur propre marge haute n'ont plus à réserver la zone
+   sûre : c'est la barre de retour qui la porte désormais. */
+.retour ~ .vue .gens,
+.retour ~ .vue .dex,
+.retour ~ .vue .dexm,
+.retour ~ .vue .combat { padding-top: 0; margin-top: 8px; }
 
 /* Le corps ne défile plus : c'est .vue qui s'en charge, et la barre est dans le flux. */
 
@@ -1855,8 +1889,8 @@ img { display: block; }
 .box *,
 .gens,
 .gens *,
-.nav,
-.nav * {
+.accueil,
+.accueil * {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;

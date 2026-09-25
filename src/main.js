@@ -247,8 +247,7 @@ const state = {
   placing: null, // Pokémon choisi, en attente d'un emplacement
   open: null,
   // Boîte de combat : vue active, jeu de référence, équipe de six, panneau ouvert.
-  vue: ['combat', 'pokedex'].includes(localStorage.getItem('pcbox.vue'))
-    ? localStorage.getItem('pcbox.vue') : 'boites',
+  vue: 'accueil',
   dexGen: null, // Pokédex affiché : null = menu, 0 = national, 1 à 9 = une génération
   jeu: localStorage.getItem('pcbox.jeu') || 'scarlet-violet',
   // Une équipe par version de jeu : on garde une composition distincte pour chaque
@@ -507,10 +506,11 @@ for (const e of CATALOGUE) e.cle = fold(e.name + ' ' + e.sub + ' ' + e.num);
 // ---------- Rendu ----------
 
 function render() {
-  // La barre du bas commute entre les deux vues. Tout le reste de render() ne
-  // concerne que la gestion des boîtes.
+  // L'accueil et les autres vues se rendent chacune entièrement ; tout le reste de
+  // render() ne concerne que la gestion des boîtes.
   // Hors de la vue Scan, la caméra est coupée : sans effet si elle l'est déjà.
   if (state.vue !== 'scan') scan.arrete();
+  if (state.vue === 'accueil') return renderAccueil();
   if (state.vue === 'combat') return renderCombat();
   if (state.vue === 'pokedex') return renderPokedex();
   if (state.vue === 'scan') return renderScan();
@@ -2397,120 +2397,140 @@ function importEquipes() {
 //
 // Tout est en viewBox 0 0 24 24, sans `width` ni `height` : c'est la feuille de
 // style qui décide de la taille, via `--nav-ico`.
-const ICONES = {
-  // Boîtes : la grille du PC, une case portant une Poké Ball.
-  boites: `<svg viewBox="0 0 24 24" aria-hidden="true">
-    <rect x="2.4" y="4" width="19.2" height="16" rx="2.8" fill="#fff" stroke="#1e2227" stroke-width="1.5"/>
-    <g fill="#c9cfd8">
-      <rect x="5" y="7" width="4.2" height="4.2" rx="1"/><rect x="14.8" y="7" width="4.2" height="4.2" rx="1"/>
-      <rect x="5" y="12.8" width="4.2" height="4.2" rx="1"/><rect x="9.9" y="12.8" width="4.2" height="4.2" rx="1"/>
-      <rect x="14.8" y="12.8" width="4.2" height="4.2" rx="1"/>
-    </g>
-    <g transform="translate(9.9 7)">
-      <circle cx="2.1" cy="2.1" r="2.1" fill="#fff" stroke="#1e2227" stroke-width=".7"/>
-      <path d="M0 2.1a2.1 2.1 0 0 1 4.2 0z" fill="#d6453c"/>
-      <rect y="1.75" width="4.2" height=".7" fill="#1e2227"/>
-      <circle cx="2.1" cy="2.1" r=".62" fill="#fff" stroke="#1e2227" stroke-width=".5"/>
-    </g>
-  </svg>`,
-  // Pokédex : le boîtier rouge, sa lentille, ses trois voyants, une fiche à droite.
-  pokedex: `<svg viewBox="0 0 24 24" aria-hidden="true">
-    <rect x="1.8" y="4.6" width="20.4" height="14.8" rx="2.6" fill="#d6453c"/>
-    <circle cx="5.4" cy="7.6" r=".95" fill="#f4c53c"/>
-    <circle cx="7.8" cy="7.6" r=".95" fill="#3fbf6a"/>
-    <circle cx="10.2" cy="7.6" r=".95" fill="#ffdad6"/>
-    <circle cx="6.8" cy="14" r="3.2" fill="#fff"/>
-    <circle cx="6.8" cy="14" r="2.2" fill="#2ea3d8"/>
-    <circle cx="6" cy="13.2" r=".7" fill="#fff"/>
-    <rect x="12.6" y="6.8" width="7.8" height="10.4" rx="1" fill="#f6f5f1"/>
-    <g fill="#c3cad3">
-      <rect x="14" y="8.8" width="5" height=".95" rx=".47"/><rect x="14" y="11" width="4" height=".95" rx=".47"/>
-      <rect x="14" y="13.2" width="5" height=".95" rx=".47"/><rect x="14" y="15.4" width="3.2" height=".95" rx=".47"/>
-    </g>
-  </svg>`,
-  // Scan : le viseur d'un appareil photo, une Poké Ball au centre.
-  scan: `<svg viewBox="0 0 24 24" aria-hidden="true">
-    <g fill="none" stroke="#1e2227" stroke-width="1.8" stroke-linecap="round">
-      <path d="M3 8V5.6A2.6 2.6 0 0 1 5.6 3H8"/><path d="M16 3h2.4A2.6 2.6 0 0 1 21 5.6V8"/>
-      <path d="M21 16v2.4a2.6 2.6 0 0 1-2.6 2.6H16"/><path d="M8 21H5.6A2.6 2.6 0 0 1 3 18.4V16"/>
-    </g>
-    <circle cx="12" cy="12" r="5.4" fill="#fff" stroke="#1e2227" stroke-width="1.3"/>
-    <path d="M6.6 12a5.4 5.4 0 0 1 10.8 0z" fill="#d6453c"/>
-    <rect x="6.6" y="11.4" width="10.8" height="1.2" fill="#1e2227"/>
-    <circle cx="12" cy="12" r="5.4" fill="none" stroke="#1e2227" stroke-width="1.3"/>
-    <circle cx="12" cy="12" r="1.75" fill="#fff" stroke="#1e2227" stroke-width="1.1"/>
-  </svg>`,
-  // Combat : la Potion des jeux. Le liquide monte en dôme au centre, comme sur le
-  // sprite d'origine, et déborde volontairement du flacon : c'est `clipPath` qui le
-  // recoupe sur la silhouette, plutôt qu'un tracé calculé à la main sur ses courbes.
-  combat: `<svg viewBox="0 0 24 24" aria-hidden="true">
-    <defs>
-      <path id="gd-pot" d="M9.4 3.8H14.6A3 3 0 0 1 17.6 6.8V12.6C17.6 14.4 19.9 15.4 19.9 17.9A3.9 3.9 0 0 1 16 21.8H8A3.9 3.9 0 0 1 4.1 17.9C4.1 15.4 6.4 14.4 6.4 12.6V6.8A3 3 0 0 1 9.4 3.8Z"/>
-      <clipPath id="gd-pot-c"><use href="#gd-pot"/></clipPath>
-    </defs>
-    <rect x="3.4" y="6.4" width="5.6" height="3.6" rx="1.4" fill="#7a68ab" stroke="#1e2227" stroke-width="1.3"/>
-    <circle cx="4.8" cy="8.2" r="1.6" fill="#8a78bd" stroke="#1e2227" stroke-width="1.1"/>
-    <circle cx="4.8" cy="8.2" r=".6" fill="#54427f"/>
-    <use href="#gd-pot" fill="#fbfaf7"/>
-    <g clip-path="url(#gd-pot-c)">
-      <path d="M2 16C4.8 15.8 6.6 15 7.6 13.4C8.7 11.6 9.9 10.2 12 10.2C14.1 10.2 15.3 11.6 16.4 13.4C17.4 15 19.2 15.8 22 16V23H2Z" fill="#6f5b9e"/>
-      <ellipse cx="15.6" cy="17.8" rx="1.6" ry="2" fill="#fff" opacity=".26"/>
-    </g>
-    <use href="#gd-pot" fill="none" stroke="#1e2227" stroke-width="1.5"/>
-  </svg>`,
+// ---------- Accueil : la planche de tuiles d'où partent toutes les vues ----------
+//
+// La barre du bas a été RETIRÉE, à la demande : l'application s'ouvre désormais sur une
+// page d'accueil de tuiles, d'après une maquette fournie. Chaque tuile ouvre une vue, et
+// une barre « ‹ Accueil » l'y ramène. Les dessins sont inline, comme les icônes qu'ils
+// remplacent : l'appli ne fait aucune requête au runtime.
+const ART = {
+  // Le Pokédex de la maquette : lentille bleue, trois voyants, charnière en biais.
+  pokedex: `
+    <svg class="tuile-art" viewBox="0 0 320 150" aria-hidden="true">
+      <circle cx="46" cy="40" r="28" fill="#fdf1f0"/>
+      <circle cx="46" cy="40" r="21" fill="#5aa9f5"/>
+      <circle cx="39" cy="33" r="7" fill="#fff" opacity=".35"/>
+      <circle cx="96" cy="32" r="11" fill="#fdf1f0"/><circle cx="96" cy="32" r="8" fill="#e2584f"/>
+      <circle cx="128" cy="32" r="11" fill="#fdf1f0"/><circle cx="128" cy="32" r="8" fill="#ecb22e"/>
+      <circle cx="160" cy="32" r="11" fill="#fdf1f0"/><circle cx="160" cy="32" r="8" fill="#43c15c"/>
+      <path d="M0 96h110l26-26h184" fill="none" stroke="#c9352d" stroke-width="13" stroke-linejoin="round"/>
+      <path d="M22 112l26 15-26 15z" fill="#f4c33f"/>
+    </svg>`,
+  // Les trois catégories d'attaque : physique, spéciale, statut.
+  attaques: `
+    <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
+      <circle cx="68" cy="46" r="32" fill="#e8562b"/>
+      <path d="M68 24l7 14 15-4-9 13 13 9-15 3 2 15-13-9-13 9 2-15-15-3 13-9-9-13 15 4z" fill="#f6c34a"/>
+      <circle cx="41" cy="103" r="32" fill="#9aa3ab"/>
+      <path d="M41 83c9 0 16 9 16 20s-7 20-16 20a20 20 0 0 1 0-40z" fill="#f2f3f4"/>
+      <circle cx="41" cy="95" r="4" fill="#9aa3ab"/>
+      <circle cx="101" cy="103" r="32" fill="#2f6fd0"/>
+      <circle cx="101" cy="103" r="21" fill="none" stroke="#dbe9fb" stroke-width="7"/>
+      <circle cx="101" cy="103" r="9" fill="#dbe9fb"/>
+    </svg>`,
+  // Les boîtes du PC : le disque de rangement, comme sur la maquette.
+  boites: `
+    <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
+      <circle cx="58" cy="52" r="46" fill="#eef2ee"/>
+      <g stroke="#dfe7df" stroke-width="3">
+        <path d="M58 6v92M12 52h92M26 20l64 64M90 20L26 84"/>
+      </g>
+      <circle cx="58" cy="52" r="15" fill="#48b93f"/>
+      <circle cx="58" cy="52" r="8" fill="#eef2ee"/>
+    </svg>`,
+  // L'équipe : une grande Poké Ball et les cinq autres autour.
+  equipes: `
+    <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
+      <g>
+        <circle cx="46" cy="52" r="42" fill="#fff" stroke="#1e2227" stroke-width="5"/>
+        <path d="M4 52a42 42 0 0 1 84 0z" fill="#d6453c" stroke="#1e2227" stroke-width="5"/>
+        <circle cx="46" cy="52" r="13" fill="#fff" stroke="#1e2227" stroke-width="5"/>
+      </g>
+      <g>
+        <circle cx="112" cy="30" r="11" fill="#fff" stroke="#1e2227" stroke-width="3"/>
+        <path d="M101 30a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3"/>
+        <circle cx="120" cy="70" r="11" fill="#fff" stroke="#1e2227" stroke-width="3"/>
+        <path d="M109 70a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3"/>
+        <circle cx="96" cy="104" r="11" fill="#fff" stroke="#1e2227" stroke-width="3"/>
+        <path d="M85 104a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3"/>
+        <circle cx="52" cy="122" r="11" fill="#fff" stroke="#1e2227" stroke-width="3"/>
+        <path d="M41 122a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3"/>
+        <circle cx="16" cy="118" r="11" fill="#fff" stroke="#1e2227" stroke-width="3"/>
+        <path d="M5 118a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3"/>
+      </g>
+    </svg>`,
+  // Le scan : la lentille du Pokédex dans un cadre de visée.
+  scan: `
+    <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
+      <g fill="none" stroke="#f3eefd" stroke-width="7" stroke-linecap="round">
+        <path d="M14 44V22a8 8 0 0 1 8-8h22"/>
+        <path d="M106 14h22a8 8 0 0 1 8 8v22"/>
+        <path d="M136 106v22a8 8 0 0 1-8 8h-22"/>
+        <path d="M44 136H22a8 8 0 0 1-8-8v-22"/>
+      </g>
+      <circle cx="75" cy="75" r="32" fill="#f3eefd"/>
+      <circle cx="75" cy="75" r="23" fill="#7b5fd4"/>
+      <circle cx="66" cy="66" r="8" fill="#fff" opacity=".45"/>
+    </svg>`,
 };
 
-function renderNav() {
-  return h(`
-    <nav class="nav" role="tablist" aria-label="Vue">
-      ${[['boites', 'Boîtes'], ['pokedex', 'Pokédex'], ['scan', 'Scan'], ['combat', 'Combat']].map(([v, lib]) => `
-        <button class="nav-btn ${state.vue === v ? 'on' : ''}" role="tab"
-                aria-selected="${state.vue === v}" data-vue="${v}">
-          ${ICONES[v]}<span>${lib}</span>
-        </button>`).join('')}
-    </nav>`);
+// Une tuile par vue. `menu` ouvre en plus un panneau une fois la vue rendue : la tuile
+// « Attaques » mène droit au menu des attaques, qui vit dans la boîte de combat.
+const TUILES = [
+  { cle: 'pokedex', nom: 'Pokédex', vue: 'pokedex' },
+  { cle: 'attaques', nom: 'Attaques', vue: 'combat', menu: 'attaques' },
+  { cle: 'boites', nom: 'Boîtes', vue: 'boites' },
+  { cle: 'equipes', nom: 'Équipes', vue: 'combat' },
+  { cle: 'scan', nom: 'Scan', vue: 'scan' },
+];
+
+function renderAccueil() {
+  poser(h(`
+    <section class="accueil">
+      <h1 class="accueil-titre">Guiguidex<small>v${__APP_VERSION__}</small></h1>
+      <div class="tuiles">
+        ${TUILES.map((t) => `
+          <button class="tuile t-${t.cle}" data-tuile="${t.cle}">
+            ${ART[t.cle]}<span>${t.nom}</span>
+          </button>`).join('')}
+      </div>
+    </section>`));
 }
 
-// La barre du bas vit DANS <body>, pas dans #app, et n'est construite qu'une fois.
-//
-// Elle était auparavant recréée à l'intérieur de #app à chaque rendu. Or #app est un
-// conteneur flex en min-height: 100%, dont la hauteur suit celle du contenu : la
-// barre s'y ancrait différemment selon la longueur de la vue et remontait d'autant
-// que la page était courte. Sortie du flux de l'application, elle ne dépend plus que
-// du viewport, et se pose au même endroit dans les trois vues.
-const nav = renderNav();
+// Barre de retour, construite une fois : elle coiffe toutes les vues sauf l'accueil.
+const barreRetour = h(`
+  <header class="retour">
+    <button data-accueil aria-label="Revenir à l'accueil">&lsaquo; Accueil</button>
+  </header>`);
+barreRetour.addEventListener('click', () => vaVers('accueil'));
 
-// Coquille d'application : le contenu de chaque vue défile DANS une zone dédiée,
-// et la barre du bas est le dernier élément d'un conteneur à hauteur d'écran.
-//
-// Elle était auparavant en `position: fixed`. Sur iPhone, un élément fixe combiné à
-// `env(safe-area-inset-bottom)` ne se place pas au même endroit selon que la page
-// peut défiler ou non : la barre descendait sur le Pokédex, long, et remontait sur
-// Boîtes et Combat, trop courts pour défiler. Remise dans le flux, elle ne dépend
-// plus que de la hauteur du conteneur, identique partout.
+function vaVers(vue, menu = null) {
+  if (vue === state.vue && !menu) return;
+  fermeLesPanneaux();
+  state.vue = vue;
+  localStorage.setItem(VUE_KEY, vue);
+  // Entrer dans le Pokédex ramène TOUJOURS à son menu : on vient choisir quel
+  // Pokédex regarder, pas reprendre là où l'on s'était arrêté.
+  if (vue === 'pokedex') { state.dexGen = null; state.dexQ = ''; }
+  render();
+  if (menu === 'attaques') ouvreMenuAttaques();
+}
+
+app.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-tuile]');
+  if (!b) return;
+  const t = TUILES.find((x) => x.cle === b.dataset.tuile);
+  if (t) vaVers(t.vue, t.menu);
+});
+
+// Coquille d'application : le contenu de chaque vue défile DANS une zone dédiée
+// (`.vue`), coiffée hors accueil par la barre de retour, qui ne défile pas.
 function poser(...enfants) {
   const vue = document.createElement('div');
   vue.className = 'vue';
   vue.append(...enfants);
-  app.replaceChildren(vue, nav);
-  majNav();
+  app.replaceChildren(...(state.vue === 'accueil' ? [vue] : [barreRetour, vue]));
 }
-
-// Seul l'état actif change d'un rendu à l'autre : on le remplace sur place.
-function majNav() { nav.innerHTML = renderNav().innerHTML; }
-
-// La barre n'étant plus dans #app, son écoute doit vivre sur elle.
-nav.addEventListener('click', (e) => {
-  const b = e.target.closest('[data-vue]');
-  if (!b || b.dataset.vue === state.vue) return;
-  fermeLesPanneaux();
-  state.vue = b.dataset.vue;
-  localStorage.setItem(VUE_KEY, state.vue);
-  // Entrer dans le Pokédex ramène TOUJOURS à son menu : on vient choisir quel
-  // Pokédex regarder, pas reprendre là où l'on s'était arrêté.
-  if (state.vue === 'pokedex') { state.dexGen = null; state.dexQ = ''; }
-  render();
-});
 
 function renderEquipeSlot(m, i) {
   if (!m) {

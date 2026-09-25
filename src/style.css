@@ -545,6 +545,10 @@ img { display: block; }
 .menu-atq small { display: block; font-size: 11px; color: var(--muted); }
 .menu-atq-chev { margin-left: auto; color: var(--muted); font-size: 22px; line-height: 1; }
 /* Trois listes déroulantes côte à côte ; 16 px, sans quoi iOS zoome à l'ouverture. */
+/* La page des attaques : même contenu que l'ancien panneau, mêmes marges, mais dans
+   la vue — les attaques sont une page à part, séparée de la boîte de combat. */
+.atq-page { display: block; padding: 4px 18px calc(22px + var(--safe-bottom)); }
+
 .atq-filtres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: -8px 0 6px; }
 .atq-filtres select {
   width: 100%;

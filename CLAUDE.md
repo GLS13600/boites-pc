@@ -857,56 +857,6 @@ la fonction ne concerne que la gestion des boîtes.
   C'est le même signal que la grille des boîtes, on ne l'invente pas ici.
 - Persistance : `pcbox.vue`, `pcbox.jeu`, `pcbox.equipe`.
 
-### Menu des attaques
-
-Bouton **« Attaques »** sous l'en-tête de la boîte de combat, demandé pour consulter
-les attaques sans passer par un membre d'équipe. Il ouvre un panneau du même
-`battleSheet` (modes `attaques` et `infoAttaque`).
-
-- **Une génération choisie en tête** (onglets Gén. 1 à 9, celle du jeu courant par
-  défaut). Une attaque « disponible » dans une génération = apprenable dans au moins un
-  de ses jeux jouables (`learnsets-vg.json`) : 164 en gén. 1, 679 en gén. 9.
-- **Liste** : nom, type, catégorie, puissance, précision, PP, nombre de Pokémon qui
-  l'apprennent. Recherche, filtres type / catégorie et tri (nom, puissance, précision,
-  PP, nombre de Pokémon) en listes déroulantes, en 16 px contre le zoom d'iOS.
-- **Fiche d'une attaque** : ses valeurs DE LA GÉNÉRATION choisie, ce qui a changé
-  depuis (« Aujourd'hui : puissance 40 »), puis **qui l'apprend**, en quatre groupes
-  repliables — par niveau, par CT/CS, par œuf, par maître. Un Pokémon par ligne, avec
-  son niveau ou sa CT : une seule mention si tous les jeux de la génération où il
-  apparaît s'accordent, sinon suivie des sigles des jeux (« N.26 J » : Pikachu apprend
-  Tonnerre par niveau dans Jaune seulement) ou détaillée jeu par jeu.
-- Les onglets de génération restent sur la fiche : on compare la même attaque d'une
-  génération à l'autre. Le retour à la liste rend la recherche, les filtres et la
-  position.
-- **Valeurs par génération** : `moves.json` porte `g` (génération d'apparition) et
-  `h` (écarts par génération : puissance, précision, PP, type), produits par
-  **`npm run fetch-moves-gen`**, à relancer APRÈS fetch-moves et fetch-battle —
-  fetch-moves seul ramènerait le fichier à ses seules attaques citées.
-  - `past_values` de PokéAPI porte les valeurs EN VIGUEUR AVANT son version group ; un
-    champ `null` n'a pas changé. Le script part des valeurs actuelles et remonte le
-    temps, puis **vérifie six faits connus** avant d'écrire (Charge 35/95 en gén. 1 et
-    50 en gén. 6, Morsure Normal en gén. 1, Charme Normal jusqu'en gén. 5…).
-  - Il manquait **102 attaques** dans `moves.json`, qui ne gardait que celles citées par
-    la fiche du Pokédex (jeu le plus récent) : surtout celles retirées d'Écarlate /
-    Violet. 833 attaques désormais, dont 148 avec un historique, 167 Ko.
-- **Catégorie avant la gén. 4** : physique ou spéciale dépendait du TYPE (Normal,
-  Combat, Vol, Poison, Sol, Roche, Insecte, Spectre, Acier physiques ; les autres
-  spéciaux). `attaqueEnGen` l'applique : Morsure est Normal/Physique en gén. 1,
-  Ténèbres/Spéciale en gén. 2 et 3, Ténèbres/Physique ensuite. Vérifié dans l'aperçu.
-- L'index d'une génération (attaque → Pokémon → jeux) est construit une fois, à la
-  première ouverture de cette génération.
-- **Glisser de gauche à droite = revenir en arrière**, dans tout le panneau de combat
-  (`glisseRetourCombat`, branché sur `enableSwipeClose` comme la navigation de la
-  fiche du Pokédex) : fiche d'une attaque → liste des attaques ; choix d'attaque, de
-  talent, d'objet ou de nature → détail du Pokémon ; ailleurs, le panneau se ferme.
-  Vers la gauche, rien : le contenu ne suit qu'au tiers.
-  - Même animation que `navFiche`, dans le sens du retour, et même seuil (`NAV_AT`,
-    60 px). Le bouton « ‹ Toutes les attaques » passe par la même `retourMenuAttaques`.
-  - **Un glissement qui part des onglets de génération, de la table des types ou d'un
-    champ leur appartient** (`horizontalLocal` dans `enableSwipeClose`) : sans ça,
-    faire défiler les onglets revenait en arrière. La règle vaut pour tous les panneaux.
-- Limite : la description reste celle des jeux récents.
-
 ### Movesets par version
 
 - `learnsets-vg.json` donne le moveset de chaque espèce **dans chaque jeu** : 10 050
@@ -1509,9 +1459,9 @@ Première vue de l'application, **d'après une maquette fournie le 25/09/2026** 
 planche de tuiles colorées, une par vue. **La barre du bas a été retirée** à cette
 occasion — tout part d'ici, et une barre ferait doublon.
 
-- Cinq tuiles (`TUILES` dans main.js) : **Pokédex** (large, en tête), **Attaques**,
-  **Boîtes**, **Équipes**, **Scan**. « Attaques » et « Équipes » mènent toutes deux à la
-  boîte de combat ; la première y ouvre en plus le menu des attaques (`vaVers(vue, menu)`).
+- Cinq tuiles (`TUILES` dans main.js), une par vue : **Pokédex** (large, en tête),
+  **Attaques**, **Boîtes**, **Équipes**, **Scan**. Les attaques ont leur propre vue
+  depuis qu'elles ont été détachées de la boîte de combat — voir « Page des attaques ».
 - **La tuile Scan a été ajoutée à la maquette**, qui n'en montrait pas : sans elle le scan
   n'aurait plus eu de point d'entrée. Choix explicite de l'utilisateur entre trois
   propositions.
@@ -1536,6 +1486,69 @@ occasion — tout part d'ici, et une barre ferait doublon.
   que les vues portaient elles-mêmes. Y revenir **ferme les panneaux ouverts**.
 - Vérifié dans l'aperçu à 375 px : les cinq tuiles ouvrent la bonne vue, « Attaques »
   ouvre le panneau des attaques, et le retour ramène à l'accueil depuis chacune.
+
+## Page des attaques
+
+**Vue à part entière**, ouverte par la tuile « Attaques » de l'accueil. Elle a d'abord
+été un panneau de la boîte de combat ; **séparée le 25/09/2026 à la demande** — « je ne
+veux plus qu'elles soient associées ». Le bouton « Attaques » de la boîte de combat a
+donc été retiré, et la vue combat ne mène plus aux attaques.
+
+- Le contenu n'a pas bougé : ce sont les mêmes `htmlMenuAttaques` et `htmlInfoAttaque`,
+  et les mêmes écoutes, qui servent la page et le panneau. **Seul le contenant change**
+  (`corpsCombat()`), et `openBattleSheet` n'ouvre aucun panneau quand la vue Attaques
+  est active. Les trois écoutes de `battleBody` ont donc été nommées puis posées sur les
+  DEUX contenants.
+- **Ce qui défile n'est pas ce dans quoi on écrit** (`defileCombat()`) : dans la page
+  c'est la zone de vue qui la contient, dans le panneau c'est son corps. Lire
+  `scrollTop` sur la page elle-même renverrait toujours 0, et le retour à la liste
+  perdrait sa position.
+- L'état de la page vit toujours dans `state.bs` (`attaques` ou `infoAttaque`) : y
+  revenir depuis une autre vue rouvre l'attaque qu'on regardait.
+
+- **Une génération choisie en tête** (onglets Gén. 1 à 9, celle du jeu courant par
+  défaut). Une attaque « disponible » dans une génération = apprenable dans au moins un
+  de ses jeux jouables (`learnsets-vg.json`) : 164 en gén. 1, 679 en gén. 9.
+- **Liste** : nom, type, catégorie, puissance, précision, PP, nombre de Pokémon qui
+  l'apprennent. Recherche, filtres type / catégorie et tri (nom, puissance, précision,
+  PP, nombre de Pokémon) en listes déroulantes, en 16 px contre le zoom d'iOS.
+- **Fiche d'une attaque** : ses valeurs DE LA GÉNÉRATION choisie, ce qui a changé
+  depuis (« Aujourd'hui : puissance 40 »), puis **qui l'apprend**, en quatre groupes
+  repliables — par niveau, par CT/CS, par œuf, par maître. Un Pokémon par ligne, avec
+  son niveau ou sa CT : une seule mention si tous les jeux de la génération où il
+  apparaît s'accordent, sinon suivie des sigles des jeux (« N.26 J » : Pikachu apprend
+  Tonnerre par niveau dans Jaune seulement) ou détaillée jeu par jeu.
+- Les onglets de génération restent sur la fiche : on compare la même attaque d'une
+  génération à l'autre. Le retour à la liste rend la recherche, les filtres et la
+  position.
+- **Valeurs par génération** : `moves.json` porte `g` (génération d'apparition) et
+  `h` (écarts par génération : puissance, précision, PP, type), produits par
+  **`npm run fetch-moves-gen`**, à relancer APRÈS fetch-moves et fetch-battle —
+  fetch-moves seul ramènerait le fichier à ses seules attaques citées.
+  - `past_values` de PokéAPI porte les valeurs EN VIGUEUR AVANT son version group ; un
+    champ `null` n'a pas changé. Le script part des valeurs actuelles et remonte le
+    temps, puis **vérifie six faits connus** avant d'écrire (Charge 35/95 en gén. 1 et
+    50 en gén. 6, Morsure Normal en gén. 1, Charme Normal jusqu'en gén. 5…).
+  - Il manquait **102 attaques** dans `moves.json`, qui ne gardait que celles citées par
+    la fiche du Pokédex (jeu le plus récent) : surtout celles retirées d'Écarlate /
+    Violet. 833 attaques désormais, dont 148 avec un historique, 167 Ko.
+- **Catégorie avant la gén. 4** : physique ou spéciale dépendait du TYPE (Normal,
+  Combat, Vol, Poison, Sol, Roche, Insecte, Spectre, Acier physiques ; les autres
+  spéciaux). `attaqueEnGen` l'applique : Morsure est Normal/Physique en gén. 1,
+  Ténèbres/Spéciale en gén. 2 et 3, Ténèbres/Physique ensuite. Vérifié dans l'aperçu.
+- L'index d'une génération (attaque → Pokémon → jeux) est construit une fois, à la
+  première ouverture de cette génération.
+- **Glisser de gauche à droite = revenir en arrière**, dans tout le panneau de combat
+  (`glisseRetourCombat`, branché sur `enableSwipeClose` comme la navigation de la
+  fiche du Pokédex) : fiche d'une attaque → liste des attaques ; choix d'attaque, de
+  talent, d'objet ou de nature → détail du Pokémon ; ailleurs, le panneau se ferme.
+  Vers la gauche, rien : le contenu ne suit qu'au tiers.
+  - Même animation que `navFiche`, dans le sens du retour, et même seuil (`NAV_AT`,
+    60 px). Le bouton « ‹ Toutes les attaques » passe par la même `retourMenuAttaques`.
+  - **Un glissement qui part des onglets de génération, de la table des types ou d'un
+    champ leur appartient** (`horizontalLocal` dans `enableSwipeClose`) : sans ça,
+    faire défiler les onglets revenait en arrière. La règle vaut pour tous les panneaux.
+- Limite : la description reste celle des jeux récents.
 
 ## Interface
 

@@ -511,6 +511,7 @@ function render() {
   // Hors de la vue Scan, la caméra est coupée : sans effet si elle l'est déjà.
   if (state.vue !== 'scan') scan.arrete();
   if (state.vue === 'accueil') return renderAccueil();
+  if (state.vue === 'attaques') return renderAttaques();
   if (state.vue === 'combat') return renderCombat();
   if (state.vue === 'pokedex') return renderPokedex();
   if (state.vue === 'scan') return renderScan();
@@ -2478,7 +2479,7 @@ const ART = {
 // « Attaques » mène droit au menu des attaques, qui vit dans la boîte de combat.
 const TUILES = [
   { cle: 'pokedex', nom: 'Pokédex', vue: 'pokedex' },
-  { cle: 'attaques', nom: 'Attaques', vue: 'combat', menu: 'attaques' },
+  { cle: 'attaques', nom: 'Attaques', vue: 'attaques' },
   { cle: 'boites', nom: 'Boîtes', vue: 'boites' },
   { cle: 'equipes', nom: 'Équipes', vue: 'combat' },
   { cle: 'scan', nom: 'Scan', vue: 'scan' },
@@ -2504,8 +2505,8 @@ const barreRetour = h(`
   </header>`);
 barreRetour.addEventListener('click', () => vaVers('accueil'));
 
-function vaVers(vue, menu = null) {
-  if (vue === state.vue && !menu) return;
+function vaVers(vue) {
+  if (vue === state.vue) return;
   fermeLesPanneaux();
   state.vue = vue;
   localStorage.setItem(VUE_KEY, vue);
@@ -2513,14 +2514,13 @@ function vaVers(vue, menu = null) {
   // Pokédex regarder, pas reprendre là où l'on s'était arrêté.
   if (vue === 'pokedex') { state.dexGen = null; state.dexQ = ''; }
   render();
-  if (menu === 'attaques') ouvreMenuAttaques();
 }
 
 app.addEventListener('click', (e) => {
   const b = e.target.closest('[data-tuile]');
   if (!b) return;
   const t = TUILES.find((x) => x.cle === b.dataset.tuile);
-  if (t) vaVers(t.vue, t.menu);
+  if (t) vaVers(t.vue);
 });
 
 // Coquille d'application : le contenu de chaque vue défile DANS une zone dédiée
@@ -2581,13 +2581,6 @@ function renderCombat() {
           </div>
           <div class="combat-compte"><b>${pleines}</b>/6</div>
         </div>
-
-        <!-- Menu des attaques : toutes celles d'une génération, et qui les apprend. -->
-        <button class="menu-atq" data-act="menu-attaques">
-          <span class="menu-atq-i" aria-hidden="true">&#9876;</span>
-          <span><b>Attaques</b><small>Par génération : valeurs, et qui les apprend</small></span>
-          <span class="menu-atq-chev" aria-hidden="true">&#8250;</span>
-        </button>
 
         <div class="equipe">
           ${equipe().map(renderEquipeSlot).join('')}
@@ -2956,6 +2949,28 @@ function renderAnalyse() {
 const battleSheet = h(`<aside class="sheet" role="dialog" aria-modal="true"><div class="sheet-grip"></div><div class="sheet-body"></div></aside>`);
 document.body.append(battleSheet);
 const battleBody = battleSheet.querySelector('.sheet-body');
+
+// Les attaques ont leur propre VUE, détachée de la boîte de combat à la demande : on
+// vient y consulter les attaques du jeu, pas composer une équipe. Le contenu est le
+// même (`htmlMenuAttaques`, `htmlInfoAttaque`) et les mêmes écoutes le servent : seul
+// le contenant change — cette page-ci au lieu du corps du panneau.
+const corpsAtq = h('<section class="atq-page"></section>');
+// Où écrire, et quel défilement lire : la page dans la vue Attaques, le panneau sinon.
+const corpsCombat = () => (state.vue === 'attaques' ? corpsAtq : battleBody);
+// Ce qui DÉFILE n'est pas le même élément : dans la page c'est la zone de vue qui la
+// contient, dans le panneau c'est son corps. Lire scrollTop sur la page donnerait 0.
+const defileCombat = () => (state.vue === 'attaques' ? (corpsAtq.parentElement ?? corpsAtq) : battleBody);
+
+function renderAttaques() {
+  // La vue se souvient de l'attaque ouverte quand on revient d'ailleurs.
+  if (!['attaques', 'infoAttaque'].includes(state.bs?.mode)) {
+    state.bs = { mode: 'attaques', slot: null, emplacement: null, q: '' };
+  }
+  poser(corpsAtq);
+  renderBattleSheet();
+  // Les movesets par jeu sont chargés à la demande : la page se refait à leur arrivée.
+  if (!LEARN_VG) chargeVG().then(() => { if (state.vue === 'attaques') renderBattleSheet(); });
+}
 // Glisser de gauche à droite = revenir en arrière : de la fiche d'une attaque à la
 // liste des attaques, d'un choix d'attaque, de talent, d'objet ou de nature au détail
 // du Pokémon, et sinon fermer le panneau. Vers la gauche il n'y a rien : le contenu ne
@@ -3002,7 +3017,7 @@ function retourMenuAttaques() {
   openBattleSheet('attaques');
   state.bs.q = q;
   renderBattleSheet();
-  battleBody.scrollTop = y;
+  defileCombat().scrollTop = y;
 }
 
 function closeBattleSheet() {
@@ -3025,6 +3040,7 @@ function openBattleSheet(mode, slot = null, emplacement = null) {
   }
   state.bs = { mode, slot, emplacement, q: '' };
   renderBattleSheet();
+  if (state.vue === 'attaques') { defileCombat().scrollTop = 0; return; }
   // Retour au détail depuis un de ces panneaux, sur le MÊME Pokémon : on rend la
   // position. Ouvert autrement — depuis l'équipe, ou sur un autre membre — la fiche
   // repart en haut, comme il se doit.
@@ -3037,7 +3053,8 @@ function openBattleSheet(mode, slot = null, emplacement = null) {
 function renderBattleSheet(gardeFocus) {
   const bs = state.bs;
   if (!bs) return;
-  battleBody.innerHTML =
+  const corps = corpsCombat();
+  corps.innerHTML =
     bs.mode === 'version' ? htmlVersions()
     : bs.mode === 'mon' ? htmlChoixMon()
     : bs.mode === 'detail' ? htmlDetail()
@@ -3048,7 +3065,7 @@ function renderBattleSheet(gardeFocus) {
     : bs.mode === 'infoAttaque' ? htmlInfoAttaque()
     : htmlChoixAttaque();
   if (gardeFocus) {
-    const c = battleBody.querySelector('.bs-name');
+    const c = corps.querySelector('.bs-name');
     if (c) { c.focus(); c.setSelectionRange(c.value.length, c.value.length); }
   }
 }
@@ -3614,7 +3631,7 @@ function htmlChoixAttaque() {
 
 // ---------- Interactions ----------
 
-battleBody.addEventListener('input', (e) => {
+const saisieCombat = (e) => {
   if (e.target.classList.contains('bs-q')) {
     state.bs.q = e.target.value;
     renderBattleSheet(true);
@@ -3656,7 +3673,8 @@ battleBody.addEventListener('input', (e) => {
   majEtiquetteIv(champ.closest('.stat'), m, cle);
   // Les PV du panneau suivent la saisie ; le panneau lui-même n'est pas refait.
   if (cle === 'pv') render();
-});
+};
+for (const c of [battleBody, corpsAtq]) c.addEventListener('input', saisieCombat);
 
 // Recalcule l'étiquette « IV … » d'une cellule, nature et EV compris.
 function majEtiquetteIv(cellule, m, cle) {
@@ -3684,23 +3702,25 @@ function majEtiquetteIv(cellule, m, cle) {
 }
 
 // Menu des attaques : type, catégorie et tri se choisissent dans des listes déroulantes.
-battleBody.addEventListener('change', (e) => {
+const filtreCombat = (e) => {
   const filtre = e.target.closest('[data-atqfiltre]');
   if (!filtre || state.bs?.mode !== 'attaques') return;
   filtreAttaques[filtre.dataset.atqfiltre] = filtre.value;
   renderBattleSheet();
-});
+};
 
-battleBody.addEventListener('click', (e) => {
+for (const c of [battleBody, corpsAtq]) c.addEventListener('change', filtreCombat);
+
+const clicCombat = (e) => {
   const bs = state.bs;
   if (!bs) return;
 
   // ---- Menu des attaques
   const genAtq = e.target.closest('[data-atqgen]');
-  if (genAtq) { filtreAttaques.gen = +genAtq.dataset.atqgen; renderBattleSheet(); battleBody.scrollTop = 0; return; }
+  if (genAtq) { filtreAttaques.gen = +genAtq.dataset.atqgen; renderBattleSheet(); defileCombat().scrollTop = 0; return; }
   const infoAtq = e.target.closest('[data-infoatq]');
   if (infoAtq) {
-    filtreAttaques.y = battleBody.scrollTop;
+    filtreAttaques.y = defileCombat().scrollTop;
     openBattleSheet('infoAttaque', +infoAtq.dataset.infoatq);
     return;
   }
@@ -3810,7 +3830,8 @@ battleBody.addEventListener('click', (e) => {
     closeBattleSheet();
     render();
   }
-});
+};
+for (const c of [battleBody, corpsAtq]) c.addEventListener('click', clicCombat);
 
 // Changer de vue referme tout panneau ouvert. Un panneau appartient à sa vue : le
 // détail d'un membre d'équipe n'a aucun sens par-dessus la gestion des boîtes, et

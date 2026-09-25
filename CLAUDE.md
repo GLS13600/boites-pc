@@ -1542,8 +1542,8 @@ occasion — tout part d'ici, et une barre ferait doublon.
 - 9 onglets de génération, boîtes de **30** en grille 6×5, comme le PC des jeux.
 - La barre d'onglets est en `position: sticky; top: 0` — elle ne doit pas défiler.
 - **Coquille d'application** : `#app` fait la hauteur de l'écran, le contenu de
-  chaque vue défile dans une zone `.vue` (`flex: 1; overflow-y: auto`), et la barre du
-  bas est le dernier élément du flux. **Le corps ne défile plus du tout.**
+  chaque vue défile dans une zone `.vue` (`flex: 1; overflow-y: auto`), coiffée hors
+  accueil par la barre de retour, qui ne défile pas. **Le corps ne défile plus du tout.**
 - **Il n'y a plus de barre du bas** : voir « Page d'accueil ». Ce qu'elle a coûté à
   régler mérite d'être gardé en tête si une barre revient un jour — elle était en
   `position: fixed`, et sur iPhone un élément fixe combiné à

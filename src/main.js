@@ -196,6 +196,7 @@ const ORDER_KEY = 'pcbox.order';
 const VIEW_KEY = 'pcbox.view';
 const EQUIPES_KEY = 'pcbox.equipes';
 const JEU_KEY = 'pcbox.jeu';
+const THEME_KEY = 'pcbox.theme';
 const ONGLETS_KEY = 'pcbox.onglets';
 const readJSON = (key, fallback) => {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
@@ -247,6 +248,10 @@ const state = {
   open: null,
   // Boîte de combat : vue active, jeu de référence, équipe de six, panneau ouvert.
   vue: 'accueil',
+  // Thème : « clair », « sombre », ou « auto » (celui du téléphone). Clair par défaut,
+  // pour ne rien changer à qui n'y touche pas.
+  theme: ['clair', 'sombre', 'auto'].includes(localStorage.getItem('pcbox.theme'))
+    ? localStorage.getItem('pcbox.theme') : 'clair',
   dexGen: null, // Pokédex affiché : null = menu, 0 = national, 1 à 9 = une génération
   jeu: localStorage.getItem('pcbox.jeu') || 'scarlet-violet',
   // Une équipe par version de jeu : on garde une composition distincte pour chaque
@@ -511,6 +516,7 @@ function render() {
   if (state.vue !== 'scan') scan.arrete();
   if (state.vue === 'accueil') return renderAccueil();
   if (state.vue === 'attaques') return renderAttaques();
+  if (state.vue === 'reglages') return renderReglages();
   if (state.vue === 'combat') return renderCombat();
   if (state.vue === 'pokedex') return renderPokedex();
   if (state.vue === 'scan') return renderScan();
@@ -2459,6 +2465,22 @@ const ART = {
         <path d="M5 118a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3"/>
       </g>
     </svg>`,
+  // Les réglages : le PC des Centres Pokémon, écran et Poké Ball.
+  reglages: `
+    <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
+      <rect x="18" y="16" width="114" height="80" rx="10" fill="#eceff3"/>
+      <rect x="27" y="25" width="96" height="56" rx="6" fill="#3b4a5e"/>
+      <circle cx="75" cy="53" r="19" fill="#f6f7f9" stroke="#2a3443" stroke-width="4"/>
+      <path d="M56 53a19 19 0 0 1 38 0z" fill="#d6453c" stroke="#2a3443" stroke-width="4"/>
+      <circle cx="75" cy="53" r="6" fill="#f6f7f9" stroke="#2a3443" stroke-width="4"/>
+      <rect x="60" y="96" width="30" height="12" fill="#d3d8df"/>
+      <rect x="30" y="108" width="90" height="16" rx="6" fill="#eceff3"/>
+      <g fill="#b9c1cb">
+        <rect x="40" y="113" width="12" height="6" rx="2"/>
+        <rect x="58" y="113" width="34" height="6" rx="2"/>
+        <rect x="98" y="113" width="12" height="6" rx="2"/>
+      </g>
+    </svg>`,
   // Le scan : la lentille du Pokédex dans un cadre de visée.
   scan: `
     <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
@@ -2482,6 +2504,7 @@ const TUILES = [
   { cle: 'boites', nom: 'Boîtes', vue: 'boites' },
   { cle: 'equipes', nom: 'Équipes', vue: 'combat' },
   { cle: 'scan', nom: 'Scan', vue: 'scan' },
+  { cle: 'reglages', nom: 'Réglages', vue: 'reglages' },
 ];
 
 function renderAccueil() {
@@ -2493,6 +2516,52 @@ function renderAccueil() {
           <button class="tuile t-${t.cle}" data-tuile="${t.cle}">
             ${ART[t.cle]}<span>${t.nom}</span>
           </button>`).join('')}
+      </div>
+    </section>`));
+}
+
+// ---------- Réglages : apparence, et ce qui viendra s'y ajouter ----------
+//
+// Le thème se choisit ici : clair, sombre, ou celui du téléphone. Le choix vit dans
+// `localStorage` et s'applique par un attribut sur <html>, que la feuille de style lit
+// (`:root[data-theme="sombre"]`). « Automatique » est résolu ICI plutôt qu'en CSS :
+// la palette sombre n'est écrite qu'une fois, et un changement de réglage du téléphone
+// se répercute tout seul.
+const themeSysteme = window.matchMedia?.('(prefers-color-scheme: dark)');
+const THEMES = [
+  ['clair', 'Clair'],
+  ['sombre', 'Sombre'],
+  ['auto', 'Celui du téléphone'],
+];
+
+function appliqueTheme() {
+  const sombre = state.theme === 'sombre' || (state.theme === 'auto' && !!themeSysteme?.matches);
+  document.documentElement.dataset.theme = sombre ? 'sombre' : 'clair';
+  // La barre d'état d'iOS et l'onglet du navigateur suivent le thème.
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', sombre ? '#14171b' : '#d6453c');
+}
+themeSysteme?.addEventListener?.('change', () => { if (state.theme === 'auto') appliqueTheme(); });
+appliqueTheme();
+
+function renderReglages() {
+  poser(h(`
+    <section class="reg">
+      <h2 class="reg-titre">Réglages</h2>
+
+      <div class="reg-bloc">
+        <h3>Apparence</h3>
+        <p class="reg-aide">Le thème sombre s'applique à toute l'application.</p>
+        <div class="reg-rail" role="radiogroup" aria-label="Thème">
+          ${THEMES.map(([v, lib]) => `
+            <button class="${state.theme === v ? 'on' : ''}" role="radio"
+                    aria-checked="${state.theme === v}" data-theme="${v}">${lib}</button>`).join('')}
+        </div>
+      </div>
+
+      <!-- D'autres réglages viendront ici : un bloc par sujet, sur le même gabarit. -->
+      <div class="reg-bloc vide">
+        <h3>À venir</h3>
+        <p class="reg-aide">D'autres réglages s'ajouteront ici.</p>
       </div>
     </section>`));
 }
@@ -2516,9 +2585,19 @@ function vaVers(vue) {
 
 app.addEventListener('click', (e) => {
   const b = e.target.closest('[data-tuile]');
-  if (!b) return;
-  const t = TUILES.find((x) => x.cle === b.dataset.tuile);
-  if (t) vaVers(t.vue);
+  if (b) {
+    const t = TUILES.find((x) => x.cle === b.dataset.tuile);
+    if (t) vaVers(t.vue);
+    return;
+  }
+  const th = e.target.closest('[data-theme]');
+  if (th) {
+    state.theme = th.dataset.theme;
+    localStorage.setItem(THEME_KEY, state.theme);
+    appliqueTheme();
+    retourHaptique();
+    render();
+  }
 });
 
 // Coquille d'application : le contenu de chaque vue défile DANS une zone dédiée

@@ -1460,9 +1460,10 @@ Première vue de l'application, **d'après une maquette fournie le 25/09/2026** 
 planche de tuiles colorées, une par vue. **La barre du bas a été retirée** à cette
 occasion — tout part d'ici, et une barre ferait doublon.
 
-- Cinq tuiles (`TUILES` dans main.js), une par vue : **Pokédex** (large, en tête),
-  **Attaques**, **Boîtes**, **Équipes**, **Scan**. Les attaques ont leur propre vue
-  depuis qu'elles ont été détachées de la boîte de combat — voir « Page des attaques ».
+- Six tuiles (`TUILES` dans main.js), une par vue : **Pokédex** (large, en tête),
+  **Attaques**, **Boîtes**, **Équipes**, **Scan**, **Réglages**. Les attaques ont leur
+  propre vue depuis qu'elles ont été détachées de la boîte de combat — voir « Page des
+  attaques ». La tuile Réglages porte le **PC des Centres Pokémon**, demandé comme icône.
 - **La tuile Scan a été ajoutée à la maquette**, qui n'en montrait pas : sans elle le scan
   n'aurait plus eu de point d'entrée. Choix explicite de l'utilisateur entre trois
   propositions.
@@ -1551,6 +1552,34 @@ donc été retiré, et la vue combat ne mène plus aux attaques.
     faire défiler les onglets revenait en arrière. La règle vaut pour tous les panneaux.
 - Limite : la description reste celle des jeux récents.
 
+## Réglages et thème sombre
+
+Page ouverte par la tuile **Réglages**, demandée le 25/09/2026 avec le thème sombre.
+Elle est faite pour **grandir** : un bloc par sujet (`.reg-bloc`), et un bloc « À venir »
+en pointillés qui tient la place et le dit. En ajouter un ne demande que le même balisage.
+
+- **Le thème se choisit parmi trois** : clair, sombre, ou celui du téléphone
+  (`pcbox.theme`, **clair par défaut** — ne rien changer à qui n'y touche pas).
+- **« Celui du téléphone » est résolu en JavaScript**, pas en CSS : `appliqueTheme()`
+  écrit `clair` ou `sombre` dans `data-theme` sur `<html>`, et écoute
+  `prefers-color-scheme` pour suivre un changement de réglage du téléphone. La palette
+  sombre n'est donc écrite **qu'une fois** dans la feuille de style, au lieu d'être
+  dupliquée dans une requête média.
+- **Tout passe par les variables de `:root`** : le thème sombre ne redéfinit que ces
+  douze valeurs, le reste de la feuille les lisait déjà. Le rouge Poké Ball et l'or
+  chromatique y sont **éclaircis** (`#f06056`, `#dcb04a`) : les tons clairs manquaient
+  de contraste sur fond sombre.
+- `color-scheme: dark` accompagne la palette : les champs, listes déroulantes et barres
+  de défilement du système suivent, sans style supplémentaire.
+- **Le thème est posé AVANT le premier rendu**, par un petit script dans `index.html` :
+  appliqué seulement au chargement de `main.js`, l'écran clignotait en clair le temps
+  que le module arrive. Le `theme-color` de la barre d'état suit le thème.
+- Vérifié dans l'aperçu, en sombre : accueil, boîtes, menu du Pokédex, fiche d'un
+  Pokémon, boîte de combat et page des attaques restent lisibles ; le choix survit au
+  rechargement et « celui du téléphone » suit bien le système.
+- Le décor coloré de la boîte de combat (fond bleu nuit) et les tuiles de l'accueil ne
+  changent pas : ils sont déjà sombres et lisibles dans les deux thèmes.
+
 ## Interface
 
 - 9 onglets de génération, boîtes de **30** en grille 6×5, comme le PC des jeux.
@@ -1635,6 +1664,7 @@ donc été retiré, et la vue combat ne mène plus aux attaques.
 
 ## Direction visuelle
 
+Deux thèmes, **clair par défaut**, sombre au choix dans les Réglages.
 Thème clair : papier `#f6f5f1`, panneaux blancs, filets beiges `#e3e0d6`.
 Le rouge Poké Ball `#d6453c` est réservé aux marqueurs de capture, à la barre de
 progression et au soulignement de l'onglet actif. Le reste reste neutre : **la couleur

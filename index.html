@@ -9,6 +9,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="icon" type="image/svg+xml" href="icon.svg" />
     <title>Guiguidex</title>
+    <!-- Le thème est posé AVANT le premier rendu : appliqué seulement au chargement de
+         main.js, l'écran clignotait en clair le temps que le module se charge. -->
+    <script>
+      try {
+        var t = localStorage.getItem('pcbox.theme') || 'clair';
+        var sombre = t === 'sombre' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = sombre ? 'sombre' : 'clair';
+        if (sombre) document.querySelector('meta[name=theme-color]').setAttribute('content', '#14171b');
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="app"></div>

@@ -20,6 +20,27 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* ---------- Thème sombre ----------
+   Choisi dans les Réglages. « Automatique » est résolu en JS : l'attribut ne vaut
+   jamais que « clair » ou « sombre », et la palette n'est donc écrite qu'une fois.
+   Seules les variables changent — tout le reste de la feuille les lit déjà. */
+:root[data-theme="sombre"] {
+  color-scheme: dark;
+  --paper: #14171b;
+  --panel: #1d2127;
+  --rule: #313843;
+  --rule-soft: #262c34;
+  --ink: #eef1f5;
+  --muted: #97a2b0;
+  --slot: #232831;
+  /* Teinte des captures : le même rouge, posé sur du sombre. */
+  --caught-tint: #2b1d1c;
+  --caught-edge: #6d3b36;
+  /* Rouge et or éclaircis : les tons clairs manquaient de contraste sur ce fond. */
+  --ball: #f06056;
+  --shiny: #dcb04a;
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body {
@@ -438,6 +459,43 @@ img { display: block; }
 .tuile.t-boites { background: #4fc247; }
 .tuile.t-equipes { background: #7dbdf0; }
 .tuile.t-scan { background: #8a6fe0; }
+.tuile.t-reglages { background: #6b7688; }
+
+/* ---------- Réglages ---------- */
+
+/* Un bloc par sujet, sur le même gabarit : en ajouter un plus tard ne demande que le
+   même balisage. Le bloc « À venir » tient la place et le dit. */
+.reg { padding: 4px 14px calc(20px + var(--safe-bottom)); }
+.reg-titre { margin: 4px 2px 12px; font-size: 24px; font-weight: 800; }
+.reg-bloc {
+  margin-bottom: 12px;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  background: var(--panel);
+}
+.reg-bloc h3 { margin: 0 0 2px; font-size: 15px; font-weight: 700; }
+.reg-aide { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
+.reg-bloc.vide { border-style: dashed; background: none; }
+.reg-bloc.vide .reg-aide { margin: 0; }
+
+/* Même rail que le choix du mode dans les boîtes : trois tiers égaux, l'actif en rouge. */
+.reg-rail {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--rule-soft);
+}
+.reg-rail button {
+  padding: 9px 4px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.reg-rail button.on { background: var(--panel); color: var(--ball); box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
 
 /* ---------- Barre de retour : présente dans toutes les vues sauf l'accueil ---------- */
 

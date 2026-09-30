@@ -132,6 +132,7 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `src/data/i18n/en.json` | Surcouche anglaise, **générée**, 1,7 Mo |
 | `src/data/i18n/ja.json` | Surcouche japonaise, **générée**, 1,9 Mo |
 | `scripts/fetch-i18n.mjs` | Produit ces deux surcouches (`npm run fetch-i18n`) |
+| `scripts/dev-https.mjs` | Serveur de dev en TLS, pour la caméra depuis le téléphone |
 | `src/style.css` | Toute la feuille de style ; importe les jetons en tête |
 | `src/tokens.css` | Jetons de design : couleurs, rayons, ombres, espacements, durées |
 | `src/data/pokedex.json` | Données générées, **ne jamais éditer à la main** |
@@ -873,8 +874,19 @@ API** — exigence explicite.
 - **`NSCameraUsageDescription`** dans `Info.plist` est obligatoire : sans lui, iOS
   ferme l'appli au premier accès à la caméra. Capacitor accorde lui-même l'accès
   côté WebView (`requestMediaCapturePermissionFor`), seule l'invite système reste.
-- La caméra exige une page **sécurisée** : le serveur de dev ouvert par l'IP réseau
-  (http) ne l'aura pas sur l'iPhone. Tester via Pages (https) ou l'IPA.
+- La caméra exige une page **sécurisée**. Le serveur de dev ouvert depuis le téléphone
+  par l'IP réseau (`http://192.168.x.x:5173`) n'en est pas un — seul `localhost`, sur
+  la machine elle-même, y échappe —, et la vue Scan y affiche « la caméra demande une
+  connexion sécurisée ». **Ce n'est pas un bug.**
+  - **`npm run dev:https`** (`scripts/dev-https.mjs`) sert le même serveur en TLS, avec
+    un certificat auto-signé (`@vitejs/plugin-basic-ssl`, dépendance de DÉVELOPPEMENT).
+    Safari avertit au premier accès : Afficher les détails → Visiter ce site web. La
+    caméra fonctionne ensuite, sans passer par Pages ni par l'IPA — ce qui évite un
+    push et un déploiement par essai.
+  - **`npm run dev` reste en clair**, volontairement : un certificat auto-signé est
+    refusé par certains clients, dont le panneau de prévisualisation. Le plugin n'est
+    ajouté que si `DEV_HTTPS` est posé, ce que fait le seul script `dev:https` ; le
+    build et les deux workflows n'en voient rien.
 - En développement, `window.__scanImage(url)` analyse une image quelconque, sans
   caméra. Retiré du build.
 

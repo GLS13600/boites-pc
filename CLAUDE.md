@@ -602,6 +602,12 @@ API** — exigence explicite.
 - **`src/scan-ia.js`** porte toute la logique ; scan.js ne fait que l'accrocher
   (bouton à trois positions, ligne de diagnostic `.scan-diag`, pistes posées dans le
   même affichage). Les modes Auto et Manuel gardent leur code et leurs modèles.
+- **La ligne de diagnostic est en DÉVELOPPEMENT SEULEMENT** (30/09/2026, à la
+  demande) : la balise n'est émise que sous `import.meta.env.DEV`, Vite la retire
+  donc du build. Elle s'affichait en violet par-dessus l'image et annonçait le
+  moteur et les temps de calcul — utile pour mesurer, sans intérêt à l'usage.
+  `montreDiag` sort tout de suite quand l'élément n'existe pas ; les règles CSS
+  restent, elles ne correspondent à rien en production.
 - **Moteur natif `plugins/scan-ia`** (paquet npm local `@guiguidex/scan-ia`, inscrit
   par `npx cap update ios` dans `CapApp-SPM/Package.swift`) : **ONNX Runtime iOS
   (SPM) + fournisseur Core ML** au format ML Program, donc Neural Engine et carte

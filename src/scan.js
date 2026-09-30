@@ -132,9 +132,9 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
       <p class="scan-aide">${t('aideCadre')}</p>
       <p class="scan-etat" hidden></p>
       <p class="scan-toast" role="status" hidden></p>
-      <p class="scan-diag" hidden></p>
+      ${import.meta.env.DEV ? '<p class="scan-diag" hidden></p>' : ''}
       <button class="scan-btn" type="button" aria-label="${t('scanner')}"><span></span></button>
-      <button class="scan-mode" type="button"><i></i><span><small>Mode</small><b></b></span></button>
+      <button class="scan-mode" type="button"><i></i><span><small>${t('modeTitre')}</small><b></b></span></button>
     </section>`);
   const video = el.querySelector('video');
   const zoneEl = el.querySelector('.scan-zone');
@@ -145,6 +145,9 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
   const pistesEl = el.querySelector('.scan-pistes');
   const aide = el.querySelector('.scan-aide');
   const btnMode = el.querySelector('.scan-mode');
+  // Ligne de diagnostic du mode IA (moteur, temps de détection et de reconnaissance).
+  // DÉVELOPPEMENT SEULEMENT, à la demande : elle s'affichait par-dessus l'image, en
+  // violet, et n'apprend rien à qui se sert de l'appli. Vite retire la balise du build.
   const diag = el.querySelector('.scan-diag');
 
   let flux = null;        // MediaStream de la caméra
@@ -715,7 +718,7 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
       manuel: t('aideModeManuel'),
       ia: t('aideModeIA'),
     }[mode]);
-    if (mode !== 'ia') diag.hidden = true;
+    if (mode !== 'ia' && diag) diag.hidden = true;
   }
 
   // ------------------------------------------------------------ mode IA (bonus)
@@ -734,7 +737,11 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
     estActif: () => actif && el.isConnected && !!flux && mode === 'ia',
     estEnPause: () => document.hidden || estMasque() || occupe || el.classList.contains('ouvre')
       || el.classList.contains('ferme') || video.readyState < 2,
-    montreDiag: (texte) => { diag.textContent = texte ?? ''; diag.hidden = mode !== 'ia' || !texte; },
+    montreDiag: (texte) => {
+      if (!diag) return;
+      diag.textContent = texte ?? '';
+      diag.hidden = mode !== 'ia' || !texte;
+    },
     // Hors appli iPhone : le Worker du scan et ses modèles, pour exercer la logique.
     secours: {
       pret: prepareIA,
@@ -769,6 +776,7 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
   function retraduit() {
     el.setAttribute('aria-label', t('scannerPokemon'));
     el.querySelector('.scan-btn').setAttribute('aria-label', t('scanner'));
+    btnMode.querySelector('small').textContent = t('modeTitre');
     aide.textContent = t('aideCadre');
     majMode();
   }

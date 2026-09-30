@@ -2371,7 +2371,12 @@ img {
   height: 100%;
   overflow: hidden;
   container-type: size;
-  background: #0d0f12;
+  /* Fond RETIRÉ à la demande, pour trancher l'écran noir sur iPhone : la vidéo décode
+     (le scan reconnaît un Pokémon) mais n'est pas peinte. Avec ce fond sombre, une
+     couche vidéo composée DERRIÈRE lui donnait exactement ce noir-là. Transparent, on
+     voit désormais le papier de l'appli — donc un noir persistant ne pourrait plus
+     venir d'ici, et désignerait l'élément vidéo lui-même. */
+  background: transparent;
   touch-action: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;

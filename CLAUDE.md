@@ -1494,6 +1494,21 @@ occasion — tout part d'ici, et une barre ferait doublon.
 - **L'appli s'ouvre TOUJOURS sur l'accueil**, quelle que soit la vue quittée : c'est le
   point de départ de tout, et la règle « la vue Scan ne se restaure pas » (une caméra qui
   s'allume seule au lancement) devient inutile.
+- **Glisser du BORD GAUCHE vers la droite revient en arrière** (30/09/2026, à la
+  demande), dans Boîtes, Pokédex, Attaques et Équipes. La vue suit le doigt puis part à
+  droite au-delà de 70 px, sinon elle revient en place.
+  - **Le geste part du bord** (26 px, `BORD_RETOUR`) pour de bonnes raisons : la vue
+    Boîtes utilise déjà le glissement horizontal pour changer de boîte, et les barres
+    d'onglets, la table des types et les filtres défilent aussi à l'horizontale. En
+    n'écoutant que la lisière, les deux gestes ne se disputent jamais — vérifié, un
+    glissement au milieu change toujours de boîte dans les deux sens.
+  - Le swipe des boîtes se tait pendant un retour (`bordRetour.actif`), un geste
+    franchement vertical rend la main au défilement, et un panneau ouvert désarme le
+    geste : les panneaux ont leur propre retour.
+  - **La « page d'avant » n'est pas toujours l'accueil** : une fiche d'attaque revient à
+    la liste, une grille du Pokédex à son menu — comme leurs boutons « ‹ ». Vérifié
+    dans l'aperçu par de vrais `TouchEvent` : grille → menu → accueil, fiche → liste →
+    accueil, glissement trop court ou vertical sans effet.
 - **Une barre « ‹ Accueil » coiffe toutes les autres vues** (`.retour`, construite une
   fois, hors de la zone qui défile). Elle porte désormais la marge de zone sûre du haut,
   que les vues portaient elles-mêmes. Y revenir **ferme les panneaux ouverts**.

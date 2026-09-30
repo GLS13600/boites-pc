@@ -1976,6 +1976,85 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// ---------- Glisser du bord gauche : revenir à l'accueil ----------
+//
+// Le geste de retour d'iOS, et il PART DU BORD pour de bonnes raisons : la vue Boîtes
+// utilise déjà le glissement horizontal pour changer de boîte, et les barres d'onglets,
+// la table des types et les filtres défilent eux aussi à l'horizontale. En n'écoutant
+// que les 26 premiers pixels, les deux gestes ne se disputent jamais.
+//
+// La vue suit le doigt (transform seul, donc à 60 images par seconde), puis part à
+// droite ou revient en place. Les panneaux ouverts ont leur propre retour : tant qu'il
+// y en a un, ce geste se tait.
+const BORD_RETOUR = 26;   // largeur de la zone d'amorce, en pixels
+const RETOUR_AT = 70;     // distance au-delà de laquelle on revient à l'accueil
+const VUES_RETOUR = new Set(['boites', 'pokedex', 'attaques', 'combat']);
+const bordRetour = { actif: false, x0: 0, y0: 0, dx: 0, vue: null };
+
+const panneauOuvert = () => !!document.querySelector('.sheet.open');
+
+function poseRetour(dx) {
+  if (!bordRetour.vue) return;
+  bordRetour.vue.style.transform = dx ? `translate3d(${dx}px,0,0)` : '';
+  bordRetour.vue.style.opacity = dx ? String(Math.max(0.5, 1 - dx / 520)) : '';
+}
+
+function fermeRetour(revient) {
+  const vue = bordRetour.vue;
+  bordRetour.actif = false;
+  bordRetour.vue = null;
+  if (!vue) return;
+  vue.style.transition = `transform ${NAV_OUT}ms ease-out, opacity ${NAV_OUT}ms ease-out`;
+  if (revient) {
+    // On part vers la droite, puis la page précédente se rend par-dessus.
+    vue.style.transform = 'translate3d(100%,0,0)';
+    vue.style.opacity = '0';
+    setTimeout(retourEnArriere, NAV_OUT);
+  } else {
+    vue.style.transform = '';
+    vue.style.opacity = '';
+    setTimeout(() => { vue.style.transition = ''; }, NAV_OUT);
+  }
+}
+
+// La « page d'avant » n'est pas toujours l'accueil : une fiche d'attaque revient à la
+// liste des attaques, et une grille du Pokédex à son menu — exactement ce que font les
+// boutons « ‹ » de ces deux écrans. Partout ailleurs, on rentre à l'accueil.
+function retourEnArriere() {
+  if (state.vue === 'attaques' && state.bs?.mode === 'infoAttaque') { retourMenuAttaques(); return; }
+  if (state.vue === 'pokedex' && state.dexGen !== null) { state.dexGen = null; state.dexQ = ''; render(); return; }
+  vaVers('accueil');
+}
+
+app.addEventListener('touchstart', (e) => {
+  if (!VUES_RETOUR.has(state.vue) || panneauOuvert()) return;
+  if (e.touches.length !== 1 || press?.dragging || boxPress?.armed || sliding) return;
+  if (e.touches[0].clientX > BORD_RETOUR) return;
+  const vue = app.querySelector('.vue');
+  if (!vue) return;
+  Object.assign(bordRetour, { actif: true, x0: e.touches[0].clientX, y0: e.touches[0].clientY, dx: 0, vue });
+  vue.style.transition = 'none';
+}, { passive: true });
+
+app.addEventListener('touchmove', (e) => {
+  if (!bordRetour.actif) return;
+  const dx = e.touches[0].clientX - bordRetour.x0;
+  const dy = e.touches[0].clientY - bordRetour.y0;
+  // Geste franchement vertical : c'est un défilement, on rend la main.
+  if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 12) { poseRetour(0); fermeRetour(false); return; }
+  if (dx <= 0) { bordRetour.dx = 0; poseRetour(0); return; }
+  e.preventDefault();          // sans quoi la page défilerait sous le doigt
+  bordRetour.dx = dx;
+  poseRetour(dx);
+}, { passive: false });
+
+app.addEventListener('touchend', () => {
+  if (!bordRetour.actif) return;
+  fermeRetour(bordRetour.dx > RETOUR_AT);
+}, { passive: true });
+
+app.addEventListener('touchcancel', () => { if (bordRetour.actif) fermeRetour(false); }, { passive: true });
+
 // ---------- Swipe horizontal, sans dérive verticale ----------
 
 let sx = 0, sy = 0, locked = null;
@@ -1987,7 +2066,7 @@ app.addEventListener('touchstart', (e) => {
 }, { passive: true });
 
 app.addEventListener('touchmove', (e) => {
-  if (press?.dragging || boxPress?.armed) return; // un glisser-déposer est en cours
+  if (press?.dragging || boxPress?.armed || bordRetour.actif) return; // déplacement ou retour en cours
   if (!e.target.closest('.box')) return;
   const dx = e.touches[0].clientX - sx;
   const dy = e.touches[0].clientY - sy;
@@ -1999,7 +2078,7 @@ app.addEventListener('touchmove', (e) => {
 }, { passive: false });
 
 app.addEventListener('touchend', (e) => {
-  if (locked !== 'x' || !e.target.closest('.box')) return;
+  if (locked !== 'x' || bordRetour.actif || !e.target.closest('.box')) return;
   locked = null;
   const dx = e.changedTouches[0].clientX - sx;
   if (Math.abs(dx) < 50) snapGrid();

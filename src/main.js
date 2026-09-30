@@ -1988,7 +1988,7 @@ document.addEventListener('keydown', (e) => {
 // y en a un, ce geste se tait.
 const BORD_RETOUR = 26;   // largeur de la zone d'amorce, en pixels
 const RETOUR_AT = 70;     // distance au-delà de laquelle on revient à l'accueil
-const VUES_RETOUR = new Set(['boites', 'pokedex', 'attaques', 'combat']);
+const VUES_RETOUR = new Set(['boites', 'pokedex', 'attaques', 'combat', 'reglages']);
 const bordRetour = { actif: false, x0: 0, y0: 0, dx: 0, vue: null };
 
 const panneauOuvert = () => !!document.querySelector('.sheet.open');
@@ -2522,16 +2522,203 @@ function poolAttaques(key, jeu) {
 // page d'accueil de tuiles, d'après une maquette fournie. Chaque tuile ouvre une vue, et
 // une barre « ‹ Accueil » l'y ramène. Les dessins sont inline, comme les icônes qu'ils
 // remplacent : l'appli ne fait aucune requête au runtime.
-// Pictogrammes des cartes d'accueil : trait blanc sur le carré coloré de la carte.
-// Même grille (24) et même trait (1,8 px) que les icônes utilitaires — l'accueil ne
-// porte plus d'illustrations, qui ressemblaient à celles d'une autre application.
+// Illustrations des tuiles : une SCÈNE par vue, qui occupe toute la tuile et dit d'un
+// coup d'œil ce qu'on va y trouver. Elles ont été redessinées le 30/09/2026 : la
+// planche précédente (appareil à lentille et voyants, disque, grappe de Poké Balls)
+// ressemblait trop à celle d'une autre application de Pokédex. Compositions nouvelles,
+// et surtout PARLANTES : un Pokédex ouvert sur une fiche, une boîte du PC avec ses
+// cases, une ceinture de dresseur à six Poké Balls, un impact d'attaque, un téléphone
+// qui scanne, une console de réglages.
+//
+// Le fond coloré vient de la feuille de style ; ces dessins posent par-dessus des
+// formes qui débordent volontairement des bords (la tuile est en overflow: hidden).
 const ART = {
-  pokedex: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3.5" width="18" height="17" rx="3.5"/><path d="M3.4 12h17.2"/><circle cx="8" cy="8" r="2.6"/><path d="M14.5 7.5h3M14.5 16.5h3M6.5 16.5h3"/></svg>`,
-  attaques: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4l10 10M4 8V4h4M20 4L10 14M20 8V4h-4"/><path d="M8.5 15.5l-3 3M15.5 15.5l3 3"/><circle cx="12" cy="12" r="1.6"/></svg>`,
-  boites: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M15 4v16M3 9.3h18M3 14.7h18"/></svg>`,
-  equipes: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M4 12h5M15 12h5"/><circle cx="12" cy="12" r="3"/></svg>`,
-  scan: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5V6a2 2 0 0 1 2-2h2.5M15.5 4H18a2 2 0 0 1 2 2v2.5M20 15.5V18a2 2 0 0 1-2 2h-2.5M8.5 20H6a2 2 0 0 1-2-2v-2.5"/><circle cx="12" cy="12" r="3.4"/></svg>`,
-  reglages: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>`,
+  // Un Pokédex OUVERT : écran de gauche avec une fiche, liste d'entrées à droite.
+  pokedex: `
+    <svg class="tuile-art" viewBox="0 0 320 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <circle cx="286" cy="24" r="62" fill="#fff" opacity=".10"/>
+      <circle cx="30" cy="132" r="52" fill="#000" opacity=".07"/>
+      <!-- Coque, ouverte en deux volets. -->
+      <g>
+        <rect x="18" y="26" width="132" height="104" rx="13" fill="#b8302a"/>
+        <rect x="26" y="34" width="116" height="88" rx="9" fill="#f4f6f8"/>
+        <!-- La fiche : silhouette, nom, deux jauges. -->
+        <circle cx="62" cy="66" r="21" fill="#cfd8e3"/>
+        <path d="M62 52c8 0 14 7 14 15 0 9-6 14-14 14s-14-5-14-14c0-8 6-15 14-15z" fill="#8fa0b5"/>
+        <rect x="92" y="52" width="40" height="7" rx="3.5" fill="#2a3443"/>
+        <rect x="92" y="64" width="28" height="6" rx="3" fill="#b9c3d0"/>
+        <rect x="36" y="96" width="96" height="7" rx="3.5" fill="#e2e7ee"/>
+        <rect x="36" y="96" width="62" height="7" rx="3.5" fill="#e2584f"/>
+        <rect x="36" y="108" width="96" height="7" rx="3.5" fill="#e2e7ee"/>
+        <rect x="36" y="108" width="34" height="7" rx="3.5" fill="#ecb22e"/>
+      </g>
+      <g>
+        <rect x="160" y="26" width="140" height="104" rx="13" fill="#c9372f"/>
+        <!-- Liste d'entrées du Pokédex. -->
+        <g>
+          <rect x="170" y="38" width="120" height="24" rx="7" fill="#fdf1f0"/>
+          <circle cx="184" cy="50" r="7" fill="#e2584f"/>
+          <rect x="197" y="46" width="52" height="6" rx="3" fill="#8fa0b5"/>
+          <rect x="197" y="55" width="30" height="4" rx="2" fill="#c3ccd8"/>
+        </g>
+        <g opacity=".92">
+          <rect x="170" y="68" width="120" height="24" rx="7" fill="#fdf1f0"/>
+          <circle cx="184" cy="80" r="7" fill="#ecb22e"/>
+          <rect x="197" y="76" width="64" height="6" rx="3" fill="#8fa0b5"/>
+          <rect x="197" y="85" width="26" height="4" rx="2" fill="#c3ccd8"/>
+        </g>
+        <g opacity=".82">
+          <rect x="170" y="98" width="120" height="24" rx="7" fill="#fdf1f0"/>
+          <circle cx="184" cy="110" r="7" fill="#43c15c"/>
+          <rect x="197" y="106" width="44" height="6" rx="3" fill="#8fa0b5"/>
+          <rect x="197" y="115" width="34" height="4" rx="2" fill="#c3ccd8"/>
+        </g>
+      </g>
+      <!-- Charnière. -->
+      <rect x="150" y="30" width="12" height="96" rx="6" fill="#8e241d"/>
+    </svg>`,
+
+  // La boîte du PC : son bandeau de titre, ses cases, deux Pokémon rangés.
+  boites: `
+    <svg class="tuile-art" viewBox="0 0 150 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <circle cx="132" cy="16" r="44" fill="#fff" opacity=".12"/>
+      <circle cx="10" cy="140" r="38" fill="#0c3f11" opacity=".12"/>
+      <rect x="14" y="16" width="122" height="118" rx="14" fill="#f2f7f2"/>
+      <rect x="22" y="24" width="106" height="20" rx="7" fill="#3fae37"/>
+      <rect x="32" y="31" width="52" height="6" rx="3" fill="#eaf6ea"/>
+      <g fill="#e2ebe3">
+        <rect x="22" y="50" width="30" height="30" rx="8"/><rect x="60" y="50" width="30" height="30" rx="8"/>
+        <rect x="98" y="50" width="30" height="30" rx="8"/><rect x="22" y="86" width="30" height="30" rx="8"/>
+        <rect x="60" y="86" width="30" height="30" rx="8"/><rect x="98" y="86" width="30" height="30" rx="8"/>
+      </g>
+      <!-- Deux cases occupées : la Poké Ball dit « capturé ». -->
+      <g>
+        <circle cx="37" cy="65" r="11" fill="#fff" stroke="#2a3443" stroke-width="2.6"/>
+        <path d="M26 65a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#2a3443" stroke-width="2.6"/>
+        <circle cx="37" cy="65" r="3.4" fill="#fff" stroke="#2a3443" stroke-width="2.2"/>
+      </g>
+      <g>
+        <circle cx="113" cy="101" r="11" fill="#fff" stroke="#2a3443" stroke-width="2.6"/>
+        <path d="M102 101a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#2a3443" stroke-width="2.6"/>
+        <circle cx="113" cy="101" r="3.4" fill="#fff" stroke="#2a3443" stroke-width="2.2"/>
+      </g>
+    </svg>`,
+
+  // L'équipe : la ceinture du dresseur et ses six Poké Balls.
+  equipes: `
+    <svg class="tuile-art" viewBox="0 0 150 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <circle cx="18" cy="20" r="46" fill="#fff" opacity=".14"/>
+      <circle cx="138" cy="136" r="44" fill="#123f66" opacity=".12"/>
+      <!-- La sangle, en biais. -->
+      <path d="M-8 96l166-52v26L-8 122z" fill="#2f4a68"/>
+      <path d="M-8 96l166-52v6L-8 102z" fill="#4a6b8f" opacity=".7"/>
+      <!-- Six Poké Balls accrochées à la ceinture : l'équipe au complet. -->
+      <g>
+        <g transform="translate(6 92) rotate(-17)">
+          <circle r="14" fill="#fff" stroke="#1e2227" stroke-width="3.4"/>
+          <path d="M-14 0a14 14 0 0 1 28 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3.4"/>
+          <circle r="4.8" fill="#fff" stroke="#1e2227" stroke-width="3"/>
+        </g>
+        <g transform="translate(34 83) rotate(-17)">
+          <circle r="14" fill="#fff" stroke="#1e2227" stroke-width="3.4"/>
+          <path d="M-14 0a14 14 0 0 1 28 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3.4"/>
+          <circle r="4.8" fill="#fff" stroke="#1e2227" stroke-width="3"/>
+        </g>
+        <g transform="translate(62 74) rotate(-17)">
+          <circle r="14" fill="#fff" stroke="#1e2227" stroke-width="3.4"/>
+          <path d="M-14 0a14 14 0 0 1 28 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3.4"/>
+          <circle r="4.8" fill="#fff" stroke="#1e2227" stroke-width="3"/>
+        </g>
+        <g transform="translate(90 65) rotate(-17)">
+          <circle r="14" fill="#fff" stroke="#1e2227" stroke-width="3.4"/>
+          <path d="M-14 0a14 14 0 0 1 28 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3.4"/>
+          <circle r="4.8" fill="#fff" stroke="#1e2227" stroke-width="3"/>
+        </g>
+        <g transform="translate(118 57) rotate(-17)">
+          <circle r="14" fill="#fff" stroke="#1e2227" stroke-width="3.4"/>
+          <path d="M-14 0a14 14 0 0 1 28 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3.4"/>
+          <circle r="4.8" fill="#fff" stroke="#1e2227" stroke-width="3"/>
+        </g>
+        <g transform="translate(146 48) rotate(-17)">
+          <circle r="14" fill="#fff" stroke="#1e2227" stroke-width="3.4"/>
+          <path d="M-14 0a14 14 0 0 1 28 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3.4"/>
+          <circle r="4.8" fill="#fff" stroke="#1e2227" stroke-width="3"/>
+        </g>
+      </g>
+    </svg>`,
+
+  // Les attaques : un impact, et les trois catégories qui gravitent autour.
+  attaques: `
+    <svg class="tuile-art" viewBox="0 0 150 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <circle cx="16" cy="18" r="44" fill="#fff" opacity=".14"/>
+      <circle cx="140" cy="140" r="46" fill="#8a6a12" opacity=".14"/>
+      <!-- Les trois catégories, en jetons, alignées en haut. -->
+      <g>
+        <circle cx="30" cy="28" r="15" fill="#e8562b" stroke="#8a3b14" stroke-width="2.8"/>
+        <path d="M30 19l3.4 6.8 7.6-1.1-5.5 5.4 5.5 5.4-7.6-1.1L30 41l-3.4-6.6-7.6 1.1 5.5-5.4-5.5-5.4 7.6 1.1z" fill="#ffe0a3"/>
+        <circle cx="72" cy="22" r="14" fill="#2f6fd0" stroke="#17427f" stroke-width="2.8"/>
+        <circle cx="72" cy="22" r="7.5" fill="none" stroke="#dbe9fb" stroke-width="3.2"/>
+        <circle cx="114" cy="28" r="14" fill="#9aa3ab" stroke="#525c66" stroke-width="2.8"/>
+        <path d="M114 20c4.4 0 8 3.6 8 8s-3.6 8-8 8a8 8 0 0 1 0-16z" fill="#f2f3f4"/>
+      </g>
+      <!-- Traits de vitesse. -->
+      <g stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".45">
+        <path d="M10 66h24M4 84h16M14 102h26"/>
+      </g>
+      <!-- L'impact, au centre. -->
+      <path d="M80 48l10 24 25-8-12 23 23 13-25 6 6 25-22-13-17 20-4-26-26 2 16-20-19-17 26-3z"
+            fill="#fff6dd" stroke="#8a6a12" stroke-width="3.2" stroke-linejoin="round"/>
+      <path d="M80 68l5.5 13 14.5-4.5-7 13 13.5 7-14.5 3.5 2.5 14.5-12.5-7.5-10 12-2-15.5-15 1 9-11.5-11-10 15.5-2z" fill="#f2a71b"/>
+    </svg>`,
+
+  // Le scan : le téléphone qui vise un Pokémon, et son faisceau.
+  scan: `
+    <svg class="tuile-art" viewBox="0 0 150 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <circle cx="132" cy="20" r="46" fill="#fff" opacity=".12"/>
+      <circle cx="12" cy="134" r="40" fill="#2b1f5e" opacity=".18"/>
+      <!-- Le téléphone. -->
+      <rect x="30" y="14" width="90" height="122" rx="16" fill="#241a4d"/>
+      <rect x="37" y="22" width="76" height="106" rx="11" fill="#3a2c72"/>
+      <!-- Ce que voit la caméra : une Poké Ball dans le viseur. -->
+      <g transform="translate(75 70)">
+        <circle r="24" fill="#fff" stroke="#1e2227" stroke-width="4"/>
+        <path d="M-24 0a24 24 0 0 1 48 0z" fill="#d6453c" stroke="#1e2227" stroke-width="4"/>
+        <circle r="8" fill="#fff" stroke="#1e2227" stroke-width="4"/>
+      </g>
+      <!-- Coins de visée et faisceau. -->
+      <g fill="none" stroke="#c9b8ff" stroke-width="4.5" stroke-linecap="round">
+        <path d="M48 56v-8a6 6 0 0 1 6-6h8"/><path d="M88 42h8a6 6 0 0 1 6 6v8"/>
+        <path d="M102 84v8a6 6 0 0 1-6 6h-8"/><path d="M62 98h-8a6 6 0 0 1-6-6v-8"/>
+      </g>
+      <rect x="44" y="68" width="62" height="4" rx="2" fill="#e6dcff" opacity=".9"/>
+      <!-- Le nom trouvé, sous l'image. -->
+      <rect x="50" y="110" width="50" height="7" rx="3.5" fill="#c9b8ff" opacity=".85"/>
+    </svg>`,
+
+  // Les réglages : la console du PC, ses curseurs et son interrupteur.
+  reglages: `
+    <svg class="tuile-art" viewBox="0 0 150 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <circle cx="18" cy="18" r="42" fill="#fff" opacity=".10"/>
+      <circle cx="136" cy="138" r="42" fill="#2b323c" opacity=".22"/>
+      <rect x="18" y="20" width="114" height="92" rx="13" fill="#eef1f5"/>
+      <rect x="26" y="28" width="98" height="76" rx="8" fill="#39434f"/>
+      <!-- Deux curseurs et un interrupteur : ce qu'on vient régler. -->
+      <g>
+        <rect x="36" y="42" width="78" height="7" rx="3.5" fill="#63707f"/>
+        <rect x="36" y="42" width="44" height="7" rx="3.5" fill="#8fd0ff"/>
+        <circle cx="80" cy="45.5" r="9" fill="#f4f7fa" stroke="#39434f" stroke-width="2.4"/>
+        <rect x="36" y="64" width="78" height="7" rx="3.5" fill="#63707f"/>
+        <rect x="36" y="64" width="24" height="7" rx="3.5" fill="#ffd166"/>
+        <circle cx="60" cy="67.5" r="9" fill="#f4f7fa" stroke="#39434f" stroke-width="2.4"/>
+        <rect x="36" y="84" width="34" height="14" rx="7" fill="#63707f"/>
+        <circle cx="63" cy="91" r="5.6" fill="#f4f7fa"/>
+        <rect x="80" y="86" width="34" height="5" rx="2.5" fill="#63707f"/>
+        <rect x="80" y="94" width="22" height="5" rx="2.5" fill="#63707f"/>
+      </g>
+      <!-- Pied de la console. -->
+      <path d="M62 112h26l5 12H57z" fill="#d7dde4"/>
+      <rect x="44" y="124" width="62" height="10" rx="5" fill="#eef1f5"/>
+    </svg>`,
 };
 
 // Une carte par vue. `sous()` est appelée au rendu : chaque carte annonce un chiffre
@@ -2579,12 +2766,12 @@ function renderAccueil() {
 
   const carte = (t) => `
     <button class="tuile t-${t.cle} ${t.grande ? 'grande' : ''}" data-tuile="${t.cle}">
-      <span class="tuile-ico">${ART[t.cle]}</span>
+      ${ART[t.cle]}
+      ${t.grande ? `<span class="anneau" style="--p:${pct}" aria-hidden="true"><i>${pct}<em>%</em></i></span>` : ''}
       <span class="tuile-txt">
         <b>${t.nom}</b>
         <small>${esc(t.sous())}</small>
       </span>
-      ${t.grande ? `<span class="anneau" style="--p:${pct}" aria-hidden="true"><i>${pct}<em>%</em></i></span>` : ''}
     </button>`;
 
   poser(h(`
@@ -2593,9 +2780,8 @@ function renderAccueil() {
         <h1>Guiguidex</h1>
         <p>${pris} Pokémon sur 1025${shinyView() ? ' · chromatique' : ''} <span>v${__APP_VERSION__}</span></p>
       </header>
-      ${carte(TUILES[0])}
       <div class="tuiles">
-        ${TUILES.slice(1).map(carte).join('')}
+        ${TUILES.map(carte).join('')}
       </div>
     </section>`));
 }

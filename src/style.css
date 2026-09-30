@@ -470,76 +470,150 @@ img { display: block; }
   color: var(--muted);
 }
 
-/* ---------- Accueil : la planche de tuiles ---------- */
+/* ---------- Accueil : les cartes de départ ----------
 
-/* Plus de barre du bas : chaque vue s'ouvre depuis une tuile, et la barre de retour
-   ramène ici. Tuiles pleines et colorées, d'après la maquette fournie — c'est le seul
-   endroit de l'appli où la couleur vient du décor et non des sprites. */
-.accueil {
-  padding: calc(10px + var(--safe-top)) 12px calc(12px + var(--safe-bottom));
-}
-.accueil-titre {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin: 2px 4px 12px;
-  font-size: 22px;
+   Première version : des tuiles carrées illustrées, reprises d'une maquette. Refaites
+   le 30/09/2026 — une autre application de Pokédex présentait exactement la même
+   planche. Même esprit (une carte par vue, la couleur de chacune, le Pokédex en tête),
+   autre composition : un pictogramme dans un carré coloré, le nom, et surtout un
+   CHIFFRE VIVANT — l'avancement de la collection, l'équipe en cours, le mode de scan.
+   L'accueil informe désormais au lieu de décorer, ce qu'aucune illustration ne faisait. */
+
+.accueil { padding: var(--e-3) var(--e-3) calc(var(--e-5) + var(--safe-bottom)); }
+.accueil-tete { padding: var(--e-2) var(--e-2) var(--e-4); }
+.accueil-tete h1 {
+  margin: 0;
+  font-size: var(--t-grand);
   font-weight: 800;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.6px;
+  line-height: 1.1;
 }
-/* La version reste lisible ici : les mises à jour arrivant sans fil, c'est le seul
-   moyen de savoir quel build tourne sur le téléphone. */
-.accueil-titre small { font-size: 11px; font-weight: 600; color: var(--muted); }
+.accueil-tete p { margin: var(--e-1) 0 0; color: var(--muted); font-size: var(--t-petit); }
+.accueil-tete span { opacity: 0.65; font-variant-numeric: tabular-nums; }
 
 .tuiles {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  /* Des rangées de hauteur ÉGALE : sans ça une carte dont le chiffre tient sur deux
+     lignes dépassait sa voisine, et la grille paraissait bancale. */
+  grid-auto-rows: 1fr;
+  gap: var(--e-3);
+  margin-top: var(--e-3);
 }
-.tuile {
-  position: relative;
-  overflow: hidden;
-  display: block;
-  width: 100%;
-  /* Carré, comme dans la maquette : la tuile du Pokédex s'étale, les autres non. */
-  aspect-ratio: 1;
-  border-radius: 22px;
-  color: #fff;
-  text-align: left;
-  box-shadow: 0 2px 8px rgb(30 34 39 / 12%);
-  transition: transform 120ms ease, box-shadow 120ms ease;
-}
-.tuile:active { transform: scale(0.97); box-shadow: 0 1px 4px rgb(30 34 39 / 14%); }
-/* Le libellé se pose en bas, par-dessus le dessin, avec une ombre portée pour tenir
-   sur les tuiles claires (le jaune et le bleu). */
-.tuile > span {
-  position: absolute;
-  left: 16px;
-  right: 12px;
-  bottom: 12px;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -0.3px;
-  text-shadow: 0 1px 3px rgb(30 34 39 / 30%);
-}
-/* Le dessin s'arrête au-dessus du libellé : sans cette réserve, le nom se posait
-   sur les Poké Balls et devenait illisible. La tuile du Pokédex garde son dessin
-   pleine page, son nom vivant dans la zone vide à droite. */
-.tuile-art { position: absolute; top: 8px; left: 8px; width: calc(100% - 16px); height: calc(100% - 48px); }
-.tuile.t-pokedex .tuile-art { top: 0; left: 0; width: 100%; height: 100%; }
 
-/* Le Pokédex prend toute la largeur et porte son nom à droite, comme la maquette. */
-.tuile.t-pokedex {
-  grid-column: 1 / -1;
-  aspect-ratio: 16 / 7;
-  background: #e8453c;
+/* La carte : fond teinté de la couleur de la vue, pictogramme dans un carré plein.
+   Dans la grille, tout s'empile — à 168 px de large, le texte posé À CÔTÉ du
+   pictogramme se cassait en trois lignes. La carte du Pokédex, elle, est en ligne :
+   pleine largeur, elle a la place. */
+.tuile {
+  --teinte: var(--ball);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--e-2);
+  width: 100%;
+  min-width: 0;
+  min-height: 118px;
+  padding: var(--e-3);
+  border-radius: var(--r-lg);
+  border: 1px solid color-mix(in srgb, var(--teinte) 22%, transparent);
+  background: color-mix(in srgb, var(--teinte) 8%, var(--panel));
+  box-shadow: var(--ombre-1);
+  color: var(--ink);
+  text-align: left;
+  transition: transform var(--d-court) var(--c-ressort), box-shadow var(--d-court) ease;
 }
-.tuile.t-pokedex > span { left: auto; right: 18px; font-size: 30px; }
-.tuile.t-attaques { background: #f0c43c; }
-.tuile.t-boites { background: #4fc247; }
-.tuile.t-equipes { background: #7dbdf0; }
-.tuile.t-scan { background: #8a6fe0; }
-.tuile.t-reglages { background: #6b7688; }
+.tuile:active { transform: scale(0.97); box-shadow: none; }
+
+/* En tête, le Pokédex : pleine largeur, pictogramme plus grand, anneau de progression. */
+.tuile.grande {
+  flex-direction: row;
+  align-items: center;
+  min-height: 104px;
+  padding: var(--e-4);
+  gap: var(--e-4);
+}
+.tuile.grande .tuile-ico { width: 64px; height: 64px; border-radius: var(--r-md); }
+.tuile.grande .tuile-ico svg { width: 34px; height: 34px; }
+.tuile.grande b { font-size: 22px; }
+
+.tuile-ico {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--r-sm);
+  background: linear-gradient(160deg,
+    color-mix(in srgb, var(--teinte) 78%, white),
+    var(--teinte));
+  box-shadow: var(--ombre-1);
+}
+.tuile-ico svg {
+  width: 25px;
+  height: 25px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tuile-txt { min-width: 0; width: 100%; flex: 1 1 auto; }
+.tuile-txt b { display: block; font-size: var(--t-tete); font-weight: 700; letter-spacing: -0.2px; }
+.tuile-txt small {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2; /* deux lignes au plus : les cartes gardent la même allure */
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: var(--t-petit);
+  line-height: 1.3;
+}
+
+
+/* Anneau de progression : un dégradé conique, et un disque au centre qui le creuse.
+   Aucun SVG, aucun calcul — la part se pose dans --p. */
+.anneau {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: conic-gradient(var(--ball) calc(var(--p) * 1%), var(--rule-soft) 0);
+}
+.anneau i {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--panel);
+  font-style: normal;
+  font-size: var(--t-tete);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.anneau em { font-style: normal; font-size: var(--t-mini); font-weight: 700; color: var(--muted); margin-left: 1px; }
+
+/* Une couleur par vue — les mêmes qu'avant, pour ne pas dérouter. */
+.tuile.t-pokedex { --teinte: #d6453c; }
+.tuile.t-boites { --teinte: #3faa4a; }
+.tuile.t-equipes { --teinte: #3b82d6; }
+.tuile.t-attaques { --teinte: #d89b1e; }
+.tuile.t-scan { --teinte: #7c5fd6; }
+.tuile.t-reglages { --teinte: #6b7688; }
+
+/* Sans color-mix (Safari < 16.4), on retombe sur le panneau et un liseré ordinaire :
+   les cartes restent lisibles, seule la teinte manque. */
+@supports not (background: color-mix(in srgb, red 50%, white)) {
+  .tuile { background: var(--panel); border-color: var(--rule-soft); }
+  .tuile-ico { background: var(--teinte); }
+  .tuile-chev { color: var(--muted); }
+}
 
 /* ---------- Réglages ---------- */
 

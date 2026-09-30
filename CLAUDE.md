@@ -1469,26 +1469,28 @@ Première vue de l'application, **d'après une maquette fournie le 25/09/2026** 
 planche de tuiles colorées, une par vue. **La barre du bas a été retirée** à cette
 occasion — tout part d'ici, et une barre ferait doublon.
 
-- Six tuiles (`TUILES` dans main.js), une par vue : **Pokédex** (large, en tête),
-  **Attaques**, **Boîtes**, **Équipes**, **Scan**, **Réglages**. Les attaques ont leur
-  propre vue depuis qu'elles ont été détachées de la boîte de combat — voir « Page des
-  attaques ». La tuile Réglages porte le **PC des Centres Pokémon**, demandé comme icône.
-- **La tuile Scan a été ajoutée à la maquette**, qui n'en montrait pas : sans elle le scan
-  n'aurait plus eu de point d'entrée. Choix explicite de l'utilisateur entre trois
-  propositions.
-- Les dessins sont des **SVG inline** (`ART`), comme les icônes de barre qu'ils
-  remplacent : aucun fichier de plus, aucune requête au runtime. Le dessin s'arrête
-  40 px au-dessus du bas de la tuile pour laisser la place au libellé — sans cette
-  réserve le nom se posait sur les Poké Balls. La tuile du Pokédex fait exception : son
-  dessin va d'un bord à l'autre et son nom occupe la zone vide à droite, comme sur la
-  maquette.
-  - **Un `<svg>` avec `viewBox` garde son rapport quand largeur ET hauteur sont
-    `auto`** : poser les quatre décalages ne suffit pas à le contraindre, il faut lui
-    donner une hauteur explicite (`calc(100% - 48px)`). Vérifié, c'était la cause du
-    chevauchement qui subsistait après le premier correctif.
-- **C'est le seul endroit où la couleur vient du décor** et non des sprites : rouge
-  `#e8453c`, jaune `#f0c43c`, vert `#4fc247`, bleu `#7dbdf0`, violet `#8a6fe0` —
-  celui du mode IA. Le reste de l'appli garde son thème clair.
+- **Refaites le 30/09/2026** : la planche de tuiles carrées illustrées a été
+  abandonnée — *« une autre appli de Pokédex utilise le même design »*. Même esprit
+  (une carte par vue, sa couleur, le Pokédex en tête), autre composition.
+- Six cartes (`TUILES` dans main.js), une par vue : **Pokédex** (pleine largeur, en
+  tête), **Boîtes**, **Équipes**, **Attaques**, **Scan**, **Réglages**.
+- **Chaque carte porte un chiffre VIVANT**, pas une illustration : avancement de la
+  génération affichée, membres de l'équipe et version en cours, nombre d'attaques,
+  mode de scan, thème choisi. `sous()` est appelée au rendu — c'est ce qui distingue
+  l'accueil d'une simple grille de raccourcis, et ce qui le rend utile.
+- **Anneau de progression** sur la carte du Pokédex : un `conic-gradient` dont la part
+  vient de `--p`, avec un disque au centre qui le creuse. Aucun SVG, aucun calcul.
+- Les pictogrammes sont des **traits blancs** dans un carré plein dégradé, sur la même
+  grille de 24 et au même trait que les icônes utilitaires. Un jeu cohérent, là où
+  c'étaient six dessins de styles différents.
+- **La carte du Pokédex est en ligne, les cinq autres empilent** pictogramme, nom puis
+  chiffre : à 170 px de large, un texte posé à côté du pictogramme se cassait en trois
+  lignes. Les rangées sont de hauteur égale (`grid-auto-rows: 1fr`) et le chiffre est
+  borné à deux lignes, sans quoi une carte dépassait sa voisine.
+- La teinte des cartes passe par `color-mix` ; sans lui (Safari antérieur à 16.4) elles
+  retombent sur le panneau ordinaire — lisibles, seulement moins colorées.
+- **La tuile Scan avait été ajoutée à la maquette d'origine**, qui n'en montrait pas :
+  sans elle le scan n'aurait plus eu de point d'entrée.
 - **L'appli s'ouvre TOUJOURS sur l'accueil**, quelle que soit la vue quittée : c'est le
   point de départ de tout, et la règle « la vue Scan ne se restaure pas » (une caméra qui
   s'allume seule au lancement) devient inutile.

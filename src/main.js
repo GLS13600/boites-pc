@@ -2443,113 +2443,80 @@ function poolAttaques(key, jeu) {
 // page d'accueil de tuiles, d'après une maquette fournie. Chaque tuile ouvre une vue, et
 // une barre « ‹ Accueil » l'y ramène. Les dessins sont inline, comme les icônes qu'ils
 // remplacent : l'appli ne fait aucune requête au runtime.
+// Pictogrammes des cartes d'accueil : trait blanc sur le carré coloré de la carte.
+// Même grille (24) et même trait (1,8 px) que les icônes utilitaires — l'accueil ne
+// porte plus d'illustrations, qui ressemblaient à celles d'une autre application.
 const ART = {
-  // Le Pokédex de la maquette : lentille bleue, trois voyants, charnière en biais.
-  pokedex: `
-    <svg class="tuile-art" viewBox="0 0 320 150" aria-hidden="true">
-      <circle cx="46" cy="40" r="28" fill="#fdf1f0"/>
-      <circle cx="46" cy="40" r="21" fill="#5aa9f5"/>
-      <circle cx="39" cy="33" r="7" fill="#fff" opacity=".35"/>
-      <circle cx="96" cy="32" r="11" fill="#fdf1f0"/><circle cx="96" cy="32" r="8" fill="#e2584f"/>
-      <circle cx="128" cy="32" r="11" fill="#fdf1f0"/><circle cx="128" cy="32" r="8" fill="#ecb22e"/>
-      <circle cx="160" cy="32" r="11" fill="#fdf1f0"/><circle cx="160" cy="32" r="8" fill="#43c15c"/>
-      <path d="M0 96h110l26-26h184" fill="none" stroke="#c9352d" stroke-width="13" stroke-linejoin="round"/>
-      <path d="M22 112l26 15-26 15z" fill="#f4c33f"/>
-    </svg>`,
-  // Les trois catégories d'attaque : physique, spéciale, statut.
-  attaques: `
-    <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
-      <circle cx="68" cy="46" r="32" fill="#e8562b"/>
-      <path d="M68 24l7 14 15-4-9 13 13 9-15 3 2 15-13-9-13 9 2-15-15-3 13-9-9-13 15 4z" fill="#f6c34a"/>
-      <circle cx="41" cy="103" r="32" fill="#9aa3ab"/>
-      <path d="M41 83c9 0 16 9 16 20s-7 20-16 20a20 20 0 0 1 0-40z" fill="#f2f3f4"/>
-      <circle cx="41" cy="95" r="4" fill="#9aa3ab"/>
-      <circle cx="101" cy="103" r="32" fill="#2f6fd0"/>
-      <circle cx="101" cy="103" r="21" fill="none" stroke="#dbe9fb" stroke-width="7"/>
-      <circle cx="101" cy="103" r="9" fill="#dbe9fb"/>
-    </svg>`,
-  // Les boîtes du PC : le disque de rangement, comme sur la maquette.
-  boites: `
-    <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
-      <circle cx="58" cy="52" r="46" fill="#eef2ee"/>
-      <g stroke="#dfe7df" stroke-width="3">
-        <path d="M58 6v92M12 52h92M26 20l64 64M90 20L26 84"/>
-      </g>
-      <circle cx="58" cy="52" r="15" fill="#48b93f"/>
-      <circle cx="58" cy="52" r="8" fill="#eef2ee"/>
-    </svg>`,
-  // L'équipe : une grande Poké Ball et les cinq autres autour.
-  equipes: `
-    <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
-      <g>
-        <circle cx="46" cy="52" r="42" fill="#fff" stroke="#1e2227" stroke-width="5"/>
-        <path d="M4 52a42 42 0 0 1 84 0z" fill="#d6453c" stroke="#1e2227" stroke-width="5"/>
-        <circle cx="46" cy="52" r="13" fill="#fff" stroke="#1e2227" stroke-width="5"/>
-      </g>
-      <g>
-        <circle cx="112" cy="30" r="11" fill="#fff" stroke="#1e2227" stroke-width="3"/>
-        <path d="M101 30a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3"/>
-        <circle cx="120" cy="70" r="11" fill="#fff" stroke="#1e2227" stroke-width="3"/>
-        <path d="M109 70a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3"/>
-        <circle cx="96" cy="104" r="11" fill="#fff" stroke="#1e2227" stroke-width="3"/>
-        <path d="M85 104a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3"/>
-        <circle cx="52" cy="122" r="11" fill="#fff" stroke="#1e2227" stroke-width="3"/>
-        <path d="M41 122a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3"/>
-        <circle cx="16" cy="118" r="11" fill="#fff" stroke="#1e2227" stroke-width="3"/>
-        <path d="M5 118a11 11 0 0 1 22 0z" fill="#d6453c" stroke="#1e2227" stroke-width="3"/>
-      </g>
-    </svg>`,
-  // Les réglages : le PC des Centres Pokémon, écran et Poké Ball.
-  reglages: `
-    <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
-      <rect x="18" y="16" width="114" height="80" rx="10" fill="#eceff3"/>
-      <rect x="27" y="25" width="96" height="56" rx="6" fill="#3b4a5e"/>
-      <circle cx="75" cy="53" r="19" fill="#f6f7f9" stroke="#2a3443" stroke-width="4"/>
-      <path d="M56 53a19 19 0 0 1 38 0z" fill="#d6453c" stroke="#2a3443" stroke-width="4"/>
-      <circle cx="75" cy="53" r="6" fill="#f6f7f9" stroke="#2a3443" stroke-width="4"/>
-      <rect x="60" y="96" width="30" height="12" fill="#d3d8df"/>
-      <rect x="30" y="108" width="90" height="16" rx="6" fill="#eceff3"/>
-      <g fill="#b9c1cb">
-        <rect x="40" y="113" width="12" height="6" rx="2"/>
-        <rect x="58" y="113" width="34" height="6" rx="2"/>
-        <rect x="98" y="113" width="12" height="6" rx="2"/>
-      </g>
-    </svg>`,
-  // Le scan : la lentille du Pokédex dans un cadre de visée.
-  scan: `
-    <svg class="tuile-art" viewBox="0 0 150 150" aria-hidden="true">
-      <g fill="none" stroke="#f3eefd" stroke-width="7" stroke-linecap="round">
-        <path d="M14 44V22a8 8 0 0 1 8-8h22"/>
-        <path d="M106 14h22a8 8 0 0 1 8 8v22"/>
-        <path d="M136 106v22a8 8 0 0 1-8 8h-22"/>
-        <path d="M44 136H22a8 8 0 0 1-8-8v-22"/>
-      </g>
-      <circle cx="75" cy="75" r="32" fill="#f3eefd"/>
-      <circle cx="75" cy="75" r="23" fill="#7b5fd4"/>
-      <circle cx="66" cy="66" r="8" fill="#fff" opacity=".45"/>
-    </svg>`,
+  pokedex: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3.5" width="18" height="17" rx="3.5"/><path d="M3.4 12h17.2"/><circle cx="8" cy="8" r="2.6"/><path d="M14.5 7.5h3M14.5 16.5h3M6.5 16.5h3"/></svg>`,
+  attaques: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4l10 10M4 8V4h4M20 4L10 14M20 8V4h-4"/><path d="M8.5 15.5l-3 3M15.5 15.5l3 3"/><circle cx="12" cy="12" r="1.6"/></svg>`,
+  boites: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M15 4v16M3 9.3h18M3 14.7h18"/></svg>`,
+  equipes: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M4 12h5M15 12h5"/><circle cx="12" cy="12" r="3"/></svg>`,
+  scan: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5V6a2 2 0 0 1 2-2h2.5M15.5 4H18a2 2 0 0 1 2 2v2.5M20 15.5V18a2 2 0 0 1-2 2h-2.5M8.5 20H6a2 2 0 0 1-2-2v-2.5"/><circle cx="12" cy="12" r="3.4"/></svg>`,
+  reglages: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>`,
 };
 
-// Une tuile par vue. `menu` ouvre en plus un panneau une fois la vue rendue : la tuile
-// « Attaques » mène droit au menu des attaques, qui vit dans la boîte de combat.
+// Une carte par vue. `sous()` est appelée au rendu : chaque carte annonce un chiffre
+// VIVANT — où en est la collection, combien de Pokémon dans l'équipe, quel mode de
+// scan. C'est ce qui remplace les illustrations : l'accueil informe au lieu de décorer.
 const TUILES = [
-  { cle: 'pokedex', nom: 'Pokédex', vue: 'pokedex' },
-  { cle: 'attaques', nom: 'Attaques', vue: 'attaques' },
-  { cle: 'boites', nom: 'Boîtes', vue: 'boites' },
-  { cle: 'equipes', nom: 'Équipes', vue: 'combat' },
-  { cle: 'scan', nom: 'Scan', vue: 'scan' },
-  { cle: 'reglages', nom: 'Réglages', vue: 'reglages' },
+  {
+    cle: 'pokedex', nom: 'Pokédex', vue: 'pokedex', grande: true,
+    sous: () => 'Toutes les espèces, région par région',
+  },
+  {
+    cle: 'boites', nom: 'Boîtes', vue: 'boites',
+    sous: () => {
+      const liste = genList(state.gen).filter((k) => k !== null && k !== undefined);
+      return `${liste.filter(isCaught).length} sur ${liste.length} · ${ONGLETS[state.gen].label}`;
+    },
+  },
+  {
+    cle: 'equipes', nom: 'Équipes', vue: 'combat',
+    sous: () => `${equipe().filter(Boolean).length} sur 6 · ${jeuCourant().nom}`,
+  },
+  {
+    cle: 'attaques', nom: 'Attaques', vue: 'attaques',
+    sous: () => `${Object.keys(moves).length} attaques recensées`,
+  },
+  {
+    cle: 'scan', nom: 'Scan', vue: 'scan',
+    sous: () => {
+      const m = localStorage.getItem('pcbox.scan.mode');
+      return `Mode ${m === 'manuel' ? 'Manuel' : m === 'ia' ? 'IA' : 'Auto'}`;
+    },
+  },
+  {
+    cle: 'reglages', nom: 'Réglages', vue: 'reglages',
+    sous: () => `Thème ${(THEMES.find(([v]) => v === state.theme)?.[1] || 'clair').toLowerCase()}`,
+  },
 ];
 
 function renderAccueil() {
+  // Progression du Pokédex national, sur la collection ACTIVE : c'est le chiffre que
+  // la carte en tête affiche, et l'anneau qui l'accompagne.
+  let pris = 0;
+  for (let id = 1; id <= 1025; id++) if (isCaught(id)) pris++;
+  const pct = Math.round((100 * pris) / 1025);
+
+  const carte = (t) => `
+    <button class="tuile t-${t.cle} ${t.grande ? 'grande' : ''}" data-tuile="${t.cle}">
+      <span class="tuile-ico">${ART[t.cle]}</span>
+      <span class="tuile-txt">
+        <b>${t.nom}</b>
+        <small>${esc(t.sous())}</small>
+      </span>
+      ${t.grande ? `<span class="anneau" style="--p:${pct}" aria-hidden="true"><i>${pct}<em>%</em></i></span>` : ''}
+    </button>`;
+
   poser(h(`
     <section class="accueil">
-      <h1 class="accueil-titre">Guiguidex<small>v${__APP_VERSION__}</small></h1>
+      <header class="accueil-tete">
+        <h1>Guiguidex</h1>
+        <p>${pris} Pokémon sur 1025${shinyView() ? ' · chromatique' : ''} <span>v${__APP_VERSION__}</span></p>
+      </header>
+      ${carte(TUILES[0])}
       <div class="tuiles">
-        ${TUILES.map((t) => `
-          <button class="tuile t-${t.cle}" data-tuile="${t.cle}">
-            ${ART[t.cle]}<span>${t.nom}</span>
-          </button>`).join('')}
+        ${TUILES.slice(1).map(carte).join('')}
       </div>
     </section>`));
 }

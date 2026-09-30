@@ -284,13 +284,45 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
     minuteOuverture = setTimeout(() => el.classList.remove('ouvre'), 2000);
   }
 
+  // Lance la lecture et SURVEILLE qu'une image arrive vraiment.
+  //
+  // Le flux peut être accordé et la vue rester noire : `.scan` a un fond sombre, donc
+  // une vidéo qui ne peint pas ne se distingue pas d'une caméra éteinte. Deux causes
+  // vues sur iPhone — une lecture refusée (la promesse de `play()` était avalée, sans
+  // un mot à l'écran) et un élément vidéo REPARENTÉ par un rendu, que WebKit met en
+  // pause sans prévenir. On relance dans les deux cas, et on le DIT si rien ne vient.
+  let veilleImage = 0;
+  function joueEtVeille() {
+    // Reposés en JS : un attribut perdu au remaniement du DOM suffit à faire basculer
+    // iOS en lecteur plein écran, qui ne rend rien dans la page.
+    video.playsInline = true;
+    video.muted = true;
+    video.play().catch((e) => {
+      if (actif && !video.videoWidth) montreEtat(t('lectureRefusee', e?.name ?? e));
+    });
+    clearTimeout(veilleImage);
+    veilleImage = setTimeout(() => {
+      if (!actif || !flux) return;
+      if (video.videoWidth) return;                    // l'image est là, rien à dire
+      const piste = flux.getVideoTracks()[0];
+      // Une piste coupée ou arrêtée : une autre application a pris la caméra.
+      if (!piste || piste.readyState === 'ended') { montreEtat(t('cameraPrise')); return; }
+      // Dernière chance : on redemande la lecture, puis on avoue.
+      video.play().catch(() => {});
+      setTimeout(() => {
+        if (actif && flux && !video.videoWidth) montreEtat(t('cameraNoire'));
+      }, 1200);
+    }, 2500);
+  }
+
   async function demarre() {
     const entree = !actif;
     actif = true;
     if (entree) animeOuverture();
     majZone();
     prepareModele().catch(() => {});
-    if (flux) { video.play().catch(() => {}); suis(); ia.demarre(); return; }
+    // `flux` déjà là : on revient d'un rendu, qui a reparenté l'élément vidéo.
+    if (flux) { joueEtVeille(); suis(); ia.demarre(); return; }
     // Chaque rendu rappelle demarre() : sans ce verrou, un rendu survenu pendant la
     // demande d'autorisation ouvrirait un second flux, jamais refermé.
     if (ouverture) return;
@@ -312,7 +344,7 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
       flux = f;
       video.srcObject = f;
       // Sans attendre play() : sa promesse peut tarder, et le message resterait affiché.
-      video.play().catch(() => {});
+      joueEtVeille();
       montreEtat(null);
       majZone();
       suis();
@@ -325,6 +357,7 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
   }
 
   function coupeFlux() {
+    clearTimeout(veilleImage);
     if (!flux) return;
     flux.getTracks().forEach((t) => t.stop());
     flux = null;
@@ -372,6 +405,10 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
   let pince = null, bouge = false;
   el.addEventListener('pointerdown', (e) => {
     if (e.target.closest('.scan-btn, .scan-mode')) return;
+    // Flux accordé mais aucune image : le toucher est un geste utilisateur, ce
+    // qu'iOS exige parfois pour accepter la lecture. On retente là plutôt que
+    // d'attendre que l'utilisateur quitte la vue.
+    if (flux && !video.videoWidth) joueEtVeille();
     doigts.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY });
     el.setPointerCapture?.(e.pointerId);
     if (doigts.size === 2) {

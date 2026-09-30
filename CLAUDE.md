@@ -506,6 +506,35 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
   pour l'effacer : sa promesse peut tarder, et « Ouverture de la caméra… » restait
   affiché par-dessus l'image.
 
+### Écran noir alors que la caméra est autorisée
+
+Signalé le 30/09/2026 sur iPhone, sur le site comme sur l'IPA 1.0.51 : la caméra est
+accordée, aucune erreur, et la vue reste **noire**. `.scan` a un fond `#0d0f12`, donc
+une vidéo qui ne peint pas ne se distingue pas d'une caméra éteinte.
+
+L'échec était **avalé en silence** : `video.play().catch(() => {})`, puis
+`montreEtat(null)` effaçait le message quoi qu'il arrive. `joueEtVeille()` remplace
+les trois appels à `play()` et **surveille qu'une image arrive vraiment** :
+
+- `playsInline` et `muted` sont reposés EN JS avant chaque lecture : un attribut perdu
+  au remaniement du DOM suffit à faire basculer iOS en lecteur plein écran, qui ne rend
+  rien dans la page ;
+- une promesse de `play()` rejetée est **affichée**, avec son nom d'erreur ;
+- au bout de 2,5 s sans `videoWidth`, on distingue deux cas : piste `ended` — une autre
+  application a pris la caméra — ou lecture muette, où l'on retente une fois avant de
+  le dire ;
+- **toucher l'écran relance la lecture** quand le flux est là sans image : le toucher
+  est un geste utilisateur, ce qu'iOS exige parfois pour accepter `play()`.
+
+**Cause la plus probable, et pourquoi le garde-fou est au bon endroit** : `poser()`
+reconstruit la vue à chaque rendu, donc **reparente l'élément `<video>`**, et WebKit
+met alors la lecture en pause sans prévenir. `demarre()` est rappelé à chaque rendu et
+passe désormais par `joueEtVeille()`, qui relance.
+
+Vérifié dans l'aperçu par une caméra factice (`captureStream(0)`, donc aucune image) :
+message explicite au bout de 2,5 s ; piste arrêtée → « une autre application utilise la
+caméra » ; caméra qui marche → aucun message, `videoWidth` 640 et lecture en cours.
+
 ### Voix du Pokédex : RETIRÉE (30/09/2026)
 
 À l'ouverture d'une fiche depuis le scan, une voix enregistrée lisait le Pokémon

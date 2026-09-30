@@ -1569,12 +1569,23 @@ en pointillés qui tient la place et le dit. En ajouter un ne demande que le mê
 
 - **Le thème se choisit parmi trois** : clair, sombre, ou celui du téléphone
   (`pcbox.theme`, **clair par défaut** — ne rien changer à qui n'y touche pas).
-- **Les quatre commandes de sauvegarde vivent ici** (exporter/importer les boîtes,
-  exporter/importer les équipes), en lignes de 52 px au gabarit des Réglages d'iOS.
-  Demandé le 30/09/2026 : d'abord « enlever les boutons », puis « déplace-les dans
-  Réglages » — l'export est la SEULE sauvegarde d'une appli réinstallée tous les
-  7 jours, et le bloc le rappelle explicitement. Les actions (`data-act` export,
-  import, eq-export, eq-import) sont routées par l'écoute générale de `app`.
+- **UNE seule sauvegarde, qui emporte tout** (`exportTout` / `importTout`), en deux
+  lignes de 52 px au gabarit des Réglages d'iOS. Demandé le 30/09/2026 en trois temps :
+  « enlève les boutons », puis « déplace-les dans Réglages », puis « regroupe pour
+  exporter l'intégralité des données ». L'export est la SEULE sauvegarde d'une appli
+  réinstallée tous les 7 jours, et le bloc le rappelle explicitement.
+  - Le fichier (`guiguidex-<date>.json`) porte les captures normales ET chromatiques,
+    les réglages et l'ordre des boîtes, l'ordre des onglets, les équipes de toutes les
+    versions, et les préférences (jeu, vue, thème). Les champs gardent les NOMS des
+    anciens exports : un fichier neuf se relit par une version ancienne, et l'inverse.
+  - **L'import prend ce qu'il trouve** : fichier complet, ancien export de boîtes
+    (objet ou simple tableau d'identifiants), ancien export d'équipes. Ce que le
+    fichier ne contient pas est laissé tel quel — importer des équipes seules n'efface
+    pas les boîtes. Les équipes FUSIONNENT, les préférences ne sont reprises que si
+    elles sont valides, et le thème s'applique aussitôt.
+  - Vérifié : export → 12 champs, réimport → 4 captures, 1 chromatique, thème sombre
+    appliqué, vue chromatique, 1 membre d'équipe ; ancien fichier d'équipes seul →
+    boîtes intactes ; tableau nu → captures reprises ; fichier quelconque → refus.
 - **« Celui du téléphone » est résolu en JavaScript**, pas en CSS : `appliqueTheme()`
   écrit `clair` ou `sombre` dans `data-theme` sur `<html>`, et écoute
   `prefers-color-scheme` pour suivre un changement de réglage du téléphone. La palette
@@ -1897,7 +1908,7 @@ vient des sprites**, pas du décor. Toutes les valeurs sont des variables dans `
   Export/import JSON prévus pour survivre aux réinstallations tous les 7 jours.
 - L'export est un objet `{ caught, boxes }`. Les anciens exports étaient un tableau nu
   d'IDs : l'import accepte **les deux**, ne pas retirer ce repli.
-- **Les deux exports (boîtes, équipes) passent par `remetFichier`.** Sur le web, un
+- **L'export unique passe par `remetFichier`.** Sur le web, un
   lien `download` vers un blob. **Dans l'appli iPhone, ce lien ne fait RIEN** : la vue
   web de Capacitor ignore l'attribut `download`, sans erreur — les boutons Exporter
   y étaient inertes. On écrit donc le fichier dans le cache avec

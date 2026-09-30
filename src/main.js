@@ -1547,10 +1547,8 @@ app.addEventListener('click', (e) => {
   }
   if (act === 'annuler-placement') { state.placing = null; render(); return; }
   // Sauvegarde : les quatre boutons vivent dans la page Réglages.
-  if (act === 'export') { exportProgress(); return; }
-  if (act === 'import') { importProgress(); return; }
-  if (act === 'eq-export') { exportEquipes(); return; }
-  if (act === 'eq-import') { importEquipes(); return; }
+  if (act === 'export') { exportTout(); return; }
+  if (act === 'import') { importTout(); return; }
   if (act === 'box-edit') openBoxSheet();
   if (act === 'mode-set') {
     state.mode = e.target.closest('[data-mode]').dataset.mode;
@@ -2201,33 +2199,101 @@ async function remetFichier(nom, objet) {
   setTimeout(() => URL.revokeObjectURL(a.href), 0);
 }
 
-function exportProgress() {
-  // Format actuel : objet. Les anciens exports étaient un simple tableau d'IDs.
+// UN seul fichier pour tout ce que l'utilisateur a fait : captures normales et
+// chromatiques, réglages et ordre des boîtes, ordre des onglets, les équipes de toutes
+// les versions, et les préférences (jeu, vue, thème). Deux exports séparés obligeaient
+// à penser aux deux — et l'appli est réinstallée tous les 7 jours.
+//
+// Les champs gardent les noms des anciens exports : un fichier produit par cette
+// version se relit donc aussi par les anciennes, et l'inverse reste vrai.
+function exportTout() {
   const payload = {
+    type: 'guiguidex',
+    v: 2,
+    date: new Date().toISOString(),
+    // Boîtes
     caught: [...state.caught],
     caughtShiny: [...state.caughtShiny],
     boxes: state.boxes,
     order: state.order,
+    onglets: state.ordreOnglets,
+    // Équipes
+    equipes: state.equipes,
+    // Préférences
+    jeu: state.jeu,
+    view: state.view,
+    theme: state.theme,
   };
-  remetFichier(`pcbox-${new Date().toISOString().slice(0, 10)}.json`, payload);
+  remetFichier(`guiguidex-${new Date().toISOString().slice(0, 10)}.json`, payload);
 }
-function importProgress() {
+// L'import prend ce qu'il TROUVE : un fichier complet, un ancien export de boîtes
+// (objet ou simple tableau d'IDs) ou un ancien export d'équipes. Chaque partie absente
+// est laissée telle quelle — importer des équipes seules n'efface pas les boîtes.
+function importTout() {
   const input = Object.assign(document.createElement('input'), { type: 'file', accept: '.json' });
   input.onchange = async () => {
     try {
       const data = JSON.parse(await input.files[0].text());
-      // Tableau nu = ancien export ; objet = format actuel.
-      const ids = Array.isArray(data) ? data : data.caught;
-      if (!Array.isArray(ids)) throw new Error('format');
-      // Les clés de formes cosmétiques sont des chaînes : ne pas tout forcer en nombre.
-      state.caught = new Set(ids.map(asKey));
-      state.caughtShiny = new Set((!Array.isArray(data) && data.caughtShiny ? data.caughtShiny : []).map(asKey));
-      state.boxes = (!Array.isArray(data) && data.boxes) || {};
-      state.order = (!Array.isArray(data) && data.order) || {};
-      save();
-      saveBoxes();
-      saveOrder();
+      // Tableau nu = tout premier format, qui ne portait que les captures.
+      const d = Array.isArray(data) ? { caught: data } : data;
+      if (!d || typeof d !== 'object') throw new Error('format');
+      const repris = [];
+
+      if (Array.isArray(d.caught)) {
+        // Les clés de formes cosmétiques sont des chaînes : ne pas tout forcer en nombre.
+        state.caught = new Set(d.caught.map(asKey));
+        state.caughtShiny = new Set((d.caughtShiny || []).map(asKey));
+        state.boxes = d.boxes || {};
+        state.order = d.order || {};
+        save();
+        saveBoxes();
+        saveOrder();
+        repris.push('boîtes');
+      }
+
+      // L'ordre des onglets : repris index par index, comme au chargement.
+      if (Array.isArray(d.onglets)) {
+        const vus = new Set();
+        const liste = d.onglets.filter((i) => Number.isInteger(i) && ONGLETS[i] && !vus.has(i) && vus.add(i));
+        ONGLETS.forEach((_, i) => { if (!vus.has(i)) liste.push(i); });
+        state.ordreOnglets = liste;
+        saveOrdreOnglets();
+      }
+
+      // Les équipes FUSIONNENT : les versions absentes du fichier restent en place.
+      const brut = d.equipes && typeof d.equipes === 'object' && !Array.isArray(d.equipes) ? d.equipes : null;
+      if (brut) {
+        let n = 0;
+        for (const [cle, eq] of Object.entries(brut)) {
+          // Jeu inconnu : on ignore plutôt que de créer une clé fantôme.
+          if (!JEUX.some((v) => v.k === cle) || !Array.isArray(eq)) continue;
+          // Le contenu vient d'un fichier : on le rebâtit à six cases et on écarte
+          // tout ce qui ne ressemble pas à un membre.
+          state.equipes[cle] = Array.from({ length: 6 }, (_, i) => {
+            const m = eq[i];
+            return m && typeof m === 'object' && m.key != null ? m : null;
+          });
+          n++;
+        }
+        if (n) { saveCombat(); repris.push(`${n} équipe${n > 1 ? 's' : ''}`); }
+      }
+
+      // Préférences : chacune n'est reprise que si elle est valide.
+      if (JEUX.some((v) => v.k === d.jeu)) { state.jeu = d.jeu; saveCombat(); }
+      if (d.view === 'normal' || d.view === 'shiny') {
+        state.view = d.view;
+        state.shiny = shinyView();
+        localStorage.setItem(VIEW_KEY, state.view);
+      }
+      if (['clair', 'sombre', 'auto'].includes(d.theme)) {
+        state.theme = d.theme;
+        localStorage.setItem(THEME_KEY, state.theme);
+        appliqueTheme();
+      }
+
+      if (!repris.length) throw new Error('vide');
       render();
+      alert(`Sauvegarde restaurée : ${repris.join(', ')}.`);
     } catch {
       alert("Fichier illisible : il faut un export JSON de cette appli.");
     }
@@ -2371,66 +2437,6 @@ function poolAttaques(key, jeu) {
   return out;
 }
 
-// ---------- Export et import des équipes ----------
-//
-// Distinct de l'export des boîtes : on peut vouloir transmettre une composition
-// sans donner tout son Living Dex, et inversement. Le fichier porte TOUTES les
-// équipes, une par version de jeu.
-
-function exportEquipes() {
-  const payload = { type: 'boitespc-equipes', v: 1, equipes: state.equipes };
-  remetFichier(`equipes-${new Date().toISOString().slice(0, 10)}.json`, payload);
-}
-
-// L'import FUSIONNE : il remplace les équipes des versions présentes dans le
-// fichier et laisse les autres intactes. Importer une seule équipe ne doit pas
-// effacer les onze autres.
-function importEquipes() {
-  const input = Object.assign(document.createElement('input'), { type: 'file', accept: '.json' });
-  input.onchange = async () => {
-    try {
-      const data = JSON.parse(await input.files[0].text());
-      // Format actuel, ou carte nue { jeu: [six cases] } : on reste tolérant.
-      const brut = data && data.equipes ? data.equipes : data;
-      if (!brut || typeof brut !== 'object' || Array.isArray(brut)) throw new Error('format');
-
-      let n = 0;
-      for (const [cle, eq] of Object.entries(brut)) {
-        // Jeu inconnu : on ignore plutôt que de créer une clé fantôme.
-        if (!JEUX.some((v) => v.k === cle) || !Array.isArray(eq)) continue;
-        // Le contenu vient d'un fichier : on le rebâtit à six cases et on écarte
-        // tout ce qui ne ressemble pas à un membre.
-        state.equipes[cle] = Array.from({ length: 6 }, (_, i) => {
-          const m = eq[i];
-          return m && typeof m === 'object' && m.key != null ? m : null;
-        });
-        n++;
-      }
-      if (!n) throw new Error('vide');
-      saveCombat();
-      render();
-      alert(`${n} équipe${n > 1 ? 's importées' : ' importée'}.`);
-    } catch {
-      alert("Fichier illisible : il faut un export d'équipes de cette appli.");
-    }
-  };
-  input.click();
-}
-
-// ---------- Rendu de la vue ----------
-
-// Icônes de la barre du bas. Dessinées ici plutôt que chargées depuis `public/` :
-// trois fichiers de plus pour 2 Ko, alors que l'appli ne fait aucune requête au
-// runtime et que ces icônes sont visibles en permanence, donc jamais candidates au
-// chargement paresseux.
-//
-// Elles sont EN COULEUR, contrairement aux glyphes qu'elles remplacent : elles ne
-// peuvent donc pas virer au rouge quand l'onglet devient actif. C'est le gris qui
-// porte l'état au repos (`filter: grayscale`), exactement comme dans la grille des
-// boîtes où le gris dit « pas capturé ». Le libellé et la pastille, eux, rougissent.
-//
-// Tout est en viewBox 0 0 24 24, sans `width` ni `height` : c'est la feuille de
-// style qui décide de la taille, via `--nav-ico`.
 // ---------- Accueil : la planche de tuiles d'où partent toutes les vues ----------
 //
 // La barre du bas a été RETIRÉE, à la demande : l'application s'ouvre désormais sur une
@@ -2594,16 +2600,10 @@ function renderReglages() {
         </p>
         <div class="reg-lignes">
           <button class="reg-ligne" data-act="export">
-            ${ICO.exporte}<span><b>Exporter mes boîtes</b><small>Captures, boîtes et ordre</small></span>
+            ${ICO.exporte}<span><b>Exporter toutes mes données</b><small>Boîtes, équipes et préférences, en un fichier</small></span>
           </button>
           <button class="reg-ligne" data-act="import">
-            ${ICO.importe}<span><b>Importer des boîtes</b><small>Remplace la progression</small></span>
-          </button>
-          <button class="reg-ligne" data-act="eq-export">
-            ${ICO.exporte}<span><b>Exporter mes équipes</b><small>Toutes versions confondues</small></span>
-          </button>
-          <button class="reg-ligne" data-act="eq-import">
-            ${ICO.importe}<span><b>Importer des équipes</b><small>Fusionne avec les vôtres</small></span>
+            ${ICO.importe}<span><b>Importer une sauvegarde</b><small>Restaure ce que le fichier contient</small></span>
           </button>
         </div>
       </div>

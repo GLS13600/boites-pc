@@ -627,20 +627,10 @@ function render() {
                       aria-pressed="${state.mode === m}">${t}</button>`).join('')}
           </div>
 
-          <div class="rangee">
-            <button class="btn bascule ${shinyView() ? 'on' : ''}" data-act="view"
-                    aria-pressed="${shinyView()}" title="Basculer entre Pokédex normal et chromatique">
-              <b>&#10022;</b><span>${shinyView() ? 'Chromatique' : 'Normal'}</span>
-            </button>
-            <div class="paire" role="group" aria-label="Sauvegarde">
-              <button class="btn discret" data-act="export" title="Enregistrer une sauvegarde">
-                ${ICO.exporte}<span>Exporter</span>
-              </button>
-              <button class="btn discret" data-act="import" title="Charger une sauvegarde">
-                ${ICO.importe}<span>Importer</span>
-              </button>
-            </div>
-          </div>
+          <button class="btn bascule ${shinyView() ? 'on' : ''}" data-act="view"
+                  aria-pressed="${shinyView()}" title="Basculer entre Pokédex normal et chromatique">
+            <b>&#10022;</b><span>${shinyView() ? 'Chromatique' : 'Normal'}</span>
+          </button>
         </div>
         ${state.placing !== null ? `<div class="hint placer">
           Touchez l&rsquo;emplacement où placer <b>${esc(monName(state.placing))}</b> — vous pouvez changer de boîte ou de génération.
@@ -767,7 +757,10 @@ function renderSlot(key, index) {
 const backdrop = h(`<div class="backdrop"></div>`);
 const sheet = h(`<aside class="sheet" role="dialog" aria-modal="true"><div class="sheet-grip"></div><div class="sheet-body"></div></aside>`);
 document.body.append(backdrop, sheet);
-backdrop.addEventListener('click', () => { closeSheet(); closeBoxSheet(); closeAddSheet(); });
+// Toucher le fond assombri referme le panneau ouvert, quel qu'il soit. Le panneau de
+// la boîte de combat y échappait : il affichait bien le fond, mais seul un glissement
+// vers le bas le fermait — on tapait à côté sans effet.
+backdrop.addEventListener('click', () => { closeSheet(); closeBoxSheet(); closeAddSheet(); closeBattleSheet(); });
 
 // Stats de base en barres.
 //
@@ -1553,6 +1546,11 @@ app.addEventListener('click', (e) => {
     return;
   }
   if (act === 'annuler-placement') { state.placing = null; render(); return; }
+  // Sauvegarde : les quatre boutons vivent dans la page Réglages.
+  if (act === 'export') { exportProgress(); return; }
+  if (act === 'import') { importProgress(); return; }
+  if (act === 'eq-export') { exportEquipes(); return; }
+  if (act === 'eq-import') { importEquipes(); return; }
   if (act === 'box-edit') openBoxSheet();
   if (act === 'mode-set') {
     state.mode = e.target.closest('[data-mode]').dataset.mode;
@@ -1566,8 +1564,6 @@ app.addEventListener('click', (e) => {
     localStorage.setItem(VIEW_KEY, state.view);
     render();
   }
-  if (act === 'export') exportProgress();
-  if (act === 'import') importProgress();
 });
 
 // ---------- Appui long : saisir puis glisser ----------
@@ -2590,6 +2586,28 @@ function renderReglages() {
         </div>
       </div>
 
+      <div class="reg-bloc">
+        <h3>Sauvegarde</h3>
+        <p class="reg-aide">
+          L'application est réinstallée tous les 7 jours : sans fichier exporté, la
+          progression serait perdue. Pensez à exporter de temps en temps.
+        </p>
+        <div class="reg-lignes">
+          <button class="reg-ligne" data-act="export">
+            ${ICO.exporte}<span><b>Exporter mes boîtes</b><small>Captures, boîtes et ordre</small></span>
+          </button>
+          <button class="reg-ligne" data-act="import">
+            ${ICO.importe}<span><b>Importer des boîtes</b><small>Remplace la progression</small></span>
+          </button>
+          <button class="reg-ligne" data-act="eq-export">
+            ${ICO.exporte}<span><b>Exporter mes équipes</b><small>Toutes versions confondues</small></span>
+          </button>
+          <button class="reg-ligne" data-act="eq-import">
+            ${ICO.importe}<span><b>Importer des équipes</b><small>Fusionne avec les vôtres</small></span>
+          </button>
+        </div>
+      </div>
+
       <!-- D'autres réglages viendront ici : un bloc par sujet, sur le même gabarit. -->
       <div class="reg-bloc vide">
         <h3>À venir</h3>
@@ -2693,6 +2711,7 @@ function renderCombat() {
   const pleines = equipe().filter(Boolean).length;
 
   poser(
+    entete('Équipes', `${pleines} Pokémon sur 6 · ${jeu.nom}`),
     h(`
       <section class="combat">
         <div class="combat-head">
@@ -2700,12 +2719,6 @@ function renderCombat() {
             <small>Version du jeu</small>
             <b>${esc(jeu.nom)}</b>
           </button>
-          <div class="eq-io">
-            <button data-act="eq-export" title="Exporter toutes mes équipes"
-                    aria-label="Exporter toutes mes équipes">${ICO.exporte}</button>
-            <button data-act="eq-import" title="Importer des équipes"
-                    aria-label="Importer des équipes">${ICO.importe}</button>
-          </div>
           <div class="combat-compte"><b>${pleines}</b>/6</div>
         </div>
 
@@ -3552,7 +3565,19 @@ function htmlMenuAttaques() {
   f.gen ??= genDuJeu();
   f.q = state.bs.q || '';
   const tete = `<h2 class="bs-title">Attaques</h2>${ongletsGenAttaques(f.gen)}`;
-  if (!LEARN_VG) return `${tete}<p class="paper-note">Chargement des attaques par version…</p>`;
+  // Le seul chargement asynchrone de l'appli (les movesets par jeu, 5,7 Mo) : on
+  // montre la forme de la liste plutôt qu'une phrase, la page ne saute pas à l'arrivée.
+  if (!LEARN_VG) {
+    return `${tete}
+      <p class="paper-note">Chargement des attaques par version…</p>
+      <ul class="mlist squelette" aria-hidden="true">
+        ${Array.from({ length: 8 }, () => `
+          <li class="mrow"><span class="move">
+            <span class="sq sq-badge"></span>
+            <span class="mmain"><span class="sq sq-titre"></span><span class="sq sq-meta"></span></span>
+          </span></li>`).join('')}
+      </ul>`;
+  }
   const { index, jeux } = indexAttaques(f.gen);
   const q = fold(f.q);
   const toutes = [...index.keys()].map((id) => ({ id, v: attaqueEnGen(id, f.gen), qui: index.get(id).size })).filter((x) => x.v);
@@ -3975,8 +4000,6 @@ app.addEventListener('click', (e) => {
   if (state.vue !== 'combat') return;
 
   if (e.target.closest('[data-act="choix-jeu"]')) { openBattleSheet('version'); return; }
-  if (e.target.closest('[data-act="eq-export"]')) { exportEquipes(); return; }
-  if (e.target.closest('[data-act="eq-import"]')) { importEquipes(); return; }
   if (e.target.closest('[data-act="menu-attaques"]')) { ouvreMenuAttaques(); return; }
 
   const eq = e.target.closest('[data-eq]');

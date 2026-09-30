@@ -972,8 +972,10 @@ la fonction ne concerne que la gestion des boîtes.
   du jeu courant. Ne pas retirer cette migration avant un moment.
 - Ne jamais lire `state.equipes` directement dans le rendu : passer par `equipe()`,
   sinon on afficherait l'équipe d'un autre jeu.
-- **Export et import propres aux équipes**, dans le bandeau entre la version et le
-  compteur. Distincts de ceux des boîtes : on peut vouloir transmettre une composition
+- **Export et import propres aux équipes**, dans la page Réglages depuis le
+  30/09/2026 — ils étaient dans le bandeau entre la version et le compteur, et les
+  quatre commandes de sauvegarde sont désormais réunies au même endroit. Distincts de
+  ceux des boîtes : on peut vouloir transmettre une composition
   sans donner tout son Living Dex, et inversement. Le fichier porte TOUTES les équipes,
   une par version.
 - **L'import fusionne**, il ne remplace pas tout : il écrase les équipes des versions
@@ -1567,6 +1569,12 @@ en pointillés qui tient la place et le dit. En ajouter un ne demande que le mê
 
 - **Le thème se choisit parmi trois** : clair, sombre, ou celui du téléphone
   (`pcbox.theme`, **clair par défaut** — ne rien changer à qui n'y touche pas).
+- **Les quatre commandes de sauvegarde vivent ici** (exporter/importer les boîtes,
+  exporter/importer les équipes), en lignes de 52 px au gabarit des Réglages d'iOS.
+  Demandé le 30/09/2026 : d'abord « enlever les boutons », puis « déplace-les dans
+  Réglages » — l'export est la SEULE sauvegarde d'une appli réinstallée tous les
+  7 jours, et le bloc le rappelle explicitement. Les actions (`data-act` export,
+  import, eq-export, eq-import) sont routées par l'écoute générale de `app`.
 - **« Celui du téléphone » est résolu en JavaScript**, pas en CSS : `appliqueTheme()`
   écrit `clair` ou `sombre` dans `data-theme` sur `<html>`, et écoute
   `prefers-color-scheme` pour suivre un changement de réglage du téléphone. La palette
@@ -1708,6 +1716,16 @@ Aucune classe lue par le JS n'a été renommée (`.slot`, `.gen-tab`, `.grid`, `
 - **Fiche** : coins à 28 px, ouverture en ressort, fond assombri et flouté, portrait de
   124 px sur un halo, badges de type aux couleurs officielles, et lieux de capture en
   listes « inset grouped » d'iOS (titre de groupe hors de la carte, lignes de 44 px).
+- **Page des attaques** : grand titre, pastilles de génération, liste en carte « inset
+  grouped » (lignes de 44 px, filet après l'icône), filtres de 40 px, et un **squelette
+  de chargement** pendant que `learnsets-vg.json` arrive — le seul écran de l'appli qui
+  attende un fichier, donc le seul qui en ait besoin.
+- **Page des équipes** : grand titre, carte de version de 56 px, compteur en jeton,
+  table des types repliable au gabarit d'une ligne de Réglages. L'écran d'équipe de
+  Noir 2 / Blanc 2 n'est PAS touché : c'est un décor voulu.
+- **Un seul comportement a changé** : toucher le fond assombri referme aussi le panneau
+  de la boîte de combat. Il affichait le fond mais seul un glissement vers le bas le
+  fermait — on tapait à côté sans effet.
 - **Icônes utilitaires** (`ICO` dans main.js) : chevrons, plus, moins, export, import,
   toutes sur une grille de 24 au trait de 1,7 px. Inline, pas de librairie — l'appli ne
   charge rien à l'exécution. Les dessins des tuiles de l'accueil ne sont pas touchés.

@@ -402,47 +402,58 @@ img { display: block; }
   padding: 1px 8px;
 }
 
-.mlist { list-style: none; margin: 0; padding: 0 0 4px; }
-.mrow + .mrow { border-top: 1px solid var(--rule-soft); }
+.mlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--r-md);
+  background: var(--panel);
+  overflow: hidden;
+}
+/* Le filet ne touche pas le bord gauche : c'est le détail qui fait la liste d'iOS. */
+.mrow + .mrow .move { border-top: 1px solid var(--rule-soft); }
 
 .move {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
+  gap: var(--e-3);
+  min-height: 44px;
+  padding: var(--e-2) var(--e-4);
   background: none;
   border: 0;
   text-align: left;
   cursor: pointer;
   color: inherit;
   font: inherit;
+  transition: background var(--d-court) ease;
 }
-.move:active { background: var(--slot); }
+.move:active { background: var(--rule-soft); }
 
 /* Niveau, numéro de CT/CS ou mode : même gabarit, pour que les noms s'alignent. */
 .mbadge {
   flex: 0 0 auto;
-  min-width: 48px;
+  min-width: 52px;
   text-align: center;
-  font-size: 11px;
+  font-size: var(--t-mini);
   font-weight: 700;
-  background: var(--slot);
+  background: var(--panel-2);
   border: 1px solid var(--rule-soft);
-  border-radius: 7px;
-  padding: 3px 5px;
+  border-radius: var(--r-xs);
+  padding: var(--e-1) 5px;
   font-variant-numeric: tabular-nums;
 }
 .mmain { flex: 1 1 auto; min-width: 0; }
 .mtitre { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-.mname { font-size: 14px; font-weight: 600; }
+.mname { font-size: var(--t-corps); font-weight: 600; }
 .type.mini { font-size: 10px; padding: 1px 7px; }
 .mmeta {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 10px;
-  margin-top: 2px;
-  font-size: 11px;
+  gap: 2px var(--e-3);
+  margin-top: 3px;
+  font-size: var(--t-petit);
   color: var(--muted);
 }
 .mmeta b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -546,6 +557,27 @@ img { display: block; }
 .reg-bloc h3 { margin: 0 0 2px; font-size: 15px; font-weight: 700; }
 .reg-aide { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
 .reg-bloc.vide { border-style: dashed; background: none; }
+
+/* Lignes d'action, au gabarit des Réglages d'iOS : 52 px, icône à gauche, libellé et
+   précision empilés, filet qui part après l'icône. */
+.reg-lignes { display: grid; }
+.reg-ligne {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  align-items: center;
+  gap: var(--e-3);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--e-2) 0;
+  text-align: left;
+  color: var(--ink);
+  transition: background var(--d-court) ease, transform var(--d-court) var(--c-ressort);
+}
+.reg-ligne + .reg-ligne { border-top: 1px solid var(--rule-soft); }
+.reg-ligne .ico { color: var(--ball); }
+.reg-ligne b { display: block; font-size: var(--t-corps); font-weight: 600; }
+.reg-ligne small { display: block; margin-top: 2px; color: var(--muted); font-size: var(--t-petit); }
+.reg-ligne:active { transform: scale(0.99); background: var(--rule-soft); }
 .reg-bloc.vide .reg-aide { margin: 0; }
 
 /* Même rail que le choix du mode dans les boîtes : trois tiers égaux, l'actif en rouge. */
@@ -598,49 +630,42 @@ img { display: block; }
    10px + safe-top en padding) : sans ça le bandeau passait sous l'îlot dynamique
    de l'iPhone, la vue combat n'ayant aucune barre supérieure pour l'en écarter. */
 .combat {
-  margin: 12px;
-  margin-top: calc(10px + var(--safe-top));
+  margin: var(--e-3);
+  margin-top: var(--e-2);
 }
-.combat-head { display: flex; align-items: stretch; gap: 10px; margin-bottom: 12px; }
+.combat-head { display: flex; align-items: stretch; gap: var(--e-2); margin-bottom: var(--e-4); }
+/* La version choisie : une carte, comme une ligne de Réglages qui s'ouvre. */
 .jeu-btn {
   flex: 1;
   text-align: left;
-  padding: 8px 14px;
-  border: 1px solid var(--rule);
-  border-radius: 12px;
+  min-height: 56px;
+  padding: var(--e-2) var(--e-4);
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--r-md);
   background: var(--panel);
+  box-shadow: var(--ombre-1);
   color: var(--ink);
   font: inherit;
   cursor: pointer;
+  transition: transform var(--d-court) var(--c-ressort), background var(--d-court) ease;
 }
-.jeu-btn small { display: block; font-size: 11px; color: var(--muted); }
-.jeu-btn b { font-size: 15px; }
-/* Export et import des équipes, entre la version et le compteur. */
-.eq-io { display: flex; gap: 5px; }
-.eq-io button {
-  width: 34px;
-  border: 1px solid var(--rule);
-  border-radius: 12px;
-  background: var(--panel);
-  color: var(--muted);
-  font: inherit;
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-}
-.eq-io button:active { background: var(--slot); color: var(--ink); }
+.jeu-btn:active { transform: scale(0.98); background: var(--panel-2); }
+.jeu-btn small { display: block; font-size: var(--t-mini); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.jeu-btn b { font-size: var(--t-tete); }
 
+/* Compteur d'équipe : un jeton, aligné sur la carte de version. */
 .combat-compte {
   display: grid;
   place-items: center;
-  min-width: 58px;
-  border-radius: 12px;
-  background: var(--slot);
-  border: 1px solid var(--rule);
+  min-width: 64px;
+  border-radius: var(--r-md);
+  background: var(--panel);
+  border: 1px solid var(--rule-soft);
+  box-shadow: var(--ombre-1);
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--t-petit);
 }
-.combat-compte b { color: var(--ink); font-size: 17px; }
+.combat-compte b { display: block; color: var(--ink); font-size: 22px; line-height: 1.1; }
 
 /* ---- Menu des attaques : bouton d'entrée, filtres, fiche d'une attaque ---- */
 .menu-atq {
@@ -674,21 +699,53 @@ img { display: block; }
 /* Trois listes déroulantes côte à côte ; 16 px, sans quoi iOS zoome à l'ouverture. */
 /* La page des attaques : même contenu que l'ancien panneau, mêmes marges, mais dans
    la vue — les attaques sont une page à part, séparée de la boîte de combat. */
-.atq-page { display: block; padding: 4px 18px calc(22px + var(--safe-bottom)); }
+.atq-page { display: block; padding: var(--e-1) var(--e-4) calc(var(--e-6) + var(--safe-bottom)); }
+/* Le titre de la page reprend le grand titre des autres vues. */
+.atq-page > .bs-title { font-size: var(--t-grand); letter-spacing: -0.6px; margin: var(--e-2) 0 var(--e-3); }
 
-.atq-filtres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: -8px 0 6px; }
+.atq-filtres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--e-2); margin: calc(-1 * var(--e-2)) 0 var(--e-3); }
 .atq-filtres select {
   width: 100%;
   min-width: 0;
-  padding: 7px 6px;
+  min-height: 40px;
+  padding: var(--e-2) 6px;
   border: 1px solid var(--rule);
-  border-radius: 10px;
+  border-radius: var(--r-sm);
   background: var(--panel);
   color: var(--ink);
-  font-size: 16px;
+  font-size: 16px; /* < 16 px déclencherait un zoom automatique sur iOS */
 }
-.atq-compte { margin: 0 0 6px; font-size: 12px; color: var(--muted); min-height: 1px; }
-.atq-retour { display: block; margin: 0 0 10px; padding: 0; border: 0; background: none; color: var(--ball); font-size: 14px; font-weight: 600; }
+/* Squelette de chargement : des blocs au gabarit des vraies lignes, qui respirent
+   doucement. Il ne remplace rien d'autre — c'est le seul écran de l'appli qui attende
+   un fichier. */
+.squelette .move { pointer-events: none; }
+.sq {
+  display: block;
+  border-radius: var(--r-xs);
+  background: var(--rule-soft);
+  animation: sq-respire 1.4s ease-in-out infinite;
+}
+.sq-badge { width: 52px; height: 22px; flex: 0 0 auto; }
+.sq-titre { width: 60%; height: 14px; }
+.sq-meta { width: 85%; height: 10px; margin-top: 7px; }
+@keyframes sq-respire { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .sq { animation: none; } }
+
+.atq-compte { margin: 0 0 var(--e-2); font-size: var(--t-petit); color: var(--muted); min-height: 1px; }
+/* Retour à la liste : un chevron et un libellé, à la façon d'iOS. */
+.atq-retour {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-1);
+  min-height: 44px;
+  margin: 0 0 var(--e-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ball);
+  font-size: var(--t-tete);
+  font-weight: 600;
+}
 .atq-titre { margin-bottom: 6px; }
 .atq-types-ligne { display: flex; align-items: center; gap: 8px; }
 .atq-fiche { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 12px 0 10px; }
@@ -1065,15 +1122,21 @@ img { display: block; }
    la page. La première colonne reste collée : sans elle on perd de vue le type
    attaquant dès qu'on fait glisser la table. */
 .tt {
-  margin-top: 14px;
-  border: 1px solid var(--rule);
-  border-radius: 12px;
+  margin-top: var(--e-4);
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--r-md);
   background: var(--panel);
+  box-shadow: var(--ombre-1);
   overflow: hidden;
 }
+/* Une ligne repliable au gabarit des Réglages : 44 px, libellé à gauche. */
 .tt summary {
-  padding: 11px 14px;
-  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  min-height: 44px;
+  padding: var(--e-2) var(--e-4);
+  font-size: var(--t-corps);
   font-weight: 700;
   cursor: pointer;
 }
@@ -1609,12 +1672,14 @@ img { display: block; }
 }
 
 .hint {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border-radius: 10px;
+  margin-top: var(--e-3);
+  padding: var(--e-3) var(--e-4);
+  border-radius: var(--r-md);
   background: var(--panel);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-soft);
+  box-shadow: var(--ombre-1);
   color: var(--ink);
+  font-size: var(--t-corps);
   line-height: 1.45;
 }
 .hint code { background: var(--slot); border: 1px solid var(--rule); padding: 1px 5px; border-radius: 4px; }
@@ -1794,13 +1859,14 @@ img { display: block; }
 .bs-field span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
 .bs-name {
   width: 100%;
-  padding: 11px 12px;
+  min-height: 44px;
+  padding: var(--e-3);
   font: inherit;
   font-size: 16px; /* < 16px déclencherait un zoom automatique sur iOS */
   color: var(--ink);
-  background: var(--slot);
+  background: var(--panel-2);
   border: 1px solid var(--rule);
-  border-radius: 10px;
+  border-radius: var(--r-sm);
 }
 .bs-name:focus { outline: 2px solid var(--ball); outline-offset: -1px; }
 
@@ -1816,18 +1882,22 @@ img { display: block; }
 .paper-gens::-webkit-scrollbar { display: none; }
 .paper-gen {
   flex: 0 0 auto;
-  padding: 7px 11px;
-  border-radius: 9px;
-  border: 1px solid var(--rule);
-  background: var(--slot);
+  min-height: 44px;
+  padding: var(--e-2) var(--e-3);
+  border-radius: var(--r-rond);
+  border: 1px solid var(--rule-soft);
+  background: var(--panel);
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--t-petit);
   font-weight: 600;
   line-height: 1.15;
   text-align: center;
+  transition: transform var(--d-court) var(--c-ressort), background var(--d-court) ease,
+              color var(--d-court) ease;
 }
-.paper-gen small { display: block; font-size: 10px; font-weight: 500; opacity: 0.8; }
-.paper-gen.on { background: var(--ball); border-color: var(--ball); color: #fff; }
+.paper-gen small { display: block; font-size: var(--t-mini); font-weight: 500; opacity: 0.8; }
+.paper-gen:active { transform: scale(0.96); }
+.paper-gen.on { background: var(--ball-degrade); border-color: transparent; color: var(--sur-ball); box-shadow: var(--ombre-1); }
 
 /* Étape 2 : les fonds de cette génération. */
 .papers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }

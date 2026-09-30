@@ -531,6 +531,31 @@ reconstruit la vue à chaque rendu, donc **reparente l'élément `<video>`**, et
 met alors la lecture en pause sans prévenir. `demarre()` est rappelé à chaque rendu et
 passe désormais par `joueEtVeille()`, qui relance.
 
+**Mais ce n'était PAS cette panne-là.** Retour du 30/09 : « ça scan un Pokémon et ça
+marche, mais l'affichage est noir ». Si la reconnaissance aboutit, la vidéo DÉCODE — la
+capture lit ses pixels — et `videoWidth` est bon : le garde-fou ci-dessus ne se
+déclenche donc pas, à juste titre. C'est la COUCHE VIDÉO que WebKit ne peint pas, et
+rien d'opaque ne la couvre une fois le Pokédex ouvert. Impossible à reproduire hors
+iPhone.
+
+D'où **un panneau de diagnostic ouvert par `?diag` dans l'URL** (`poseDiagnostic`),
+qui affiche l'état réel de l'élément — dimensions, pause, readyState, rectangle,
+opacité, visibilité, z-index, object-fit, couleur moyenne d'une image capturée, état
+des pistes, classes de `.scan` — et propose les trois parades les plus probables, à
+essayer en direct sur le téléphone :
+
+1. **object-fit** : WebKit a longtemps mal composé `object-fit` sur une vidéo de
+   MediaStream ;
+2. **couche** : forcer la vidéo dans sa propre couche (`z-index`, `translateZ(0)`) et
+   rendre le fond de `.scan` transparent, au cas où la vidéo serait composée DERRIÈRE ;
+3. **toile** : peindre la vidéo nous-mêmes dans un `<canvas>`. `drawImage` marche —
+   c'est déjà lui qui nourrit le classifieur —, donc une toile affiche forcément
+   quelque chose. C'est la vraie solution si les deux autres échouent.
+
+Sans le paramètre, rien de tout cela n'est construit. Vérifié dans l'aperçu : panneau
+et boutons absents sur l'URL nue, les trois parades réversibles, et la toile peint bien
+les pixels de la caméra.
+
 Vérifié dans l'aperçu par une caméra factice (`captureStream(0)`, donc aucune image) :
 message explicite au bout de 2,5 s ; piste arrêtée → « une autre application utilise la
 caméra » ; caméra qui marche → aucun message, `videoWidth` 640 et lecture en cours.

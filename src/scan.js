@@ -818,5 +818,97 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
     majMode();
   }
 
+  // ------------------------------------------------------------ diagnostic vidéo
+  //
+  // « Le scan reconnaît un Pokémon mais l'écran est noir » : la vidéo DÉCODE (la
+  // capture lit ses pixels) et WebKit ne la PEINT pas. Rien d'opaque ne la couvre une
+  // fois le Pokédex ouvert, on voit donc le fond de `.scan`.
+  //
+  // Impossible à reproduire hors iPhone : ce panneau, ouvert par « ?diag » dans
+  // l'URL, montre l'état réel de l'élément et propose les trois parades les plus
+  // probables, à essayer en direct. Rien ne le charge sans ce paramètre.
+  if (new URLSearchParams(location.search).has('diag')) poseDiagnostic();
+
+  function poseDiagnostic() {
+    const style = 'position:absolute;left:6px;right:6px;top:22%;z-index:9;padding:8px;'
+      + 'border-radius:8px;background:rgba(0,0,0,.82);color:#9fe;font:600 11px/1.45 ui-monospace,Menlo,monospace;'
+      + 'white-space:pre-wrap;pointer-events:auto';
+    const boite = html(`<div style="${style}"></div>`);
+    const txt = html('<div></div>');
+    const rangee = html('<div style="display:flex;gap:6px;margin-top:8px"></div>');
+    const bouton = (nom) => {
+      const b = html(`<button type="button" style="flex:1;padding:7px 4px;border:0;border-radius:6px;`
+        + `background:#1d5f74;color:#dff;font:700 11px ui-monospace,Menlo,monospace">${nom}</button>`);
+      rangee.append(b);
+      return b;
+    };
+
+    // 1. object-fit sur une vidéo de MediaStream : WebKit l'a longtemps mal composé.
+    bouton('object-fit').addEventListener('click', () => {
+      video.style.objectFit = video.style.objectFit === 'fill' ? '' : 'fill';
+    });
+    // 2. Forcer la vidéo dans sa propre couche, au-dessus du fond de `.scan`.
+    bouton('couche').addEventListener('click', () => {
+      const on = video.style.zIndex === '1';
+      video.style.zIndex = on ? '' : '1';
+      video.style.transform = on ? '' : 'translateZ(0)';
+      el.style.background = on ? '#0d0f12' : 'transparent';
+    });
+    // 3. Dernier recours, et vraie solution si les deux autres échouent : on PEINT
+    //    la vidéo nous-mêmes. `drawImage` marche — c'est déjà lui qui nourrit le
+    //    classifieur —, donc une toile affiche forcément quelque chose.
+    let toile = null, boucleToile = 0;
+    bouton('toile').addEventListener('click', () => {
+      if (toile) { cancelAnimationFrame(boucleToile); toile.remove(); toile = null; return; }
+      toile = html('<canvas style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></canvas>');
+      el.insertBefore(toile, video.nextSibling);
+      const c = toile.getContext('2d');
+      const peint = () => {
+        if (!toile) return;
+        if (video.videoWidth) {
+          if (toile.width !== video.videoWidth) { toile.width = video.videoWidth; toile.height = video.videoHeight; }
+          c.drawImage(video, 0, 0);
+        }
+        boucleToile = requestAnimationFrame(peint);
+      };
+      peint();
+    });
+
+    // Couleur moyenne d'une image capturée : elle prouve que le décodage fonctionne,
+    // indépendamment de ce qui est peint à l'écran.
+    const sonde = document.createElement('canvas');
+    sonde.width = 8; sonde.height = 8;
+    const sc = sonde.getContext('2d', { willReadFrequently: true });
+    const moyenne = () => {
+      if (!video.videoWidth) return 'pas d’image';
+      try {
+        sc.drawImage(video, 0, 0, 8, 8);
+        const d = sc.getImageData(0, 0, 8, 8).data;
+        let r = 0, v = 0, b = 0;
+        for (let i = 0; i < d.length; i += 4) { r += d[i]; v += d[i + 1]; b += d[i + 2]; }
+        const n = d.length / 4;
+        return `rgb(${Math.round(r / n)},${Math.round(v / n)},${Math.round(b / n)})`;
+      } catch (e) { return 'lecture refusée : ' + (e?.name ?? e); }
+    };
+
+    setInterval(() => {
+      if (!el.isConnected) return;
+      const r = video.getBoundingClientRect();
+      const s = getComputedStyle(video);
+      txt.textContent = [
+        `video   ${video.videoWidth}x${video.videoHeight}  pause:${video.paused}  ready:${video.readyState}`,
+        `rect    ${Math.round(r.width)}x${Math.round(r.height)} @ ${Math.round(r.left)},${Math.round(r.top)}`,
+        `style   op:${s.opacity} vis:${s.visibility} disp:${s.display} z:${s.zIndex}`,
+        `fit     ${s.objectFit}   transform:${s.transform === 'none' ? 'none' : 'oui'}`,
+        `pixels  ${moyenne()}`,
+        `flux    ${flux ? flux.getVideoTracks().map((p) => `${p.readyState}/${p.muted ? 'muet' : 'ok'}`).join(' ') : 'aucun'}`,
+        `classes ${el.className || '(aucune)'}`,
+      ].join('\n');
+    }, 500);
+
+    boite.append(txt, rangee);
+    el.append(boite);
+  }
+
   return { element: el, demarre, arrete, retraduit };
 }

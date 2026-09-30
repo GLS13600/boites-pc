@@ -121,6 +121,7 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
   const el = html(`
     <section class="scan" aria-label="${t('scannerPokemon')}">
       <video class="scan-video" playsinline muted autoplay></video>
+      <canvas class="scan-toile" aria-hidden="true"></canvas>
       <div class="scan-ecran" aria-hidden="true"></div>
       <div class="scan-zone" hidden><i></i><i></i><i></i><i></i></div>
       <div class="scan-pistes" aria-live="polite"></div>
@@ -284,6 +285,49 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
     minuteOuverture = setTimeout(() => el.classList.remove('ouvre'), 2000);
   }
 
+  // ------------------------------------------------------------ aperçu peint à la main
+  //
+  // Sur iPhone, WebKit DÉCODE le flux mais ne PEINT pas l'élément `<video>` : la vue
+  // restait vide alors que le scan reconnaissait les Pokémon — donc que `drawImage`
+  // rendait les bons pixels. Mesuré en retirant le fond sombre de `.scan` : l'écran
+  // est devenu blanc, celui du papier de l'appli, et non la caméra. Ce n'était donc
+  // ni un calque au-dessus, ni le fond, mais bien l'élément lui-même.
+  //
+  // On peint donc l'aperçu nous-mêmes, avec le `drawImage` dont on sait qu'il marche.
+  // La toile est posée JUSTE AU-DESSUS de la vidéo, à la même géométrie et au même
+  // `object-fit` : elle la recouvre au pixel près, et tout le calcul de zone continue
+  // de porter sur la vidéo, inchangé. La vidéo reste en place et visible pour le
+  // moteur — la masquer risquerait d'arrêter le décodage sur iOS.
+  const apercu = el.querySelector('.scan-toile');
+  const ctxApercu = apercu.getContext('2d', { alpha: false });
+  let boucleApercu = 0, derniereImage = 0;
+
+  // ~30 images par seconde suffisent pour un aperçu et laissent la place au détecteur,
+  // qui tourne déjà en boucle sur le même appareil.
+  const PAS_APERCU = 33;
+
+  function peintApercu(t = 0) {
+    boucleApercu = requestAnimationFrame(peintApercu);
+    if (!actif || !flux || document.hidden) return;
+    if (t - derniereImage < PAS_APERCU) return;
+    derniereImage = t;
+    const l = video.videoWidth, h = video.videoHeight;
+    if (!l || !h) return;
+    if (apercu.width !== l) { apercu.width = l; apercu.height = h; }
+    ctxApercu.drawImage(video, 0, 0);
+  }
+
+  function demarreApercu() {
+    if (!boucleApercu) boucleApercu = requestAnimationFrame(peintApercu);
+  }
+  function arreteApercu() {
+    cancelAnimationFrame(boucleApercu);
+    boucleApercu = 0;
+    // On rend la toile transparente : sans ça, la dernière image resterait figée à
+    // l'écran au retour dans la vue, avant que la caméra ne reparte.
+    if (apercu.width > 1) { apercu.width = 1; apercu.height = 1; }
+  }
+
   // Lance la lecture et SURVEILLE qu'une image arrive vraiment.
   //
   // Le flux peut être accordé et la vue rester noire : `.scan` a un fond sombre, donc
@@ -322,7 +366,7 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
     majZone();
     prepareModele().catch(() => {});
     // `flux` déjà là : on revient d'un rendu, qui a reparenté l'élément vidéo.
-    if (flux) { joueEtVeille(); suis(); ia.demarre(); return; }
+    if (flux) { joueEtVeille(); demarreApercu(); suis(); ia.demarre(); return; }
     // Chaque rendu rappelle demarre() : sans ce verrou, un rendu survenu pendant la
     // demande d'autorisation ouvrirait un second flux, jamais refermé.
     if (ouverture) return;
@@ -345,6 +389,7 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
       video.srcObject = f;
       // Sans attendre play() : sa promesse peut tarder, et le message resterait affiché.
       joueEtVeille();
+      demarreApercu();
       montreEtat(null);
       majZone();
       suis();
@@ -358,6 +403,7 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
 
   function coupeFlux() {
     clearTimeout(veilleImage);
+    arreteApercu();
     if (!flux) return;
     flux.getTracks().forEach((t) => t.stop());
     flux = null;
@@ -854,25 +900,8 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
       video.style.transform = on ? '' : 'translateZ(0)';
       el.style.background = on ? '#0d0f12' : 'transparent';
     });
-    // 3. Dernier recours, et vraie solution si les deux autres échouent : on PEINT
-    //    la vidéo nous-mêmes. `drawImage` marche — c'est déjà lui qui nourrit le
-    //    classifieur —, donc une toile affiche forcément quelque chose.
-    let toile = null, boucleToile = 0;
-    bouton('toile').addEventListener('click', () => {
-      if (toile) { cancelAnimationFrame(boucleToile); toile.remove(); toile = null; return; }
-      toile = html('<canvas style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></canvas>');
-      el.insertBefore(toile, video.nextSibling);
-      const c = toile.getContext('2d');
-      const peint = () => {
-        if (!toile) return;
-        if (video.videoWidth) {
-          if (toile.width !== video.videoWidth) { toile.width = video.videoWidth; toile.height = video.videoHeight; }
-          c.drawImage(video, 0, 0);
-        }
-        boucleToile = requestAnimationFrame(peint);
-      };
-      peint();
-    });
+    // Le troisième bouton — peindre la vidéo dans une toile — a été retiré : c'était
+    // la bonne parade, elle est désormais permanente (voir « aperçu peint à la main »).
 
     // Couleur moyenne d'une image capturée : elle prouve que le décodage fonctionne,
     // indépendamment de ce qui est peint à l'écran.

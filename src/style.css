@@ -2382,7 +2382,13 @@ img {
   -webkit-user-select: none;
   user-select: none;
 }
-.scan-video {
+/* L'aperçu est PEINT À LA MAIN dans `.scan-toile`, posée juste au-dessus de la vidéo.
+   Sur iPhone, WebKit décode le flux — le scan reconnaît les Pokémon, donc `drawImage`
+   rend les bons pixels — mais ne peint pas l'élément `<video>` : l'écran restait vide.
+   La vidéo garde exactement la même géométrie et le même `object-fit`, si bien que la
+   toile la recouvre au pixel près et que tout le calcul de zone reste valable. */
+.scan-video,
+.scan-toile {
   position: absolute;
   inset: 0;
   width: 100%;

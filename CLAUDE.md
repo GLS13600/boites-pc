@@ -507,6 +507,43 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
   pour l'effacer : sa promesse peut tarder, et « Ouverture de la caméra… » restait
   affiché par-dessus l'image.
 
+### L'aperçu est PEINT À LA MAIN (30/09/2026)
+
+**Sur iPhone, WebKit décode le flux mais ne peint pas l'élément `<video>`.** Constaté
+puis isolé en trois temps : le scan reconnaissait les Pokémon — donc `drawImage`
+rendait les bons pixels et `videoWidth` était correct — alors que l'écran restait
+noir ; en retirant le fond sombre de `.scan`, l'écran est devenu BLANC, celui du
+papier de l'appli. Ce n'était donc ni un calque au-dessus, ni le fond : l'élément
+lui-même n'est pas rendu. L'utilisateur scannait à l'aveugle.
+
+`.scan-toile` est une toile posée JUSTE AU-DESSUS de la vidéo, à la même géométrie
+et au même `object-fit: cover` : elle la recouvre au pixel près, et **tout le calcul
+de zone continue de porter sur la vidéo**, inchangé (`zoneDansVideo`, la capture, le
+détecteur).
+
+- La vidéo **reste en place et visible pour le moteur**. La masquer (`display: none`,
+  `visibility: hidden`) risquerait d'arrêter le décodage sur iOS, et on perdrait le
+  scan en même temps que l'aperçu.
+- **~30 images par seconde** (`PAS_APERCU`), pas 60 : c'est assez pour un aperçu, et
+  ça laisse la place au détecteur qui tourne déjà en boucle sur le même appareil.
+- La boucle s'arrête avec le flux, et la toile est **ramenée à 1×1** : sans ça, la
+  dernière image resterait figée à l'écran au retour dans la vue.
+- `ctxApercu` est en `alpha: false` — aucune transparence à composer.
+- **Ne pas confondre avec `toile`**, la toile de CAPTURE (`TAILLE`×`TAILLE`, en
+  `willReadFrequently`) qui découpe les cadrages pour le classifieur. Deux rôles
+  distincts, d'où `apercu` pour celle-ci.
+- **Le fond de `.scan` est resté transparent** : tant que l'aperçu n'est pas confirmé
+  sur l'appareil, un écran blanc renseigne là où un écran noir ne disait rien.
+
+Vérifié dans l'aperçu avec une caméra factice : toile à la résolution de la source,
+pixels identiques à ceux du flux, cadrage `cover` correct à l'écran, boucle arrêtée et
+toile vidée en quittant la vue, repeinte au retour, aucune erreur.
+
+**Piège du panneau de prévisualisation** : il déclare `document.hidden` et n'exécute
+pas `requestAnimationFrame`. Pour tester la boucle, il faut redéfinir `hidden` et
+substituer un `setTimeout` à rAF — sinon la toile reste à sa taille par défaut
+(300×150) et l'on croit à tort que rien ne se peint.
+
 ### Écran noir alors que la caméra est autorisée
 
 Signalé le 30/09/2026 sur iPhone, sur le site comme sur l'IPA 1.0.51 : la caméra est

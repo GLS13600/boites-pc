@@ -18,7 +18,13 @@ const chemin = (u) => u.pathname.replace(/^\/([A-Za-z]:)/, '$1');
 // Le moteur du scan (onnxruntime-web, 14 Mo de WASM) est écarté du préchargement :
 // il ne sert qu'à qui ouvre le scan, et doublerait l'installation pour tous les autres.
 // Il se met en cache à la première analyse, comme les sprites.
-const assets = (await readdir(new URL('assets/', DIST))).filter((f) => !f.endsWith('.wasm'));
+//
+// Les surcouches de traduction (en, ja : 3,6 Mo à elles deux) le sont aussi. Le
+// français est la base, embarquée dans l'index : qui n'en change pas ne doit pas
+// télécharger deux langues qu'il ne lira jamais. Elles se mettent en cache au premier
+// choix de langue, qui demande de toute façon d'être en ligne une fois.
+const HORS_COQUILLE = /\.wasm$|^(en|ja)-[\w-]+\.js$/;
+const assets = (await readdir(new URL('assets/', DIST))).filter((f) => !HORS_COQUILLE.test(f));
 const shell = ['./', './index.html', './icon.svg', ...assets.map((f) => `./assets/${f}`)];
 
 let octets = 0;

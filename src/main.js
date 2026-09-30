@@ -15,6 +15,11 @@ import items from './data/items.json';
 import NATURES from './data/natures.json';
 import formDesc from './data/form-desc.json';
 import { creeScan } from './scan.js';
+import {
+  t, langue, chargeLangue, LANGUES, estLangue, LANGUE_KEY,
+  nomKind, obtention, nomMethode, libStat, statLignes, groupesApprentissage,
+  nomRole, nomOrientation, nomRemake,
+} from './i18n.js';
 
 // Service worker : il ne sert QUE la version web hébergée. Sous Capacitor la page
 // n'est pas servie en HTTP et tout est déjà embarqué dans l'app — l'enregistrement
@@ -59,13 +64,36 @@ function listeRemake(r) {
   return g ? r.liste.filter((id) => id >= g.from && id <= g.to) : r.liste;
 }
 
+// Les listes sont figées une fois pour toutes ; seuls les LIBELLÉS suivent la langue,
+// et `renommeOnglets()` les repose. L'index dans ce tableau reste la clé de
+// `state.order` et `state.box` : rien ne doit le déplacer.
+// `region` est l'INDEX de la région dans GENS, relevé ici pendant que les noms sont
+// encore français. La région d'un remake n'est pas celle de sa génération — Rouge Feu
+// est un jeu de gén. 3 qui se passe à Kanto —, et `GENS[i].name` est traduit ensuite :
+// un index survit à la traduction, un nom non.
 const ONGLETS = [
-  ...GENS.map((g) => ({ ...g, label: `Gén. ${g.n}`, sub: g.name, remake: false })),
+  ...GENS.map((g, i) => ({ ...g, label: '', sub: g.name, region: i, remake: false })),
   ...Object.entries(remakes).map(([cle, r]) => ({
     n: r.gen, name: r.region, label: r.court, sub: r.region,
+    region: GENS.findIndex((g) => g.name === r.region),
     liste: listeRemake(r), titre: r.name, remake: true, cle,
   })),
 ];
+// Les libellés suivent la langue ; `name` aussi, car c'est lui qu'affichent l'en-tête
+// et le sous-titre des boîtes.
+function renommeOnglets() {
+  for (const o of ONGLETS) {
+    const region = GENS[o.region]?.name ?? o.name;
+    o.name = region;
+    o.sub = region;
+    if (o.remake) {
+      o.label = nomRemake(o.cle, 'court');
+      o.titre = nomRemake(o.cle, 'nom');
+    } else {
+      o.label = t('genCourt', o.n);
+    }
+  }
+}
 
 const TYPES = {
   normal: ['Normal', '#9a9a86'], fire: ['Feu', '#e2703a'], water: ['Eau', '#4483c9'],
@@ -78,18 +106,10 @@ const TYPES = {
 
 // Catégorie d'une attaque. Le statut est volontairement neutre : il n'inflige pas de
 // dégâts, ses colonnes Puissance et Précision valent souvent « — ».
+// Les NOMS sont posés par la surcouche (`appliqueSurcouche`) ; seules les couleurs
+// sont écrites ici.
 const CLASSES = {
-  physical: ['Physique', '#b5603a'], special: ['Spéciale', '#4472b5'], status: ['Statut', '#7c7c74'],
-};
-
-const METHODS = {
-  walk: 'Herbes hautes', surf: 'Surf', 'old-rod': 'Canne', 'good-rod': 'Super canne',
-  'super-rod': 'Méga canne', 'rock-smash': 'Éclate-Roc', headbutt: "Coup d'Boule",
-  gift: 'Don', 'gift-egg': 'Œuf offert', 'only-one': 'Unique', 'dark-grass': 'Herbes sombres',
-  'grass-spots': 'Herbes frémissantes', 'cave-spots': 'Poussière', 'bridge-spots': 'Ombre',
-  'super-rod-spots': 'Bulles', 'surf-spots': 'Remous', 'yellow-flowers': 'Fleurs jaunes',
-  'purple-flowers': 'Fleurs violettes', 'red-flowers': 'Fleurs rouges',
-  'rough-terrain': 'Terrain accidenté', seaweed: 'Algues', 'walk-arena-trap': 'Piège Arène',
+  physical: ['', '#b5603a'], special: ['', '#4472b5'], status: ['', '#7c7c74'],
 };
 
 // ---------- Sprites ----------
@@ -121,23 +141,25 @@ const portraitFallback = (id, shiny) => {
 
 // Les formes portent un id de sprite au-delà de 10000, donc sans collision avec les
 // 1025 numéros du Pokédex : elles peuvent être capturées et rangées comme les autres.
-const KIND = {
-  mega: 'Méga', gmax: 'Gigamax', region: 'Forme régionale', totem: 'Forme Totem',
-  event: 'Événement', combat: 'Forme de combat', cosmetique: 'Variante',
-  femelle: 'Femelle', autre: 'Autre forme',
-};
 // Une clé identifie soit une espèce (numéro du Pokédex), soit une forme.
 // Les formes issues de « varieties » gardent leur id numérique ; les formes
 // cosmétiques (saisons, lettres d'Zarbi) portent un slug, car les ids de
 // /pokemon-form chevauchent ceux de /pokemon et se télescoperaient.
+// Des COPIES, pas les objets de forms.json : d'où la reconstruction au changement de
+// langue, sans laquelle `monName` continuerait de rendre le nom français d'une forme
+// alors que la fiche, qui lit forms.json, aurait déjà basculé.
 const FORM_BY_KEY = new Map();
-for (const [sid, liste] of Object.entries(forms)) {
-  for (const f of liste) FORM_BY_KEY.set(f.key, { ...f, species: Number(sid) });
+function construitFormes() {
+  FORM_BY_KEY.clear();
+  for (const [sid, liste] of Object.entries(forms)) {
+    for (const f of liste) FORM_BY_KEY.set(f.key, { ...f, species: Number(sid) });
+  }
 }
+construitFormes();
 // Un attribut HTML revient toujours en chaîne : on rétablit le type d'origine.
 const asKey = (v) => (/^[0-9]+$/.test(v) ? Number(v) : v);
 
-const monName = (k) => pokedex[k]?.name || FORM_BY_KEY.get(k)?.name || `N° ${k}`;
+const monName = (k) => pokedex[k]?.name || FORM_BY_KEY.get(k)?.name || t('numero', k);
 // Le sprite d'une forme cosmétique s'appelle « 585-summer », pas « 10068 ».
 const spriteKey = (k) => FORM_BY_KEY.get(k)?.sprite ?? k;
 // Espèce de rattachement d'une clé : elle-même pour une espèce, la base pour une forme.
@@ -388,7 +410,7 @@ function supprimeBoite(gen, b) {
   const bloc = l.slice(b * BOX_SIZE, (b + 1) * BOX_SIZE);
   const dedans = bloc.filter((k) => k !== null && k !== undefined).length;
   // Une boîte vide part sans un mot ; une boîte pleine, jamais en silence.
-  if (dedans && !confirm(`Supprimer cette boîte ? ${dedans} Pokémon y sont rangés et seront retirés de l'onglet.`)) return false;
+  if (dedans && !confirm(t('confirmeSupprBoite', dedans))) return false;
   l.splice(b * BOX_SIZE, BOX_SIZE);
   saveOrder();
   return true;
@@ -458,7 +480,7 @@ function sortForme(key) {
 })();
 
 const boxInfo = (gen, box) => state.boxes[`${gen}:${box}`] || {};
-const boxLabel = (gen, box) => boxInfo(gen, box).name || `Boîte ${box + 1}`;
+const boxLabel = (gen, box) => boxInfo(gen, box).name || t('boiteN', box + 1);
 function setBox(gen, box, patch) {
   const key = `${gen}:${box}`;
   const next = { ...state.boxes[key], ...patch };
@@ -503,22 +525,27 @@ const fold = (t) => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
 // suivie de ses formes : c'est l'ordre dans lequel on cherche un Pokémon.
 const genDuNumero = (id) => GENS.find((g) => id >= g.from && id <= g.to)?.n ?? 0;
 const CATALOGUE = [];
-for (const id of Object.keys(pokedex).map(Number).sort((a, b) => a - b)) {
-  const p = pokedex[id];
-  const gen = p.generation ?? genDuNumero(id);
-  CATALOGUE.push({ id, sprite: String(id), name: p.name, sub: `N° ${id}`, gen, num: id });
-  for (const f of forms[id] ?? []) {
-    CATALOGUE.push({
-      id: f.key,
-      sprite: f.sprite,
-      name: f.name,
-      sub: `${p.name} · ${KIND[f.kind] ?? f.kind}`,
-      gen,
-      num: id,
-    });
+// Il porte des NOMS, donc il se refait quand la langue change — la recherche se fait
+// sur `cle`, qui en dépend directement.
+function construitCatalogue() {
+  CATALOGUE.length = 0;
+  for (const id of Object.keys(pokedex).map(Number).sort((a, b) => a - b)) {
+    const p = pokedex[id];
+    const gen = p.generation ?? genDuNumero(id);
+    CATALOGUE.push({ id, sprite: String(id), name: p.name, sub: t('numero', id), gen, num: id });
+    for (const f of forms[id] ?? []) {
+      CATALOGUE.push({
+        id: f.key,
+        sprite: f.sprite,
+        name: f.name,
+        sub: `${p.name} · ${nomKind(f.kind)}`,
+        gen,
+        num: id,
+      });
+    }
   }
+  for (const e of CATALOGUE) e.cle = fold(e.name + ' ' + e.sub + ' ' + e.num);
 }
-for (const e of CATALOGUE) e.cle = fold(e.name + ' ' + e.sub + ' ' + e.num);
 
 // ---------- Rendu ----------
 
@@ -563,12 +590,12 @@ function render() {
   // régionaux pour un remake. Réarrangé, ces numéros seraient faux : on montre le rang.
   const sous = start >= total
     // Boîte de rab, au-delà de la liste : aucun numéro à annoncer.
-    ? `${g.name} · boîte libre`
+    ? t('boiteLibre', g.name)
     : perso
-      ? `${g.name} · ${Math.min(start + 1, total)}–${Math.min(start + BOX_SIZE, total)} sur ${total}`
+      ? t('boiteRang', g.name, Math.min(start + 1, total), Math.min(start + BOX_SIZE, total), total)
       : g.remake
-        ? `${g.name} · N° ${start + 1} à ${Math.min(start + BOX_SIZE, total)}`
-        : `${g.name} · ${start + g.from} à ${Math.min(start + g.from + BOX_SIZE - 1, g.to)}`;
+        ? t('boiteNumRegional', g.name, start + 1, Math.min(start + BOX_SIZE, total))
+        : t('boiteNumNational', g.name, start + g.from, Math.min(start + g.from + BOX_SIZE - 1, g.to));
 
   // `poser()` reconstruit la barre d'onglets, qui défile horizontalement : un
   // élément neuf repart à scrollLeft 0, donc tout à gauche sur Gén. 1. On mémorise
@@ -576,33 +603,33 @@ function render() {
   const defileOnglets = app.querySelector('.gens')?.scrollLeft ?? 0;
 
   poser(
-    entete('Boîtes', `${g.name} · ${pris} sur ${total}`),
+    entete(t('boites'), t('boitesSous', g.name, pris, total)),
     renderTabs(),
     h(`
       <section class="box ${paperBg ? 'papered' : ''} ${rang ? 'ranger' : ''} ${state.placing !== null ? 'placement' : ''}">
         ${paperBg ? `<div class="box-paper" data-gen="${paperGen(boxInfo(state.gen, b).paper) ?? ''}" data-size="${paperSize(boxInfo(state.gen, b).paper) ?? ''}" style="background-image:${paperBg}"></div>` : ''}
         <div class="box-head">
-          <button class="box-arrow" data-dir="-1" ${b === 0 ? 'disabled' : ''} aria-label="Boîte précédente">${ICO.gauche}</button>
+          <button class="box-arrow" data-dir="-1" ${b === 0 ? 'disabled' : ''} aria-label="${t('boitePrecedente')}">${ICO.gauche}</button>
           <!-- La plaque de titre se pose EN FOND du bouton, pas dans un calque à part :
                ses proportions (116×23, soit 5,04) collent presque exactement à celles du
                bouton (5,19), et le texte se place naturellement par-dessus. -->
           <button class="box-title ${titrePlaque ? 'plaque' : ''}" data-act="box-edit"
-                  title="Renommer la boîte et choisir son fond"
+                  title="${t('renommerBoite')}"
                   ${titrePlaque ? `style="background-image:${titrePlaque}"` : ''}>
             ${esc(boxLabel(state.gen, b))}
             <small>${sous}</small>
           </button>
-          <button class="box-arrow" data-dir="1" ${b === boxes - 1 ? 'disabled' : ''} aria-label="Boîte suivante">${ICO.droite}</button>
+          <button class="box-arrow" data-dir="1" ${b === boxes - 1 ? 'disabled' : ''} aria-label="${t('boiteSuivante')}">${ICO.droite}</button>
         </div>
         <div class="grid ${paperBg ? 'papered' : ''} ${entreeGen ? 'entre' : ''}">${cases.map((k, i) => renderSlot(k, start + i)).join('')}</div>
         <!-- Les pastilles restent centrées : les deux boutons se font face, de part
              et d'autre, et gardent la même largeur pour ne pas les décaler. -->
         <div class="box-dots">
           <button class="dot-btn" data-act="del-box" ${boxes <= 1 ? 'disabled' : ''}
-                  title="Supprimer la boîte affichée" aria-label="Supprimer la boîte affichée">${ICO.moins}</button>
+                  title="${t('supprimerBoite')}" aria-label="${t('supprimerBoite')}">${ICO.moins}</button>
           <span class="dots">${Array.from({ length: boxes }, (_, i) => `<i class="${i === b ? 'on' : ''}" data-boite="${i}"></i>`).join('')}</span>
           <button class="dot-btn" data-act="add-box"
-                  title="Ajouter une boîte à cet onglet" aria-label="Ajouter une boîte">${ICO.plus}</button>
+                  title="${t('ajouterBoite')}" aria-label="${t('ajouterBoiteCourt')}">${ICO.plus}</button>
         </div>
       </section>
     `),
@@ -616,27 +643,27 @@ function render() {
              ce que fait un tap, puis l'affichage et la sauvegarde. -->
         <div class="tools">
           <button class="btn primaire" data-act="add">
-            ${ICO.plus}<span>Ajouter un Pokémon</span>
+            ${ICO.plus}<span>${t('ajouterPokemon')}</span>
           </button>
 
           <!-- Trois états sur un seul rail : on voit d'un coup celui qui est actif. -->
-          <div class="segmente" role="group" aria-label="Effet du tap">
-            ${[['catch', 'Capturer'], ['info', 'Fiche'], ['move', 'Ranger']].map(([m, t]) => `
+          <div class="segmente" role="group" aria-label="${t('effetDuTap')}">
+            ${[['catch', 'modeCapturer'], ['info', 'modeFiche'], ['move', 'modeRanger']].map(([m, cle]) => `
               <button class="${state.mode === m ? 'on' : ''}" data-act="mode-set" data-mode="${m}"
-                      aria-pressed="${state.mode === m}">${t}</button>`).join('')}
+                      aria-pressed="${state.mode === m}">${t(cle)}</button>`).join('')}
           </div>
 
           <button class="btn bascule ${shinyView() ? 'on' : ''}" data-act="view"
-                  aria-pressed="${shinyView()}" title="Basculer entre Pokédex normal et chromatique">
-            <b>&#10022;</b><span>${shinyView() ? 'Chromatique' : 'Normal'}</span>
+                  aria-pressed="${shinyView()}" title="${t('basculeChromatique')}">
+            <b>&#10022;</b><span>${shinyView() ? t('vueChromatique') : t('vueNormale')}</span>
           </button>
         </div>
         ${state.placing !== null ? `<div class="hint placer">
-          Touchez l&rsquo;emplacement où placer <b>${esc(monName(state.placing))}</b> — vous pouvez changer de boîte ou de génération.
-          <button data-act="annuler-placement">Annuler</button>
+          ${t('aidePlacer', esc(monName(state.placing)))}
+          <button data-act="annuler-placement">${t('annuler')}</button>
         </div>` : ''}
-        ${rang ? '<div class="hint">Appui long puis glissement : déplacer un Pokémon ; s’il en croise un autre, les deux échangent de place. Toucher un Pokémon puis sa destination fait de même d’une boîte à l’autre. Appui long sans bouger : insérer ici, tout ce qui suit se décale. × : retirer.</div>' : ''}
-        ${hasData ? '' : `<div class="hint">Les sprites viennent de PokéAPI, mais les noms, habitats et lieux de capture ne sont chargés que pour la première boîte. Lance <code>npm run fetch-data</code> pour tout récupérer.</div>`}
+        ${rang ? `<div class="hint">${t('aideRanger')}</div>` : ''}
+        ${hasData ? '' : `<div class="hint">${t('aideSansDonnees')}</div>`}
         <!-- Repère de build. Les mises à jour arrivant sans fil par SideStore, c'est
              le seul moyen de vérifier d'un coup d'œil quelle version tourne. -->
         <div class="version">v${__APP_VERSION__}</div>
@@ -732,7 +759,7 @@ function renderSlot(key, index) {
   const rang = state.mode === "move";
   if (key === undefined || key === null) {
     return `<button class="slot empty ${rang && state.held !== null ? 'cible' : ''}" data-slot="${index}"
-             style="--i:${index % BOX_SIZE}" aria-label="Emplacement libre">+</button>`;
+             style="--i:${index % BOX_SIZE}" aria-label="${t('emplacementLibre')}">+</button>`;
   }
   const caught = isCaught(key);
   const forme = FORM_BY_KEY.has(key);
@@ -744,10 +771,10 @@ function renderSlot(key, index) {
     <button class="slot ${caught ? 'caught' : ''} ${forme ? 'extra' : ''} ${tenu ? 'tenu' : ''} ${rang && state.held !== null && !tenu ? 'cible' : ''} ${key === state.pris ? 'pris' : ''}"
             style="--i:${index % BOX_SIZE}"
             data-id="${key}" data-slot="${index}"
-            aria-label="${esc(name)}${caught ? ', capturé' : ''}">
+            aria-label="${esc(name)}${caught ? ', ' + t('capture') : ''}">
       <span class="num">${forme ? '★' : key}</span>
       <img src="${src}" alt="" loading="lazy" draggable="false" ${imgFallback(speciesOf(key), shinyView())} />
-      ${rang ? `<span class="slot-x" data-remove="${index}" role="button" aria-label="Retirer de la boîte">×</span>` : ''}
+      ${rang ? `<span class="slot-x" data-remove="${index}" role="button" aria-label="${t('retirerDeLaBoite')}">×</span>` : ''}
     </button>`;
 }
 
@@ -770,8 +797,7 @@ backdrop.addEventListener('click', () => { closeSheet(); closeBoxSheet(); closeA
 //
 // La COULEUR dit la qualité de la valeur, ce que la longueur seule rend mal à cette
 // échelle : à 255, une stat de 100 n'occupe que 39 % de la piste.
-const STAT_LIGNES = [['pv', 'PV'], ['att', 'Attaque'], ['def', 'Défense'],
-  ['atts', 'Atq. Spé.'], ['defs', 'Déf. Spé.'], ['vit', 'Vitesse']];
+// Les libellés viennent de la traduction : `statLignes()` les relit à chaque rendu.
 const MAX_STAT = 255;
 const classeStat = (v) => (v < 60 ? 'sb-bas' : v < 100 ? 'sb-moyen' : v < 120 ? 'sb-bon' : 'sb-haut');
 
@@ -779,11 +805,12 @@ const classeStat = (v) => (v < 60 ? 'sb-bas' : v < 100 ? 'sb-moyen' : v < 120 ? 
 // doit montrer celles de la forme affichée — Kyurem Blanc monte à 170 en Atq. Spé.
 function renderStatsBase(key) {
   const st = statsDe(key);
-  if (!st) return '<p class="none">Statistiques inconnues.</p>';
-  const total = STAT_LIGNES.reduce((n, [k]) => n + (st[k] || 0), 0);
+  if (!st) return `<p class="none">${t('statsInconnues')}</p>`;
+  const lignes = statLignes();
+  const total = lignes.reduce((n, [k]) => n + (st[k] || 0), 0);
   return `
     <div class="statbars">
-      ${STAT_LIGNES.map(([k, lib]) => `
+      ${lignes.map(([k, lib]) => `
         <div class="sb">
           <span class="sb-lib">${lib}</span>
           <span class="sb-val">${st[k]}</span>
@@ -791,7 +818,7 @@ function renderStatsBase(key) {
                 style="width:${(100 * st[k]) / MAX_STAT}%"></i></span>
         </div>`).join('')}
       <div class="sb sb-total">
-        <span class="sb-lib">Total</span>
+        <span class="sb-lib">${t('total')}</span>
         <span class="sb-val">${total}</span>
         <span class="sb-piste"></span>
       </div>
@@ -864,50 +891,50 @@ function openSheet(id) {
       <div class="portrait">
         <img src="${portrait}" alt="${p.name || id}" ${portraitFallback(id, sh)} />
         <button class="shiny-btn ${sh ? 'on' : ''}" data-act="shiny" aria-pressed="${sh}"
-                title="${sh ? 'Voir la forme normale' : 'Voir la forme chromatique'}">&#10022;</button>
-        <button class="cri-btn" data-act="cri" title="Écouter le cri" aria-label="Écouter le cri de ${esc(p.name || ('N° ' + base))}">${ICONE_CRI}</button>
+                title="${sh ? t('voirNormale') : t('voirChromatique')}">&#10022;</button>
+        <button class="cri-btn" data-act="cri" title="${t('ecouterCri')}" aria-label="${t('ecouterCriDe', esc(p.name || t('numero', base)))}">${ICONE_CRI}</button>
       </div>
       <div>
-        <h2 class="sheet-name">${esc(forme ? forme.name : (p.name || `N° ${id}`))}<small>#${String(base).padStart(4, '0')}</small></h2>
-        <p class="sheet-genus">${forme ? `${esc(p.name || '')} · ${KIND[forme.kind] ?? forme.kind}` : (p.genus || '')}${sh ? ' · forme chromatique' : ''}</p>
+        <h2 class="sheet-name">${esc(forme ? forme.name : (p.name || t('numero', id)))}<small>#${String(base).padStart(4, '0')}</small></h2>
+        <p class="sheet-genus">${forme ? `${esc(p.name || '')} · ${nomKind(forme.kind)}` : (p.genus || '')}${sh ? ' · ' + t('formeChromatique') : ''}</p>
         <div class="types">${(p.types || []).map((t) => `<span class="type" style="--t:${TYPES[t]?.[1] || '#888'}">${TYPES[t]?.[0] || t}</span>`).join('')}</div>
       </div>
     </div>
 
     ${forme ? renderObtention(forme, base) : ''}
 
-    ${forme ? `<button class="back-btn" data-evo="${base}">&lsaquo; Revenir à ${esc(p.name || ('N° ' + base))}</button>` : ''}
+    ${forme ? `<button class="back-btn" data-evo="${base}">${t('revenirA', esc(p.name || t('numero', base)))}</button>` : ''}
 
     <button class="catch-btn ${caught ? 'done' : ''}" data-act="toggle" data-id="${id}">
-      ${caught ? 'Retirer de la boîte' : 'Marquer comme capturé'}
+      ${caught ? t('retirerDeLaBoite') : t('marquerCapture')}
     </button>
 
     <dl class="facts">
-      <div class="fact"><dt>Habitat</dt><dd>${cap(p.habitat) || 'Non renseigné'}</dd></div>
-      <div class="fact"><dt>Couleur</dt><dd>${p.color || '—'}</dd></div>
-      <div class="fact"><dt>Taille</dt><dd>${p.height ? p.height.toFixed(1) + ' m' : '—'}</dd></div>
-      <div class="fact"><dt>Poids</dt><dd>${p.weight ? p.weight.toFixed(1) + ' kg' : '—'}</dd></div>
-      ${p.flavor ? `<div class="fact wide"><dt>Description</dt><dd>${p.flavor}</dd></div>` : ''}
+      <div class="fact"><dt>${t('habitat')}</dt><dd>${cap(p.habitat) || t('habitatInconnu')}</dd></div>
+      <div class="fact"><dt>${t('couleur')}</dt><dd>${p.color || '—'}</dd></div>
+      <div class="fact"><dt>${t('taille')}</dt><dd>${p.height ? p.height.toFixed(1) + ' m' : '—'}</dd></div>
+      <div class="fact"><dt>${t('poids')}</dt><dd>${p.weight ? p.weight.toFixed(1) + ' kg' : '—'}</dd></div>
+      ${p.flavor ? `<div class="fact wide"><dt>${t('description')}</dt><dd>${p.flavor}</dd></div>` : ''}
     </dl>
 
-    <h3>Statistiques de base</h3>
+    <h3>${t('statsDeBase')}</h3>
     ${renderStatsBase(id)}
 
-    <h3>Faiblesses et résistances <small>table actuelle</small></h3>
+    <h3>${t('faiblessesEtResistances')} <small>${t('tableActuelle')}</small></h3>
     ${renderFaiblesses(base, 9)}
 
-    <h3>Famille d'évolution</h3>
+    <h3>${t('familleEvolution')}</h3>
     ${renderEvolution(base, id)}
 
     ${renderForms(base, id)}
 
-    <h3>Talents</h3>
+    <h3>${t('talents')}</h3>
     ${renderTalents(base)}
 
-    <h3>Attaques</h3>
+    <h3>${t('attaques')}</h3>
     ${renderMoves(base)}
 
-    <h3>Où le trouver</h3>
+    <h3>${t('ouLeTrouver')}</h3>
     ${renderEncounters(p)}
   `;
   sheetBody.scrollTop = keepScroll;
@@ -920,7 +947,7 @@ function openSheet(id) {
 function renderEvolution(id, courant = id) {
   const chaine = evolutions.chains[evolutions.of[id]];
   const membres = chaine?.membres ?? [];
-  if (membres.length < 2) return `<p class="none">Ce Pokémon n'évolue pas.</p>`;
+  if (membres.length < 2) return `<p class="none">${t('nEvoluePas')}</p>`;
 
   const parId = new Map(membres.map((m) => [m.id, m]));
   const profondeur = (m) => {
@@ -935,7 +962,7 @@ function renderEvolution(id, courant = id) {
       <button class="evo-mon ${m.id === courant || m.id === id ? 'on' : ''}" data-evo="${m.id}">
         <img src="${sprites.still(spriteKey(m.id))}" alt="" loading="lazy" ${imgFallback(m.id, false)} />
         <span>${esc(monName(m.id))}</span>
-        ${isCaught(m.id) ? '<i class="evo-ok" aria-label="capturé"></i>' : ''}
+        ${isCaught(m.id) ? `<i class="evo-ok" aria-label="${t('capture')}"></i>` : ''}
       </button>
     </div>`).join('') + '</div>';
 }
@@ -953,14 +980,14 @@ function renderForms(id, courant = id) {
   const manquantes = liste.filter((x) => !dansUneBoite(x.key)).length;
   const aFemelle = liste.some((f) => f.kind === 'femelle');
   const entrees = [
-    { key: id, name: pokedex[id]?.name ?? `N° ${id}`, kind: aFemelle ? 'male' : 'base' },
+    { key: id, name: pokedex[id]?.name ?? t('numero', id), kind: aFemelle ? 'male' : 'base' },
     ...liste,
   ];
   return `
     <div class="formes-head">
-      <h3>Formes</h3>
+      <h3>${t('formes')}</h3>
       ${manquantes
-        ? `<button class="formes-all" data-forms-all="${id}">Ajouter les ${manquantes} formes</button>`
+        ? `<button class="formes-all" data-forms-all="${id}">${t('ajouterLesFormes', manquantes)}</button>`
         : ''}
     </div>
     <div class="formes">${entrees.map((f) => {
@@ -970,12 +997,12 @@ function renderForms(id, courant = id) {
       <div class="forme ${f.key === courant ? 'ici' : ''} ${isCaught(f.key) ? 'on' : ''}">
         <button class="forme-go" data-evo="${f.key}">
           <img src="${sprites.still(spriteKey(f.key), shinyView())}" alt="" loading="lazy" ${imgFallback(id, shinyView())} />
-          <span>${esc(f.name)}<i>${f.kind === 'male' ? 'Mâle'
-            : base ? 'Forme de base' : (KIND[f.kind] ?? f.kind)}</i></span>
+          <span>${esc(f.name)}<i>${f.kind === 'male' ? t('male')
+            : base ? t('formeDeBase') : nomKind(f.kind)}</i></span>
         </button>
         ${base ? '' : `<button class="forme-add ${dans ? 'on' : ''}" data-form-add="${f.key}"
-                aria-label="${dans ? 'Retirer de la boîte' : 'Ajouter à la boîte'}"
-                title="${dans ? 'Retirer de la boîte' : 'Ajouter à la boîte'}">${dans ? '&#10003;' : '+'}</button>`}
+                aria-label="${dans ? t('retirerDeLaBoite') : t('ajouterALaBoite')}"
+                title="${dans ? t('retirerDeLaBoite') : t('ajouterALaBoite')}">${dans ? '&#10003;' : '+'}</button>`}
       </div>`;
     }).join('')}</div>`;
 }
@@ -986,27 +1013,15 @@ function renderForms(id, courant = id) {
 // seulement — les cas mécaniquement particuliers : fusion de Kyurem, Chant Antique
 // de Meloetta, Orbe Griseous de Giratina. Pour tout le reste (Méga, Gigamax,
 // régionales…), on explique par NATURE de forme, ce qui reste exact.
-const OBTENTION = {
-  mega: 'Méga-Évolution : en combat, en lui faisant tenir sa Gemme Méga.',
-  gmax: 'Phénomène Gigamax : en combat, dans les jeux de la 8ᵉ génération.',
-  region: 'Forme régionale : elle ne se rencontre que dans la région concernée.',
-  totem: 'Pokémon Totem : rencontré lors des épreuves, il ne se capture pas.',
-  event: 'Distribution événementielle : elle ne s’obtient pas en jeu normal.',
-  combat: 'Changement de forme en combat, selon une condition propre à l’espèce.',
-  cosmetique: 'Variante cosmétique : aucun effet sur les statistiques ni le type.',
-  femelle: 'Différence entre mâle et femelle : c’est le sexe qui détermine l’aspect.',
-  autre: 'Forme particulière à cette espèce.',
-};
-
 function renderObtention(forme, base) {
   const officielle = formDesc[base];
   // « Forme particulière à cette espèce » n'apprend rien quand la description
   // officielle dit déjà comment l'obtenir : on ne garde alors que celle-ci.
   const parNature = forme.kind === 'autre' && officielle
-    ? null : (OBTENTION[forme.kind] ?? OBTENTION.autre);
+    ? null : obtention(forme.kind);
   return `
     <p class="obtention">
-      <b>Comment l’obtenir</b>
+      <b>${t('commentObtenir')}</b>
       ${parNature ? `<span>${esc(parNature)}</span>` : ''}
       ${officielle ? `<i>${esc(officielle)}</i>` : ''}
     </p>`;
@@ -1019,13 +1034,13 @@ function renderObtention(forme, base) {
 // boîte de combat, où l'on compose pour un jeu précis.
 function renderTalents(base) {
   const liste = abilities.of[base] || [];
-  if (!liste.length) return '<p class="none">Aucun talent connu dans PokéAPI.</p>';
+  if (!liste.length) return `<p class="none">${t('aucunTalent')}</p>`;
   return `<ul class="talents">${liste.map(([slug, cache]) => {
-    const t = abilities.list[slug];
-    if (!t) return '';
+    const ab = abilities.list[slug];
+    if (!ab) return '';
     return `<li>
-      <span class="t-nom">${esc(t.n)}${cache ? '<i>caché</i>' : ''}</span>
-      ${t.d ? `<span class="t-desc">${esc(t.d)}</span>` : ''}
+      <span class="t-nom">${esc(ab.n)}${cache ? `<i>${t('talentCache')}</i>` : ''}</span>
+      ${ab.d ? `<span class="t-desc">${esc(ab.d)}</span>` : ''}
     </li>`;
   }).join('')}</ul>`;
 }
@@ -1057,9 +1072,9 @@ function renderMove(id, badge) {
           </span>
           <span class="mmeta">
             <span class="mcls" style="--c:${cc}">${cn}</span>
-            <span>Puis. <b>${val(m.p)}</b></span>
-            <span>Préc. <b>${val(m.a)}</b></span>
-            <span>PP <b>${val(m.pp)}</b></span>
+            <span>${t('puisCourt')} <b>${val(m.p)}</b></span>
+            <span>${t('precCourt')} <b>${val(m.a)}</b></span>
+            <span>${t('ppCourt')} <b>${val(m.pp)}</b></span>
           </span>
         </span>
         ${m.d ? '<span class="mchev" aria-hidden="true">&rsaquo;</span>' : ''}
@@ -1070,20 +1085,20 @@ function renderMove(id, badge) {
 
 function renderMoves(base) {
   const l = learnsets[base];
-  if (!l) return '<p class="none">Attaques non renseignées pour ce Pokémon dans PokéAPI.</p>';
+  if (!l) return `<p class="none">${t('attaquesInconnues')}</p>`;
 
   // Niveau 0 = attaque connue d'entrée de jeu (départ ou juste après évolution).
   const groupes = [
-    ['Par niveau', l.n.map(([id, lv]) => [id, lv > 0 ? `N.${lv}` : 'Dép.']), true],
-    ['CT et CS', l.m, false],
-    ['Par œuf', l.o.map((id) => [id, 'Œuf']), false],
-    ['Par maître', l.t.map((id) => [id, 'Maît.']), false],
+    [t('apprNiveau'), l.n.map(([id, lv]) => [id, lv > 0 ? t('niveauBadge', lv) : t('depart')]), true],
+    [t('ctEtCs'), l.m, false],
+    [t('apprOeuf'), l.o.map((id) => [id, t('oeuf')]), false],
+    [t('apprMaitre'), l.t.map((id) => [id, t('maitre')]), false],
   ].filter(([, liste]) => liste.length);
 
-  if (!groupes.length) return '<p class="none">Attaques non renseignées pour ce Pokémon dans PokéAPI.</p>';
+  if (!groupes.length) return `<p class="none">${t('attaquesInconnues')}</p>`;
 
   return `
-    <p class="moves-jeu">D'après ${esc(l.j)}. Touchez une attaque pour son effet.</p>
+    <p class="moves-jeu">${t('dApres', esc(l.j))}</p>
     ${groupes.map(([titre, liste, ouvert]) => `
       <details class="mgroup" ${ouvert ? 'open' : ''}>
         <summary>${titre}<b>${liste.length}</b></summary>
@@ -1095,7 +1110,7 @@ function renderMoves(base) {
 function renderEncounters(p) {
   const enc = p.encounters || [];
   if (!enc.length) {
-    return `<p class="none">Aucune rencontre sauvage connue dans PokéAPI. Il s'obtient sans doute par évolution, échange, œuf ou événement.</p>`;
+    return `<p class="none">${t('aucuneRencontre')}</p>`;
   }
   return `<div class="games">${enc.map((g) => `
     <div class="game">
@@ -1104,9 +1119,9 @@ function renderEncounters(p) {
         <div class="loc">
           <div>
             <div class="where">${pl.location}</div>
-            <div class="how">${pl.methods.map((m) => METHODS[m.method] || m.method).join(', ')}</div>
+            <div class="how">${pl.methods.map((m) => nomMethode(m.method)).join(', ')}</div>
           </div>
-          <div class="lvl">N. ${pl.min}${pl.max !== pl.min ? '–' + pl.max : ''}${pl.chance ? ` · ${pl.chance} %` : ''}</div>
+          <div class="lvl">${t('niveauCourt', pl.min, pl.max !== pl.min ? '–' + pl.max : '')}${pl.chance ? ` · ${pl.chance} %` : ''}</div>
         </div>`).join('')}
     </div>`).join('')}</div>`;
 }
@@ -1325,23 +1340,23 @@ function picksPourEtat() {
 function renderAddSheet(keepFocus) {
   const { res, cherche } = picksPourEtat();
   addBody.innerHTML = `
-    <h2 class="bs-title">${state.addIndex === null ? 'Choisir un Pokémon à placer' : 'Ajouter un Pokémon ici'}</h2>
+    <h2 class="bs-title">${state.addIndex === null ? t('choisirAPlacer') : t('ajouterIci')}</h2>
     <label class="bs-field">
-      <span>Rechercher</span>
+      <span>${t('rechercher')}</span>
       <input class="bs-name add-q" type="text" value="${esc(state.addQuery || '')}"
-             placeholder="Nom, forme, numéro…" autocomplete="off" />
+             placeholder="${t('placeholderPokemon')}" autocomplete="off" />
     </label>
     <div class="paper-gens" role="tablist">
       ${GENS.map((g) => `
         <button class="paper-gen ${!cherche && g.n === state.addGen ? 'on' : ''}" role="tab"
                 aria-selected="${!cherche && g.n === state.addGen}" data-agen="${g.n}">
-          Gén. ${g.n}<small>${g.name}</small>
+          ${t('genCourt', g.n)}<small>${g.name}</small>
         </button>`).join('')}
     </div>
-    ${cherche ? '<p class="paper-note">Résultats dans toutes les générations.</p>' : ''}
+    ${cherche ? `<p class="paper-note">${t('resultatsToutesGens')}</p>` : ''}
     <div class="picks">${picksHTML(res)}</div>
-    ${res.length ? '' : '<p class="paper-note">Aucun résultat.</p>'}
-    ${res.length === 80 ? '<p class="paper-note">80 premiers résultats — affinez la recherche.</p>' : ''}
+    ${res.length ? '' : `<p class="paper-note">${t('aucunResultat')}</p>`}
+    ${res.length === 80 ? `<p class="paper-note">${t('premiers80')}</p>` : ''}
   `;
   if (keepFocus) {
     const i = addBody.querySelector('.add-q');
@@ -1397,27 +1412,27 @@ function renderBoxSheet() {
   const pg = state.paperGen ?? ONGLETS[gen].n; // numéro de génération, pas un index
 
   boxBody.innerHTML = `
-    <h2 class="bs-title">Personnaliser la boîte</h2>
+    <h2 class="bs-title">${t('personnaliserBoite')}</h2>
 
     <label class="bs-field">
-      <span>Nom</span>
+      <span>${t('nom')}</span>
       <input class="bs-name" type="text" maxlength="24" value="${esc(info.name || '')}"
-             placeholder="Boîte ${box + 1}" autocomplete="off" />
+             placeholder="${t('boiteN', box + 1)}" autocomplete="off" />
     </label>
 
-    ${state.order[state.gen] ? `<button class="reset-btn" data-act="reset-order">Rétablir l'ordre d'origine de ${esc(ONGLETS[state.gen].titre ?? ('la gén. ' + ONGLETS[state.gen].n))}</button>` : ''}
+    ${state.order[state.gen] ? `<button class="reset-btn" data-act="reset-order">${t('retablirOrdre', esc(ONGLETS[state.gen].titre ?? t('laGen', ONGLETS[state.gen].n)))}</button>` : ''}
 
-    <h3>Fond</h3>
+    <h3>${t('fond')}</h3>
     <div class="paper-gens" role="tablist">
       ${GENS.map((g) => `
         <button class="paper-gen ${g.n === pg ? 'on' : ''}" role="tab" aria-selected="${g.n === pg}" data-pgen="${g.n}">
-          Gén. ${g.n}<small>${g.name}</small>
+          ${t('genCourt', g.n)}<small>${g.name}</small>
         </button>`).join('')}
     </div>
 
     <div class="papers">
       <button class="paper ${!info.paper ? 'on' : ''}" data-paper="">
-        <span class="paper-swatch none"></span><small>Aucun</small>
+        <span class="paper-swatch none"></span><small>${t('aucunFond')}</small>
       </button>
       ${(wallpapers[pg] || []).map((w) => `
         <button class="paper ${info.paper === w.id ? 'on' : ''}" data-paper="${w.id}">
@@ -1425,7 +1440,7 @@ function renderBoxSheet() {
           <small>${w.name}<i>${w.game}</i></small>
         </button>`).join('')}
     </div>
-    ${wallpapers[pg] ? '' : `<p class="paper-note">Les jeux de la génération ${pg} n'avaient pas de fond de boîte : elles étaient toutes unies. Les fonds apparaissent à la génération III.</p>`}
+    ${wallpapers[pg] ? '' : `<p class="paper-note">${t('sansFond', pg)}</p>`}
   `;
 }
 
@@ -2262,7 +2277,7 @@ async function remetFichier(nom, objet) {
       await Share.share({ title: nom, files: [uri] });
     } catch (e) {
       // Refermer la feuille de partage n'est pas une erreur.
-      if (!/cancel/i.test(e?.message ?? '')) alert(`Export impossible : ${e?.message ?? e}`);
+      if (!/cancel/i.test(e?.message ?? '')) alert(t('exportImpossible', e?.message ?? e));
     }
     return;
   }
@@ -2300,6 +2315,7 @@ function exportTout() {
     jeu: state.jeu,
     view: state.view,
     theme: state.theme,
+    langue: langue(),
   };
   remetFichier(`guiguidex-${new Date().toISOString().slice(0, 10)}.json`, payload);
 }
@@ -2314,6 +2330,8 @@ function importTout() {
       // Tableau nu = tout premier format, qui ne portait que les captures.
       const d = Array.isArray(data) ? { caught: data } : data;
       if (!d || typeof d !== 'object') throw new Error('format');
+      // Des CLÉS, traduites seulement au moment du message : le fichier peut changer la
+      // langue, et la confirmation doit alors partir dans la NOUVELLE.
       const repris = [];
 
       if (Array.isArray(d.caught)) {
@@ -2325,7 +2343,7 @@ function importTout() {
         save();
         saveBoxes();
         saveOrder();
-        repris.push('boîtes');
+        repris.push(['partieBoites']);
       }
 
       // L'ordre des onglets : repris index par index, comme au chargement.
@@ -2352,7 +2370,7 @@ function importTout() {
           });
           n++;
         }
-        if (n) { saveCombat(); repris.push(`${n} équipe${n > 1 ? 's' : ''}`); }
+        if (n) { saveCombat(); repris.push(['partieEquipes', n]); }
       }
 
       // Préférences : chacune n'est reprise que si elle est valide.
@@ -2369,10 +2387,16 @@ function importTout() {
       }
 
       if (!repris.length) throw new Error('vide');
-      render();
-      alert(`Sauvegarde restaurée : ${repris.join(', ')}.`);
+      // La langue en dernier : elle refait le rendu elle-même, une fois la surcouche
+      // chargée, et le message de confirmation part alors dans la bonne langue.
+      if (estLangue(d.langue) && d.langue !== langue()) {
+        await poseLangueEtRend(d.langue);
+      } else {
+        render();
+      }
+      alert(t('restaure', repris.map(([cle, ...a]) => t(cle, ...a)).join(', ')));
     } catch {
-      alert("Fichier illisible : il faut un export JSON de cette appli.");
+      alert(t('fichierIllisible'));
     }
   };
   input.click();
@@ -2722,36 +2746,44 @@ const ART = {
 // Une carte par vue. `sous()` est appelée au rendu : chaque carte annonce un chiffre
 // VIVANT — où en est la collection, combien de Pokémon dans l'équipe, quel mode de
 // scan. C'est ce qui remplace les illustrations : l'accueil informe au lieu de décorer.
+// `nom()` et `sous()` sont appelées AU RENDU : la tuile suit donc la langue sans
+// qu'on ait à reconstruire ce tableau.
 const TUILES = [
   {
-    cle: 'pokedex', nom: 'Pokédex', vue: 'pokedex', grande: true,
-    sous: () => 'Toutes les espèces, région par région',
+    cle: 'pokedex', vue: 'pokedex', grande: true,
+    nom: () => t('tuilePokedex'),
+    sous: () => t('tuilePokedexSous'),
   },
   {
-    cle: 'boites', nom: 'Boîtes', vue: 'boites',
+    cle: 'boites', vue: 'boites',
+    nom: () => t('tuileBoites'),
     sous: () => {
       const liste = genList(state.gen).filter((k) => k !== null && k !== undefined);
-      return `${liste.filter(isCaught).length} sur ${liste.length} · ${ONGLETS[state.gen].label}`;
+      return t('tuileBoitesSous', liste.filter(isCaught).length, liste.length, ONGLETS[state.gen].label);
     },
   },
   {
-    cle: 'equipes', nom: 'Équipes', vue: 'combat',
-    sous: () => `${equipe().filter(Boolean).length} sur 6 · ${jeuCourant().nom}`,
+    cle: 'equipes', vue: 'combat',
+    nom: () => t('tuileEquipes'),
+    sous: () => t('tuileEquipesSous', equipe().filter(Boolean).length, jeuCourant().nom),
   },
   {
-    cle: 'attaques', nom: 'Attaques', vue: 'attaques',
-    sous: () => `${Object.keys(moves).length} attaques recensées`,
+    cle: 'attaques', vue: 'attaques',
+    nom: () => t('tuileAttaques'),
+    sous: () => t('tuileAttaquesSous', Object.keys(moves).length),
   },
   {
-    cle: 'scan', nom: 'Scan', vue: 'scan',
+    cle: 'scan', vue: 'scan',
+    nom: () => t('tuileScan'),
     sous: () => {
       const m = localStorage.getItem('pcbox.scan.mode');
-      return `Mode ${m === 'manuel' ? 'Manuel' : m === 'ia' ? 'IA' : 'Auto'}`;
+      return t('tuileScanSous', t(m === 'manuel' ? 'modeManuel' : m === 'ia' ? 'modeIA' : 'modeAuto'));
     },
   },
   {
-    cle: 'reglages', nom: 'Réglages', vue: 'reglages',
-    sous: () => `Thème ${(THEMES.find(([v]) => v === state.theme)?.[1] || 'clair').toLowerCase()}`,
+    cle: 'reglages', vue: 'reglages',
+    nom: () => t('tuileReglages'),
+    sous: () => t('tuileReglagesSous', (THEMES().find(([v]) => v === state.theme)?.[1] || '').toLowerCase()),
   },
 ];
 
@@ -2762,21 +2794,21 @@ function renderAccueil() {
   for (let id = 1; id <= 1025; id++) if (isCaught(id)) pris++;
   const pct = Math.round((100 * pris) / 1025);
 
-  const carte = (t) => `
-    <button class="tuile t-${t.cle} ${t.grande ? 'grande' : ''}" data-tuile="${t.cle}">
-      ${ART[t.cle]}
-      ${t.grande ? `<span class="anneau" style="--p:${pct}" aria-hidden="true"><i>${pct}<em>%</em></i></span>` : ''}
+  const carte = (tu) => `
+    <button class="tuile t-${tu.cle} ${tu.grande ? 'grande' : ''}" data-tuile="${tu.cle}">
+      ${ART[tu.cle]}
+      ${tu.grande ? `<span class="anneau" style="--p:${pct}" aria-hidden="true"><i>${pct}<em>%</em></i></span>` : ''}
       <span class="tuile-txt">
-        <b>${t.nom}</b>
-        <small>${esc(t.sous())}</small>
+        <b>${esc(tu.nom())}</b>
+        <small>${esc(tu.sous())}</small>
       </span>
     </button>`;
 
   poser(h(`
     <section class="accueil">
       <header class="accueil-tete">
-        <h1>Guiguidex</h1>
-        <p>${pris} Pokémon sur 1025${shinyView() ? ' · chromatique' : ''} <span>v${__APP_VERSION__}</span></p>
+        <h1>${t('appTitre')}</h1>
+        <p>${t('accueilSous', pris, shinyView())} <span>v${__APP_VERSION__}</span></p>
       </header>
       <div class="tuiles">
         ${TUILES.map(carte).join('')}
@@ -2792,10 +2824,11 @@ function renderAccueil() {
 // la palette sombre n'est écrite qu'une fois, et un changement de réglage du téléphone
 // se répercute tout seul.
 const themeSysteme = window.matchMedia?.('(prefers-color-scheme: dark)');
-const THEMES = [
-  ['clair', 'Clair'],
-  ['sombre', 'Sombre'],
-  ['auto', 'Celui du téléphone'],
+// Appelée au rendu, comme les tuiles : les libellés suivent la langue.
+const THEMES = () => [
+  ['clair', t('themeClair')],
+  ['sombre', t('themeSombre')],
+  ['auto', t('themeAuto')],
 ];
 
 function appliqueTheme() {
@@ -2810,46 +2843,71 @@ appliqueTheme();
 function renderReglages() {
   poser(h(`
     <section class="reg">
-      <h2 class="reg-titre">Réglages</h2>
+      <h2 class="reg-titre">${t('reglages')}</h2>
 
       <div class="reg-bloc">
-        <h3>Apparence</h3>
-        <p class="reg-aide">Le thème sombre s'applique à toute l'application.</p>
-        <div class="reg-rail" role="radiogroup" aria-label="Thème">
-          ${THEMES.map(([v, lib]) => `
+        <h3>${t('apparence')}</h3>
+        <p class="reg-aide">${t('apparenceAide')}</p>
+        <div class="reg-rail" role="radiogroup" aria-label="${t('theme')}">
+          ${THEMES().map(([v, lib]) => `
             <button class="${state.theme === v ? 'on' : ''}" role="radio"
-                    aria-checked="${state.theme === v}" data-theme="${v}">${lib}</button>`).join('')}
+                    aria-checked="${state.theme === v}" data-theme="${v}">${esc(lib)}</button>`).join('')}
+        </div>
+      </div>
+
+      <!-- La langue : les libellés restent dans LEUR langue (Français, English,
+           日本語), comme partout ailleurs — on doit pouvoir retrouver la sienne
+           depuis une langue qu'on ne lit pas. -->
+      <div class="reg-bloc">
+        <h3>${t('langue')}</h3>
+        <p class="reg-aide">${t('langueAide')}</p>
+        <div class="reg-rail" role="radiogroup" aria-label="${t('langue')}">
+          ${LANGUES.map(([v, lib]) => `
+            <button class="${langue() === v ? 'on' : ''}" role="radio"
+                    aria-checked="${langue() === v}" data-langue="${v}"
+                    lang="${v}">${esc(lib)}</button>`).join('')}
         </div>
       </div>
 
       <div class="reg-bloc">
-        <h3>Sauvegarde</h3>
-        <p class="reg-aide">
-          L'application est réinstallée tous les 7 jours : sans fichier exporté, la
-          progression serait perdue. Pensez à exporter de temps en temps.
-        </p>
+        <h3>${t('sauvegarde')}</h3>
+        <p class="reg-aide">${t('sauvegardeAide')}</p>
         <div class="reg-lignes">
           <button class="reg-ligne" data-act="export">
-            ${ICO.exporte}<span><b>Exporter toutes mes données</b><small>Boîtes, équipes et préférences, en un fichier</small></span>
+            ${ICO.exporte}<span><b>${t('exportTout')}</b><small>${t('exportToutSous')}</small></span>
           </button>
           <button class="reg-ligne" data-act="import">
-            ${ICO.importe}<span><b>Importer une sauvegarde</b><small>Restaure ce que le fichier contient</small></span>
+            ${ICO.importe}<span><b>${t('importTout')}</b><small>${t('importToutSous')}</small></span>
           </button>
         </div>
       </div>
 
       <!-- D'autres réglages viendront ici : un bloc par sujet, sur le même gabarit. -->
       <div class="reg-bloc vide">
-        <h3>À venir</h3>
-        <p class="reg-aide">D'autres réglages s'ajouteront ici.</p>
+        <h3>${t('aVenir')}</h3>
+        <p class="reg-aide">${t('aVenirSous')}</p>
       </div>
     </section>`));
+}
+
+// Changer de langue : charger la surcouche, refaire ce qui porte des noms, rendre.
+// Le catalogue et les libellés d'onglets en dépendent, et ils sont construits une
+// seule fois — d'où ces deux reconstructions.
+async function poseLangueEtRend(l) {
+  await chargeLangue(l, { TYPES, GENS, CLASSES });
+  renommeOnglets();
+  construitFormes();
+  construitCatalogue();
+  // La vue Scan est un élément unique, construit au chargement : elle ne se refait
+  // pas au rendu et doit reposer ses libellés elle-même.
+  scan.retraduit();
+  render();
 }
 
 // Barre de retour, construite une fois : elle coiffe toutes les vues sauf l'accueil.
 const barreRetour = h(`
   <header class="retour">
-    <button data-accueil aria-label="Revenir à l'accueil">${ICO.gauche}<span>Accueil</span></button>
+    <button data-accueil>${ICO.gauche}<span class="retour-txt">${t('accueil')}</span></button>
   </header>`);
 barreRetour.addEventListener('click', () => vaVers('accueil'));
 
@@ -2866,17 +2924,27 @@ function vaVers(vue) {
 app.addEventListener('click', (e) => {
   const b = e.target.closest('[data-tuile]');
   if (b) {
-    const t = TUILES.find((x) => x.cle === b.dataset.tuile);
-    if (t) vaVers(t.vue);
+    const tu = TUILES.find((x) => x.cle === b.dataset.tuile);
+    if (tu) vaVers(tu.vue);
     return;
   }
-  const th = e.target.closest('[data-theme]');
+  // `button[data-theme]` et non `[data-theme]` : `appliqueTheme()` pose cet attribut
+  // sur <html>, que `closest` finit donc par trouver pour N'IMPORTE quel clic dans
+  // l'appli. Le thème « celui du téléphone » se figeait ainsi en clair ou en sombre
+  // au premier clic venu, et le choix de la langue n'était jamais atteint.
+  const th = e.target.closest('button[data-theme]');
   if (th) {
     state.theme = th.dataset.theme;
     localStorage.setItem(THEME_KEY, state.theme);
     appliqueTheme();
     retourHaptique();
     render();
+    return;
+  }
+  const lg = e.target.closest('button[data-langue]');
+  if (lg && lg.dataset.langue !== langue()) {
+    retourHaptique();
+    poseLangueEtRend(lg.dataset.langue);
   }
 });
 
@@ -2909,8 +2977,8 @@ function poser(...enfants) {
 
 function renderEquipeSlot(m, i) {
   if (!m) {
-    return `<button class="eq vide" data-eq="${i}" aria-label="Emplacement ${i + 1}, libre">
-      <b>+</b><small>Libre</small>
+    return `<button class="eq vide" data-eq="${i}" aria-label="${t('emplacementLibreN', i + 1)}">
+      <b>+</b><small>${t('libre')}</small>
     </button>`;
   }
   const espece = speciesOf(m.key);
@@ -2920,19 +2988,19 @@ function renderEquipeSlot(m, i) {
   const absent = LEARN_VG && !LEARN_VG[m.key]?.[state.jeu] && !LEARN_VG[espece]?.[state.jeu];
   return `
     <button class="eq ${isCaught(m.key) ? '' : 'gris'} ${absent ? 'absent' : ''}" data-eq="${i}"
-            aria-label="${esc(monName(m.key))}, niveau ${niv}">
+            aria-label="${esc(t('niveauDe', monName(m.key), niv))}">
       <img src="${sprites.still(spriteKey(m.key), !!m.shiny)}" alt=""
            ${imgFallback(espece, !!m.shiny)} />
       <span class="eq-nom">${esc(monName(m.key))}</span>
-      <span class="eq-jauge"><i>PV</i><span class="jauge"><b></b></span></span>
+      <span class="eq-jauge"><i>${t('stat_pv')}</i><span class="jauge"><b></b></span></span>
       <span class="eq-bas">
-        <span class="eq-lv">N.${niv}</span>
+        <span class="eq-lv">${t('niveauBadge', niv)}</span>
         <span class="eq-pv">${pv}/${pv}</span>
       </span>
       ${m.objet && items[m.objet]
         ? `<img class="eq-obj" src="items/${m.objet}.png" alt="" title="${esc(items[m.objet].n)}" />`
         : ''}
-      ${absent ? '<span class="eq-alerte" title="Absent de ce jeu">!</span>' : ''}
+      ${absent ? `<span class="eq-alerte" title="${t('absentDeCeJeu')}">!</span>` : ''}
     </button>`;
 }
 
@@ -2941,12 +3009,12 @@ function renderCombat() {
   const pleines = equipe().filter(Boolean).length;
 
   poser(
-    entete('Équipes', `${pleines} Pokémon sur 6 · ${jeu.nom}`),
+    entete(t('equipes'), t('equipesSous', pleines, jeu.nom)),
     h(`
       <section class="combat">
         <div class="combat-head">
           <button class="jeu-btn" data-act="choix-jeu">
-            <small>Version du jeu</small>
+            <small>${t('versionDuJeu')}</small>
             <b>${esc(jeu.nom)}</b>
           </button>
           <div class="combat-compte"><b>${pleines}</b>/6</div>
@@ -2956,7 +3024,7 @@ function renderCombat() {
           ${equipe().map(renderEquipeSlot).join('')}
         </div>
 
-        ${LEARN_VG ? '' : '<p class="combat-charge">Chargement des attaques par version…</p>'}
+        ${LEARN_VG ? '' : `<p class="combat-charge">${t('chargementAttaques')}</p>`}
 
         <div class="analyse">${renderAnalyse()}</div>
 
@@ -2964,11 +3032,7 @@ function renderCombat() {
 
         <!-- L'aide ne sert qu'à la première prise en main : dès qu'un Pokémon est
              placé, le geste est compris et le pavé n'est plus que du bruit. -->
-        ${pleines ? '' : `<p class="hint">
-          Touchez un emplacement pour choisir un Pokémon, puis le Pokémon lui-même
-          pour régler son niveau, son talent, son objet et ses quatre attaques.
-          Tout suit la version choisie, ici <b>${esc(jeu.nom)}</b>.
-        </p>`}
+        ${pleines ? '' : `<p class="hint">${t('aideEquipe', esc(jeu.nom))}</p>`}
       </section>`),
   );
 
@@ -2999,18 +3063,20 @@ function roleDe(st) {
   const encaisse = st.pv + st.def + st.defs;
   const frappe = Math.max(st.att, st.atts);
   const ecart = st.att - st.atts;
-  const orientation = ecart >= 15 ? 'physique' : ecart <= -15 ? 'spécial' : 'mixte';
+  // Des CLÉS, pas des libellés : les textes sont traduits au rendu, et les tests
+  // ci-dessous (« est-ce un mur ? ») ne dépendent donc pas de la langue.
+  const orientation = ecart >= 15 ? 'physique' : ecart <= -15 ? 'special' : 'mixte';
   let role;
   // Seuils calés sur des encaisseurs réels : Airmure et Magnézone plafonnent à 275
   // en PV+Déf+Déf.Spé, et ce sont pourtant les murs de leur équipe. À 300 le test ne
   // reconnaissait quasiment que Leuphorie, et l'appli annonçait « aucun encaisseur »
   // juste après avoir désigné Magnézone comme le plus solide.
-  if (encaisse >= 270 && frappe < 100) role = 'Mur';
-  else if (encaisse >= 260) role = 'Tank offensif';
-  else if (st.vit >= 100 && frappe >= 100) role = 'Sweeper';
-  else if (st.vit <= 55 && frappe >= 110) role = 'Casseur lent';
-  else if (frappe >= 110) role = 'Attaquant';
-  else role = 'Polyvalent';
+  if (encaisse >= 270 && frappe < 100) role = 'mur';
+  else if (encaisse >= 260) role = 'tank';
+  else if (st.vit >= 100 && frappe >= 100) role = 'sweeper';
+  else if (st.vit <= 55 && frappe >= 110) role = 'casseur';
+  else if (frappe >= 110) role = 'attaquant';
+  else role = 'polyvalent';
   return { role, orientation, encaisse, frappe };
 }
 
@@ -3074,11 +3140,11 @@ function analyseEquipe() {
   const avis = [];
   const communes = def.filter((d) => d.faibles >= 3).sort((a, b) => b.faibles - a.faibles);
   for (const d of communes) {
-    avis.push({ ton: 'alerte', txt: `<b>${membres.length === d.faibles ? 'Toute l’équipe' : d.faibles + ' membres'}</b> sont faibles au type ${TYPES[d.t][0]}. Une seule attaque de ce type peut balayer la partie.` });
+    avis.push({ ton: 'alerte', txt: t('avisFaiblesse', membres.length === d.faibles ? t('touteLequipe') : t('nMembres', d.faibles), TYPES[d.t][0]) });
   }
   const sansParade = def.filter((d) => !d.resiste && !d.immune && d.faibles > 0);
   if (sansParade.length) {
-    avis.push({ ton: 'alerte', txt: `Aucun membre ne résiste au type ${sansParade.map((d) => TYPES[d.t][0]).join(', ')}.` });
+    avis.push({ ton: 'alerte', txt: t('avisSansParade', sansParade.map((d) => TYPES[d.t][0]).join(', ')) });
   }
 
   // --- Conseils tirés des ATTAQUES réellement choisies ---
@@ -3105,9 +3171,9 @@ function analyseEquipe() {
     const spec = off.filter((mv) => mv.c === 'special').length;
     const ecart = mb.st.att - mb.st.atts;
     if (ecart >= 20 && spec > phys) {
-      categorieRatee.push(`${mb.nom} frappe surtout en spécial alors qu'il a ${mb.st.att} en Attaque contre ${mb.st.atts} en Atq. Spé.`);
+      categorieRatee.push(t('avisCategorie', mb.nom, t('special'), mb.st.att, mb.st.atts, libStat('att'), libStat('atts')));
     } else if (ecart <= -20 && phys > spec) {
-      categorieRatee.push(`${mb.nom} frappe surtout en physique alors qu'il a ${mb.st.atts} en Atq. Spé. contre ${mb.st.att} en Attaque.`);
+      categorieRatee.push(t('avisCategorie', mb.nom, t('physique'), mb.st.atts, mb.st.att, libStat('atts'), libStat('att')));
     }
 
     // Toutes ses attaques du même type : un seul mur bien choisi l'arrête.
@@ -3116,45 +3182,45 @@ function analyseEquipe() {
 
   for (const txt of categorieRatee) avis.push({ ton: 'alerte', txt: esc(txt) });
   if (sansStab.length) {
-    avis.push({ ton: 'conseil', txt: `Aucune attaque du type de <b>${sansStab.map(esc).join('</b>, <b>')}</b> : le bonus de 50 % du STAB est perdu.` });
+    avis.push({ ton: 'conseil', txt: t('avisSansStab', sansStab.map(esc).join('</b>, <b>')) });
   }
   if (monoType.length) {
-    avis.push({ ton: 'conseil', txt: `<b>${monoType.map(esc).join('</b>, <b>')}</b> n'attaque${monoType.length > 1 ? 'nt' : ''} que d'un seul type : un mur bien choisi l'arrête.` });
+    avis.push({ ton: 'conseil', txt: t('avisMonoType', monoType.map(esc).join('</b>, <b>'), monoType.length > 1) });
   }
   if (membres.some((m) => m.moves.length) && !statutQuelquePart) {
-    avis.push({ ton: 'conseil', txt: 'Aucune attaque de statut dans l’équipe : ni soin, ni augmentation, ni entrave. Face à un adversaire qui se renforce, rien ne l’en empêchera.' });
+    avis.push({ ton: 'conseil', txt: t('avisSansStatut') });
   }
   if (incomplets.length) {
-    avis.push({ ton: 'info', txt: `Moveset incomplet : <b>${incomplets.map(esc).join('</b>, <b>')}</b>.` });
+    avis.push({ ton: 'info', txt: t('avisIncomplet', incomplets.map(esc).join('</b>, <b>')) });
   }
 
-  const murs = membres.filter((m) => m.role === 'Mur' || m.role === 'Tank offensif');
-  if (!murs.length) avis.push({ ton: 'conseil', txt: 'Aucun encaisseur : tout le monde tombe vite. Un Pokémon très défensif donne le temps de reprendre la main.' });
+  const murs = membres.filter((m) => m.role === 'mur' || m.role === 'tank');
+  if (!murs.length) avis.push({ ton: 'conseil', txt: t('avisSansMur') });
 
   const rapides = membres.filter((m) => m.st.vit >= 100);
-  if (!rapides.length && membres.length >= 3) avis.push({ ton: 'conseil', txt: 'Personne au-dessus de 100 en Vitesse : l’équipe frappera presque toujours en second.' });
+  if (!rapides.length && membres.length >= 3) avis.push({ ton: 'conseil', txt: t('avisSansVitesse') });
 
   const phys = membres.filter((m) => m.orientation === 'physique').length;
-  const spec = membres.filter((m) => m.orientation === 'spécial').length;
-  if (membres.length >= 3 && spec === 0) avis.push({ ton: 'conseil', txt: 'Équipe entièrement physique : un adversaire très défensif en Défense vous bloque net.' });
-  if (membres.length >= 3 && phys === 0) avis.push({ ton: 'conseil', txt: 'Équipe entièrement spéciale : un adversaire très défensif en Défense Spéciale vous bloque net.' });
+  const spec = membres.filter((m) => m.orientation === 'special').length;
+  if (membres.length >= 3 && spec === 0) avis.push({ ton: 'conseil', txt: t('avisToutPhysique') });
+  if (membres.length >= 3 && phys === 0) avis.push({ ton: 'conseil', txt: t('avisToutSpecial') });
 
   // Deux membres au type identique : les faiblesses se cumulent au lieu de se couvrir.
   const vus = new Map();
   for (const m of membres) {
     const cle = [...m.types].sort().join('/');
-    if (vus.has(cle)) avis.push({ ton: 'conseil', txt: `${esc(vus.get(cle))} et ${esc(m.nom)} partagent le même type : leurs faiblesses se cumulent.` });
+    if (vus.has(cle)) avis.push({ ton: 'conseil', txt: t('avisMemeType', esc(vus.get(cle)), esc(m.nom)) });
     else vus.set(cle, m.nom);
   }
 
   if (sansAttaque) {
-    avis.push({ ton: 'info', txt: `${sansAttaque} membre${sansAttaque > 1 ? 's n’ont' : ' n’a'} aucune attaque offensive : la couverture ci-dessus est incomplète.` });
+    avis.push({ ton: 'info', txt: t('avisSansAttaque', sansAttaque) });
   }
   const nonCouverts = TT.filter((d) => !couverts.has(d));
   if (typesAtq.size && nonCouverts.length) {
-    avis.push({ ton: 'info', txt: `Rien ne frappe super efficacement : ${nonCouverts.map((d) => TYPES[d][0]).join(', ')}.` });
+    avis.push({ ton: 'info', txt: t('avisNonCouverts', nonCouverts.map((d) => TYPES[d][0]).join(', ')) });
   }
-  if (!avis.length) avis.push({ ton: 'bon', txt: 'Aucun défaut majeur détecté : pas de faiblesse partagée, un encaisseur, de la vitesse et les deux catégories d’attaque.' });
+  if (!avis.length) avis.push({ ton: 'bon', txt: t('avisRien') });
 
   return { membres, def, off, couverts, typesAtq, avis, murs };
 }
@@ -3222,7 +3288,7 @@ const ligne = (t, jetons, alerte) => (!jetons.length ? '' : `
 function renderFaiblesses(espece, gen = genDuJeu()) {
   const table = typechart.chart[gen];
   const types = pokedex[espece]?.types || [];
-  if (!types.length) return '<p class="none">Types inconnus.</p>';
+  if (!types.length) return `<p class="none">${t('typesInconnus')}</p>`;
   const lignes = typesDeGen(gen)
     .map((a) => {
       let mult = 1;
@@ -3231,7 +3297,7 @@ function renderFaiblesses(espece, gen = genDuJeu()) {
     })
     .filter((x) => x.mult !== 1)
     .sort((x, y) => y.mult - x.mult);
-  if (!lignes.length) return '<p class="none">Neutre face à tous les types.</p>';
+  if (!lignes.length) return `<p class="none">${t('neutrePartout')}</p>`;
   return `<div class="tgrid">${lignes.map((x) =>
     ligne(x.t, jetonsDe([x.mult]), x.mult >= 4)).join('')}</div>`;
 }
@@ -3262,7 +3328,7 @@ function renderTableTypes() {
     </tr>`).join('');
   return `
     <details class="tt">
-      <summary>Table des types <small>${esc(jeuCourant().nom)}</small></summary>
+      <summary>${t('tableDesTypes')} <small>${esc(jeuCourant().nom)}</small></summary>
       <div class="tt-wrap">
         <table class="tt-tab">
           <thead><tr><th></th>${entete}</tr></thead>
@@ -3281,33 +3347,33 @@ function renderAnalyse() {
   const tank = a.membres.slice().sort((x, y) => y.encaisse - x.encaisse)[0];
 
   return `
-    <h3 class="an-h">Défense <small>ce que l'équipe subit</small></h3>
+    <h3 class="an-h">${t('defense')} <small>${t('defenseSous')}</small></h3>
     <div class="tgrid">
       ${a.def.slice()
         .sort((x, y) => y.faibles - x.faibles || y.pire - x.pire || (y.resiste + y.immune) - (x.resiste + x.immune))
         .map((d) => ligne(d.t, jetonsDe(d.mults), d.faibles >= 3)).join('')}
     </div>
 
-    <h3 class="an-h">Attaque <small>meilleur coup disponible</small></h3>
+    <h3 class="an-h">${t('attaque')} <small>${t('attaqueSous')}</small></h3>
     ${a.typesAtq.size
       ? `<div class="tgrid off">${a.off.slice()
           .sort((x, y) => y.mult - x.mult)
           .map((o) => ligne(o.t, o.mult === 1 ? [] : [{ v: o.mult, n: 1 }], false)).join('')}</div>`
-      : '<p class="none">Aucune attaque offensive choisie : sélectionnez-en pour voir la couverture.</p>'}
+      : `<p class="none">${t('aucuneOffensive')}</p>`}
 
-    <h3 class="an-h">Rôles</h3>
-    <p class="an-tank">Le plus solide : <b>${esc(tank.nom)}</b> (${tank.encaisse} en PV+Déf+Déf.Spé).</p>
+    <h3 class="an-h">${t('roles')}</h3>
+    <p class="an-tank">${t('plusSolide', esc(tank.nom), tank.encaisse)}</p>
     <ul class="roles">
       ${a.membres.map((m) => `
         <li>
           <img src="${sprites.still(spriteKey(m.key), m.shiny)}" alt="" ${imgFallback(m.esp, m.shiny)} />
           <span class="r-nom">${esc(m.nom)}</span>
-          <span class="r-role">${m.role}</span>
-          <span class="r-det">${m.orientation} · Vit. ${m.st.vit} · encaisse ${m.encaisse}</span>
+          <span class="r-role">${esc(nomRole(m.role))}</span>
+          <span class="r-det">${esc(t('detailRole', nomOrientation(m.orientation), m.st.vit, m.encaisse))}</span>
         </li>`).join('')}
     </ul>
 
-    <h3 class="an-h">Conseils</h3>
+    <h3 class="an-h">${t('conseils')}</h3>
     <ul class="avis">
       ${a.avis.map((v) => `<li class="${v.ton}">${v.txt}</li>`).join('')}
     </ul>
@@ -3445,12 +3511,11 @@ function htmlVersions() {
   const parGen = {};
   for (const v of JEUX) (parGen[v.gen] ??= []).push(v);
   return `
-    <h2 class="bs-title">Version du jeu</h2>
-    <p class="paper-note">Le moveset proposé change d'un jeu à l'autre. Les stats de
-      base restent celles des jeux actuels : PokéAPI ne publie pas leur historique.</p>
+    <h2 class="bs-title">${t('versionDuJeu')}</h2>
+    <p class="paper-note">${t('noteVersions')}</p>
     ${Object.entries(parGen).map(([gen, liste]) => `
       <div class="vgroupe">
-        <h3>Génération ${esc(gen.replace('generation-', '').toUpperCase())}</h3>
+        <h3>${t('genLongue', NUM_GEN[gen] ?? gen.replace('generation-', '').toUpperCase())}</h3>
         ${liste.map((v) => `
           <button class="vjeu ${v.k === state.jeu ? 'on' : ''}" data-jeu="${esc(v.k)}">
             ${esc(v.nom)}${v.k === state.jeu ? ' <i>✓</i>' : ''}
@@ -3467,17 +3532,17 @@ function htmlChoixMon() {
     ? CATALOGUE.filter((e) => e.cle.includes(q)).slice(0, 80)
     : CATALOGUE.filter((e) => e.gen === state.addGen);
   return `
-    <h2 class="bs-title">Choisir un Pokémon</h2>
+    <h2 class="bs-title">${t('choisirPokemon')}</h2>
     <label class="bs-field">
-      <span>Rechercher</span>
+      <span>${t('rechercher')}</span>
       <input class="bs-name bs-q" type="text" value="${esc(state.bs.q || '')}"
-             placeholder="Nom, forme, numéro…" autocomplete="off" />
+             placeholder="${t('placeholderPokemon')}" autocomplete="off" />
     </label>
     ${q ? '' : `<div class="paper-gens" role="tablist">
       ${GENS.map((g) => `
         <button class="paper-gen ${g.n === state.addGen ? 'on' : ''}" role="tab"
                 aria-selected="${g.n === state.addGen}" data-agen="${g.n}">
-          Gén. ${g.n}<small>${g.name}</small>
+          ${t('genCourt', g.n)}<small>${g.name}</small>
         </button>`).join('')}
     </div>`}
     <div class="picks">
@@ -3487,28 +3552,24 @@ function htmlChoixMon() {
           <span>${esc(e.name)}<i>${esc(e.sub)}</i></span>
         </button>`).join('')}
     </div>
-    ${res.length ? '' : '<p class="paper-note">Aucun résultat.</p>'}
+    ${res.length ? '' : `<p class="paper-note">${t('aucunResultat')}</p>`}
   `;
 }
 
-// Libellés courts des stats, pour l'effet d'une nature.
-const LIB_STAT = { att: 'Attaque', def: 'Défense', atts: 'Atq. Spé.', defs: 'Déf. Spé.', vit: 'Vitesse' };
-
 function htmlChoixNature() {
   const m = equipe()[state.bs.slot];
-  if (!m) return '<p class="none">Emplacement vide.</p>';
+  if (!m) return `<p class="none">${t('emplacementVide')}</p>`;
   return `
-    <h2 class="bs-title">Nature — ${esc(monName(m.key))}</h2>
-    <p class="paper-note">Une nature augmente une statistique de 10 % et en diminue
-      une autre d'autant. Les cinq neutres n'ont aucun effet.</p>
+    <h2 class="bs-title">${t('natureDe', esc(monName(m.key)))}</h2>
+    <p class="paper-note">${t('noteNature')}</p>
     <div class="atq4">
       ${NATURES.map((n) => {
         const neutre = !n.p || n.p === n.m;
         return `
           <button class="atq ${m.nature === n.k ? 'choisi' : ''}" data-picknat="${esc(n.k)}">
             <span class="atq-h"><span class="atq-n">${esc(n.n)}</span></span>
-            <span class="atq-m">${neutre ? 'Aucun effet'
-              : `<b class="n-plus">+10 %</b> ${esc(LIB_STAT[n.p])} · <b class="n-moins">−10 %</b> ${esc(LIB_STAT[n.m])}`}</span>
+            <span class="atq-m">${neutre ? t('aucunEffet')
+              : `<b class="n-plus">+10 %</b> ${esc(libStat(n.p))} · <b class="n-moins">−10 %</b> ${esc(libStat(n.m))}`}</span>
           </button>`;
       }).join('')}
     </div>`;
@@ -3517,44 +3578,44 @@ function htmlChoixNature() {
 // Les talents que l'espèce peut avoir dans le jeu choisi.
 function htmlChoixTalent() {
   const m = equipe()[state.bs.slot];
-  if (!m) return '<p class="none">Emplacement vide.</p>';
+  if (!m) return `<p class="none">${t('emplacementVide')}</p>`;
   const liste = poolTalents(m.key);
   return `
-    <h2 class="bs-title">Talent — ${esc(monName(m.key))}</h2>
-    <p class="paper-note">Talents disponibles dans ${esc(jeuCourant().nom)}.</p>
+    <h2 class="bs-title">${t('talentDe', esc(monName(m.key)))}</h2>
+    <p class="paper-note">${t('talentsDispo', esc(jeuCourant().nom))}</p>
     <div class="atq4">
       ${liste.map(([slug, cache]) => {
-        const t = abilities.list[slug];
-        if (!t) return '';
+        const ab = abilities.list[slug];
+        if (!ab) return '';
         return `
           <button class="atq ${m.talent === slug ? 'choisi' : ''}" data-picktal="${esc(slug)}">
             <span class="atq-h">
-              <span class="atq-n">${esc(t.n)}</span>
-              ${cache ? '<span class="type mini" style="--t:#7c7c74">caché</span>' : ''}
+              <span class="atq-n">${esc(ab.n)}</span>
+              ${cache ? `<span class="type mini" style="--t:#7c7c74">${t('talentCache')}</span>` : ''}
             </span>
-            ${t.d ? `<span class="atq-m">${esc(t.d)}</span>` : ''}
+            ${ab.d ? `<span class="atq-m">${esc(ab.d)}</span>` : ''}
           </button>`;
       }).join('')}
-      ${m.talent ? '<button class="atq libre" data-picktal="">Retirer le talent</button>' : ''}
+      ${m.talent ? `<button class="atq libre" data-picktal="">${t('retirerTalent')}</button>` : ''}
     </div>`;
 }
 
 // Les objets tenables en combat, existants dans le jeu choisi.
 function htmlChoixObjet() {
   const m = equipe()[state.bs.slot];
-  if (!m) return '<p class="none">Emplacement vide.</p>';
+  if (!m) return `<p class="none">${t('emplacementVide')}</p>`;
   const q = fold(state.bs.q || '');
   const tous = poolObjets();
   const res = q ? tous.filter(([, o]) => fold(o.n).includes(q)) : tous;
   return `
-    <h2 class="bs-title">Objet tenu — ${esc(monName(m.key))}</h2>
-    <p class="paper-note">${tous.length} objets tenables dans ${esc(jeuCourant().nom)}.</p>
+    <h2 class="bs-title">${t('objetDe', esc(monName(m.key)))}</h2>
+    <p class="paper-note">${t('objetsDispo', tous.length, esc(jeuCourant().nom))}</p>
     <label class="bs-field">
-      <span>Rechercher</span>
+      <span>${t('rechercher')}</span>
       <input class="bs-name bs-q" type="text" value="${esc(state.bs.q || '')}"
-             placeholder="Nom d'objet…" autocomplete="off" />
+             placeholder="${t('placeholderObjet')}" autocomplete="off" />
     </label>
-    ${m.objet ? '<button class="atq libre" data-pickobj="">Retirer l\'objet</button>' : ''}
+    ${m.objet ? `<button class="atq libre" data-pickobj="">${t('retirerObjet')}</button>` : ''}
     <div class="objets">
       ${res.map(([slug, o]) => `
         <button class="objet ${m.objet === slug ? 'choisi' : ''}" data-pickobj="${esc(slug)}">
@@ -3562,13 +3623,13 @@ function htmlChoixObjet() {
           <span>${esc(o.n)}${o.d ? `<i>${esc(o.d)}</i>` : ''}</span>
         </button>`).join('')}
     </div>
-    ${res.length ? '' : '<p class="paper-note">Aucun objet ne correspond.</p>'}`;
+    ${res.length ? '' : `<p class="paper-note">${t('aucunObjetCorrespond')}</p>`}`;
 }
 
 // Détail d'un membre : niveau, stats calculées, quatre attaques.
 function htmlDetail() {
   const m = equipe()[state.bs.slot];
-  if (!m) return '<p class="none">Emplacement vide.</p>';
+  if (!m) return `<p class="none">${t('emplacementVide')}</p>`;
   const espece = speciesOf(m.key);
   const st = statsDe(m.key);
   const niv = m.niv ?? NIV_DEFAUT;
@@ -3592,10 +3653,10 @@ function htmlDetail() {
     const saisi = perso[cle];
     const iv = saisi != null ? ivPossibles(base, niv, saisi, estPV, espece, ev, mult) : null;
     const signe = mult > 1 ? '<b class="n-plus">+</b>' : mult < 1 ? '<b class="n-moins">−</b>' : '';
-    const libelleIv = saisi == null ? 'calculé à IV 31'
-      : !iv ? 'hors plage'
-      : iv.min === iv.max ? `IV ${iv.min}`
-      : `IV ${iv.min}–${iv.max}`;
+    const libelleIv = saisi == null ? t('calculeIv31')
+      : !iv ? t('horsPlage')
+      : iv.min === iv.max ? t('ivExact', iv.min)
+      : t('ivPlage', iv.min, iv.max);
     return `
       <div class="stat">
         <dt>${lib}${signe}</dt>
@@ -3603,27 +3664,21 @@ function htmlDetail() {
                    data-stat="${cle}" value="${saisi ?? ''}" placeholder="${calcule}"
                    aria-label="${lib}" /></dd>
         <span class="stat-iv ${saisi != null && !iv ? 'faux' : ''}">${libelleIv}</span>
-        <label class="stat-ev">EV
+        <label class="stat-ev">${t('statEV')}
           <input type="number" inputmode="numeric" min="0" max="252"
                  data-ev="${cle}" value="${ev || ''}" placeholder="0"
-                 aria-label="EV ${lib}" />
+                 aria-label="${t('evDe', lib)}" />
         </label>
       </div>`;
   };
   const bloc = st ? `
     <dl class="stats">
-      ${champ('pv', 'PV', st.pv, true)}
-      ${champ('att', 'Attaque', st.att, false)}
-      ${champ('def', 'Défense', st.def, false)}
-      ${champ('atts', 'Atq. Spé.', st.atts, false)}
-      ${champ('defs', 'Déf. Spé.', st.defs, false)}
-      ${champ('vit', 'Vitesse', st.vit, false)}
+      ${statLignes().map(([cle, lib]) => champ(cle, lib, st[cle], cle === 'pv')).join('')}
     </dl>
     <p class="stat-note">
-      Recopiez les valeurs lues en jeu : l'IV est déduit de chacune, en tenant compte
-      de la nature et des EV renseignés.${Object.keys(perso).length || Object.keys(evs).length
-        ? ' <button data-act="stats-reset">Tout effacer</button>' : ''}
-    </p>` : '<p class="none">Stats de base inconnues.</p>';
+      ${t('noteStats')}${Object.keys(perso).length || Object.keys(evs).length
+        ? ` <button data-act="stats-reset">${t('toutEffacer')}</button>` : ''}
+    </p>` : `<p class="none">${t('statsInconnuesCourt')}</p>`;
 
   return `
     <div class="sheet-top">
@@ -3632,7 +3687,7 @@ function htmlDetail() {
              ${imgFallback(espece, !!m.shiny)} />
         <button class="shiny-btn ${m.shiny ? 'on' : ''}" data-act="eq-shiny"
                 aria-pressed="${!!m.shiny}"
-                title="${m.shiny ? 'Voir la forme normale' : 'Voir la forme chromatique'}">&#10022;</button>
+                title="${m.shiny ? t('voirNormale') : t('voirChromatique')}">&#10022;</button>
       </div>
       <div>
         <h2 class="sheet-name">${esc(monName(m.key))}</h2>
@@ -3642,7 +3697,7 @@ function htmlDetail() {
     </div>
 
     <div class="niv-rang">
-      <span>Niveau</span>
+      <span>${t('niveau')}</span>
       <button data-niv="-10">−10</button>
       <button data-niv="-1">−1</button>
       <b>${niv}</b>
@@ -3650,51 +3705,51 @@ function htmlDetail() {
       <button data-niv="10">+10</button>
     </div>
 
-    <h3>Talent ${talents.length ? '' : '<small>aucun dans ce jeu</small>'}</h3>
+    <h3>${t('talent')} ${talents.length ? '' : `<small>${t('aucunDansCeJeu')}</small>`}</h3>
     ${talents.length ? `
       <button class="ligne-choix" data-choix="talent">
-        <span class="lc-t">${talent ? esc(talent.n) : 'Choisir un talent'}</span>
+        <span class="lc-t">${talent ? esc(talent.n) : t('choisirTalent')}</span>
         ${talent?.d ? `<span class="lc-d">${esc(talent.d)}</span>` : ''}
       </button>`
-      : '<p class="none">Les talents n\'existent qu\'à partir de la gén. 3.</p>'}
+      : `<p class="none">${t('talentsDepuisG3')}</p>`}
 
-    <h3>Objet tenu</h3>
+    <h3>${t('objetTenu')}</h3>
     ${objetsDispo ? `
       <button class="ligne-choix" data-choix="objet">
         ${objet ? `<img class="lc-i" src="items/${m.objet}.png" alt="" />` : ''}
-        <span class="lc-t">${objet ? esc(objet.n) : 'Aucun objet'}</span>
+        <span class="lc-t">${objet ? esc(objet.n) : t('aucunObjet')}</span>
         ${objet?.d ? `<span class="lc-d">${esc(objet.d)}</span>` : ''}
       </button>`
-      : '<p class="none">Aucun objet tenu en gén. 1.</p>'}
+      : `<p class="none">${t('aucunObjetG1')}</p>`}
 
-    <h3>Faiblesses et résistances <small>${esc(jeuCourant().nom)}</small></h3>
+    <h3>${t('faiblessesEtResistances')} <small>${esc(jeuCourant().nom)}</small></h3>
     ${renderFaiblesses(espece)}
 
-    <h3>Nature</h3>
+    <h3>${t('nature')}</h3>
     <button class="ligne-choix" data-choix="nature">
-      <span class="lc-t">${nature ? esc(nature.n) : 'Neutre (aucune)'}</span>
+      <span class="lc-t">${nature ? esc(nature.n) : t('natureNeutre')}</span>
       <span class="lc-d">${nature && nature.p && nature.p !== nature.m
-        ? `+10 % ${esc(LIB_STAT[nature.p])}, −10 % ${esc(LIB_STAT[nature.m])}`
-        : 'Aucun effet sur les statistiques'}</span>
+        ? t('natureEffet', esc(libStat(nature.p)), esc(libStat(nature.m)))
+        : t('natureAucunEffet')}</span>
     </button>
 
     <!-- Le socle de l'espèce, que le niveau ne change pas — à ne pas confondre avec
          les valeurs calculées juste en dessous. Les deux titres se suivent, d'où les
          sous-titres qui les distinguent. -->
-    <h3>Statistiques de base <small>indépendantes du niveau</small></h3>
+    <h3>${t('statsDeBase')} <small>${t('statsIndepNiveau')}</small></h3>
     ${renderStatsBase(m.key)}
 
-    <h3>Statistiques <small>IV déduits</small></h3>
+    <h3>${t('statistiques')} <small>${t('ivDeduits')}</small></h3>
     ${bloc}
 
-    <h3>Attaques <small>${esc(jeuCourant().nom)}</small></h3>
+    <h3>${t('attaques')} <small>${esc(jeuCourant().nom)}</small></h3>
     ${pool === null
-      ? `<p class="none">${esc(monName(m.key))} n'apparaît pas dans ${esc(jeuCourant().nom)} : aucune attaque à proposer.</p>`
+      ? `<p class="none">${t('pasDansCeJeu', esc(monName(m.key)), esc(jeuCourant().nom))}</p>`
       : `<div class="atq4">
           ${Array.from({ length: 4 }, (_, i) => {
             const id = m.moves?.[i];
             const mv = id ? moves[id] : null;
-            if (!mv) return `<button class="atq libre" data-atq="${i}"><b>+</b> Attaque ${i + 1}</button>`;
+            if (!mv) return `<button class="atq libre" data-atq="${i}"><b>+</b> ${t('attaqueN', i + 1)}</button>`;
             const [tn, tc] = TYPES[mv.t] || [mv.t || '—', '#888'];
             const ko = !dispo.has(id);
             return `
@@ -3703,12 +3758,12 @@ function htmlDetail() {
                   <span class="atq-n">${esc(mv.n)}</span>
                   <span class="type mini" style="--t:${tc}">${tn}</span>
                 </span>
-                <span class="atq-m">Puis. <b>${mv.p ?? '—'}</b> · Préc. <b>${mv.a ?? '—'}</b> · PP <b>${mv.pp ?? '—'}</b>${ko ? ' · <i>indisponible ici</i>' : ''}</span>
+                <span class="atq-m">${t('puisCourt')} <b>${mv.p ?? '—'}</b> · ${t('precCourt')} <b>${mv.a ?? '—'}</b> · ${t('ppCourt')} <b>${mv.pp ?? '—'}</b>${ko ? ` · <i>${t('indisponibleIci')}</i>` : ''}</span>
               </button>`;
           }).join('')}
         </div>`}
 
-    <button class="catch-btn retirer" data-act="eq-retirer">Retirer de l'équipe</button>
+    <button class="catch-btn retirer" data-act="eq-retirer">${t('retirerDeLequipe')}</button>
   `;
 }
 
@@ -3725,14 +3780,25 @@ function htmlDetail() {
 
 const TYPES_PHYSIQUES_AVANT_G4 = new Set(['normal', 'fighting', 'flying', 'poison', 'ground', 'rock', 'bug', 'ghost', 'steel']);
 // Sigles des jeux, pour dire en une ligne où un niveau ou une CT diffère.
-const SIGLE_JEU = {
+// Le sigle français est tiré du titre français (« ÉV » pour Écarlate / Violet) : hors
+// du français il ne veut plus rien dire. Les autres langues prennent les sigles
+// internationaux, ceux de la version anglaise, lus partout — y compris au Japon.
+const SIGLES_FR = {
   'red-blue': 'RB', yellow: 'J', 'gold-silver': 'OA', crystal: 'C', 'ruby-sapphire': 'RS', emerald: 'É',
   'firered-leafgreen': 'RFVF', 'diamond-pearl': 'DP', platinum: 'Pt', 'heartgold-soulsilver': 'HGSS',
   'black-white': 'NB', 'black-2-white-2': 'N2B2', 'x-y': 'XY', 'omega-ruby-alpha-sapphire': 'ROSA',
   'sun-moon': 'SL', 'ultra-sun-ultra-moon': 'USUL', 'lets-go-pikachu-lets-go-eevee': 'LGPE',
   'sword-shield': 'ÉB', 'brilliant-diamond-shining-pearl': 'DÉPS', 'legends-arceus': 'LPA', 'scarlet-violet': 'ÉV',
 };
-const GROUPES_APPRENTISSAGE = ['Par niveau', 'Par CT / CS', 'Par œuf', 'Par maître'];
+const SIGLES_INTL = {
+  'red-blue': 'RB', yellow: 'Y', 'gold-silver': 'GS', crystal: 'C', 'ruby-sapphire': 'RS', emerald: 'E',
+  'firered-leafgreen': 'FRLG', 'diamond-pearl': 'DP', platinum: 'Pt', 'heartgold-soulsilver': 'HGSS',
+  'black-white': 'BW', 'black-2-white-2': 'B2W2', 'x-y': 'XY', 'omega-ruby-alpha-sapphire': 'ORAS',
+  'sun-moon': 'SM', 'ultra-sun-ultra-moon': 'USUM', 'lets-go-pikachu-lets-go-eevee': 'LGPE',
+  'sword-shield': 'SwSh', 'brilliant-diamond-shining-pearl': 'BDSP', 'legends-arceus': 'LA', 'scarlet-violet': 'SV',
+};
+const sigleJeu = (k) => (langue() === 'fr' ? SIGLES_FR : SIGLES_INTL)[k] || k;
+// Les libellés viennent de la traduction : `groupesApprentissage()` les relit.
 
 // Filtres du menu, gardés en passant à la fiche d'une attaque et en revenant.
 const filtreAttaques = { gen: null, type: '', cat: '', tri: 'nom', q: '', y: 0 };
@@ -3765,10 +3831,10 @@ function indexAttaques(gen) {
     for (const jeu of jeux) {
       const l = parJeu[jeu];
       if (!l) continue;
-      for (const [id, lv] of l.n) note(id, key, jeu, { r: 0, t: lv > 0 ? `N.${lv}` : 'Dép.', n: lv });
+      for (const [id, lv] of l.n) note(id, key, jeu, { r: 0, t: lv > 0 ? t('niveauBadge', lv) : t('depart'), n: lv });
       for (const [id, lab] of l.m) note(id, key, jeu, { r: 1, t: String(lab), n: Number(String(lab).replace(/\D/g, '')) || 0 });
-      for (const id of l.o) note(id, key, jeu, { r: 2, t: 'Œuf', n: 0 });
-      for (const id of l.t) note(id, key, jeu, { r: 3, t: 'Maître', n: 0 });
+      for (const id of l.o) note(id, key, jeu, { r: 2, t: t('oeuf'), n: 0 });
+      for (const id of l.t) note(id, key, jeu, { r: 3, t: t('maitreLong'), n: 0 });
     }
   }
   const res = { jeux, index };
@@ -3780,7 +3846,7 @@ function ongletsGenAttaques(gen) {
   return `<div class="paper-gens" role="tablist">
     ${GENS.map((g) => `
       <button class="paper-gen ${g.n === gen ? 'on' : ''}" role="tab" aria-selected="${g.n === gen}" data-atqgen="${g.n}">
-        Gén. ${g.n}<small>${g.name}</small>
+        ${t('genCourt', g.n)}<small>${g.name}</small>
       </button>`).join('')}
   </div>`;
 }
@@ -3794,12 +3860,12 @@ function htmlMenuAttaques() {
   const f = filtreAttaques;
   f.gen ??= genDuJeu();
   f.q = state.bs.q || '';
-  const tete = `<h2 class="bs-title">Attaques</h2>${ongletsGenAttaques(f.gen)}`;
+  const tete = `<h2 class="bs-title">${t('attaques')}</h2>${ongletsGenAttaques(f.gen)}`;
   // Le seul chargement asynchrone de l'appli (les movesets par jeu, 5,7 Mo) : on
   // montre la forme de la liste plutôt qu'une phrase, la page ne saute pas à l'arrivée.
   if (!LEARN_VG) {
     return `${tete}
-      <p class="paper-note">Chargement des attaques par version…</p>
+      <p class="paper-note">${t('chargementAttaques')}</p>
       <ul class="mlist squelette" aria-hidden="true">
         ${Array.from({ length: 8 }, () => `
           <li class="mrow"><span class="move">
@@ -3812,7 +3878,7 @@ function htmlMenuAttaques() {
   const q = fold(f.q);
   const toutes = [...index.keys()].map((id) => ({ id, v: attaqueEnGen(id, f.gen), qui: index.get(id).size })).filter((x) => x.v);
   const res = toutes.filter(({ v }) => (!q || fold(v.n).includes(q)) && (!f.type || v.t === f.type) && (!f.cat || v.c === f.cat));
-  const nom = (a, b) => a.v.n.localeCompare(b.v.n, 'fr');
+  const nom = (a, b) => a.v.n.localeCompare(b.v.n, langue());
   const parValeur = (k) => (a, b) => (b.v[k] ?? -1) - (a.v[k] ?? -1) || nom(a, b);
   res.sort(f.tri === 'puissance' ? parValeur('p') : f.tri === 'precision' ? parValeur('a')
     : f.tri === 'pp' ? parValeur('pp') : f.tri === 'qui' ? (a, b) => b.qui - a.qui || nom(a, b) : nom);
@@ -3820,30 +3886,29 @@ function htmlMenuAttaques() {
   const option = (valeur, libelle, courant) => `<option value="${valeur}" ${valeur === courant ? 'selected' : ''}>${libelle}</option>`;
   return `
     ${tete}
-    <p class="paper-note">${toutes.length} attaques apprenables en génération ${f.gen} (${esc(nomsJeux)}),
-      avec leurs valeurs de cette génération. Touchez une attaque pour voir qui l'apprend.</p>
+    <p class="paper-note">${t('noteMenuAttaques', toutes.length, f.gen, esc(nomsJeux))}</p>
     <label class="bs-field">
-      <span>Rechercher</span>
-      <input class="bs-name bs-q" type="text" value="${esc(f.q)}" placeholder="Nom d'attaque…" autocomplete="off" />
+      <span>${t('rechercher')}</span>
+      <input class="bs-name bs-q" type="text" value="${esc(f.q)}" placeholder="${t('placeholderAttaque')}" autocomplete="off" />
     </label>
     <div class="atq-filtres">
-      <select data-atqfiltre="type" aria-label="Type">
-        ${option('', 'Type', f.type)}
-        ${typesDeGen(f.gen).map((t) => option(t, TYPES[t]?.[0] || t, f.type)).join('')}
+      <select data-atqfiltre="type" aria-label="${t('type')}">
+        ${option('', t('type'), f.type)}
+        ${typesDeGen(f.gen).map((ty) => option(ty, esc(TYPES[ty]?.[0] || ty), f.type)).join('')}
       </select>
-      <select data-atqfiltre="cat" aria-label="Catégorie">
-        ${option('', 'Catégorie', f.cat)}
-        ${Object.entries(CLASSES).map(([k, [n]]) => option(k, n, f.cat)).join('')}
+      <select data-atqfiltre="cat" aria-label="${t('categorie')}">
+        ${option('', t('categorie'), f.cat)}
+        ${Object.entries(CLASSES).map(([k, [n]]) => option(k, esc(n), f.cat)).join('')}
       </select>
-      <select data-atqfiltre="tri" aria-label="Trier">
-        ${option('nom', 'Tri : nom', f.tri)}
-        ${option('puissance', 'Puissance', f.tri)}
-        ${option('precision', 'Précision', f.tri)}
-        ${option('pp', 'PP', f.tri)}
-        ${option('qui', 'Nb de Pokémon', f.tri)}
+      <select data-atqfiltre="tri" aria-label="${t('trierNom')}">
+        ${option('nom', t('trierNom'), f.tri)}
+        ${option('puissance', t('puissance'), f.tri)}
+        ${option('precision', t('precision'), f.tri)}
+        ${option('pp', t('ppCourt'), f.tri)}
+        ${option('qui', t('trierNbPokemon'), f.tri)}
       </select>
     </div>
-    <p class="atq-compte">${res.length === toutes.length ? '' : `${res.length} sur ${toutes.length}`}</p>
+    <p class="atq-compte">${res.length === toutes.length ? '' : t('compteSur', res.length, toutes.length)}</p>
     <ul class="mlist">
       ${res.map(({ id, v, qui }) => {
         const [tn, tc] = TYPES[v.t] || [v.t || '—', '#888'];
@@ -3858,10 +3923,10 @@ function htmlMenuAttaques() {
                 </span>
                 <span class="mmeta">
                   <span class="mcls" style="--c:${cc}">${cn}</span>
-                  <span>Puis. <b>${v.p ?? '—'}</b></span>
-                  <span>Préc. <b>${v.a ?? '—'}</b></span>
-                  <span>PP <b>${v.pp ?? '—'}</b></span>
-                  <span>${qui} Pokémon</span>
+                  <span>${t('puisCourt')} <b>${v.p ?? '—'}</b></span>
+                  <span>${t('precCourt')} <b>${v.a ?? '—'}</b></span>
+                  <span>${t('ppCourt')} <b>${v.pp ?? '—'}</b></span>
+                  <span>${t('nPokemon', qui)}</span>
                 </span>
               </span>
               <span class="mchev">›</span>
@@ -3869,7 +3934,7 @@ function htmlMenuAttaques() {
           </li>`;
       }).join('')}
     </ul>
-    ${res.length ? '' : '<p class="paper-note">Aucune attaque ne correspond.</p>'}`;
+    ${res.length ? '' : `<p class="paper-note">${t('aucuneAttaqueCorrespond')}</p>`}`;
 }
 
 // Fiche d'une attaque : ses valeurs dans la génération choisie, et qui l'apprend.
@@ -3877,9 +3942,9 @@ function htmlInfoAttaque() {
   const id = state.bs.slot;
   const gen = filtreAttaques.gen ?? genDuJeu();
   const v = attaqueEnGen(id, gen);
-  if (!v) return '<p class="none">Attaque inconnue.</p>';
-  const retour = '<button class="atq-retour" data-act="atq-retour">‹ Toutes les attaques</button>';
-  if (!LEARN_VG) return `${retour}<p class="paper-note">Chargement des attaques par version…</p>`;
+  if (!v) return `<p class="none">${t('attaqueInconnue')}</p>`;
+  const retour = `<button class="atq-retour" data-act="atq-retour">${t('toutesLesAttaques')}</button>`;
+  if (!LEARN_VG) return `${retour}<p class="paper-note">${t('chargementAttaques')}</p>`;
   const { index, jeux } = indexAttaques(gen);
   const parCle = index.get(id) || new Map();
   const [tn, tc] = TYPES[v.t] || [v.t || '—', '#888'];
@@ -3888,16 +3953,17 @@ function htmlInfoAttaque() {
   // Ce qui a changé depuis, pour ne pas laisser croire à une erreur.
   const actuel = attaqueEnGen(id, 9);
   const changes = [];
-  if (actuel.p !== v.p) changes.push(`puissance ${actuel.p ?? '—'}`);
-  if (actuel.a !== v.a) changes.push(`précision ${actuel.a ?? '—'}`);
-  if (actuel.pp !== v.pp) changes.push(`${actuel.pp} PP`);
-  if (actuel.t !== v.t) changes.push(`type ${TYPES[actuel.t]?.[0] || actuel.t}`);
+  if (actuel.p !== v.p) changes.push(t('chgPuissance', actuel.p ?? '—'));
+  if (actuel.a !== v.a) changes.push(t('chgPrecision', actuel.a ?? '—'));
+  if (actuel.pp !== v.pp) changes.push(t('chgPP', actuel.pp));
+  if (actuel.t !== v.t) changes.push(t('chgType', TYPES[actuel.t]?.[0] || actuel.t));
   if (actuel.c !== v.c) changes.push((CLASSES[actuel.c]?.[0] || actuel.c).toLowerCase());
 
   // Un groupe par mode d'apprentissage ; dans chaque groupe, un Pokémon par ligne, avec
   // son niveau ou sa CT — une seule fois si tous les jeux de la génération s'accordent,
   // jeu par jeu sinon.
-  const groupes = GROUPES_APPRENTISSAGE.map(() => []);
+  const GROUPES = groupesApprentissage();
+  const groupes = GROUPES.map(() => []);
   for (const [key, parJeu] of parCle) {
     for (let r = 0; r < 4; r++) {
       const parJeuR = jeux
@@ -3910,14 +3976,14 @@ function htmlInfoAttaque() {
       // dit dans lesquels — Pikachu apprend Tonnerre au N.26 dans Rouge/Bleu, pas dans Jaune.
       const present = jeux.filter((j) => LEARN_VG[key]?.[j] || LEARN_VG[speciesOf(key)]?.[j]).length;
       const texte = differents.size === 1
-        ? [...differents][0] + (parJeuR.length < present ? ` ${parJeuR.map(([j]) => SIGLE_JEU[j] || j).join(' ')}` : '')
-        : parJeuR.map(([j, s]) => `${libelle(s)} ${SIGLE_JEU[j] || j}`).join(' · ');
+        ? [...differents][0] + (parJeuR.length < present ? ` ${parJeuR.map(([j]) => sigleJeu(j)).join(' ')}` : '')
+        : parJeuR.map(([j, s]) => `${libelle(s)} ${sigleJeu(j)}`).join(' · ');
       const tri = Math.min(...parJeuR.flatMap(([, s]) => s.map((x) => x.n)));
       groupes[r].push({ key, texte, tri });
     }
   }
   const ordre = (a, b) => a.tri - b.tri || speciesOf(a.key) - speciesOf(b.key) || String(a.key).localeCompare(String(b.key));
-  const nomsJeux = jeux.map((k) => `${SIGLE_JEU[k] || k} = ${JEUX.find((x) => x.k === k)?.nom || k}`).join(' · ');
+  const nomsJeux = jeux.map((k) => `${sigleJeu(k)} = ${JEUX.find((x) => x.k === k)?.nom || k}`).join(' · ');
   const nbGroupes = groupes.filter((g) => g.length).length;
 
   return `
@@ -3929,28 +3995,27 @@ function htmlInfoAttaque() {
       <span class="mcls" style="--c:${cc}">${cn}</span>
     </div>
     <dl class="atq-fiche">
-      <div><dt>Puissance</dt><dd>${v.p ?? '—'}</dd></div>
-      <div><dt>Précision</dt><dd>${v.a != null ? `${v.a} %` : '—'}</dd></div>
-      <div><dt>PP</dt><dd>${v.pp ?? '—'}</dd></div>
-      <div><dt>Catégorie</dt><dd style="color:${cc}">${cn}</dd></div>
+      <div><dt>${t('puissance')}</dt><dd>${v.p ?? '—'}</dd></div>
+      <div><dt>${t('precision')}</dt><dd>${v.a != null ? `${v.a} %` : '—'}</dd></div>
+      <div><dt>${t('ppCourt')}</dt><dd>${v.pp ?? '—'}</dd></div>
+      <div><dt>${t('categorie')}</dt><dd style="color:${cc}">${cn}</dd></div>
     </dl>
     ${v.d ? `<p class="atq-desc">${esc(v.d)}</p>` : ''}
-    <p class="paper-note">Valeurs de la génération ${gen}${v.g ? `, attaque apparue en génération ${v.g}` : ''}.${changes.length
-      ? ` Aujourd'hui : ${esc(changes.join(', '))}.` : ''}${gen < 4 && v.c !== 'status'
-      ? " Avant la gén. 4, physique ou spéciale dépendait du type de l'attaque." : ''}</p>
+    <p class="paper-note">${t('valeursGen', gen, v.g)}${changes.length
+      ? t('aujourdhui', esc(changes.join(', '))) : ''}${gen < 4 && v.c !== 'status'
+      ? t('avantG4') : ''}</p>
 
-    <h3>Qui l'apprend en génération ${gen} <small>${parCle.size} Pokémon</small></h3>
+    <h3>${t('quiLApprend', gen)} <small>${t('nPokemon', parCle.size)}</small></h3>
     ${parCle.size ? `<p class="paper-note">${esc(nomsJeux)}</p>`
-      : `<p class="none">${v.g && v.g > gen ? `Cette attaque n'existe pas encore : elle apparaît en génération ${v.g}.`
-        : `Aucun Pokémon ne l'apprend dans les jeux de la génération ${gen}.`}</p>`}
+      : `<p class="none">${v.g && v.g > gen ? t('pasEncore', v.g) : t('aucunNeLApprend', gen)}</p>`}
     ${groupes.map((liste, r) => (liste.length ? `
       <details class="mgroup" ${r === 0 || nbGroupes === 1 ? 'open' : ''}>
-        <summary>${GROUPES_APPRENTISSAGE[r]} <b>${liste.length}</b></summary>
+        <summary>${GROUPES[r]} <b>${liste.length}</b></summary>
         <div class="picks appr">
           ${liste.sort(ordre).map((x) => `
             <div class="pick ${isCaught(x.key) ? '' : 'gris'}">
               <img src="${sprites.still(spriteKey(x.key))}" alt="" loading="lazy" ${imgFallback(speciesOf(x.key), false)} />
-              <span>${esc(monName(x.key))}<i>n° ${speciesOf(x.key)}</i></span>
+              <span>${esc(monName(x.key))}<i>${t('numero', speciesOf(x.key))}</i></span>
               <span class="appr-src">${esc(x.texte)}</span>
             </div>`).join('')}
         </div>
@@ -3960,7 +4025,7 @@ function htmlInfoAttaque() {
 // Choix d'une attaque parmi celles apprenables dans le jeu courant.
 function htmlChoixAttaque() {
   const m = equipe()[state.bs.slot];
-  if (!m) return '<p class="none">Emplacement vide.</p>';
+  if (!m) return `<p class="none">${t('emplacementVide')}</p>`;
   const espece = speciesOf(m.key);
   const pool = poolAttaques(m.key, state.jeu) || [];
   const q = fold(state.bs.q || '');
@@ -3972,12 +4037,12 @@ function htmlChoixAttaque() {
     .sort((a, b) => a.rang - b.rang);
 
   return `
-    <h2 class="bs-title">Attaque ${state.bs.emplacement + 1} — ${esc(monName(m.key))}</h2>
-    <p class="paper-note">${pool.length} attaques apprenables dans ${esc(jeuCourant().nom)}.</p>
+    <h2 class="bs-title">${t('attaqueDe', state.bs.emplacement + 1, esc(monName(m.key)))}</h2>
+    <p class="paper-note">${t('attaquesDispo', pool.length, esc(jeuCourant().nom))}</p>
     <label class="bs-field">
-      <span>Rechercher</span>
+      <span>${t('rechercher')}</span>
       <input class="bs-name bs-q" type="text" value="${esc(state.bs.q || '')}"
-             placeholder="Nom d'attaque…" autocomplete="off" />
+             placeholder="${t('placeholderAttaque')}" autocomplete="off" />
     </label>
     <ul class="mlist">
       ${res.map((x) => {
@@ -3997,9 +4062,9 @@ function htmlChoixAttaque() {
                 </span>
                 <span class="mmeta">
                   <span class="mcls" style="--c:${cc}">${cn}</span>
-                  <span>Puis. <b>${mv.p ?? '—'}</b></span>
-                  <span>Préc. <b>${mv.a ?? '—'}</b></span>
-                  <span>PP <b>${mv.pp ?? '—'}</b></span>
+                  <span>${t('puisCourt')} <b>${mv.p ?? '—'}</b></span>
+                  <span>${t('precCourt')} <b>${mv.a ?? '—'}</b></span>
+                  <span>${t('ppCourt')} <b>${mv.pp ?? '—'}</b></span>
                 </span>
               </span>
               ${choisie ? '<span class="mchev">✓</span>' : ''}
@@ -4007,7 +4072,7 @@ function htmlChoixAttaque() {
           </li>`;
       }).join('')}
     </ul>
-    ${res.length ? '' : '<p class="paper-note">Aucune attaque ne correspond.</p>'}
+    ${res.length ? '' : `<p class="paper-note">${t('aucuneAttaqueCorrespond')}</p>`}
   `;
 }
 
@@ -4253,7 +4318,7 @@ app.addEventListener('click', (e) => {
 // Plage d'un Pokédex : 0 est le national, 1 à 9 les générations. Déclarée en
 // fonction, donc disponible partout — `voisinFiche` compris.
 function plageDex(n) {
-  return n ? GENS[n - 1] : { n: 0, name: 'National', from: 1, to: 1025 };
+  return n ? GENS[n - 1] : { n: 0, name: t('national'), from: 1, to: 1025 };
 }
 
 // Taux de remplissage d'un Pokédex, d'après la collection ACTIVE — donc le
@@ -4265,8 +4330,7 @@ function progresDex(n) {
   return { pris, total: g.to - g.from + 1 };
 }
 
-const texteRes = (n) => (n === 0 ? 'Aucun Pokémon ne correspond.'
-  : `${n} résultat${n > 1 ? 's' : ''} sur les neuf générations`);
+const texteRes = (n) => (n === 0 ? t('aucunCorrespond') : t('nResultats', n));
 
 // Illustrations des cartes du menu : les trois starters de chaque région, dans
 // l'ordre Plante, Feu, Eau. Le national prend Évoli et Pikachu.
@@ -4293,11 +4357,11 @@ function carteDex(n) {
   const sh = shinyView();
   return `
     <button class="dexc" data-dexgen="${n}"
-            aria-label="${esc(g.name)}, ${pris} sur ${total}${fini ? ', complet' : ''}">
+            aria-label="${esc(t('boitesSous', g.name, pris, total))}${fini ? ', ' + t('dexComplet') : ''}">
       <span class="dexc-txt">
         <span class="dexc-haut">
           <span class="dexc-nom">${esc(g.name)}</span>
-          <span class="dexc-cpt"><b>${pris}</b>/${total.toLocaleString('fr-FR')}</span>
+          <span class="dexc-cpt"><b>${pris}</b>/${total.toLocaleString(langue())}</span>
         </span>
         <span class="dexc-bas">
           <span class="dexc-bar"><i style="width:${(100 * pris) / total}%"></i></span>
@@ -4318,11 +4382,11 @@ function renderMenuDex() {
   const ids = especesDex();
   const tout = progresDex(0);
   poser(
-    entete('Pokédex', `${tout.pris} espèce${tout.pris > 1 ? 's' : ''} sur ${tout.total}`),
+    entete(t('pokedex'), t('pokedexSous', tout.pris, tout.total)),
     h(`
     <section class="dexm">
-      <input class="dexm-rech" type="search" data-dexq placeholder="Rechercher un Pokémon"
-             value="${esc(state.dexQ)}" aria-label="Rechercher un Pokémon"
+      <input class="dexm-rech" type="search" data-dexq placeholder="${t('chercherPokemon')}"
+             value="${esc(state.dexQ)}" aria-label="${t('chercherPokemon')}"
              autocomplete="off" autocorrect="off" spellcheck="false" />
       <p class="dex-res" ${q ? '' : 'hidden'}>${q ? texteRes(ids.length) : ''}</p>
       <div class="dex-grid" ${q ? '' : 'hidden'}>${ids.map(caseDex).join('')}</div>
@@ -4336,10 +4400,10 @@ const caseDex = (id) => {
   const vu = isCaught(id);
   return `
     <button class="dx ${vu ? '' : 'gris'}" data-dex="${id}"
-            aria-label="${esc(p.name || `N° ${id}`)}${vu ? ', capturé' : ''}">
+            aria-label="${esc(p.name || t('numero', id))}${vu ? ', ' + t('capture') : ''}">
       <img src="${sprites.still(id, shinyView())}" alt="" loading="lazy"
            ${imgFallback(id, shinyView())} />
-      <span class="dx-num">N° ${String(id).padStart(4, '0')}</span>
+      <span class="dx-num">${t('numero', String(id).padStart(4, '0'))}</span>
       <span class="dx-nom">${esc(p.name || '—')}</span>
       ${vu ? '<span class="dx-ok" aria-hidden="true"></span>' : ''}
     </button>`;
@@ -4370,6 +4434,9 @@ function especesDex() {
 // celle du Pokédex. L'élément est créé UNE fois et reposé à chaque rendu : le
 // recréer relancerait la caméra à chaque capture cochée depuis la fiche.
 const scan = creeScan({
+  // Le scan vit à part : il reçoit `t` plutôt que d'importer i18n.js lui-même, ce
+  // qui garde main.js seul maître de l'ordre de chargement des traductions.
+  t,
   ouvrirFiche: (key) => openSheet(key),
   // Le nom affiché sur un Pokémon suivi : celui de l'ESPÈCE, plus court et plus parlant
   // qu'un nom de forme (« Forme d'Alola ») sur un cadre.
@@ -4399,29 +4466,26 @@ function renderPokedex() {
     h(`
       <section class="dex">
         <div class="dex-head">
-          <button class="dex-retour" data-dex-retour aria-label="Revenir au menu du Pokédex">${ICO.gauche}</button>
+          <button class="dex-retour" data-dex-retour aria-label="${t('retourMenuDex')}">${ICO.gauche}</button>
           <div class="dex-titre">
             <b>${esc(g.name)}</b>
-            <small>N° ${g.from} à ${g.to}</small>
+            <small>${t('numero', g.from)} – ${g.to}</small>
           </div>
           <div class="dex-compte"><b>${pris}</b>/${total}</div>
         </div>
         <div class="bar dex-bar"><span style="width:${total ? (100 * pris) / total : 0}%"></span></div>
-        <p class="dex-tout">${n ? `${prisTout} sur 1025 au total` : 'Toutes générations'}${shinyView() ? ' · Pokédex chromatique' : ''}</p>
+        <p class="dex-tout">${n ? t('surTotal', prisTout) : t('toutesGenerations')}${shinyView() ? ' · ' + t('pokedexChromatique') : ''}</p>
 
         <div class="dex-rech">
-          <input type="search" data-dexq placeholder="Chercher un nom ou un numéro"
-                 value="${esc(state.dexQ)}" aria-label="Chercher un Pokémon"
+          <input type="search" data-dexq placeholder="${t('chercherNomNumero')}"
+                 value="${esc(state.dexQ)}" aria-label="${t('chercherPokemon')}"
                  autocomplete="off" autocorrect="off" spellcheck="false" />
         </div>
         <p class="dex-res" ${state.dexQ.trim() ? '' : 'hidden'}>${state.dexQ.trim() ? texteRes(ids.length) : ''}</p>
 
         <div class="dex-grid">${cases}</div>
 
-        <p class="hint">
-          Les formes alternatives n’ont pas d’entrée au Pokédex : elles sont listées
-          dans la fiche de leur espèce, d’où l’on peut aussi les ranger en boîte.
-        </p>
+        <p class="hint">${t('aideDex')}</p>
       </section>`),
   );
 }
@@ -4464,7 +4528,10 @@ app.addEventListener('click', (e) => {
   if (carte) openSheet(Number(carte.dataset.dex));
 });
 
-render();
+// La surcouche doit être en place AVANT le premier rendu : sinon l'appli s'ouvrirait
+// une fraction de seconde en français avant de se retraduire. En français il n'y a
+// rien à charger et `chargeLangue` rend la main tout de suite.
+poseLangueEtRend(langue());
 
 // ---------- Outil de calage des fonds (développement seulement) ----------
 //

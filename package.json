@@ -17,7 +17,8 @@
     "fetch-extras": "node scripts/fetch-extras.mjs",
     "fetch-cries": "node scripts/fetch-cries.mjs",
     "fetch-moves-gen": "node scripts/fetch-moves-gen.mjs",
-    "predev": "node scripts/assemble-modeles.mjs"
+    "predev": "node scripts/assemble-modeles.mjs",
+    "fetch-i18n": "node scripts/fetch-i18n.mjs"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",

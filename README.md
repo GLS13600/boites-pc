@@ -72,8 +72,13 @@ Une équipe de six, présentée comme l'écran d'équipe de *Noir 2 / Blanc 2*.
 
 ### Réglages
 
-**Thème clair, sombre, ou celui du téléphone.** La page est faite pour accueillir
-d'autres réglages par la suite.
+**Thème clair, sombre, ou celui du téléphone**, et **la langue : français, anglais ou
+japonais**. Tout suit ce choix — les menus comme les noms de Pokémon, les descriptions,
+les talents, les attaques et les lieux de capture. Les textes viennent de PokéAPI ; ce
+qu'elle ne traduit pas reste en anglais.
+
+Une **sauvegarde unique** exporte l'intégralité des données : boîtes, équipes et
+préférences dans un seul fichier.
 
 ---
 
@@ -110,7 +115,8 @@ npm run build    # produit dist/ et son service worker
 
 **Vite + JavaScript, sans framework et sans dépendance à l'exécution.** La logique tient
 dans `src/main.js`, le style dans `src/style.css` ; le scan vit à part
-(`src/scan.js`, `src/scan-ia.js`, `src/scan-worker.js`, `src/scan-voix.js`).
+(`src/scan.js`, `src/scan-ia.js`, `src/scan-worker.js`) et la traduction dans
+`src/i18n.js`.
 
 ### Données
 
@@ -128,9 +134,10 @@ npm run fetch-battle     # stats de base, jeux, movesets par version
 npm run fetch-types      # table des types par génération, et leurs symboles
 npm run fetch-extras     # talents, objets tenables et natures
 npm run fetch-moves-gen  # toutes les attaques des 21 jeux, et leurs valeurs par génération
+npm run fetch-i18n       # surcouches anglaise et japonaise (noms, descriptions, lieux…)
 ```
 
-### Reconnaissance et voix
+### Reconnaissance
 
 - `ml/` entraîne les réseaux du scan — un classifieur (quel Pokémon) et un détecteur
   (où sont les Pokémon) — et les exporte en ONNX. Voir [ml/LISEZMOI.md](ml/LISEZMOI.md).
@@ -146,8 +153,9 @@ Le détail des choix de conception et des pièges rencontrés est consigné dans
 ## Sources
 
 - **[PokéAPI](https://pokeapi.co)** — noms, types, descriptions, évolutions, formes,
-  attaques, talents, objets, statistiques et lieux de capture, en français lorsque
-  l'API les fournit. Aucune clé, aucun appel à l'exécution.
+  attaques, talents, objets, statistiques et lieux de capture, **en français, en
+  anglais et en japonais** lorsque l'API les fournit. Aucune clé, aucun appel à
+  l'exécution.
 - **[cries](https://github.com/PokeAPI/cries)** de PokéAPI — les cris des Pokémon.
 - **[pokemon-type-icons](https://github.com/partywhale/pokemon-type-icons)** de James
   Watkins, sous licence MIT — les 18 symboles de type. La licence est conservée dans

@@ -128,6 +128,10 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | Chemin | Rôle |
 |---|---|
 | `src/main.js` | Toute la logique : état, rendu, gestes, fiche |
+| `src/i18n.js` | Traduction : textes d'interface et surcouche des données |
+| `src/data/i18n/en.json` | Surcouche anglaise, **générée**, 1,7 Mo |
+| `src/data/i18n/ja.json` | Surcouche japonaise, **générée**, 1,9 Mo |
+| `scripts/fetch-i18n.mjs` | Produit ces deux surcouches (`npm run fetch-i18n`) |
 | `src/style.css` | Toute la feuille de style ; importe les jetons en tête |
 | `src/tokens.css` | Jetons de design : couleurs, rayons, ombres, espacements, durées |
 | `src/data/pokedex.json` | Données générées, **ne jamais éditer à la main** |
@@ -1602,6 +1606,103 @@ en pointillés qui tient la place et le dit. En ajouter un ne demande que le mê
   rechargement et « celui du téléphone » suit bien le système.
 - Le décor coloré de la boîte de combat (fond bleu nuit) et les tuiles de l'accueil ne
   changent pas : ils sont déjà sombres et lisibles dans les deux thèmes.
+
+## Traduction : français, anglais, japonais
+
+Demandée le 30/09/2026, avec une étendue explicitement choisie : **tout**, descriptions
+et lieux de capture compris. Le choix se fait dans un bloc des Réglages, persisté sous
+`pcbox.langue`, et par défaut **la langue du téléphone** si elle fait partie des trois,
+français sinon.
+
+**Deux moitiés, et c'est le point de départ de tout le reste :**
+
+- `src/i18n.js` porte les textes de l'**interface** (≈ 280 clés × 3 langues), écrits à
+  la main. `t('cle', …)` rend celui de la langue courante, avec **repli sur le
+  français** : une clé oubliée s'affiche en français plutôt que de laisser un trou.
+  Une valeur peut être une fonction quand le texte dépend d'un nombre ou d'un mot.
+- `src/data/i18n/en.json` et `ja.json` portent les textes des **données** (noms,
+  catégories, descriptions, habitats, couleurs, lieux, jeux, types, régions, natures,
+  attaques, talents, objets, formes, conditions d'évolution), aspirés par
+  `npm run fetch-i18n`. **Le français reste la base** : ces fichiers ne contiennent
+  que ce qui change, et sont chargés par `import()` — Vite en fait un chunk par
+  langue, donc qui reste en français ne télécharge rien de plus.
+
+### La surcouche s'applique EN PLACE
+
+`appliqueSurcouche()` écrit les traductions **dans les objets importés des JSON**
+(`pokedex`, `forms`, `evolutions`, `moves`, `abilities`, `items`, `JEUX`, `NATURES`,
+`learnsets`, plus `TYPES`, `CLASSES` et `GENS` que main.js lui passe). C'est ce qui
+évite de traduire trois cents points de rendu : `p.name`, `moves[id].n` ou
+`items[k].n` continuent de dire ce qu'il faut. L'état **français d'origine est
+photographié** au premier changement de langue (`base`), pour pouvoir y revenir sans
+recharger la page — vérifié dans les deux sens.
+
+**Quatre tables sont des COPIES et doivent donc être refaites**, ce que
+`poseLangueEtRend()` enchaîne après `chargeLangue` :
+
+1. `FORM_BY_KEY` (`{ ...f, species }`) — sans quoi `monName` rendait encore le nom
+   français d'une forme alors que la fiche, qui lit `forms.json`, avait déjà basculé ;
+2. `CATALOGUE`, qui porte des noms et la clé de recherche `cle` ;
+3. les libellés d'`ONGLETS` (`renommeOnglets`) ;
+4. les libellés fixes de la vue Scan (`scan.retraduit()`), construite **une seule
+   fois** au chargement du module et jamais refaite au rendu.
+
+- **`ONGLETS[i].region` est un INDEX dans `GENS`**, relevé pendant que les noms sont
+  encore français. La région d'un remake n'est pas celle de sa génération — Rouge Feu
+  est un jeu de gén. 3 qui se passe à Kanto — et `GENS[i].name` est traduit ensuite :
+  un index survit à la traduction, un nom non.
+- Les rôles de l'analyse d'équipe (`mur`, `tank`, `sweeper`…) et l'orientation
+  (`physique`, `special`, `mixte`) sont désormais des **clés**, plus des libellés :
+  les tests qui s'appuient dessus ne dépendent donc plus de la langue.
+- **La langue est posée AVANT le premier rendu** (`poseLangueEtRend(langue())`
+  remplace l'appel à `render()` en fin de module) : sinon l'appli s'ouvrirait une
+  fraction de seconde en français avant de se retraduire.
+- Elle fait partie de la **sauvegarde** (champ `langue`) et l'import la suit. Les
+  parties restaurées sont accumulées sous forme de CLÉS et traduites seulement au
+  moment du message : le fichier peut changer la langue, la confirmation part alors
+  dans la nouvelle.
+
+### Ce que PokéAPI ne traduit pas
+
+- **Aucun lieu de capture en japonais** : le script retombe sur l'anglais, comme pour
+  les habitats. C'est une limite de la source.
+- **127 descriptions manquent en japonais** (Écarlate / Violet n'y est publié qu'en
+  anglais, la même limite qu'en français) : elles reçoivent la description **anglaise**
+  plutôt qu'une case vide.
+- **PokéAPI ne nomme pas les groupes de versions** : `/version-group` n'a pas de champ
+  `names`, alors que `versions.json` est indexé par groupe (`scarlet-violet`). Le
+  script compose donc le nom en joignant celui des versions du groupe — « Scarlet /
+  Violet », «スカーレット・バイオレット». C'est `groupes` dans la surcouche ; `jeux`,
+  indexé par version, sert aux lieux de capture.
+- **90 noms de formes restent tels quels** hors français (Zarbi A, Pichu, les formes
+  Totem…) : PokéAPI n'a pas de `form_names` pour elles dans la langue demandée.
+- Les **sigles de jeux** sont propres à la langue : « ÉV » vient du titre français.
+  Hors français on prend les sigles internationaux (`SV`, `FRLG`, `SwSh`…), lus
+  partout, Japon compris.
+- Les **cinq remakes** (`frlg`, `hgss`, `rosa`, `lgpe`, `deps`) n'ont pas de nom chez
+  PokéAPI non plus : leurs libellés sont écrits à la main dans `i18n.js`.
+
+### Pièges relevés
+
+- **`e.target.closest('[data-theme]')` attrapait `<html>`.** `appliqueTheme()` pose
+  cet attribut sur la racine : le sélecteur finissait donc par le trouver pour
+  N'IMPORTE quel clic dans l'appli. Le thème « celui du téléphone » se figeait en
+  clair ou en sombre au premier clic venu, et le choix de la langue n'était jamais
+  atteint. Les deux poignées sont passées à `button[data-…]`. **Ne pas y revenir.**
+- Les conditions d'évolution sont **dédoublonnées** : PokéAPI répète la même condition
+  une fois par motif cosmétique (Prismillon en a 20 identiques, Charmilly 63). Au-delà
+  de 3 variantes distinctes on ne garde que le **déclencheur**, comme le fait déjà la
+  base française.
+- Les **surcouches sont écartées du préchargement** du service worker
+  (`build-sw.mjs`), comme le WASM du scan : 3,6 Mo pour deux langues qu'un lecteur
+  francophone n'ouvrira jamais. Elles se mettent en cache au premier choix de langue.
+
+`npm run fetch-i18n` reprend comme les autres scripts et fait **une seule passe pour
+les deux langues** — l'API rend tous ses libellés d'un coup. Le regroupement des
+rencontres y est **identique à celui de `fetch-data.mjs`**, jeu par jeu puis lieu par
+lieu : c'est ce qui permet de superposer sans rien réapparier. Vérifié sur les 1025
+espèces, 0 désaccord de longueur ; un garde à l'application saute la traduction d'un
+jeu si les deux divergeaient un jour.
 
 ## Interface
 

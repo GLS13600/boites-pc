@@ -228,7 +228,7 @@ function moteurWeb({ pret, analyse, detecte, dims }) {
 
 // ------------------------------------------------------------ boucle du mode IA
 
-export function creeModeIA({ el, video, ecran, nomDe, zoneVue, poserPistes, estActif, estEnPause, montreDiag, secours }) {
+export function creeModeIA({ t, el, video, ecran, nomDe, zoneVue, poserPistes, estActif, estEnPause, montreDiag, secours }) {
   const plugin = window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins?.ScanIa : null;
   const moteur = plugin ? moteurNatif(plugin) : secours ? moteurWeb(secours) : null;
   let enCours = false, pistes = [], idPiste = 100_000;
@@ -531,13 +531,13 @@ export function creeModeIA({ el, video, ecran, nomDe, zoneVue, poserPistes, estA
 
   async function demarre() {
     if (enCours || !estActif()) return;
-    if (!moteur) { montreDiag('Mode IA indisponible : aucun moteur'); return; }
+    if (!moteur) { montreDiag(t('iaIndispo')); return; }
     enCours = true;
     try {
-      montreDiag('Mode IA : préparation des modèles…');
+      montreDiag(t('iaPreparation'));
       const t0 = performance.now();
       const dims = await moteur.charge();
-      montreDiag(`Mode IA : ${moteur.nom}, prêt en ${Math.round(performance.now() - t0)} ms`);
+      montreDiag(t('iaPret', moteur.nom, Math.round(performance.now() - t0)));
       while (estActif()) {
         if (estEnPause()) { await attente(300); continue; }
         const g = geometrie(dims.detecteur);
@@ -590,13 +590,13 @@ export function creeModeIA({ el, video, ecran, nomDe, zoneVue, poserPistes, estA
           };
         }
         const reconnus = pistes.filter((p) => p.etat === 'reconnu').length;
-        montreDiag(`IA · ${moteur.nom} · détection ${Math.round(r.ms)} ms · reconnaissance ${Math.round(msClasse)} ms`
-          + ` (${lot.length} + ${fen.length} fenêtres) · ${reconnus}/${actives()} reconnus`);
+        montreDiag(t('iaDiag', moteur.nom, Math.round(r.ms), Math.round(msClasse))
+          + ` (${lot.length} + ${fen.length}) · ${reconnus}/${actives()}`);
         await attente(15);
       }
     } catch (e) {
       console.error('mode IA', e);
-      montreDiag(`Mode IA en erreur : ${e?.message ?? e}`);
+      montreDiag(t('iaErreur', e?.message ?? e));
     } finally {
       enCours = false;
       if (rafId) cancelAnimationFrame(rafId);

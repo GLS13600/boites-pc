@@ -49,9 +49,6 @@ réseau ni API. La page est dessinée comme un Pokédex de Kalos qui s'ouvre.
 - **Manuel** : on place le cadre de visée et on appuie sur la Poké Ball.
 - **IA** (bonus, en essai) : un classifieur plus gros et un suivi plus poussé — jusqu'à
   12 Pokémon suivis, reconnaissance cumulée sur plusieurs vues, cadres lissés.
-- **La fiche ouverte depuis le scan est lue à voix haute**, façon Pokédex de l'anime :
-  nom, catégorie, types et description, par une voix enregistrée à l'avance et
-  embarquée dans l'application.
 
 ### Attaques
 
@@ -98,7 +95,7 @@ propose la mise à jour sans câble en interrogeant
 `https://gls13600.github.io/boites-pc/source.json`.
 
 Tout étant embarqué — sprites, artworks, fonds, cris, voix et modèles de scan —
-l'application est volumineuse : `public/` pèse à lui seul 328 Mo, dont 147 pour le
+l'application est volumineuse : `public/` pèse à lui seul 285 Mo, dont 147 pour le
 classifieur du mode IA.
 
 ---
@@ -137,8 +134,6 @@ npm run fetch-moves-gen  # toutes les attaques des 21 jeux, et leurs valeurs par
 
 - `ml/` entraîne les réseaux du scan — un classifieur (quel Pokémon) et un détecteur
   (où sont les Pokémon) — et les exporte en ONNX. Voir [ml/LISEZMOI.md](ml/LISEZMOI.md).
-- `ml/voix/` produit les 1025 descriptions lues, avec l'effet « haut-parleur » du
-  Pokédex. Voir [ml/voix/LISEZMOI.md](ml/voix/LISEZMOI.md).
 - Le classifieur du mode IA dépasse la limite de 100 Mo de GitHub : il est versionné en
   morceaux dans `modeles/scan-ia/` et ré-assemblé par `npm run build` comme par
   `npm run dev`.

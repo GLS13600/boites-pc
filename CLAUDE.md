@@ -1474,28 +1474,31 @@ occasion — tout part d'ici, et une barre ferait doublon.
   (une carte par vue, sa couleur, le Pokédex en tête), autre composition.
 - Six cartes (`TUILES` dans main.js), une par vue : **Pokédex** (pleine largeur, en
   tête), **Boîtes**, **Équipes**, **Attaques**, **Scan**, **Réglages**.
-- **Chaque carte porte un chiffre VIVANT**, pas une illustration : avancement de la
-  génération affichée, membres de l'équipe et version en cours, nombre d'attaques,
-  mode de scan, thème choisi. `sous()` est appelée au rendu — c'est ce qui distingue
-  l'accueil d'une simple grille de raccourcis, et ce qui le rend utile.
+- **Illustration PLEINE TUILE, et parlante** : chaque dessin dit ce qu'on va trouver —
+  un Pokédex ouvert sur une fiche, une boîte du PC et ses cases, une ceinture de six
+  Poké Balls, un impact d'attaque avec les trois catégories, un téléphone qui scanne,
+  une console de réglages. Les scènes ont été REDESSINÉES le 30/09/2026 : les
+  précédentes (appareil à lentille et voyants, disque, grappe de Poké Balls)
+  ressemblaient à celles d'une autre application de Pokédex.
+  - Le dessin est en `preserveAspectRatio="slice"` : il remplit sans se déformer.
+  - **Rien d'important dans le tiers bas** : le nom et son chiffre s'y posent sur un
+    voile sombre. Les pastilles de la tuile Boîtes et les jetons de catégorie de la
+    tuile Attaques ont été remontés pour cette raison.
+- **Chaque tuile porte aussi un chiffre VIVANT** : avancement de la génération affichée,
+  membres de l'équipe et version en cours, nombre d'attaques, mode de scan, thème
+  choisi. `sous()` est appelée au rendu — l'accueil renseigne, il ne fait pas que mener
+  quelque part.
 - **Anneau de progression** sur la carte du Pokédex : un `conic-gradient` dont la part
   vient de `--p`, avec un disque au centre qui le creuse. Aucun SVG, aucun calcul.
-- Les pictogrammes sont des **traits blancs** dans un carré plein dégradé, sur la même
-  grille de 24 et au même trait que les icônes utilitaires. Un jeu cohérent, là où
-  c'étaient six dessins de styles différents.
-- **La carte du Pokédex est en ligne, les cinq autres empilent** pictogramme, nom puis
-  chiffre : à 170 px de large, un texte posé à côté du pictogramme se cassait en trois
-  lignes. Les rangées sont de hauteur égale (`grid-auto-rows: 1fr`) et le chiffre est
-  borné à deux lignes, sans quoi une carte dépassait sa voisine.
-- La teinte des cartes passe par `color-mix` ; sans lui (Safari antérieur à 16.4) elles
-  retombent sur le panneau ordinaire — lisibles, seulement moins colorées.
+- La teinte des tuiles passe par `color-mix` ; sans lui (Safari antérieur à 16.4)
+  elles retombent sur la couleur pleine — le dessin et le nom restent lisibles.
 - **La tuile Scan avait été ajoutée à la maquette d'origine**, qui n'en montrait pas :
   sans elle le scan n'aurait plus eu de point d'entrée.
 - **L'appli s'ouvre TOUJOURS sur l'accueil**, quelle que soit la vue quittée : c'est le
   point de départ de tout, et la règle « la vue Scan ne se restaure pas » (une caméra qui
   s'allume seule au lancement) devient inutile.
 - **Glisser du BORD GAUCHE vers la droite revient en arrière** (30/09/2026, à la
-  demande), dans Boîtes, Pokédex, Attaques et Équipes. La vue suit le doigt puis part à
+  demande), dans Boîtes, Pokédex, Attaques, Équipes et Réglages. La vue suit le doigt puis part à
   droite au-delà de 70 px, sinon elle revient en place.
   - **Le geste part du bord** (26 px, `BORD_RETOUR`) pour de bonnes raisons : la vue
     Boîtes utilise déjà le glissement horizontal pour changer de boîte, et les barres

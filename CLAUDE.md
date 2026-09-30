@@ -1490,6 +1490,12 @@ occasion — tout part d'ici, et une barre ferait doublon.
   quelque part.
 - **Anneau de progression** sur la carte du Pokédex : un `conic-gradient` dont la part
   vient de `--p`, avec un disque au centre qui le creuse. Aucun SVG, aucun calcul.
+- **Couleurs saturées, en deux tons** (30/09/2026, à la demande — la première série,
+  éclaircie au blanc, passait pour terne) : `--t-haut` vif en haut, `--t-bas` profond
+  en bas, et les grandes surfaces claires des dessins sont teintées de la couleur de
+  leur tuile. Réglages est passé du gris ardoise au **sarcelle** : le gris éteignait le
+  coin de la planche, et cette teinte ne se confond ni avec le vert des Boîtes ni avec
+  le bleu des Équipes.
 - La teinte des tuiles passe par `color-mix` ; sans lui (Safari antérieur à 16.4)
   elles retombent sur la couleur pleine — le dessin et le nom restent lisibles.
 - **La tuile Scan avait été ajoutée à la maquette d'origine**, qui n'en montrait pas :

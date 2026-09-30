@@ -514,9 +514,7 @@ img { display: block; }
   aspect-ratio: 1;
   border-radius: var(--r-lg);
   border: 0;
-  background: linear-gradient(155deg,
-    color-mix(in srgb, var(--teinte) 72%, white),
-    var(--teinte));
+  background: linear-gradient(152deg, var(--t-haut), var(--t-bas));
   box-shadow: var(--ombre-2);
   color: #fff;
   text-align: left;
@@ -535,7 +533,7 @@ img { display: block; }
   right: 0;
   bottom: 0;
   height: 54%;
-  background: linear-gradient(to top, rgb(16 18 22 / 62%), rgb(16 18 22 / 18%) 55%, transparent);
+  background: linear-gradient(to top, rgb(12 14 18 / 55%), rgb(12 14 18 / 12%) 58%, transparent);
   pointer-events: none;
 }
 
@@ -599,19 +597,21 @@ img { display: block; }
 }
 .anneau em { font-style: normal; font-size: 9px; font-weight: 700; opacity: 0.85; margin-left: 1px; }
 
-/* Une couleur par vue — les mêmes qu'avant, pour ne pas dérouter. */
-.tuile.t-pokedex { --teinte: #d6453c; }
-.tuile.t-boites { --teinte: #3faa4a; }
-.tuile.t-equipes { --teinte: #3b82d6; }
-.tuile.t-attaques { --teinte: #d89b1e; }
-.tuile.t-scan { --teinte: #7c5fd6; }
-.tuile.t-reglages { --teinte: #6b7688; }
+/* Une couleur par vue, en deux tons : le vif en haut, le profond en bas. Saturées à
+   la demande (30/09/2026) — la première série, éclaircie au blanc, passait pour terne.
+   `--teinte` reste la couleur de référence de la tuile (fond de l'anneau). */
+.tuile.t-pokedex { --t-haut: #ff5a4a; --t-bas: #cf1b0d; --teinte: #e5271a; }
+.tuile.t-boites { --t-haut: #3ddc61; --t-bas: #0a9431; --teinte: #12ad3c; }
+.tuile.t-equipes { --t-haut: #45a9ff; --t-bas: #0a5ed6; --teinte: #0f74e8; }
+.tuile.t-attaques { --t-haut: #ffce3a; --t-bas: #ef8500; --teinte: #f7a108; }
+.tuile.t-scan { --t-haut: #ab73ff; --t-bas: #6322db; --teinte: #7c39e8; }
+/* Réglages en sarcelle : le gris ardoise éteignait le coin de la planche, et cette
+   teinte ne se confond ni avec le vert des Boîtes ni avec le bleu des Équipes. */
+.tuile.t-reglages { --t-haut: #2fd0c2; --t-bas: #0c8a86; --teinte: #12a89f; }
 
 /* Sans color-mix (Safari < 16.4), on retombe sur le panneau et un liseré ordinaire :
    les cartes restent lisibles, seule la teinte manque. */
-@supports not (background: color-mix(in srgb, red 50%, white)) {
-  .tuile { background: var(--teinte); }
-}
+
 
 /* ---------- Réglages ---------- */
 

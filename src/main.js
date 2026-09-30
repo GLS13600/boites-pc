@@ -2536,12 +2536,12 @@ const ART = {
   // Un Pokédex OUVERT : écran de gauche avec une fiche, liste d'entrées à droite.
   pokedex: `
     <svg class="tuile-art" viewBox="0 0 320 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <circle cx="286" cy="24" r="62" fill="#fff" opacity=".10"/>
+      <circle cx="286" cy="24" r="62" fill="#fff" opacity=".16"/>
       <circle cx="30" cy="132" r="52" fill="#000" opacity=".07"/>
       <!-- Coque, ouverte en deux volets. -->
       <g>
-        <rect x="18" y="26" width="132" height="104" rx="13" fill="#b8302a"/>
-        <rect x="26" y="34" width="116" height="88" rx="9" fill="#f4f6f8"/>
+        <rect x="18" y="26" width="132" height="104" rx="13" fill="#a8160a"/>
+        <rect x="26" y="34" width="116" height="88" rx="9" fill="#fff1ef"/>
         <!-- La fiche : silhouette, nom, deux jauges. -->
         <circle cx="62" cy="66" r="21" fill="#cfd8e3"/>
         <path d="M62 52c8 0 14 7 14 15 0 9-6 14-14 14s-14-5-14-14c0-8 6-15 14-15z" fill="#8fa0b5"/>
@@ -2553,7 +2553,7 @@ const ART = {
         <rect x="36" y="108" width="34" height="7" rx="3.5" fill="#ecb22e"/>
       </g>
       <g>
-        <rect x="160" y="26" width="140" height="104" rx="13" fill="#c9372f"/>
+        <rect x="160" y="26" width="140" height="104" rx="13" fill="#bf1a0c"/>
         <!-- Liste d'entrées du Pokédex. -->
         <g>
           <rect x="170" y="38" width="120" height="24" rx="7" fill="#fdf1f0"/>
@@ -2575,18 +2575,18 @@ const ART = {
         </g>
       </g>
       <!-- Charnière. -->
-      <rect x="150" y="30" width="12" height="96" rx="6" fill="#8e241d"/>
+      <rect x="150" y="30" width="12" height="96" rx="6" fill="#7d0f05"/>
     </svg>`,
 
   // La boîte du PC : son bandeau de titre, ses cases, deux Pokémon rangés.
   boites: `
     <svg class="tuile-art" viewBox="0 0 150 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <circle cx="132" cy="16" r="44" fill="#fff" opacity=".12"/>
+      <circle cx="132" cy="16" r="44" fill="#fff" opacity=".18"/>
       <circle cx="10" cy="140" r="38" fill="#0c3f11" opacity=".12"/>
-      <rect x="14" y="16" width="122" height="118" rx="14" fill="#f2f7f2"/>
-      <rect x="22" y="24" width="106" height="20" rx="7" fill="#3fae37"/>
+      <rect x="14" y="16" width="122" height="118" rx="14" fill="#eafcef"/>
+      <rect x="22" y="24" width="106" height="20" rx="7" fill="#12ad3c"/>
       <rect x="32" y="31" width="52" height="6" rx="3" fill="#eaf6ea"/>
-      <g fill="#e2ebe3">
+      <g fill="#d3f0da">
         <rect x="22" y="50" width="30" height="30" rx="8"/><rect x="60" y="50" width="30" height="30" rx="8"/>
         <rect x="98" y="50" width="30" height="30" rx="8"/><rect x="22" y="86" width="30" height="30" rx="8"/>
         <rect x="60" y="86" width="30" height="30" rx="8"/><rect x="98" y="86" width="30" height="30" rx="8"/>
@@ -2607,11 +2607,11 @@ const ART = {
   // L'équipe : la ceinture du dresseur et ses six Poké Balls.
   equipes: `
     <svg class="tuile-art" viewBox="0 0 150 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <circle cx="18" cy="20" r="46" fill="#fff" opacity=".14"/>
+      <circle cx="18" cy="20" r="46" fill="#fff" opacity=".2"/>
       <circle cx="138" cy="136" r="44" fill="#123f66" opacity=".12"/>
       <!-- La sangle, en biais. -->
-      <path d="M-8 96l166-52v26L-8 122z" fill="#2f4a68"/>
-      <path d="M-8 96l166-52v6L-8 102z" fill="#4a6b8f" opacity=".7"/>
+      <path d="M-8 96l166-52v26L-8 122z" fill="#0a3f80"/>
+      <path d="M-8 96l166-52v6L-8 102z" fill="#5aa9ff" opacity=".75"/>
       <!-- Six Poké Balls accrochées à la ceinture : l'équipe au complet. -->
       <g>
         <g transform="translate(6 92) rotate(-17)">
@@ -2650,7 +2650,7 @@ const ART = {
   // Les attaques : un impact, et les trois catégories qui gravitent autour.
   attaques: `
     <svg class="tuile-art" viewBox="0 0 150 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <circle cx="16" cy="18" r="44" fill="#fff" opacity=".14"/>
+      <circle cx="16" cy="18" r="44" fill="#fff" opacity=".2"/>
       <circle cx="140" cy="140" r="46" fill="#8a6a12" opacity=".14"/>
       <!-- Les trois catégories, en jetons, alignées en haut. -->
       <g>
@@ -2667,18 +2667,18 @@ const ART = {
       </g>
       <!-- L'impact, au centre. -->
       <path d="M80 48l10 24 25-8-12 23 23 13-25 6 6 25-22-13-17 20-4-26-26 2 16-20-19-17 26-3z"
-            fill="#fff6dd" stroke="#8a6a12" stroke-width="3.2" stroke-linejoin="round"/>
-      <path d="M80 68l5.5 13 14.5-4.5-7 13 13.5 7-14.5 3.5 2.5 14.5-12.5-7.5-10 12-2-15.5-15 1 9-11.5-11-10 15.5-2z" fill="#f2a71b"/>
+            fill="#fff3c4" stroke="#8a4b05" stroke-width="3.2" stroke-linejoin="round"/>
+      <path d="M80 68l5.5 13 14.5-4.5-7 13 13.5 7-14.5 3.5 2.5 14.5-12.5-7.5-10 12-2-15.5-15 1 9-11.5-11-10 15.5-2z" fill="#ff9800"/>
     </svg>`,
 
   // Le scan : le téléphone qui vise un Pokémon, et son faisceau.
   scan: `
     <svg class="tuile-art" viewBox="0 0 150 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <circle cx="132" cy="20" r="46" fill="#fff" opacity=".12"/>
+      <circle cx="132" cy="20" r="46" fill="#fff" opacity=".18"/>
       <circle cx="12" cy="134" r="40" fill="#2b1f5e" opacity=".18"/>
       <!-- Le téléphone. -->
-      <rect x="30" y="14" width="90" height="122" rx="16" fill="#241a4d"/>
-      <rect x="37" y="22" width="76" height="106" rx="11" fill="#3a2c72"/>
+      <rect x="30" y="14" width="90" height="122" rx="16" fill="#2a0f63"/>
+      <rect x="37" y="22" width="76" height="106" rx="11" fill="#4a1fa8"/>
       <!-- Ce que voit la caméra : une Poké Ball dans le viseur. -->
       <g transform="translate(75 70)">
         <circle r="24" fill="#fff" stroke="#1e2227" stroke-width="4"/>
@@ -2698,14 +2698,14 @@ const ART = {
   // Les réglages : la console du PC, ses curseurs et son interrupteur.
   reglages: `
     <svg class="tuile-art" viewBox="0 0 150 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <circle cx="18" cy="18" r="42" fill="#fff" opacity=".10"/>
-      <circle cx="136" cy="138" r="42" fill="#2b323c" opacity=".22"/>
-      <rect x="18" y="20" width="114" height="92" rx="13" fill="#eef1f5"/>
-      <rect x="26" y="28" width="98" height="76" rx="8" fill="#39434f"/>
+      <circle cx="18" cy="18" r="42" fill="#fff" opacity=".18"/>
+      <circle cx="136" cy="138" r="42" fill="#053b3a" opacity=".25"/>
+      <rect x="18" y="20" width="114" height="92" rx="13" fill="#e4fbf8"/>
+      <rect x="26" y="28" width="98" height="76" rx="8" fill="#0f4a4a"/>
       <!-- Deux curseurs et un interrupteur : ce qu'on vient régler. -->
       <g>
         <rect x="36" y="42" width="78" height="7" rx="3.5" fill="#63707f"/>
-        <rect x="36" y="42" width="44" height="7" rx="3.5" fill="#8fd0ff"/>
+        <rect x="36" y="42" width="44" height="7" rx="3.5" fill="#6ff0e2"/>
         <circle cx="80" cy="45.5" r="9" fill="#f4f7fa" stroke="#39434f" stroke-width="2.4"/>
         <rect x="36" y="64" width="78" height="7" rx="3.5" fill="#63707f"/>
         <rect x="36" y="64" width="24" height="7" rx="3.5" fill="#ffd166"/>
@@ -2716,8 +2716,8 @@ const ART = {
         <rect x="80" y="94" width="22" height="5" rx="2.5" fill="#63707f"/>
       </g>
       <!-- Pied de la console. -->
-      <path d="M62 112h26l5 12H57z" fill="#d7dde4"/>
-      <rect x="44" y="124" width="62" height="10" rx="5" fill="#eef1f5"/>
+      <path d="M62 112h26l5 12H57z" fill="#cdeeea"/>
+      <rect x="44" y="124" width="62" height="10" rx="5" fill="#e4fbf8"/>
     </svg>`,
 };
 

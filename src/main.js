@@ -246,6 +246,8 @@ const state = {
   addGen: 1,      // génération listée dans le sélecteur
   placing: null, // Pokémon choisi, en attente d'un emplacement
   open: null,
+  pris: null,   // Pokémon coché au dernier tap : sa case s'anime, une fois
+
   // Boîte de combat : vue active, jeu de référence, équipe de six, panneau ouvert.
   vue: 'accueil',
   // Thème : « clair », « sombre », ou « auto » (celui du téléphone). Clair par défaut,
@@ -481,6 +483,18 @@ const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 // PokéAPI renvoie les habitats en minuscules (« forêts »), les couleurs capitalisées.
 const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 // Les noms de boîte sont saisis par l'utilisateur et repartent dans du innerHTML.
+// Icônes utilitaires : une seule grille (24), un seul trait (1,7 px, bouts ronds).
+// Inline plutôt qu'une librairie : l'appli ne charge rien à l'exécution, et il n'en
+// faut qu'une poignée. `aria-hidden` partout — le libellé du bouton porte le sens.
+const ICO = {
+  gauche: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
+  droite: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
+  plus: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  moins: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>',
+  exporte: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14"/></svg>',
+  importe: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V5m0 0L8 9m4-4l4 4M5 19h14"/></svg>',
+};
+
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 // Recherche insensible aux accents et à la casse.
 const fold = (t) => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -508,6 +522,10 @@ for (const id of Object.keys(pokedex).map(Number).sort((a, b) => a - b)) {
 for (const e of CATALOGUE) e.cle = fold(e.name + ' ' + e.sub + ' ' + e.num);
 
 // ---------- Rendu ----------
+
+// Génération affichée au dernier rendu : sert à ne lancer la cascade des cases
+// qu'en CHANGEANT de génération.
+let derniereGen = null;
 
 function render() {
   // L'accueil et les autres vues se rendent chacune entièrement ; tout le reste de
@@ -537,6 +555,9 @@ function render() {
   // Un id inconnu retombe sur « aucun fond » plutôt que sur une grille vide.
   const paperBg = paperCss(boxInfo(state.gen, b).paper);
   const titrePlaque = titreCss(boxInfo(state.gen, b).paper);
+  const entreeGen = state.gen !== derniereGen;
+  derniereGen = state.gen;
+
   // Ordre par défaut : on affiche la plage du Pokédex, plus parlante. Dès que la
   // génération est réarrangée, cette plage ne veut plus rien dire : on montre le rang.
   // Ordre d'origine : on annonce les numéros réels — nationaux pour une génération,
@@ -556,12 +577,13 @@ function render() {
   const defileOnglets = app.querySelector('.gens')?.scrollLeft ?? 0;
 
   poser(
+    entete('Boîtes', `${g.name} · ${pris} sur ${total}`),
     renderTabs(),
     h(`
       <section class="box ${paperBg ? 'papered' : ''} ${rang ? 'ranger' : ''} ${state.placing !== null ? 'placement' : ''}">
         ${paperBg ? `<div class="box-paper" data-gen="${paperGen(boxInfo(state.gen, b).paper) ?? ''}" data-size="${paperSize(boxInfo(state.gen, b).paper) ?? ''}" style="background-image:${paperBg}"></div>` : ''}
         <div class="box-head">
-          <button class="box-arrow" data-dir="-1" ${b === 0 ? 'disabled' : ''} aria-label="Boîte précédente">&lsaquo;</button>
+          <button class="box-arrow" data-dir="-1" ${b === 0 ? 'disabled' : ''} aria-label="Boîte précédente">${ICO.gauche}</button>
           <!-- La plaque de titre se pose EN FOND du bouton, pas dans un calque à part :
                ses proportions (116×23, soit 5,04) collent presque exactement à celles du
                bouton (5,19), et le texte se place naturellement par-dessus. -->
@@ -571,17 +593,17 @@ function render() {
             ${esc(boxLabel(state.gen, b))}
             <small>${sous}</small>
           </button>
-          <button class="box-arrow" data-dir="1" ${b === boxes - 1 ? 'disabled' : ''} aria-label="Boîte suivante">&rsaquo;</button>
+          <button class="box-arrow" data-dir="1" ${b === boxes - 1 ? 'disabled' : ''} aria-label="Boîte suivante">${ICO.droite}</button>
         </div>
-        <div class="grid ${paperBg ? 'papered' : ''}">${cases.map((k, i) => renderSlot(k, start + i)).join('')}</div>
+        <div class="grid ${paperBg ? 'papered' : ''} ${entreeGen ? 'entre' : ''}">${cases.map((k, i) => renderSlot(k, start + i)).join('')}</div>
         <!-- Les pastilles restent centrées : les deux boutons se font face, de part
              et d'autre, et gardent la même largeur pour ne pas les décaler. -->
         <div class="box-dots">
           <button class="dot-btn" data-act="del-box" ${boxes <= 1 ? 'disabled' : ''}
-                  title="Supprimer la boîte affichée" aria-label="Supprimer la boîte affichée">&minus;</button>
+                  title="Supprimer la boîte affichée" aria-label="Supprimer la boîte affichée">${ICO.moins}</button>
           <span class="dots">${Array.from({ length: boxes }, (_, i) => `<i class="${i === b ? 'on' : ''}" data-boite="${i}"></i>`).join('')}</span>
           <button class="dot-btn" data-act="add-box"
-                  title="Ajouter une boîte à cet onglet" aria-label="Ajouter une boîte">+</button>
+                  title="Ajouter une boîte à cet onglet" aria-label="Ajouter une boîte">${ICO.plus}</button>
         </div>
       </section>
     `),
@@ -595,7 +617,7 @@ function render() {
              ce que fait un tap, puis l'affichage et la sauvegarde. -->
         <div class="tools">
           <button class="btn primaire" data-act="add">
-            <b>+</b><span>Ajouter un Pokémon</span>
+            ${ICO.plus}<span>Ajouter un Pokémon</span>
           </button>
 
           <!-- Trois états sur un seul rail : on voit d'un coup celui qui est actif. -->
@@ -612,10 +634,10 @@ function render() {
             </button>
             <div class="paire" role="group" aria-label="Sauvegarde">
               <button class="btn discret" data-act="export" title="Enregistrer une sauvegarde">
-                <b>&#8681;</b><span>Exporter</span>
+                ${ICO.exporte}<span>Exporter</span>
               </button>
               <button class="btn discret" data-act="import" title="Charger une sauvegarde">
-                <b>&#8679;</b><span>Importer</span>
+                ${ICO.importe}<span>Importer</span>
               </button>
             </div>
           </div>
@@ -639,6 +661,11 @@ function render() {
   // droite, il partait systématiquement vers Gén. 1.
   const barreOnglets = app.querySelector('.gens');
   if (barreOnglets) barreOnglets.scrollLeft = defileOnglets;
+
+  // L'animation de prise a été posée dans le rendu qu'on vient de faire : on
+  // l'oublie, sinon elle rejouerait au rendu suivant (une bascule chromatique,
+  // un changement de boîte) sur un Pokémon capturé il y a longtemps.
+  state.pris = null;
 
   calePaper();
   if (import.meta.env.DEV) window.__annoncerCalage?.();
@@ -716,7 +743,7 @@ function renderSlot(key, index) {
   const rang = state.mode === "move";
   if (key === undefined || key === null) {
     return `<button class="slot empty ${rang && state.held !== null ? 'cible' : ''}" data-slot="${index}"
-             aria-label="Emplacement libre">+</button>`;
+             style="--i:${index % BOX_SIZE}" aria-label="Emplacement libre">+</button>`;
   }
   const caught = isCaught(key);
   const forme = FORM_BY_KEY.has(key);
@@ -725,7 +752,8 @@ function renderSlot(key, index) {
   // Toujours le sprite 2D fixe ; chromatique si la vue chromatique est active.
   const src = sprites.still(spriteKey(key), shinyView());
   return `
-    <button class="slot ${caught ? 'caught' : ''} ${forme ? 'extra' : ''} ${tenu ? 'tenu' : ''} ${rang && state.held !== null && !tenu ? 'cible' : ''}"
+    <button class="slot ${caught ? 'caught' : ''} ${forme ? 'extra' : ''} ${tenu ? 'tenu' : ''} ${rang && state.held !== null && !tenu ? 'cible' : ''} ${key === state.pris ? 'pris' : ''}"
+            style="--i:${index % BOX_SIZE}"
             data-id="${key}" data-slot="${index}"
             aria-label="${esc(name)}${caught ? ', capturé' : ''}">
       <span class="num">${forme ? '★' : key}</span>
@@ -1445,7 +1473,11 @@ boxBody.addEventListener('input', (e) => {
 
 function toggle(id) {
   const set = caughtSet();
+  const prise = !set.has(id);
   set.has(id) ? set.delete(id) : set.add(id);
+  // La case qui vient d'être COCHÉE rebondit une fois. Décocher n'anime rien : on
+  // corrige une erreur, ce n'est pas une prise.
+  state.pris = prise ? id : null;
   save();
   render();
 }
@@ -2569,7 +2601,7 @@ function renderReglages() {
 // Barre de retour, construite une fois : elle coiffe toutes les vues sauf l'accueil.
 const barreRetour = h(`
   <header class="retour">
-    <button data-accueil aria-label="Revenir à l'accueil">&lsaquo; Accueil</button>
+    <button data-accueil aria-label="Revenir à l'accueil">${ICO.gauche}<span>Accueil</span></button>
   </header>`);
 barreRetour.addEventListener('click', () => vaVers('accueil'));
 
@@ -2600,12 +2632,30 @@ app.addEventListener('click', (e) => {
   }
 });
 
+// Grand titre façon iOS : il coiffe la vue, puis se réduit et s'efface en défilant
+// sous la barre des onglets, qui reste collée en haut. Le rétrécissement est posé par
+// une classe, pas par un calcul à chaque image : le défilement reste fluide.
+function entete(titre, sous) {
+  return h(`
+    <header class="entete">
+      <h1>${esc(titre)}</h1>
+      ${sous ? `<p>${esc(sous)}</p>` : ''}
+    </header>`);
+}
+
 // Coquille d'application : le contenu de chaque vue défile DANS une zone dédiée
 // (`.vue`), coiffée hors accueil par la barre de retour, qui ne défile pas.
 function poser(...enfants) {
   const vue = document.createElement('div');
   vue.className = 'vue';
   vue.append(...enfants);
+  // L'écoute vit sur la zone qui défile ; elle meurt avec elle au rendu suivant.
+  const tete = enfants[0];
+  if (tete instanceof Element && tete.classList.contains('entete')) {
+    vue.addEventListener('scroll', () => {
+      tete.classList.toggle('compact', vue.scrollTop > 12);
+    }, { passive: true });
+  }
   app.replaceChildren(...(state.vue === 'accueil' ? [vue] : [barreRetour, vue]));
 }
 
@@ -2652,9 +2702,9 @@ function renderCombat() {
           </button>
           <div class="eq-io">
             <button data-act="eq-export" title="Exporter toutes mes équipes"
-                    aria-label="Exporter toutes mes équipes">&#8681;</button>
+                    aria-label="Exporter toutes mes équipes">${ICO.exporte}</button>
             <button data-act="eq-import" title="Importer des équipes"
-                    aria-label="Importer des équipes">&#8679;</button>
+                    aria-label="Importer des équipes">${ICO.importe}</button>
           </div>
           <div class="combat-compte"><b>${pleines}</b>/6</div>
         </div>
@@ -4013,7 +4063,10 @@ function carteDex(n) {
 function renderMenuDex() {
   const q = state.dexQ.trim();
   const ids = especesDex();
-  poser(h(`
+  const tout = progresDex(0);
+  poser(
+    entete('Pokédex', `${tout.pris} espèce${tout.pris > 1 ? 's' : ''} sur ${tout.total}`),
+    h(`
     <section class="dexm">
       <input class="dexm-rech" type="search" data-dexq placeholder="Rechercher un Pokémon"
              value="${esc(state.dexQ)}" aria-label="Rechercher un Pokémon"
@@ -4021,7 +4074,8 @@ function renderMenuDex() {
       <p class="dex-res" ${q ? '' : 'hidden'}>${q ? texteRes(ids.length) : ''}</p>
       <div class="dex-grid" ${q ? '' : 'hidden'}>${ids.map(caseDex).join('')}</div>
       <div class="dex-cartes" ${q ? 'hidden' : ''}>${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(carteDex).join('')}</div>
-    </section>`));
+    </section>`)
+  );
 }
 
 const caseDex = (id) => {
@@ -4102,7 +4156,7 @@ function renderPokedex() {
     h(`
       <section class="dex">
         <div class="dex-head">
-          <button class="dex-retour" data-dex-retour aria-label="Revenir au menu du Pokédex">&lsaquo;</button>
+          <button class="dex-retour" data-dex-retour aria-label="Revenir au menu du Pokédex">${ICO.gauche}</button>
           <div class="dex-titre">
             <b>${esc(g.name)}</b>
             <small>N° ${g.from} à ${g.to}</small>

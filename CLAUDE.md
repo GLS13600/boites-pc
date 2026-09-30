@@ -128,7 +128,8 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | Chemin | Rôle |
 |---|---|
 | `src/main.js` | Toute la logique : état, rendu, gestes, fiche |
-| `src/style.css` | Thème clair, variables CSS en `:root` |
+| `src/style.css` | Toute la feuille de style ; importe les jetons en tête |
+| `src/tokens.css` | Jetons de design : couleurs, rayons, ombres, espacements, durées |
 | `src/data/pokedex.json` | Données générées, **ne jamais éditer à la main** |
 | `scripts/fetch-data.mjs` | Aspire PokéAPI vers le JSON ci-dessus |
 | `src/data/evolutions.json` | Familles d'évolution + conditions, **généré** |
@@ -1669,6 +1670,50 @@ en pointillés qui tient la place et le dit. En ajouter un ne demande que le mê
   D'ici là, pas de balise `apple-touch-icon` : elle pointerait dans le vide.
 
 ## Direction visuelle
+
+**Tout part de `src/tokens.css`**, importé en tête de `style.css` : couleurs, rayons
+(8 → 28), trois niveaux d'ombre, espacements par pas de 4, échelle typographique d'iOS
+(34 / 22 / 17 / 15 / 13 / 11) et trois durées avec leurs courbes, dont un ressort
+(`--c-ressort`) pour les appuis et l'ouverture des panneaux. Aucune valeur en dur
+ailleurs : une retouche se fait dans ce seul fichier.
+
+- L'`@import` doit rester **en première ligne** de `style.css` : placé après une autre
+  règle, il serait ignoré par le navigateur.
+- Le thème sombre n'y redéfinit que des **couleurs** — rayons, espacements et durées
+  sont communs aux deux thèmes.
+- Les noms historiques (`--paper`, `--panel`, `--ink`, `--ball`…) sont conservés : ils
+  sont lus dans plus de soixante endroits.
+
+### Refonte visuelle (30/09/2026)
+
+Demandée comme une refonte « iOS moderne » **sans toucher à une seule fonctionnalité**.
+Aucune classe lue par le JS n'a été renommée (`.slot`, `.gen-tab`, `.grid`, `.tenu`,
+`.cible`, `.survol`, `.papered`, `.no-anim`…), et les gestes sont intacts.
+
+- **Grand titre** (`entete()`) sur Boîtes et Pokédex : 34 px, il se réduit à 22 px et
+  perd son sous-titre au défilement (classe `compact`, posée par une écoute de
+  défilement attachée à la zone qui défile, donc morte avec elle au rendu suivant).
+  La barre des onglets reste collée en haut, comme avant.
+- **Onglets de génération** : pastilles de 44 px, l'actif rempli du rouge de l'appli —
+  blanc sur ce rouge tient le contraste AA (4,6:1).
+- **Cases de boîte** : coins à 12 px, capturé = teinte + anneau + Poké Ball dessinée.
+  Deux animations, toutes deux coupées par `prefers-reduced-motion` :
+  - **cascade** à l'entrée dans une génération (classe `entre` sur la grille,
+    `--i` par case). Elle ne joue QUE sur un changement de génération : un simple
+    rendu — cocher une capture, changer de fond — refaisait sinon entrer les trente
+    cases à chaque fois.
+  - **prise** : la case qu'on vient de cocher rebondit et sa Poké Ball se ferme.
+    `state.pris` porte la clé capturée et est **remis à null juste après le rendu**,
+    sinon l'animation rejouerait au rendu suivant.
+- **Fiche** : coins à 28 px, ouverture en ressort, fond assombri et flouté, portrait de
+  124 px sur un halo, badges de type aux couleurs officielles, et lieux de capture en
+  listes « inset grouped » d'iOS (titre de groupe hors de la carte, lignes de 44 px).
+- **Icônes utilitaires** (`ICO` dans main.js) : chevrons, plus, moins, export, import,
+  toutes sur une grille de 24 au trait de 1,7 px. Inline, pas de librairie — l'appli ne
+  charge rien à l'exécution. Les dessins des tuiles de l'accueil ne sont pas touchés.
+  - `const ICO` doit être déclaré **avant** la barre de retour, construite au
+    chargement du module : déclaré après, la page plantait sur « Cannot access 'ICO'
+    before initialization ».
 
 Deux thèmes, **clair par défaut**, sombre au choix dans les Réglages.
 Thème clair : papier `#f6f5f1`, panneaux blancs, filets beiges `#e3e0d6`.

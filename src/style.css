@@ -1,45 +1,8 @@
-:root {
-  --paper: #f6f5f1;
-  --panel: #ffffff;
-  --rule: #e3e0d6;
-  --rule-soft: #efece4;
-  --ink: #1e2227;
-  --muted: #7c8592;
-  --slot: #fbfaf7;
-  --caught-tint: #fff6f4;
-  --caught-edge: #f0c4bd;
-  --ball: #d6453c;
-  --shiny: #b98b18;
-  --font: ui-rounded, "SF Pro Rounded", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --safe-top: env(safe-area-inset-top, 0px);
-  /* La barre du bas a été retirée au profit de la page d'accueil : les panneaux, qui
-     lui réservaient sa hauteur en bas de leur contenu, n'ont plus qu'à s'écarter du
-     bord de l'écran. Les deux variables restent, lues par les panneaux. */
-  --nav-h: 0px;
-  --nav-bas: var(--safe-bottom);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-/* ---------- Thème sombre ----------
-   Choisi dans les Réglages. « Automatique » est résolu en JS : l'attribut ne vaut
-   jamais que « clair » ou « sombre », et la palette n'est donc écrite qu'une fois.
-   Seules les variables changent — tout le reste de la feuille les lit déjà. */
-:root[data-theme="sombre"] {
-  color-scheme: dark;
-  --paper: #14171b;
-  --panel: #1d2127;
-  --rule: #313843;
-  --rule-soft: #262c34;
-  --ink: #eef1f5;
-  --muted: #97a2b0;
-  --slot: #232831;
-  /* Teinte des captures : le même rouge, posé sur du sombre. */
-  --caught-tint: #2b1d1c;
-  --caught-edge: #6d3b36;
-  /* Rouge et or éclaircis : les tons clairs manquaient de contraste sur ce fond. */
-  --ball: #f06056;
-  --shiny: #dcb04a;
-}
+/* Les jetons de design (couleurs, rayons, ombres, espacements, durées, courbes)
+   vivent dans tokens.css, importé ici : une seule source, lue par toute la feuille.
+   L'import doit rester EN TÊTE — une règle @import placée après une autre règle est
+   ignorée par le navigateur. */
+@import "./tokens.css";
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -71,6 +34,52 @@ img { display: block; }
   overscroll-behavior-y: contain;
 }
 
+/* ---------- Icônes utilitaires ----------
+   Un seul trait pour toutes : l'épaisseur et les bouts ronds sont posés ici, jamais
+   dans le dessin. `currentColor` les fait suivre la couleur du bouton qui les porte. */
+.ico {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.btn .ico { width: 18px; height: 18px; }
+.box-arrow .ico, .dot-btn .ico { width: 18px; height: 18px; }
+/* Les boutons qui n'ont qu'une icône la centrent. */
+.box-arrow, .dot-btn, .dex-retour, .eq-io button { display: grid; place-items: center; }
+.retour button { display: inline-flex; align-items: center; gap: 2px; }
+
+/* ---------- Grand titre : l'en-tête des vues Boîtes et Pokédex ----------
+   Il ne colle pas en haut : il défile et se réduit, puis la barre des onglets — elle,
+   collée — prend sa place. Seules des propriétés bon marché sont animées. */
+.entete {
+  padding: var(--e-3) var(--e-4) var(--e-2);
+  transition: padding var(--d-moyen) var(--c-entree);
+}
+.entete h1 {
+  margin: 0;
+  font-size: var(--t-grand);
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  line-height: 1.1;
+  transition: font-size var(--d-moyen) var(--c-entree);
+}
+.entete p {
+  margin: var(--e-1) 0 0;
+  color: var(--muted);
+  font-size: var(--t-petit);
+  transition: opacity var(--d-court) ease;
+}
+/* Réduit : le titre passe à la taille d'un titre de section et le sous-titre s'efface.
+   La hauteur disparaît aussi, sinon le blanc resterait sous la barre collée. */
+.entete.compact { padding-top: var(--e-1); padding-bottom: 0; }
+.entete.compact h1 { font-size: var(--t-titre); }
+.entete.compact p { opacity: 0; height: 0; margin: 0; overflow: hidden; }
+
 /* ---------- Barre des générations : fixée en haut ---------- */
 
 .gens {
@@ -78,36 +87,52 @@ img { display: block; }
   top: 0;
   z-index: 5;
   display: flex;
-  gap: 4px;
-  padding: calc(10px + var(--safe-top)) 12px 0;
+  gap: var(--e-2);
+  padding: var(--e-2) var(--e-3) var(--e-3);
   overflow-x: auto;
   scrollbar-width: none;
+  /* Verre dépoli : la grille défile dessous et transparaît, comme les barres d'iOS.
+     Le repli opaque sert aux navigateurs sans backdrop-filter. */
   background: var(--paper);
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule-soft);
+  scroll-snap-type: x proximity;
   touch-action: pan-x;
   -webkit-overflow-scrolling: touch;
+}
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .gens {
+    background: color-mix(in srgb, var(--paper) 78%, transparent);
+    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    backdrop-filter: saturate(180%) blur(18px);
+  }
 }
 .gens::-webkit-scrollbar { display: none; }
 
 .gen-tab {
   flex: 0 0 auto;
-  padding: 8px 12px 9px;
-  border-radius: 9px 9px 0 0;
+  /* 44 px de haut : la cible tactile minimale d'iOS, libellé et sous-titre compris. */
+  min-height: 44px;
+  padding: var(--e-2) var(--e-4);
+  border-radius: var(--r-rond);
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--t-petit);
   font-weight: 600;
   line-height: 1;
-  border: 1px solid transparent;
-  border-bottom: 0;
-  margin-bottom: -1px;
-}
-.gen-tab small { display: block; margin-top: 4px; font-size: 10px; font-weight: 500; opacity: 0.75; }
-.gen-tab[aria-selected="true"] {
+  border: 1px solid var(--rule-soft);
   background: var(--panel);
-  color: var(--ink);
-  border-color: var(--rule);
-  box-shadow: 0 -2px 0 var(--ball) inset;
+  scroll-snap-align: center;
 }
+.gen-tab small { display: block; margin-top: 4px; font-size: var(--t-mini); font-weight: 500; opacity: 0.75; }
+/* L'onglet actif se remplit du rouge de l'appli : blanc sur ce rouge tient le
+   contraste AA (4,6:1). L'agrandissement dit lequel vient d'être choisi. */
+.gen-tab[aria-selected="true"] {
+  background: var(--ball-degrade);
+  border-color: transparent;
+  color: var(--sur-ball);
+  box-shadow: var(--ombre-1);
+}
+.gen-tab[aria-selected="true"] small { opacity: 0.85; }
+.gen-tab:active { transform: scale(0.96); }
 
 /* Onglet porté : même signal que le titre d'une boîte qu'on déplace — halo rouge
    et léger agrandissement. Il passe AU-DESSUS de ses voisins pendant qu'il les
@@ -115,12 +140,17 @@ img { display: block; }
 .gen-tab.tenu {
   background: var(--caught-tint);
   color: var(--ink);
-  box-shadow: 0 0 0 2px var(--ball);
+  box-shadow: 0 0 0 2px var(--ball), var(--ombre-2);
   transform: scale(1.06);
   position: relative;
   z-index: 1;
 }
-.gen-tab { transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease; }
+.gen-tab {
+  transition: transform var(--d-court) var(--c-ressort),
+              background var(--d-court) ease,
+              color var(--d-court) ease,
+              box-shadow var(--d-court) ease;
+}
 /* Le défilement natif de la barre est neutralisé pendant le portage (aussi côté JS,
    par un touchmove non passif) : les deux se battraient pour le même geste. */
 .gens:has(.gen-tab.tenu) { touch-action: none; }
@@ -129,32 +159,38 @@ img { display: block; }
 
 .box {
   position: relative;
-  margin: 12px;
+  margin: var(--e-3);
   background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: 16px;
-  padding: 10px 10px 14px;
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--r-lg);
+  box-shadow: var(--ombre-2);
+  padding: var(--e-3) var(--e-3) var(--e-4);
   touch-action: none;
   overflow: hidden; /* la grille glisse d'une boîte à l'autre : on clippe au panneau */
 }
 
-.box-head { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; margin-bottom: 10px; }
+.box-head { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; margin-bottom: var(--e-3); }
 .box-arrow {
-  height: 34px;
-  border-radius: 9px;
-  font-size: 17px;
+  width: 36px;
+  height: 36px;
+  margin: 0 auto;
+  border-radius: var(--r-rond);
+  font-size: var(--t-tete);
   color: var(--ink);
-  background: var(--slot);
-  border: 1px solid var(--rule);
+  background: var(--panel-2);
+  border: 1px solid var(--rule-soft);
+  transition: transform var(--d-court) var(--c-ressort), background var(--d-court) ease;
 }
+.box-arrow:active:not(:disabled) { transform: scale(0.9); background: var(--rule-soft); }
 .box-arrow:disabled { opacity: 0.3; cursor: default; }
 .box-title {
   text-align: center;
   font-weight: 700;
-  font-size: 16px;
+  font-size: var(--t-tete);
+  letter-spacing: -0.2px;
   color: var(--ink);
-  padding: 4px 8px;
-  border-radius: 9px;
+  padding: var(--e-1) var(--e-2);
+  border-radius: var(--r-sm);
   min-width: 0;
 }
 /* Plaque de titre du jeu, en fond du bouton. `100% 100%` : elle est faite pour
@@ -167,7 +203,7 @@ img { display: block; }
   background-size: 100% 100%;
 }
 .box-title:active { background: var(--slot); }
-.box-title small { display: block; font-weight: 500; font-size: 12px; color: var(--muted); margin-top: 3px; }
+.box-title small { display: block; font-weight: 500; font-size: var(--t-petit); color: var(--muted); margin-top: 3px; }
 
 .grid {
   display: grid;
@@ -240,16 +276,30 @@ img { display: block; }
 
 .slot {
   aspect-ratio: 1;
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   background: var(--slot);
   border: 1px solid var(--rule-soft);
   display: grid;
   place-items: center;
   position: relative;
   overflow: hidden;
-  transition: transform 110ms ease, background 160ms ease, border-color 160ms ease;
+  transition: transform var(--d-court) var(--c-ressort),
+              background var(--d-moyen) ease,
+              border-color var(--d-moyen) ease,
+              box-shadow var(--d-moyen) ease;
 }
-.slot:active { transform: scale(0.9); }
+.slot:active { transform: scale(0.94); }
+/* Cascade à l'entrée dans une génération : les 30 cases arrivent l'une après
+   l'autre. Posée par le rendu (classe `entre` sur la grille) UNIQUEMENT quand on
+   change de génération — une capture refait le rendu, et toute la grille
+   réapparaîtrait à chaque Pokémon coché. */
+.grid.entre .slot {
+  animation: case-entre var(--d-moyen) var(--c-entree) backwards;
+  animation-delay: calc(var(--i, 0) * 9ms);
+}
+@keyframes case-entre {
+  from { opacity: 0; transform: translateY(6px) scale(0.94); }
+}
 .slot img {
   width: 100%;
   height: 100%;
@@ -262,19 +312,38 @@ img { display: block; }
   transition: filter 160ms ease, opacity 160ms ease;
 }
 /* Non capturé : sprite 2D en gris. Capturé : sprite animé en couleur. */
-.slot:not(.caught) img { filter: grayscale(1); opacity: 0.72; }
-.slot.caught { background: var(--caught-tint); border-color: var(--caught-edge); }
+.slot:not(.caught) img { filter: grayscale(1); opacity: 0.66; }
+.slot.caught {
+  background: var(--caught-tint);
+  border-color: var(--caught-edge);
+  box-shadow: inset 0 0 0 1px var(--caught-edge);
+}
 
 .slot.caught::after {
   content: "";
   position: absolute;
   right: 3px;
   bottom: 3px;
-  width: 8px;
-  height: 8px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
-  background: linear-gradient(to bottom, var(--ball) 50%, #fff 50%);
-  box-shadow: 0 0 0 1.2px var(--ink);
+  background: linear-gradient(to bottom, var(--ball) 47%, var(--ink) 47% 53%, var(--panel) 53%);
+  box-shadow: 0 0 0 1.2px var(--ink), var(--ombre-1);
+}
+/* Le Pokémon qu'on vient de capturer : la case rebondit et sa Poké Ball se ferme.
+   La classe est posée par le rendu qui suit le tap, puis oubliée — elle ne rejoue
+   donc pas au rendu suivant. */
+.slot.pris { animation: case-prise 420ms var(--c-ressort); }
+.slot.pris::after { animation: ball-prise 420ms var(--c-ressort); }
+@keyframes case-prise {
+  0% { transform: scale(0.88); }
+  55% { transform: scale(1.07); }
+  100% { transform: scale(1); }
+}
+@keyframes ball-prise {
+  0% { transform: scale(0) rotate(-90deg); opacity: 0; }
+  60% { transform: scale(1.35) rotate(10deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
 }
 .slot.empty { border-style: dashed; background: transparent; }
 .slot .num {
@@ -1409,10 +1478,23 @@ img { display: block; }
   color: var(--muted);
   font-size: 13px;
 }
-.progress { display: flex; align-items: center; gap: 10px; }
-.progress .bar { flex: 1; height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; }
-.progress .bar span { display: block; height: 100%; background: var(--ball); transition: width 240ms ease; }
-.progress strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+.progress { display: flex; align-items: center; gap: var(--e-3); }
+.progress .bar {
+  flex: 1;
+  height: 10px;
+  border-radius: var(--r-rond);
+  background: var(--rule-soft);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  overflow: hidden;
+}
+.progress .bar span {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-rond);
+  background: var(--ball-degrade);
+  transition: width var(--d-long) var(--c-entree);
+}
+.progress strong { color: var(--ink); font-size: var(--t-tete); font-variant-numeric: tabular-nums; }
 
 /* TROIS RANGÉES EMPILÉES, chacune pleine largeur, dans l'ordre où l'on s'en sert :
    l'action, puis ce que fait un tap, puis l'affichage et la sauvegarde.
@@ -1421,8 +1503,9 @@ img { display: block; }
    `order` : la composition changeait selon la largeur de l'écran et rien ne
    s'alignait. Une grille supprime le problème à la racine — plus de `order`, plus de
    `flex-wrap`, donc plus de décalage. Ne pas y revenir. */
-.tools { display: grid; gap: 8px; margin-top: 14px; }
-.tools .btn { justify-content: center; min-height: 38px; }
+.tools { display: grid; gap: var(--e-2); margin-top: var(--e-4); }
+/* 44 px : la cible tactile minimale d'iOS. */
+.tools .btn { justify-content: center; min-height: 44px; }
 .tools .rangee {
   display: grid;
   /* `auto` sur la paire : elle garde SA largeur quand le libellé de la bascule passe
@@ -1443,8 +1526,8 @@ img { display: block; }
   border: 1px solid var(--rule);
 }
 .tools .paire .btn {
-  min-height: 30px;
-  padding: 6px 10px;
+  min-height: 38px;
+  padding: var(--e-2) var(--e-3);
   border-color: transparent;
   background: none;
 }
@@ -1466,20 +1549,28 @@ img { display: block; }
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border-radius: 999px;
+  justify-content: center;
+  gap: var(--e-2);
+  padding: var(--e-2) var(--e-4);
+  border-radius: var(--r-rond);
   border: 1px solid var(--rule);
   background: var(--panel);
   color: var(--ink);
-  font-size: 13px;
+  font-size: var(--t-corps);
   font-weight: 600;
   line-height: 1;
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+  transition: background var(--d-court) ease, border-color var(--d-court) ease,
+              color var(--d-court) ease, transform var(--d-court) var(--c-ressort);
 }
-.btn b { font-size: 14px; line-height: 1; }
+.btn b { font-size: 15px; line-height: 1; }
 .btn:active { transform: scale(0.96); }
-.btn.primaire { background: var(--ball); border-color: var(--ball); color: #fff; }
+.btn.primaire {
+  background: var(--ball-degrade);
+  border-color: transparent;
+  color: var(--sur-ball);
+  box-shadow: var(--ombre-2);
+}
+.btn.primaire:active { background: var(--ball-fonce); }
 .btn.primaire b { font-size: 16px; }
 .btn.discret { color: var(--muted); background: transparent; }
 .btn.discret:active { background: var(--panel); }
@@ -1498,16 +1589,18 @@ img { display: block; }
   border: 1px solid var(--rule);
 }
 .segmente button {
-  min-height: 30px;
-  padding: 5px 8px;
-  border-radius: 999px;
+  min-height: 38px;
+  padding: var(--e-2);
+  border-radius: var(--r-rond);
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--t-petit);
   font-weight: 600;
   line-height: 1;
-  transition: background 140ms ease, color 140ms ease;
+  transition: background var(--d-court) ease, color var(--d-court) ease,
+              transform var(--d-court) var(--c-ressort);
 }
-.segmente button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px #0000001f; }
+.segmente button:active { transform: scale(0.96); }
+.segmente button.on { background: var(--panel); color: var(--ink); box-shadow: var(--ombre-1); }
 
 /* La grille laisse tenir « Exporter » et « Importer » jusqu'à 375 px. En dessous les
    glyphes suffisent à reconnaître les boutons. */
@@ -1531,10 +1624,12 @@ img { display: block; }
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(30, 34, 39, 0.35);
+  background: rgb(15 18 22 / 42%);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 180ms ease;
+  transition: opacity var(--d-moyen) ease;
   z-index: 10;
 }
 .backdrop.open { opacity: 1; pointer-events: auto; }
@@ -1546,10 +1641,12 @@ img { display: block; }
   bottom: 0;
   max-height: 88vh;
   background: var(--panel);
-  border-radius: 20px 20px 0 0;
-  border-top: 1px solid var(--rule);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  border-top: 1px solid var(--rule-soft);
+  box-shadow: var(--ombre-3);
   transform: translateY(100%);
-  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Ressort léger à l'ouverture, comme les feuilles d'iOS. */
+  transition: transform var(--d-long) var(--c-ressort);
   z-index: 11;
   display: flex;
   flex-direction: column;
@@ -1559,16 +1656,24 @@ img { display: block; }
   overflow: hidden;
 }
 .sheet.open { transform: translateY(0); }
-.sheet-grip { width: 38px; height: 5px; border-radius: 3px; background: var(--rule); margin: 8px auto 0; }
+.sheet-grip { width: 38px; height: 5px; border-radius: var(--r-rond); background: var(--rule); margin: var(--e-2) auto 0; }
 .sheet-body {
   overflow-y: auto;
   padding: 8px 18px calc(22px + var(--nav-h) + var(--nav-bas));
   overscroll-behavior: contain;
 }
 
-.sheet-top { display: grid; grid-template-columns: 108px 1fr; gap: 14px; align-items: center; }
+.sheet-top { display: grid; grid-template-columns: 124px 1fr; gap: var(--e-4); align-items: center; }
 .portrait { position: relative; }
-.portrait img { width: 108px; height: 108px; object-fit: contain; }
+/* Le portrait se détache sur un halo rond, comme les fiches d'iOS. */
+.portrait::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, var(--caught-tint), transparent 72%);
+}
+.portrait img { position: relative; width: 124px; height: 124px; object-fit: contain; }
 .shiny-btn {
   position: absolute;
   right: -2px;
@@ -1606,23 +1711,36 @@ img { display: block; }
 @keyframes cri-ondes { from { opacity: 0.35; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .cri-btn.joue svg path:last-child { animation: none; } }
 
-.sheet-name { font-size: 22px; font-weight: 800; margin: 0; line-height: 1.1; }
-.sheet-name small { font-weight: 500; color: var(--muted); font-size: 14px; margin-left: 6px; font-variant-numeric: tabular-nums; }
-.sheet-genus { margin: 3px 0 8px; color: var(--muted); font-size: 13px; }
-.types { display: flex; gap: 6px; flex-wrap: wrap; }
-.type { padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff; background: var(--t, #888); }
+.sheet-name { font-size: 26px; font-weight: 800; margin: 0; line-height: 1.1; letter-spacing: -0.4px; }
+.sheet-name small { font-weight: 500; color: var(--muted); font-size: var(--t-corps); margin-left: 6px; font-variant-numeric: tabular-nums; }
+.sheet-genus { margin: 4px 0 var(--e-2); color: var(--muted); font-size: var(--t-petit); }
+.types { display: flex; gap: var(--e-2); flex-wrap: wrap; }
+/* Badge de type : la couleur officielle du type, posée par --t. */
+.type {
+  padding: 5px 11px;
+  border-radius: var(--r-rond);
+  font-size: var(--t-petit);
+  font-weight: 700;
+  color: #fff;
+  background: var(--t, #888);
+  box-shadow: var(--ombre-1);
+}
 
 .catch-btn {
-  margin: 16px 0 4px;
+  margin: var(--e-4) 0 var(--e-1);
   width: 100%;
-  padding: 13px;
-  border-radius: 12px;
+  min-height: 50px;
+  padding: var(--e-3);
+  border-radius: var(--r-md);
   font-weight: 700;
-  font-size: 15px;
-  background: var(--ball);
-  color: #fff;
+  font-size: var(--t-tete);
+  background: var(--ball-degrade);
+  color: var(--sur-ball);
+  box-shadow: var(--ombre-2);
+  transition: transform var(--d-court) var(--c-ressort), background var(--d-court) ease;
 }
-.catch-btn.done { background: transparent; border: 1.5px solid var(--rule); color: var(--muted); }
+.catch-btn:active { transform: scale(0.98); background: var(--ball-fonce); }
+.catch-btn.done { background: transparent; box-shadow: none; border: 1.5px solid var(--rule); color: var(--muted); }
 
 .facts {
   display: grid;
@@ -1630,25 +1748,43 @@ img { display: block; }
   gap: 1px;
   background: var(--rule-soft);
   border: 1px solid var(--rule-soft);
-  border-radius: 10px;
+  border-radius: var(--r-md);
   overflow: hidden;
-  margin-top: 14px;
+  margin-top: var(--e-4);
 }
-.fact { background: var(--panel); padding: 9px 11px; margin: 0; }
+.fact { background: var(--panel-2); padding: var(--e-3); margin: 0; }
 .fact dt { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
 .fact dd { margin: 0; font-size: 14px; font-weight: 600; }
 .fact.wide { grid-column: 1 / -1; }
 .fact.wide dd { font-weight: 400; font-size: 13px; line-height: 1.45; }
 
 .sheet h3 { font-size: 15px; margin: 20px 0 8px; }
-.games { display: flex; flex-direction: column; gap: 8px; }
-.game { border: 1px solid var(--rule); border-radius: 10px; padding: 8px 10px; }
-.game-name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
-.loc { display: grid; grid-template-columns: 1fr auto; gap: 8px; font-size: 13px; padding: 4px 0; }
-.loc + .loc { border-top: 1px dashed var(--rule-soft); }
+/* Gabarit « inset grouped » d'iOS : un titre de groupe hors de la carte, la carte
+   arrondie, des lignes séparées par un filet qui ne touche pas le bord gauche. */
+.games { display: flex; flex-direction: column; gap: var(--e-5); }
+.game { border: 1px solid var(--rule-soft); border-radius: var(--r-md); background: var(--panel-2); overflow: hidden; }
+.game-name {
+  font-weight: 600;
+  font-size: var(--t-petit);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: var(--e-2) var(--e-3) var(--e-1);
+}
+.loc {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--e-3);
+  align-items: center;
+  font-size: var(--t-corps);
+  min-height: 44px;
+  padding: var(--e-2) var(--e-3);
+  background: var(--panel);
+}
+.loc + .loc { border-top: 1px solid var(--rule-soft); }
 .loc .where { font-weight: 600; }
-.loc .how { color: var(--muted); font-size: 12px; }
-.loc .lvl { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.loc .how { color: var(--muted); font-size: var(--t-petit); margin-top: 2px; }
+.loc .lvl { color: var(--muted); font-size: var(--t-petit); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .none { color: var(--muted); font-size: 13px; line-height: 1.45; }
 
 /* ---------- Personnalisation d'une boîte ---------- */
@@ -1731,6 +1867,9 @@ img { display: block; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
+  /* Cascade des cases, rebond de la prise, fermeture de la Poké Ball : tout ce qui
+     n'est qu'un agrément disparaît. L'état reste lisible sans eux. */
+  .grid.entre .slot, .slot.pris, .slot.pris::after { animation: none !important; }
 }
 
 /* ---------- Emplacements libres et Pokémon ajoutés ---------- */

@@ -1,0 +1,106 @@
+/* Jetons de design — la seule source des couleurs, rayons, ombres, espacements,
+   durées et courbes. Tout le reste de la feuille les lit ; rien d'autre ne doit
+   écrire une valeur en dur.
+   Importé en tête de style.css, donc AVANT toute règle qui s'en sert.
+
+   Les noms historiques (--paper, --panel, --ink, --ball…) sont conservés tels quels :
+   ils sont lus dans plus de soixante endroits, et les renommer n'aurait rien apporté.
+   Le thème sombre, plus bas, ne redéfinit QUE les couleurs. */
+
+:root {
+  /* ---- Couleurs : fonds et texte ---- */
+  --paper: #f6f5f1;        /* fond de l'application */
+  --panel: #ffffff;        /* cartes, panneaux, listes */
+  --panel-2: #fbfaf7;      /* second niveau : case de boîte, ligne enfoncée */
+  --rule: #e3e0d6;         /* filets et bordures */
+  --rule-soft: #efece4;    /* séparateurs à l'intérieur d'une carte */
+  --ink: #1e2227;          /* texte principal */
+  --muted: #7c8592;        /* texte secondaire, légendes */
+  --slot: #fbfaf7;         /* emplacement de boîte vide */
+
+  /* ---- Couleurs : identité ---- */
+  --ball: #d6453c;         /* rouge Poké Ball : capture, progression, actif */
+  --ball-fonce: #b0332c;   /* le même, pressé */
+  --ball-clair: #e8675e;   /* le même, éclairci (dégradés) */
+  --ball-degrade: linear-gradient(160deg, var(--ball-clair), var(--ball));
+  --caught-tint: #fff6f4;  /* fond d'un Pokémon capturé */
+  --caught-edge: #f0c4bd;  /* son liseré */
+  --shiny: #b98b18;        /* or des chromatiques */
+  --sur-ball: #ffffff;     /* texte posé SUR le rouge — contraste 4,6:1, AA */
+
+  /* ---- Rayons ---- */
+  --r-xs: 8px;
+  --r-sm: 12px;    /* petits boutons, cases de boîte */
+  --r-md: 16px;    /* cartes, champs */
+  --r-lg: 20px;    /* panneaux, tuiles */
+  --r-xl: 28px;    /* haut de la feuille du bas */
+  --r-rond: 999px; /* pastilles */
+
+  /* ---- Ombres : trois niveaux, jamais plus ---- */
+  --ombre-1: 0 1px 2px rgb(30 34 39 / 6%);
+  --ombre-2: 0 2px 8px rgb(30 34 39 / 10%);
+  --ombre-3: 0 10px 30px rgb(30 34 39 / 18%);
+
+  /* ---- Espacements : échelle de 4 ---- */
+  --e-1: 4px;
+  --e-2: 8px;
+  --e-3: 12px;
+  --e-4: 16px;
+  --e-5: 20px;
+  --e-6: 24px;
+  --e-8: 32px;
+
+  /* ---- Typographie : l'échelle d'iOS ---- */
+  --font: ui-rounded, "SF Pro Rounded", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --t-grand: 34px;   /* grand titre */
+  --t-titre: 22px;   /* titre de section */
+  --t-tete: 17px;    /* en-tête de liste, bouton */
+  --t-corps: 15px;
+  --t-petit: 13px;   /* légende */
+  --t-mini: 11px;
+
+  /* ---- Mouvement : les courbes d'iOS ---- */
+  --d-court: 120ms;  /* appui, survol */
+  --d-moyen: 220ms;  /* apparition, bascule */
+  --d-long: 340ms;   /* panneau, changement de vue */
+  --c-sortie: cubic-bezier(0.4, 0, 1, 1);
+  --c-entree: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --c-ressort: cubic-bezier(0.32, 1.28, 0.5, 1); /* le léger dépassement d'iOS */
+
+  /* ---- Zones sûres ---- */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* La barre du bas a été retirée au profit de la page d'accueil : les panneaux, qui
+     lui réservaient sa hauteur en bas de leur contenu, n'ont plus qu'à s'écarter du
+     bord de l'écran. Les deux variables restent, lues par les panneaux. */
+  --nav-h: 0px;
+  --nav-bas: var(--safe-bottom);
+}
+
+/* ---------- Thème sombre ----------
+   Choisi dans les Réglages. « Automatique » est résolu en JS : l'attribut ne vaut
+   jamais que « clair » ou « sombre », et la palette n'est donc écrite qu'une fois.
+   Seules les COULEURS changent — rayons, espacements et durées sont communs. */
+:root[data-theme="sombre"] {
+  color-scheme: dark;
+  --paper: #14171b;
+  --panel: #1d2127;
+  --panel-2: #232831;
+  --rule: #313843;
+  --rule-soft: #262c34;
+  --ink: #eef1f5;
+  --muted: #97a2b0;
+  --slot: #232831;
+  /* Rouge et or éclaircis : les tons clairs manquaient de contraste sur ce fond. */
+  --ball: #f06056;
+  --ball-fonce: #c9483f;
+  --ball-clair: #ff8079;
+  /* Teinte des captures : le même rouge, posé sur du sombre. */
+  --caught-tint: #2b1d1c;
+  --caught-edge: #6d3b36;
+  --shiny: #dcb04a;
+  /* Les ombres portées ne se voient pas sur du sombre : elles se durcissent. */
+  --ombre-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --ombre-2: 0 2px 8px rgb(0 0 0 / 45%);
+  --ombre-3: 0 10px 30px rgb(0 0 0 / 55%);
+}

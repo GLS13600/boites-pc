@@ -82,8 +82,8 @@ Compte 6 à 10 minutes. Une coche verte signifie que l'IPA est prêt.
 1. Onglet **Actions** → cliquer le run terminé (coche verte).
 2. Rester sur la page **Summary** du run — l'encadré n'apparaît pas dans la vue des
    logs.
-3. En bas, section **Artifacts** → cliquer `BoitesPC-ipa`.
-4. On récupère un **`.zip`** : le décompresser pour obtenir `BoitesPC.ipa`.
+3. En bas, section **Artifacts** → cliquer `Unydex-ipa-main`.
+4. On récupère un **`.zip`** : le décompresser pour obtenir `Unydex.ipa`.
    C'est ce fichier-là qu'on donne à Sideloadly, jamais le zip.
 
 L'artefact est supprimé au bout de 30 jours. Garde le `.ipa` sur ton disque : c'est le
@@ -94,7 +94,7 @@ même fichier qui resservira à chaque re-signature hebdomadaire.
 ## 5. Installer sur l'iPhone (IPA)
 
 1. iPhone branché en USB, déverrouillé, « Faire confiance à cet ordinateur » accepté.
-2. Glisser `BoitesPC.ipa` dans **Sideloadly**, saisir l'Apple ID, **Start**.
+2. Glisser `Unydex.ipa` dans **Sideloadly**, saisir l'Apple ID, **Start**.
    Compte avec double authentification : utiliser un **mot de passe pour application**
    généré sur appleid.apple.com.
 3. Sur l'iPhone : **Réglages → Général → VPN et gestion de l'appareil →
@@ -107,7 +107,7 @@ même fichier qui resservira à chaque re-signature hebdomadaire.
 
 Le certificat gratuit expire au bout d'une semaine (3 apps maximum). Pour prolonger :
 rebrancher et re-sideloader **le même `.ipa`, avec le même bundle id**
-(`com.guillaume.boitespc`).
+(`com.guillaume.unydex`).
 
 - **Ne jamais supprimer l'app pour la réinstaller** : un ré-signage écrase le bundle en
   place et la progression (`localStorage`) survit ; une désinstallation efface tout.

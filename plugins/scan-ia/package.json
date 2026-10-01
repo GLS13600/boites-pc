@@ -1,5 +1,5 @@
 {
-  "name": "@guiguidex/scan-ia",
+  "name": "@unydex/scan-ia",
   "version": "0.1.0",
   "private": true,
   "description": "Mode IA du scan : fait tourner les réseaux sur la puce de l'iPhone (Core ML via ONNX Runtime).",

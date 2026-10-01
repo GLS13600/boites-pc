@@ -1,11 +1,22 @@
 # Unydex — Living Dex personnel
 
-> **L'application s'appelait Guiguidex jusqu'au 01/10/2026.** Le nom affiché a changé
-> partout ; trois identifiants n'ont PAS bougé, et ne doivent pas bouger :
-> `com.guillaume.boitespc` (SideStore reconnaît l'app installée par lui, le changer
-> en ferait une autre application), l'URL `gls13600.github.io/boites-pc` (la source
-> SideStore est déjà enregistrée dans le téléphone) et le paquet `@guiguidex/scan-ia`
-> (jamais affiché, et le renommer imposerait `npx cap update ios`).
+> **L'application s'appelait Guiguidex jusqu'au 01/10/2026**, et « BoitesPC » avant
+> cela. Tout a été renommé, **y compris les identifiants** — à la demande, et parce
+> que c'était le dernier moment pour le faire proprement : avant la première mise en
+> vente, jamais après.
+>
+> - `com.guillaume.boitespc` → **`com.guillaume.unydex`** (identifiant de bundle).
+>   SideStore reconnaît une application installée par cet identifiant : le prochain
+>   IPA sera donc vu comme une application NEUVE. Il faut supprimer l'ancienne,
+>   installer celle-ci, et **transférer la progression par un export/import** — elle
+>   ne suit pas toute seule, `localStorage` étant propre à chaque application.
+> - `@guiguidex/scan-ia` → **`@unydex/scan-ia`**, et `GuiguidexScanIa` →
+>   `UnydexScanIa` dans les deux `Package.swift`. Un `npm install` relie le paquet
+>   local ; `npx cap update ios` reste nécessaire avant la prochaine compilation iOS.
+>
+> **Seule l'URL `gls13600.github.io/boites-pc` n'a pas changé** : c'est l'adresse de
+> la source SideStore, déjà enregistrée dans le téléphone, et renommer le dépôt
+> GitHub casserait l'URL de Pages sans redirection fiable.
 
 Le nom affiché sur l'écran d'accueil est **Unydex**. Il vit à trois endroits, à
 tenir synchronisés : `CFBundleDisplayName` dans `ios/App/App/Info.plist` — c'est
@@ -707,7 +718,7 @@ API** — exigence explicite.
   moteur et les temps de calcul — utile pour mesurer, sans intérêt à l'usage.
   `montreDiag` sort tout de suite quand l'élément n'existe pas ; les règles CSS
   restent, elles ne correspondent à rien en production.
-- **Moteur natif `plugins/scan-ia`** (paquet npm local `@guiguidex/scan-ia`, inscrit
+- **Moteur natif `plugins/scan-ia`** (paquet npm local `@unydex/scan-ia`, inscrit
   par `npx cap update ios` dans `CapApp-SPM/Package.swift`) : **ONNX Runtime iOS
   (SPM) + fournisseur Core ML** au format ML Program, donc Neural Engine et carte
   graphique. Il lit les MÊMES `.onnx` que le web. Pourquoi pas Core ML directement :

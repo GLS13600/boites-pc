@@ -15,7 +15,7 @@ let package = Package(
         .package(name: "CapacitorFilesystem", path: "../../../node_modules/@capacitor/filesystem"),
         .package(name: "CapacitorHaptics", path: "../../../node_modules/@capacitor/haptics"),
         .package(name: "CapacitorShare", path: "../../../node_modules/@capacitor/share"),
-        .package(name: "GuiguidexScanIa", path: "../../../plugins/scan-ia")
+        .package(name: "UnydexScanIa", path: "../../../plugins/scan-ia")
     ],
     targets: [
         .target(
@@ -26,7 +26,7 @@ let package = Package(
                 .product(name: "CapacitorFilesystem", package: "CapacitorFilesystem"),
                 .product(name: "CapacitorHaptics", package: "CapacitorHaptics"),
                 .product(name: "CapacitorShare", package: "CapacitorShare"),
-                .product(name: "GuiguidexScanIa", package: "GuiguidexScanIa")
+                .product(name: "UnydexScanIa", package: "UnydexScanIa")
             ]
         )
     ]

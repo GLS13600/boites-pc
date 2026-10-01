@@ -5,10 +5,10 @@ import PackageDescription
 // web, et confie le calcul à Core ML : Neural Engine et carte graphique de l'iPhone.
 // Aucun réseau : les modèles sont embarqués dans l'appli.
 let package = Package(
-    name: "GuiguidexScanIa",
+    name: "UnydexScanIa",
     platforms: [.iOS(.v15)],
     products: [
-        .library(name: "GuiguidexScanIa", targets: ["ScanIaPlugin"])
+        .library(name: "UnydexScanIa", targets: ["ScanIaPlugin"])
     ],
     dependencies: [
         .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "8.0.0"),

@@ -16,7 +16,7 @@
 // le mode retombe sur le moteur web du scan, plus lent, qui sert à vérifier la logique.
 //
 // POUR RETIRER LE MODE IA : supprimer ce fichier et `plugins/scan-ia`, retirer la
-// dépendance `@guiguidex/scan-ia` de package.json puis `npx cap update ios`, et
+// dépendance `@unydex/scan-ia` de package.json puis `npx cap update ios`, et
 // défaire le bloc « mode IA » de scan.js (bouton à deux positions) et de style.css.
 import CLASSES from './data/scan-classes.json';
 

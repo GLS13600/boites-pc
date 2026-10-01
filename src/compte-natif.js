@@ -79,7 +79,7 @@ export async function connecteApple(c, t) {
   if (!SignInWithApple) return { erreur: t('cpteNatifManquant') };
   try {
     const { response } = await SignInWithApple.authorize({
-      clientId: 'com.guillaume.boitespc',
+      clientId: 'com.guillaume.unydex',
       redirectURI: SCHEMA,
       scopes: 'name email',
       // Apple renvoie ce nonce dans le jeton : Supabase le vérifie pour écarter un

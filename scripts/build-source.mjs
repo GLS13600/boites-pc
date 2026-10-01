@@ -20,11 +20,11 @@ function manifeste(version, size, downloadURL) {
   const date = new Date().toISOString().slice(0, 10);
   return {
     name: 'Unydex',
-    identifier: 'com.guillaume.boitespc.source',
+    identifier: 'com.guillaume.unydex.source',
     subtitle: 'Living Dex personnel',
     apps: [{
       name: 'Unydex',
-      bundleIdentifier: 'com.guillaume.boitespc',
+      bundleIdentifier: 'com.guillaume.unydex',
       developerName: 'Guillaume',
       subtitle: 'Suivi de Living Dex façon boîtes PC',
       localizedDescription:

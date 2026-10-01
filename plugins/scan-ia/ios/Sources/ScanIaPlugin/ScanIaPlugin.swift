@@ -22,7 +22,7 @@ public class ScanIaPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
 
     // Une file à la fois : deux inférences simultanées sur la même puce se gêneraient.
-    private let file = DispatchQueue(label: "guiguidex.scan-ia", qos: .userInitiated)
+    private let file = DispatchQueue(label: "unydex.scan-ia", qos: .userInitiated)
     private var env: ORTEnv?
     private var sessions: [String: ORTSession] = [:]
 

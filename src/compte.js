@@ -150,6 +150,7 @@ function enClair(e, t) {
   if (/unable to validate email|invalid format/i.test(m)) return t('cpteMailInvalide');
   if (/profils_pseudo_unique|duplicate key/i.test(m)) return t('cptePseudoPris');
   if (/pseudo_valide|violates check constraint/i.test(m)) return t('cptePseudoInvalide');
+  if (/provider is not enabled|unsupported provider/i.test(m)) return t('cpteFournisseurInactif');
   if (/rate limit|too many/i.test(m)) return t('cpteTropDEssais');
   if (/fetch|network|failed to send/i.test(m)) return t('cpteHorsLigne');
   return m;

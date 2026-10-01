@@ -600,6 +600,7 @@ const TEXTES = {
     cpteNonConnecte: 'Aucun compte connecté.',
     cpteNatifManquant: 'Ce mode de connexion n’est pas disponible ici.',
     cpteOAuthEchec: 'La connexion a échoué.',
+    cpteFournisseurInactif: 'Ce mode de connexion n’est pas encore activé côté serveur.',
     // -- Synchronisation
     syncTitre: 'Deux collections différentes',
     syncTexte: (quand, appareil) => `Ce compte porte déjà une collection, enregistrée le ${quand}${appareil ? ` depuis ${appareil}` : ''}. Laquelle garder ?`,
@@ -967,6 +968,7 @@ const TEXTES = {
     cpteNonConnecte: 'No account signed in.',
     cpteNatifManquant: 'That sign-in method is not available here.',
     cpteOAuthEchec: 'Sign-in failed.',
+    cpteFournisseurInactif: 'That sign-in method is not enabled on the server yet.',
     syncTitre: 'Two different collections',
     syncTexte: (quand, appareil) => `This account already holds a collection, saved on ${quand}${appareil ? ` from ${appareil}` : ''}. Which one do you keep?`,
     syncResume: (captures, equipes) => `${captures} caught, ${equipes} team${equipes > 1 ? 's' : ''}`,
@@ -1333,6 +1335,7 @@ const TEXTES = {
     cpteNonConnecte: 'ログインしていません。',
     cpteNatifManquant: 'この ログイン方法は ここでは 使えません。',
     cpteOAuthEchec: 'ログインに 失敗しました。',
+    cpteFournisseurInactif: 'この ログイン方法は サーバー側で まだ 有効に なっていません。',
     syncTitre: 'コレクションが 2つ あります',
     syncTexte: (quand, appareil) => `このアカウントには すでに コレクションが あります（${quand}${appareil ? `・${appareil}` : ''}）。どちらを 残しますか？`,
     syncResume: (captures, equipes) => `${captures}匹、てもち ${equipes}件`,

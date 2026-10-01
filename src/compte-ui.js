@@ -53,7 +53,14 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, CATALOGUE, ICO, rend 
       <p class="reg-aide">${t('compteAide')}</p>
 
       <div class="cpte-oauth">
-        ${GOOGLE_CLIENT_ID || !estNatif() ? `
+        ${/* `VITE_GOOGLE_CLIENT_ID` est l'interrupteur unique de Google, sur le web
+             comme en natif. Sans lui, le bouton n'apparaît PAS : il était affiché
+             d'office sur le web, et Supabase répondait « Unsupported provider:
+             provider is not enabled » tant que le fournisseur n'y était pas activé —
+             un bouton qui ne peut pas marcher ne doit pas être proposé.
+             Côté web, Supabase n'a pas besoin de cet identifiant pour l'échange
+             OAuth ; il sert ici de déclaration « Google est prêt ». */
+          GOOGLE_CLIENT_ID ? `
           <button class="cpte-fourn google" data-oauth="google">
             <svg viewBox="0 0 24 24" aria-hidden="true" class="cpte-logo"><path fill="#4285F4" d="M21.6 12.23c0-.73-.07-1.43-.19-2.1H12v4h5.38a4.6 4.6 0 0 1-2 3.02v2.5h3.23c1.89-1.74 2.99-4.3 2.99-7.42z"/><path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.61-2.43l-3.23-2.5c-.9.6-2.04.95-3.38.95-2.6 0-4.8-1.75-5.59-4.1H3.08v2.58A10 10 0 0 0 12 22z"/><path fill="#FBBC05" d="M6.41 13.92a6 6 0 0 1 0-3.84V7.5H3.08a10 10 0 0 0 0 9z"/><path fill="#EA4335" d="M12 5.98c1.47 0 2.79.5 3.83 1.5l2.87-2.87C16.95 2.99 14.7 2 12 2a10 10 0 0 0-8.92 5.5l3.33 2.58C7.2 7.73 9.4 5.98 12 5.98z"/></svg>
             ${t('cpteGoogle')}
@@ -65,7 +72,10 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, CATALOGUE, ICO, rend 
           </button>` : ''}
       </div>
 
-      <div class="cpte-sep"><span>${t('cpteOu')}</span></div>
+      ${/* Le séparateur n'a de sens que s'il sépare vraiment deux choses : sans
+           aucun bouton de fournisseur, il flottait au-dessus du formulaire. */
+        GOOGLE_CLIENT_ID || estNatif()
+          ? `<div class="cpte-sep"><span>${t('cpteOu')}</span></div>` : ''}
 
       <form class="cpte-form" data-cpte-form>
         ${inscription ? `

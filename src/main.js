@@ -15,6 +15,7 @@ import items from './data/items.json';
 import NATURES from './data/natures.json';
 import formDesc from './data/form-desc.json';
 import { creeScan } from './scan.js';
+import { creeCompteUI } from './compte-ui.js';
 import {
   t, langue, chargeLangue, LANGUES, estLangue, LANGUE_KEY,
   nomKind, obtention, nomMethode, libStat, statLignes, groupesApprentissage,
@@ -546,6 +547,19 @@ function construitCatalogue() {
   }
   for (const e of CATALOGUE) e.cle = fold(e.name + ' ' + e.sub + ' ' + e.num);
 }
+
+// ---------- Compte utilisateur ----------
+//
+// Module à part (compte-ui.js), accroché comme le scan : il reçoit ce dont il a
+// besoin plutôt que d'importer main.js. Sans configuration Supabase il rend une
+// chaîne vide, et l'appli se comporte exactement comme avant — hors ligne, sans
+// compte, et sans la moindre requête réseau.
+const compteUI = creeCompteUI({
+  t, esc, sprites, spriteKey, CATALOGUE, ICO,
+  // Un rendu ne sert que si la page Réglages est à l'écran : le compte peut changer
+  // d'état pendant qu'on est ailleurs, sans qu'il y ait rien à redessiner.
+  rend: () => { if (state.vue === 'reglages') render(); },
+});
 
 // ---------- Rendu ----------
 
@@ -2882,6 +2896,8 @@ function renderReglages() {
         </div>
       </div>
 
+      ${compteUI.htmlCompte()}
+
       <!-- D'autres réglages viendront ici : un bloc par sujet, sur le même gabarit. -->
       <div class="reg-bloc vide">
         <h3>${t('aVenir')}</h3>
@@ -4532,6 +4548,11 @@ app.addEventListener('click', (e) => {
 // une fraction de seconde en français avant de se retraduire. En français il n'y a
 // rien à charger et `chargeLangue` rend la main tout de suite.
 poseLangueEtRend(langue());
+
+// Le compte se relit au démarrage. `demarre()` rend la main tout de suite quand rien
+// n'est configuré, et n'attend jamais le réseau : le premier rendu n'en dépend pas.
+compteUI.branche(app);
+compteUI.demarre().catch((e) => console.error('compte', e));
 
 // ---------- Outil de calage des fonds (développement seulement) ----------
 //

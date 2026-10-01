@@ -2838,3 +2838,86 @@ img {
 @media (prefers-reduced-motion: reduce) {
   .scan-zone.ko, .scan-toast.vu, .scan.analyse .scan-btn span { animation: none; }
 }
+
+/* ---- Compte utilisateur, dans les Réglages ----
+   Tout reprend les jetons et les gabarits existants : lignes de 52 px comme les
+   Réglages d'iOS, champs en 16 px contre le zoom de Safari, rouge Poké Ball pour
+   l'action principale. Rien de neuf côté palette. */
+.cpte-oauth { display: grid; gap: 8px; margin-bottom: var(--e3); }
+.cpte-fourn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 var(--e4);
+  border: 1px solid var(--trait);
+  border-radius: var(--r3);
+  background: var(--panel);
+  color: var(--ink);
+  font: 600 var(--t3)/1.2 inherit;
+  cursor: pointer;
+}
+.cpte-fourn:active { transform: scale(0.985); }
+.cpte-fourn.apple { background: #000; border-color: #000; color: #fff; }
+.cpte-logo { width: 20px; height: 20px; flex: none; }
+
+/* Le « ou » entre les deux chemins de connexion, sur un filet. */
+.cpte-sep { display: flex; align-items: center; gap: 10px; margin: var(--e3) 0; }
+.cpte-sep::before, .cpte-sep::after { content: ''; flex: 1; height: 1px; background: var(--trait); }
+.cpte-sep span { font-size: var(--t5); color: var(--ink-3); text-transform: lowercase; }
+
+.cpte-form { display: grid; gap: var(--e3); }
+.cpte-form .btn.primaire { width: 100%; min-height: 48px; }
+.cpte-note { display: block; margin-top: 4px; font-size: var(--t5); color: var(--ink-3); }
+.cpte-note.libre { color: #1b8a4b; }
+.cpte-note.pris, .cpte-note.invalide { color: var(--ball); }
+
+.cpte-liens { display: flex; flex-wrap: wrap; gap: var(--e3); margin-top: var(--e3); }
+.cpte-liens button {
+  border: 0;
+  background: none;
+  padding: 8px 0;
+  color: var(--lien, #2f6fd0);
+  font: 600 var(--t4)/1.2 inherit;
+  cursor: pointer;
+}
+.cpte-liens button.danger { color: var(--ball); margin-left: auto; }
+
+.cpte-err, .cpte-ok {
+  margin: var(--e3) 0 0;
+  padding: 10px 12px;
+  border-radius: var(--r2);
+  font-size: var(--t4);
+  line-height: 1.4;
+}
+.cpte-err { background: color-mix(in srgb, var(--ball) 12%, transparent); color: var(--ball); }
+.cpte-ok { background: color-mix(in srgb, #1b8a4b 12%, transparent); color: #1b8a4b; }
+
+/* Le bandeau « qui je suis » : avatar, pseudo, adresse. */
+.cpte-moi { display: flex; align-items: center; gap: var(--e4); margin-bottom: var(--e4); }
+.cpte-avatar {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 2px solid var(--trait);
+  border-radius: 50%;
+  background: var(--paper);
+  cursor: pointer;
+  overflow: hidden;
+}
+.cpte-avatar img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.cpte-ident { min-width: 0; display: grid; gap: 2px; }
+.cpte-ident b { font-size: var(--t2); }
+.cpte-ident small {
+  font-size: var(--t5);
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Le choix de l'avatar réutilise `.picks` du sélecteur de Pokémon : même grille,
+   mêmes sprites, aucun style à réinventer. */
+.cpte-avatars .picks { max-height: 320px; overflow-y: auto; }

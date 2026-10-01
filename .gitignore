@@ -30,3 +30,12 @@ ml/__pycache__
 # Modèles trop gros pour GitHub (plus de 100 Mo) : versionnés en morceaux dans
 # modeles/, ré-assemblés ici par scripts/assemble-modeles.mjs à chaque build et dev.
 public/scan-ia/classifieur.onnx
+
+# Supabase : secrets propres à la machine, jamais versionnés.
+# `.env.exemple` donne le modèle à recopier.
+.env
+.env.local
+
+# Supabase CLI
+supabase/.temp
+supabase/.branches

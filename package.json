@@ -36,6 +36,7 @@
     "@capacitor/ios": "^8.5.1",
     "@capacitor/share": "^8.0.1",
     "@guiguidex/scan-ia": "file:plugins/scan-ia",
+    "@supabase/supabase-js": "^2.117.2",
     "onnxruntime-web": "^1.29.0"
   }
 }

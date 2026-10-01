@@ -67,7 +67,16 @@ jobs:
 
       # APP_VERSION est lu par vite.config.js : le numéro affiché dans l'application
       # est donc exactement celui du manifeste et de l'IPA.
+      # Configuration Supabase, lue par vite.config.js au moment du build. Le .env
+      # n'étant pas versionné, sans ceci le bloc Compte n'existerait pas sur le site.
+      # Ce sont des VARIABLES et non des secrets : la clé publishable part dans le
+      # bundle de toute façon, c'est la sécurité au niveau des lignes qui protège.
+      # Vides, elles laissent simplement l'application sans compte — elle marche.
       - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
 
       # Recopie dist/ dans ios/App/App/public et met à jour la liste des plugins.
       - run: npx cap sync ios

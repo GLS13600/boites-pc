@@ -1734,6 +1734,40 @@ en pointillés qui tient la place et le dit. En ajouter un ne demande que le mê
 - Le décor coloré de la boîte de combat (fond bleu nuit) et les tuiles de l'accueil ne
   changent pas : ils sont déjà sombres et lisibles dans les deux thèmes.
 
+### Refonte de la page (01/10/2026)
+
+Demandée pour qu'elle se comprenne d'un coup d'œil, en reprenant la direction
+artistique de l'appli.
+
+- **Grand titre** `entete()`, comme Boîtes et Pokédex : la page n'avait qu'un `h2`
+  isolé, elle est maintenant alignée sur le reste.
+- **Une pastille teintée par bloc**, idiome des Réglages d'iOS : c'est ce qui rend la
+  page lisible sans lire. Les teintes reprennent celles des tuiles de l'accueil, de
+  sorte qu'un même sujet garde sa couleur d'un écran à l'autre.
+  - **Elles ont été ASSOMBRIES** jusqu'à ce que le glyphe blanc tienne le contraste :
+    l'ambre et le vert des tuiles tombaient à 2,1 et 3,0 pour 1. Mesuré après : violet
+    4,98, bleu 4,48, vert 4,71, ambre 4,12, gris 4,83. **Ce rapport ne dépend pas du
+    thème** — il se joue entre le blanc et la pastille —, donc une seule valeur sert
+    au clair comme au sombre.
+  - La règle « la couleur vient des sprites, pas du décor » tient : la teinte est
+    enfermée dans la pastille, panneau et texte restent neutres.
+- **Le curseur du rail GLISSE** d'une position à l'autre au lieu de sauter. Un seul
+  pseudo-élément dont on déplace `left` ; `--i` porte l'index choisi et `--n` le
+  nombre d'options, posés en ligne au rendu. Aucune animation en JavaScript, donc rien
+  qui puisse se désynchroniser du rendu.
+- **Entrée en cascade** des blocs (`--i` par bloc), comme les cases d'une boîte : on
+  lit la page dans l'ordre plutôt que d'un bloc. Coupée par
+  `prefers-reduced-motion`, avec le glissement du curseur.
+- Les blocs passent par une fabrique (`bloc()`, `rail()`) : en ajouter un ne demande
+  plus que d'écrire son icône et son contenu.
+- **« Celui du téléphone » est devenu « Automatique »** : le libellé passait à la ligne
+  et le rail montait à 62 px, désaligné de celui de la langue. 45 px après, sur une
+  seule ligne. L'aide dit désormais ce qu'« Automatique » recouvre.
+- **Limite connue** : le texte d'aide (`--muted` sur `--panel`) est à 3,73 pour 1 en
+  thème clair, sous le 4,5 attendu par WCAG AA pour du petit texte. C'est la palette
+  générale qui est en cause, pas cette page — le corriger demanderait de toucher
+  `--muted`, lu partout.
+
 ## Traduction : français, anglais, japonais
 
 Demandée le 30/09/2026, avec une étendue explicitement choisie : **tout**, descriptions

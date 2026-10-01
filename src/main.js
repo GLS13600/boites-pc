@@ -517,6 +517,15 @@ const ICO = {
   importe: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V5m0 0L8 9m4-4l4 4M5 19h14"/></svg>',
 };
 
+// Icônes des blocs de Réglages. La pastille qui les porte prend `--c` en CSS.
+const ICO_REG = {
+  apparence: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>',
+  langue: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.2 9.5h17.6M3.2 14.5h17.6M12 3a15 15 0 0 1 0 18A15 15 0 0 1 12 3z"/></svg>',
+  compte: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/></svg>',
+  sauvegarde: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14v4.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V14M12 3.5v11M8 10.5l4 4 4-4"/></svg>',
+  avenir: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/></svg>',
+};
+
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 // Recherche insensible aux accents et à la casse.
 const fold = (t) => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -555,7 +564,7 @@ function construitCatalogue() {
 // chaîne vide, et l'appli se comporte exactement comme avant — hors ligne, sans
 // compte, et sans la moindre requête réseau.
 const compteUI = creeCompteUI({
-  t, esc, sprites, spriteKey, CATALOGUE, ICO,
+  t, esc, sprites, spriteKey, CATALOGUE, ICO, ICO_REG,
   // Un rendu ne sert que si la page Réglages est à l'écran : le compte peut changer
   // d'état pendant qu'on est ailleurs, sans qu'il y ait rien à redessiner.
   rend: () => { if (state.vue === 'reglages') render(); },
@@ -2857,38 +2866,41 @@ function appliqueTheme() {
 themeSysteme?.addEventListener?.('change', () => { if (state.theme === 'auto') appliqueTheme(); });
 appliqueTheme();
 
-function renderReglages() {
-  poser(h(`
-    <section class="reg">
-      <h2 class="reg-titre">${t('reglages')}</h2>
+// Chaque bloc porte son rang (`--i`) : c'est lui qui échelonne l'entrée en
+// cascade, comme les cases d'une boîte. Et son icône, dans une pastille teintée.
+const bloc = (i, cle, titre, aide, corps, vide) => `
+  <div class="reg-bloc ${vide ? 'vide' : ''} b-${cle}" style="--i:${i}">
+    <h3><span class="reg-pastille">${ICO_REG[cle]}</span>${titre}</h3>
+    <p class="reg-aide">${aide}</p>
+    ${corps}
+  </div>`;
 
-      <div class="reg-bloc">
-        <h3>${t('apparence')}</h3>
-        <p class="reg-aide">${t('apparenceAide')}</p>
-        <div class="reg-rail" role="radiogroup" aria-label="${t('theme')}">
-          ${THEMES().map(([v, lib]) => `
-            <button class="${state.theme === v ? 'on' : ''}" role="radio"
-                    aria-checked="${state.theme === v}" data-theme="${v}">${esc(lib)}</button>`).join('')}
-        </div>
-      </div>
+// Rail segmenté : le curseur GLISSE d'une position à l'autre au lieu de sauter.
+// `--i` porte l'index choisi et `--n` le nombre d'options ; tout le mouvement est
+// une transition CSS sur `left`, donc rien à animer en JavaScript.
+const rail = (options, actif, attribut, aria) => {
+  const i = Math.max(0, options.findIndex(([v]) => v === actif));
+  return `
+    <div class="reg-rail" role="radiogroup" aria-label="${aria}" style="--i:${i};--n:${options.length}">
+      ${options.map(([v, lib]) => `
+        <button class="${v === actif ? 'on' : ''}" role="radio" aria-checked="${v === actif}"
+                ${attribut}="${v}" ${attribut === 'data-langue' ? `lang="${v}"` : ''}>${esc(lib)}</button>`).join('')}
+    </div>`;
+};
+
+function renderReglages() {
+  poser(entete(t('reglages')), h(`
+    <section class="reg">
+      ${bloc(0, 'apparence', t('apparence'), t('apparenceAide'),
+        rail(THEMES(), state.theme, 'data-theme', t('theme')))}
 
       <!-- La langue : les libellés restent dans LEUR langue (Français, English,
            日本語), comme partout ailleurs — on doit pouvoir retrouver la sienne
            depuis une langue qu'on ne lit pas. -->
-      <div class="reg-bloc">
-        <h3>${t('langue')}</h3>
-        <p class="reg-aide">${t('langueAide')}</p>
-        <div class="reg-rail" role="radiogroup" aria-label="${t('langue')}">
-          ${LANGUES.map(([v, lib]) => `
-            <button class="${langue() === v ? 'on' : ''}" role="radio"
-                    aria-checked="${langue() === v}" data-langue="${v}"
-                    lang="${v}">${esc(lib)}</button>`).join('')}
-        </div>
-      </div>
+      ${bloc(1, 'langue', t('langue'), t('langueAide'),
+        rail(LANGUES, langue(), 'data-langue', t('langue')))}
 
-      <div class="reg-bloc">
-        <h3>${t('sauvegarde')}</h3>
-        <p class="reg-aide">${t('sauvegardeAide')}</p>
+      ${bloc(2, 'sauvegarde', t('sauvegarde'), t('sauvegardeAide'), `
         <div class="reg-lignes">
           <button class="reg-ligne" data-act="export">
             ${ICO.exporte}<span><b>${t('exportTout')}</b><small>${t('exportToutSous')}</small></span>
@@ -2896,16 +2908,12 @@ function renderReglages() {
           <button class="reg-ligne" data-act="import">
             ${ICO.importe}<span><b>${t('importTout')}</b><small>${t('importToutSous')}</small></span>
           </button>
-        </div>
-      </div>
+        </div>`)}
 
       ${compteUI.htmlCompte()}
 
       <!-- D'autres réglages viendront ici : un bloc par sujet, sur le même gabarit. -->
-      <div class="reg-bloc vide">
-        <h3>${t('aVenir')}</h3>
-        <p class="reg-aide">${t('aVenirSous')}</p>
-      </div>
+      ${bloc(4, 'avenir', t('aVenir'), t('aVenirSous'), '', true)}
     </section>`));
 }
 

@@ -617,18 +617,65 @@ img { display: block; }
 
 /* Un bloc par sujet, sur le même gabarit : en ajouter un plus tard ne demande que le
    même balisage. Le bloc « À venir » tient la place et le dit. */
-.reg { padding: 4px 14px calc(20px + var(--safe-bottom)); }
-.reg-titre { margin: 4px 2px 12px; font-size: 24px; font-weight: 800; }
+.reg { padding: 0 var(--e-3) calc(var(--e-5) + var(--safe-bottom)); }
+
+/* Chaque bloc porte une PASTILLE TEINTÉE, idiome des Réglages d'iOS : c'est ce qui
+   rend la page lisible d'un coup d'œil, chaque sujet ayant sa couleur. La règle
+   « la couleur vient des sprites, pas du décor » tient toujours — la teinte est
+   enfermée dans la pastille, le panneau et le texte restent neutres.
+   Les teintes reprennent celles des tuiles de l'accueil, pour qu'un même sujet garde
+   sa couleur d'un écran à l'autre. */
 .reg-bloc {
-  margin-bottom: 12px;
-  padding: 12px 14px 14px;
+  margin-bottom: var(--e-3);
+  padding: var(--e-3) var(--e-4) var(--e-4);
   border: 1px solid var(--rule);
-  border-radius: 16px;
+  border-radius: var(--r-lg);
   background: var(--panel);
 }
-.reg-bloc h3 { margin: 0 0 2px; font-size: 15px; font-weight: 700; }
-.reg-aide { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
+.reg-bloc h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  margin: 0 0 var(--e-2);
+  font-size: var(--t-corps);
+  font-weight: 700;
+}
+.reg-pastille {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--c, var(--muted));
+  color: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 18%);
+}
+.reg-pastille .ico { width: 19px; height: 19px; color: #fff; }
+
+/* Les teintes reprennent celles des tuiles de l'accueil, ASSOMBRIES jusqu'à ce que
+   le glyphe blanc tienne le contraste : l'ambre et le vert des tuiles tombaient à
+   2,1 et 3,0 pour 1, illisibles. Ce rapport ne dépend pas du thème — il se joue entre
+   le blanc et la pastille —, donc une seule valeur suffit pour le clair et le sombre.
+   Mesuré : violet 4,98, bleu 4,48, vert 4,71, ambre 4,12, gris 4,83. */
+.b-apparence   { --c: #6f5ae0; }
+.b-langue      { --c: #0f74e8; }
+.b-compte      { --c: #08862c; }
+.b-sauvegarde  { --c: #b86a05; }
+.b-avenir      { --c: #6b7280; }
+
+.reg-aide { margin: 0 0 var(--e-3); font-size: var(--t-petit); color: var(--muted); line-height: 1.45; }
 .reg-bloc.vide { border-style: dashed; background: none; }
+.reg-bloc.vide .reg-aide { margin: 0; }
+.reg-bloc.vide .reg-pastille { box-shadow: none; opacity: 0.55; }
+
+/* Entrée en CASCADE, comme les cases d'une boîte : les blocs arrivent l'un après
+   l'autre, ce qui donne à lire la page dans l'ordre plutôt que d'un bloc. */
+@keyframes reg-entre {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+.reg-bloc { animation: reg-entre var(--d-moyen) var(--c-entree) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
 
 /* Lignes d'action, au gabarit des Réglages d'iOS : 52 px, icône à gauche, libellé et
    précision empilés, filet qui part après l'icône. */
@@ -646,29 +693,55 @@ img { display: block; }
   transition: background var(--d-court) ease, transform var(--d-court) var(--c-ressort);
 }
 .reg-ligne + .reg-ligne { border-top: 1px solid var(--rule-soft); }
-.reg-ligne .ico { color: var(--ball); }
+.reg-ligne .ico { color: var(--c, var(--ball)); }
 .reg-ligne b { display: block; font-size: var(--t-corps); font-weight: 600; }
 .reg-ligne small { display: block; margin-top: 2px; color: var(--muted); font-size: var(--t-petit); }
-.reg-ligne:active { transform: scale(0.99); background: var(--rule-soft); }
-.reg-bloc.vide .reg-aide { margin: 0; }
+.reg-ligne:active { transform: scale(0.985); background: var(--rule-soft); }
 
-/* Même rail que le choix du mode dans les boîtes : trois tiers égaux, l'actif en rouge. */
+/* Rail segmenté : le curseur GLISSE d'une position à l'autre au lieu de sauter.
+   Il est dessiné par un seul pseudo-élément dont on déplace `left` ; `--i` porte
+   l'index choisi et `--n` le nombre d'options, posés en ligne au rendu. Aucune
+   animation en JavaScript, donc rien qui puisse se désynchroniser du rendu. */
 .reg-rail {
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(var(--n, 3), 1fr);
+  gap: 0;
   padding: 4px;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--rule-soft);
 }
+.reg-rail::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: calc(4px + var(--i, 0) * (100% - 8px) / var(--n, 3));
+  width: calc((100% - 8px) / var(--n, 3));
+  border-radius: calc(var(--r-md) - 4px);
+  background: var(--panel);
+  box-shadow: var(--ombre-1);
+  transition: left var(--d-moyen) var(--c-ressort);
+}
 .reg-rail button {
-  padding: 9px 4px;
-  border-radius: 9px;
-  font-size: 13px;
+  position: relative;   /* au-dessus du curseur */
+  z-index: 1;
+  padding: 10px 4px;
+  border-radius: calc(var(--r-md) - 4px);
+  font-size: var(--t-petit);
   font-weight: 600;
   color: var(--muted);
+  transition: color var(--d-court) ease, transform var(--d-court) var(--c-ressort);
 }
-.reg-rail button.on { background: var(--panel); color: var(--ball); box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
+.reg-rail button.on { color: var(--ball); }
+.reg-rail button:active { transform: scale(0.94); }
+
+/* Mouvement réduit : la cascade et le glissement du curseur disparaissent, l'état
+   final reste exactement le même. */
+@media (prefers-reduced-motion: reduce) {
+  .reg-bloc { animation: none; }
+  .reg-rail::before { transition: none; }
+}
 
 /* ---------- Barre de retour : présente dans toutes les vues sauf l'accueil ---------- */
 

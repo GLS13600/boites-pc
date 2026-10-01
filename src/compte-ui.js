@@ -15,7 +15,7 @@ import {
   changePseudo, changeAvatar, supprimeCompte, pseudoDisponible, PSEUDO_RE, sb,
 } from './compte.js';
 
-export function creeCompteUI({ t, esc, sprites, spriteKey, CATALOGUE, ICO, rend }) {
+export function creeCompteUI({ t, esc, sprites, spriteKey, CATALOGUE, ICO, ICO_REG, rend }) {
   // L'état de l'interface seulement — jamais les données du compte, qui vivent dans
   // `etat` de compte.js. Deux sources de vérité se désynchroniseraient.
   const ui = {
@@ -38,8 +38,8 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, CATALOGUE, ICO, rend 
   function htmlCompte() {
     if (!configure()) return '';
     return `
-      <div class="reg-bloc cpte">
-        <h3>${t('compte')}</h3>
+      <div class="reg-bloc cpte b-compte" style="--i:3">
+        <h3><span class="reg-pastille">${ICO_REG.compte}</span>${t('compte')}</h3>
         ${etat.user ? htmlConnecte() : htmlDeconnecte()}
         ${ui.erreur ? `<p class="cpte-err">${esc(ui.erreur)}</p>` : ''}
         ${ui.message ? `<p class="cpte-ok">${esc(ui.message)}</p>` : ''}
@@ -161,8 +161,8 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, CATALOGUE, ICO, rend 
     const q = ui.avatarQ.trim().toLowerCase();
     const res = (q ? CATALOGUE.filter((e) => e.cle.includes(q)) : CATALOGUE).slice(0, 120);
     return `
-      <div class="reg-bloc cpte-avatars">
-        <h3>${t('cpteChoisirAvatar')}</h3>
+      <div class="reg-bloc cpte-avatars b-compte" style="--i:0">
+        <h3><span class="reg-pastille">${ICO_REG.compte}</span>${t('cpteChoisirAvatar')}</h3>
         <label class="bs-field">
           <span>${t('rechercher')}</span>
           <input class="bs-name" type="text" data-cpte-avatarq value="${esc(ui.avatarQ)}"

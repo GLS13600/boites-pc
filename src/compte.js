@@ -20,11 +20,29 @@ const URL_SB = import.meta.env.VITE_SUPABASE_URL;
 const CLE_SB = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
-// Une URL et une clé qui ressemblent à quelque chose : le modèle `.env.exemple` porte
-// des valeurs de remplacement (« xxxx », « eyJhbGciOi... ») qu'on ne veut pas prendre
-// pour une configuration réelle.
+// Une URL et une clé qui ressemblent VRAIMENT à quelque chose.
+//
+// Deux pièges, tous deux rencontrés :
+//   - `.env.exemple` porte des valeurs de remplacement (« xxxx », « eyJhbGciOi... »)
+//     qui passaient le contrôle : recopier le modèle sans l'éditer donnait une appli
+//     « configurée » qui échouait à chaque appel, sans que rien ne l'explique ;
+//   - Supabase a DEUX formats de clé publique. L'ancien est un JWT (`eyJ…`, ~200
+//     caractères), le nouveau commence par `sb_publishable_` et fait moins de 60
+//     caractères — un simple contrôle de longueur rejetait donc les projets récents.
+const PLACEHOLDERS = ['xxxx', 'eyJhbGciOi...', 'VOTRE', 'TODO'];
+const estGabarit = (v) => PLACEHOLDERS.some((p) => v.includes(p));
+
+const cleValide = (c) =>
+  // JWT « anon » historique : trois segments séparés par des points.
+  /^eyJ[\w-]+\.[\w-]+\.[\w-]+$/.test(c)
+  // Clé « publishable » actuelle.
+  || /^sb_publishable_[A-Za-z0-9_-]{10,}$/.test(c);
+
 export const configure = () =>
-  !!URL_SB && !!CLE_SB && /^https:\/\/[a-z0-9]+\.supabase\./.test(URL_SB) && CLE_SB.length > 60;
+  !!URL_SB && !!CLE_SB
+  && !estGabarit(URL_SB) && !estGabarit(CLE_SB)
+  && /^https:\/\/[^./]+\.supabase\.(co|in|red)$/.test(URL_SB.replace(/\/+$/, ''))
+  && cleValide(CLE_SB);
 
 let client = null;
 let chargement = null;

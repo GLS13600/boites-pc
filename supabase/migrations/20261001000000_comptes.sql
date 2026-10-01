@@ -9,9 +9,11 @@
 -- (RLS), activée sur les deux tables, qui garantit qu'un utilisateur ne lit et
 -- n'écrit que ses propres lignes. Toute table ajoutée plus tard doit l'activer aussi.
 
--- `citext` rend la comparaison insensible à la casse : « Sacha » et « sacha » sont le
--- même pseudo, ce qui est le comportement attendu d'une unicité de pseudo.
-create extension if not exists citext;
+-- L'unicité du pseudo est insensible à la casse — « Sacha » et « sacha » sont le même
+-- pseudo — mais SANS l'extension `citext` : son installation demande des droits que le
+-- rôle de l'éditeur SQL n'a pas toujours sur un projet neuf, et elle faisait échouer
+-- toute la migration dès la première ligne. Un index unique sur `lower(pseudo)` donne
+-- le même résultat, en SQL standard et sans extension.
 
 -- ---------------------------------------------------------------- profils
 --
@@ -19,7 +21,7 @@ create extension if not exists citext;
 -- plus bas. `id` référence `auth.users` : supprimer le compte supprime le profil.
 create table if not exists public.profils (
   id          uuid primary key references auth.users (id) on delete cascade,
-  pseudo      citext not null,
+  pseudo      text not null,
   -- L'avatar est une CLÉ DE POKÉMON (« 25 », « 10034 », « deerling-winter »), pas une
   -- image : les 5 291 sprites sont déjà embarqués dans l'application. Rien à
   -- téléverser, rien à stocker, rien à payer — et l'avatar s'affiche hors ligne.
@@ -35,9 +37,10 @@ create table if not exists public.profils (
   constraint pseudo_valide check (pseudo ~ '^[A-Za-z0-9_-]{3,16}$')
 );
 
--- L'unicité est portée par un INDEX, pas par la colonne : `citext` le rend déjà
--- insensible à la casse, et un index nommé donne un message d'erreur exploitable.
-create unique index if not exists profils_pseudo_unique on public.profils (pseudo);
+-- L'index porte sur `lower(pseudo)` : c'est LUI qui rend l'unicité insensible à la
+-- casse, et c'est la seule garantie qui compte — le contrôle côté client n'est qu'une
+-- politesse, deux inscriptions simultanées se départagent ici.
+create unique index if not exists profils_pseudo_unique on public.profils (lower(pseudo));
 
 alter table public.profils enable row level security;
 
@@ -132,7 +135,7 @@ security definer
 set search_path = public
 stable
 as $$
-  select not exists (select 1 from public.profils where pseudo = nom::citext);
+  select not exists (select 1 from public.profils where lower(pseudo) = lower(nom));
 $$;
 
 grant execute on function public.pseudo_disponible(text) to anon, authenticated;
@@ -173,7 +176,7 @@ begin
   end if;
 
   essai := souhaite;
-  while exists (select 1 from public.profils where pseudo = essai::citext) loop
+  while exists (select 1 from public.profils where lower(pseudo) = lower(essai)) loop
     n := n + 1;
     -- On tronque la base pour que le suffixe tienne dans les 16 caractères.
     essai := left(souhaite, 16 - length(n::text) - 1) || '-' || n::text;

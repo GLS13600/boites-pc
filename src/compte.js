@@ -16,9 +16,17 @@
 // elle qui protège les données — c'est la sécurité au niveau des lignes, déclarée dans
 // `supabase/migrations/`. Ne jamais embarquer la clé `service_role`.
 
-const URL_SB = import.meta.env.VITE_SUPABASE_URL;
-const CLE_SB = import.meta.env.VITE_SUPABASE_ANON_KEY;
-export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+// Les valeurs sont NETTOYÉES avant usage : espaces autour, et guillemets qu'on garde
+// parfois en recopiant. Collée dans une variable de dépôt GitHub, la clé est arrivée
+// avec un espace FINAL — invisible à l'œil, et comme le motif de validation est ancré
+// sur la fin, elle était jugée invalide : le bloc Compte ne s'affichait tout
+// simplement pas sur le site, alors qu'il marchait en local. Une configuration vient
+// toujours d'un copier-coller, le code doit l'absorber.
+const propre = (v) => String(v ?? '').trim().replace(/^['"]|['"]$/g, '').trim();
+
+const URL_SB = propre(import.meta.env.VITE_SUPABASE_URL);
+const CLE_SB = propre(import.meta.env.VITE_SUPABASE_ANON_KEY);
+export const GOOGLE_CLIENT_ID = propre(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
 // Une URL et une clé qui ressemblent VRAIMENT à quelque chose.
 //

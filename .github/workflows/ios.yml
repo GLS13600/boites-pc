@@ -99,12 +99,12 @@ jobs:
         run: |
           mkdir -p Payload
           cp -R App.xcarchive/Products/Applications/App.app Payload/
-          zip -qry Guiguidex.ipa Payload
-          ls -lh Guiguidex.ipa
+          zip -qry Unydex.ipa Payload
+          ls -lh Unydex.ipa
 
       - name: Écrire le manifeste de source
         if: github.ref == 'refs/heads/main'
-        run: node scripts/build-source.mjs ios/App/build/Guiguidex.ipa "$APP_VERSION" ios/App/build/source.json
+        run: node scripts/build-source.mjs ios/App/build/Unydex.ipa "$APP_VERSION" ios/App/build/source.json
 
       # L'IPA et le manifeste sont attachés à la MÊME release : l'URL
       # releases/latest/download/ pointera donc toujours sur le couple cohérent.
@@ -117,17 +117,17 @@ jobs:
           # suppression, `gh release create` échouerait sur un tag déjà pris.
           gh release delete "v$APP_VERSION" --yes --cleanup-tag 2>/dev/null || true
           gh release create "v$APP_VERSION" \
-            ios/App/build/Guiguidex.ipa \
+            ios/App/build/Unydex.ipa \
             ios/App/build/source.json \
-            --title "Guiguidex $APP_VERSION" \
+            --title "Unydex $APP_VERSION" \
             --notes "Build automatique $APP_VERSION. À installer par SideStore via la source, ou manuellement avec Sideloadly."
 
       # Doublon volontaire : l'artefact reste disponible même si la release est
       # supprimée, et sert de repli pour une installation au câble.
       - uses: actions/upload-artifact@v4
         with:
-          name: Guiguidex-ipa-${{ github.ref_name }}
-          path: ios/App/build/Guiguidex.ipa
+          name: Unydex-ipa-${{ github.ref_name }}
+          path: ios/App/build/Unydex.ipa
           retention-days: 30
 
       # Le manifeste servi par le site est bâti d'après la DERNIÈRE release : il

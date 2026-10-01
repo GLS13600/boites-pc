@@ -47,7 +47,7 @@ s'affiche à la fin du run, sous la forme `https://<pseudo>.github.io/<dépôt>/
 ### L'installer sur l'iPhone, sans certificat
 
 Ouvrir l'adresse dans **Safari** → Partager → **Sur l'écran d'accueil**. L'app
-s'appelle Guiguidex, s'ouvre en plein écran, et un service worker la garde
+s'appelle Unydex, s'ouvre en plein écran, et un service worker la garde
 utilisable hors ligne.
 
 Cette voie n'a **ni certificat, ni expiration à 7 jours, ni re-signature** : on

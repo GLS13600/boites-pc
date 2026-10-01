@@ -1,6 +1,13 @@
-# Guiguidex — Living Dex personnel
+# Unydex — Living Dex personnel
 
-Le nom affiché sur l'écran d'accueil est **Guiguidex**. Il vit à trois endroits, à
+> **L'application s'appelait Guiguidex jusqu'au 01/10/2026.** Le nom affiché a changé
+> partout ; trois identifiants n'ont PAS bougé, et ne doivent pas bouger :
+> `com.guillaume.boitespc` (SideStore reconnaît l'app installée par lui, le changer
+> en ferait une autre application), l'URL `gls13600.github.io/boites-pc` (la source
+> SideStore est déjà enregistrée dans le téléphone) et le paquet `@guiguidex/scan-ia`
+> (jamais affiché, et le renommer imposerait `npx cap update ios`).
+
+Le nom affiché sur l'écran d'accueil est **Unydex**. Il vit à trois endroits, à
 tenir synchronisés : `CFBundleDisplayName` dans `ios/App/App/Info.plist` — c'est
 celui-là qui compte pour l'iPhone —, `appName` dans `capacitor.config.json` pour un
 futur `cap add ios`, et le `<title>` plus la balise `apple-mobile-web-app-title`
@@ -34,7 +41,7 @@ se gênent pas :
 
 - **IPA sideloadé** (`.github/workflows/ios.yml`, runner macOS) : app native via
   Capacitor, à re-signer tous les 7 jours avec un certificat gratuit.
-  Le workflow **publie une release GitHub** portant `Guiguidex.ipa`, et le site
+  Le workflow **publie une release GitHub** portant `Unydex.ipa`, et le site
   publie `source.json`, le manifeste que **SideStore** interroge pour proposer la
   mise à jour **sans câble**. URL à enregistrer une fois pour toutes :
   `https://gls13600.github.io/boites-pc/source.json`.
@@ -68,7 +75,7 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
   resterait une version en arrière : Pages se déploie en une minute, l'IPA demande
   un quart d'heure, donc la release n'existe pas encore au moment du déploiement
   déclenché par la même poussée.
-- Si aucune release ne porte `Guiguidex.ipa`, le script **avertit sans faire échouer**
+- Si aucune release ne porte `Unydex.ipa`, le script **avertit sans faire échouer**
   le déploiement : le site prime sur le manifeste, et un manifeste absent se voit
   tout de suite.
 - La release est **supprimée puis recréée** : `run_number` ne change pas quand on
@@ -850,7 +857,7 @@ API** — exigence explicite.
     (`A:\Jeu-scan\ml-ia`) pour qu'un changement de branche ne touche pas un
     entraînement en cours.
 - **IPA de test** : `ios.yml` compile aussi la branche `mode-ia`, sans release ni mise à
-  jour de la source SideStore ; l'IPA est l'artefact `Guiguidex-ipa-mode-ia`.
+  jour de la source SideStore ; l'IPA est l'artefact `Unydex-ipa-mode-ia`.
 - Retirer le mode : voir l'en-tête de `src/scan-ia.js`.
 
 ### Moteur
@@ -1684,7 +1691,7 @@ en pointillés qui tient la place et le dit. En ajouter un ne demande que le mê
   « enlève les boutons », puis « déplace-les dans Réglages », puis « regroupe pour
   exporter l'intégralité des données ». L'export est la SEULE sauvegarde d'une appli
   réinstallée tous les 7 jours, et le bloc le rappelle explicitement.
-  - Le fichier (`guiguidex-<date>.json`) porte les captures normales ET chromatiques,
+  - Le fichier (`unydex-<date>.json`) porte les captures normales ET chromatiques,
     les réglages et l'ordre des boîtes, l'ordre des onglets, les équipes de toutes les
     versions, et les préférences (jeu, vue, thème). Les champs gardent les NOMS des
     anciens exports : un fichier neuf se relit par une version ancienne, et l'inverse.

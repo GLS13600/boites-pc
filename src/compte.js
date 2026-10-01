@@ -229,7 +229,7 @@ export async function supprimeCompte(t) {
 //
 // Sur le web, Supabase redirige la page et revient avec le jeton : rien à faire.
 // Dans l'application native, la redirection ouvre un navigateur système et revient par
-// un lien profond (`guiguidex://auth`) — c'est `src/compte-natif.js` qui l'écoute,
+// un lien profond (`unydex://auth`) — c'est `src/compte-natif.js` qui l'écoute,
 // chargé seulement là, pour que le web n'embarque pas les plugins Capacitor.
 const retourWeb = () => `${location.origin}${location.pathname}`;
 

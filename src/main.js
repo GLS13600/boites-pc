@@ -2314,7 +2314,10 @@ async function remetFichier(nom, objet) {
 // version se relit donc aussi par les anciennes, et l'inverse reste vrai.
 function exportTout() {
   const payload = {
-    type: 'guiguidex',
+    // Simple marqueur de format, jamais relu à l'import : `importTout` reconnaît un
+    // fichier à ses CHAMPS, pas à son type. L'application a porté le nom Guiguidex
+    // jusqu'au 01/10/2026, et les sauvegardes d'alors se relisent sans rien changer.
+    type: 'unydex',
     v: 2,
     date: new Date().toISOString(),
     // Boîtes
@@ -2331,7 +2334,7 @@ function exportTout() {
     theme: state.theme,
     langue: langue(),
   };
-  remetFichier(`guiguidex-${new Date().toISOString().slice(0, 10)}.json`, payload);
+  remetFichier(`unydex-${new Date().toISOString().slice(0, 10)}.json`, payload);
 }
 // L'import prend ce qu'il TROUVE : un fichier complet, un ancien export de boîtes
 // (objet ou simple tableau d'IDs) ou un ancien export d'équipes. Chaque partie absente

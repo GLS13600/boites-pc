@@ -5,7 +5,7 @@
 # push sans entamer le forfait.
 #
 # `base: './'` dans vite.config.js produit des chemins relatifs : le site fonctionne
-# tel quel sous une URL en sous-dossier, du type /guiguidex/.
+# tel quel sous une URL en sous-dossier, du type /unydex/.
 
 name: Site en ligne
 

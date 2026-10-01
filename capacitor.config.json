@@ -1,6 +1,6 @@
 {
   "appId": "com.guillaume.boitespc",
-  "appName": "Guiguidex",
+  "appName": "Unydex",
   "webDir": "dist",
   "ios": {
     "scrollEnabled": false

@@ -1,4 +1,4 @@
-# Guiguidex
+# Unydex
 
 Suivi de **Living Dex** personnel, présenté comme les boîtes PC des jeux Pokémon.
 Application web sans framework, entièrement hors ligne, utilisable dans un navigateur

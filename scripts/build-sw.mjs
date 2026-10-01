@@ -34,7 +34,7 @@ for (const f of assets) octets += (await stat(new URL(`assets/${f}`, DIST))).siz
 const version = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
 
 const sw = `// Généré par scripts/build-sw.mjs — ne pas éditer à la main.
-const CACHE = 'guiguidex-${version}';
+const CACHE = 'unydex-${version}';
 const SHELL = ${JSON.stringify(shell, null, 2)};
 
 const abs = (r) => new URL(r, self.location).href;

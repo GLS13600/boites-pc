@@ -19,11 +19,11 @@ const DEPOT = 'GLS13600/boites-pc';
 function manifeste(version, size, downloadURL) {
   const date = new Date().toISOString().slice(0, 10);
   return {
-    name: 'Guiguidex',
+    name: 'Unydex',
     identifier: 'com.guillaume.boitespc.source',
     subtitle: 'Living Dex personnel',
     apps: [{
-      name: 'Guiguidex',
+      name: 'Unydex',
       bundleIdentifier: 'com.guillaume.boitespc',
       developerName: 'Guillaume',
       subtitle: 'Suivi de Living Dex façon boîtes PC',
@@ -62,9 +62,9 @@ if (args[0] === '--release') {
     process.exit(0);
   }
   const rel = await r.json();
-  const ipa = (rel.assets || []).find((a) => a.name === 'Guiguidex.ipa');
+  const ipa = (rel.assets || []).find((a) => a.name === 'Unydex.ipa');
   if (!ipa) {
-    console.warn(`ATTENTION : ${rel.tag_name} ne porte pas Guiguidex.ipa, source.json NON écrit.`);
+    console.warn(`ATTENTION : ${rel.tag_name} ne porte pas Unydex.ipa, source.json NON écrit.`);
     process.exit(0);
   }
 
@@ -79,7 +79,7 @@ if (args[0] === '--release') {
   }
   // La taille doit être exacte en octets, SideStore la vérifie au téléchargement.
   const size = statSync(ipa).size;
-  const url = `https://github.com/${DEPOT}/releases/latest/download/Guiguidex.ipa`;
+  const url = `https://github.com/${DEPOT}/releases/latest/download/Unydex.ipa`;
   writeFileSync(sortie, JSON.stringify(manifeste(version, size, url), null, 2));
   console.log(`Manifeste écrit : ${sortie} — version ${version}, IPA ${(size / 1e6).toFixed(1)} Mo`);
 }

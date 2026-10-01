@@ -6,13 +6,13 @@
 // Pourquoi ce fichier existe : sur le web, `signInWithOAuth` redirige la page et
 // Supabase relit le jeton dans l'URL au retour. Dans l'application il n'y a pas de
 // page à rediriger — il faut ouvrir un navigateur système, écouter le lien profond du
-// retour (`guiguidex://auth`), et poser la session à la main.
+// retour (`unydex://auth`), et poser la session à la main.
 //
 // RÈGLE APPLE : Safari View Controller (plugin Browser) est obligatoire pour une
 // connexion OAuth. Une simple WebView intégrée est refusée (règle 4.0), et Google
 // bloque de son côté les WebView non conformes.
 
-const SCHEMA = 'guiguidex://auth';
+const SCHEMA = 'unydex://auth';
 
 // Les plugins sont lus sur `window.Capacitor.Plugins`, comme Haptics, Filesystem et
 // Share : aucun import, donc rien dans le bundle web.
@@ -84,14 +84,14 @@ export async function connecteApple(c, t) {
       scopes: 'name email',
       // Apple renvoie ce nonce dans le jeton : Supabase le vérifie pour écarter un
       // jeton rejoué.
-      nonce: 'guiguidex',
+      nonce: 'unydex',
     });
     const jeton = response?.identityToken;
     if (!jeton) return { erreur: t('cpteOAuthEchec') };
     const { error } = await c.auth.signInWithIdToken({
       provider: 'apple',
       token: jeton,
-      nonce: 'guiguidex',
+      nonce: 'unydex',
     });
     return error ? { erreur: error.message } : { ok: true };
   } catch (e) {

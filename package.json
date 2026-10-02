@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host",
     "dev:https": "node scripts/dev-https.mjs",
-    "build": "node scripts/assemble-modeles.mjs && vite build && node scripts/build-sw.mjs",
+    "build": "node scripts/assemble-modeles.mjs && node scripts/build-legal.mjs && vite build && node scripts/build-sw.mjs",
     "preview": "vite preview --host",
     "fetch-data": "node scripts/fetch-data.mjs",
     "fetch-extra": "node scripts/fetch-extra.mjs",

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Politique de confidentialité — Unydex</title>
+<meta name="color-scheme" content="light dark" />
+<style>
+  :root {
+    --paper: #f6f5f1; --panel: #fff; --ink: #1b1a17; --muted: #6b675d;
+    --rule: #e3e0d6; --ball: #d6453c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #16191d; --panel: #1c2026; --ink: #eef1f4; --muted: #99a3ad;
+      --rule: #2c333b; --ball: #f06056;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: max(24px, env(safe-area-inset-top)) 18px calc(48px + env(safe-area-inset-bottom));
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 46rem; margin: 0 auto; }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 1rem; }
+  h2 { font-size: 1.3rem; margin: 2.2rem 0 .6rem; }
+  h3 { font-size: 1.05rem; margin: 1.6rem 0 .4rem; }
+  h4 { font-size: .95rem; margin: 1.2rem 0 .3rem; color: var(--muted); }
+  p, li { margin: .6rem 0; }
+  a { color: var(--ball); }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 2rem 0; }
+  code {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 5px;
+    padding: 1px 5px; font-size: .88em;
+  }
+  blockquote {
+    margin: 1.2rem 0; padding: .8rem 1rem;
+    border-left: 3px solid var(--ball); background: var(--panel);
+    border-radius: 0 10px 10px 0;
+  }
+  blockquote p { margin: .4rem 0; }
+  /* Les tableaux défilent plutôt que de déborder : ces pages se lisent au téléphone. */
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+  th, td { border: 1px solid var(--rule); padding: 8px 10px; text-align: left; vertical-align: top; font-size: .92rem; }
+  th { background: var(--panel); font-weight: 700; }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .85rem; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Politique de confidentialité — Unydex</h1>
+<p><strong>Dernière mise à jour : 2 octobre 2026.</strong> Unydex est une application personnelle de suivi de collection. Cette politique dit exactement ce qu'elle fait de tes données — et, surtout, tout ce qu'elle n'en fait pas.</p>
+<hr />
+<h2>En résumé</h2>
+<ul>
+<li><strong>Sans compte, rien ne quitte ton appareil.</strong> Aucune requête réseau, aucune donnée envoyée, aucune mesure d'audience. L'application fonctionne entièrement hors ligne.</li>
+<li><strong>Le compte est facultatif.</strong> Il ne sert qu'à retrouver ta collection sur un autre appareil et à la mettre à l'abri d'une réinstallation.</li>
+<li><strong>Aucune publicité, aucun traceur, aucune mesure d'audience</strong>, ni dans l'application ni sur le site.</li>
+<li><strong>Aucune donnée n'est vendue, louée, ni transmise à des tiers</strong> à des fins commerciales.</li>
+<li><strong>La caméra ne transmet rien.</strong> La reconnaissance tourne sur ton téléphone.</li>
+<li><strong>Tu peux tout supprimer depuis l'application</strong>, immédiatement et définitivement.</li>
+</ul>
+<hr />
+<h2>1. Qui est responsable</h2>
+<p>Le responsable de traitement est :</p>
+<ul>
+<li><strong>Nom</strong> : <em>[à compléter — nom et prénom, ou raison sociale]</em></li>
+<li><strong>Adresse</strong> : <em>[à compléter — adresse postale]</em></li>
+<li><strong>Contact</strong> : <em>[à compléter — adresse e-mail de contact]</em></li>
+</ul>
+<blockquote>
+<p><strong>À compléter avant publication.</strong> Ces trois informations sont obligatoires : au</p>
+<p>titre de l'article 13 du RGPD, et au titre du règlement européen sur les services</p>
+<p>numériques (DSA), qui impose en plus de les déclarer dans App Store Connect où</p>
+<p>elles seront <strong>affichées publiquement</strong> sur la fiche de l'application. Voir</p>
+<p><a href="PUBLICATION.md">PUBLICATION.md</a>.</p>
+</blockquote>
+<hr />
+<h2>2. Ce que l'application fait SANS compte</h2>
+<p>Rien ne sort de l'appareil. Ta progression — Pokémon capturés, boîtes, noms et fonds de boîte, équipes, préférences — est enregistrée <strong>uniquement dans le stockage local de l'application</strong> (<code>localStorage</code>). Elle n'est lue par personne d'autre que toi, et elle disparaît si tu désinstalles l'application sans l'avoir exportée. Toutes les données du jeu (sprites, descriptions, lieux, attaques, sons) sont <strong>embarquées dans l'application</strong> : elle ne consulte aucun serveur pour les afficher.</p>
+<h3>La caméra</h3>
+<p>La vue Scan utilise l'appareil photo arrière pour reconnaître ce que tu filmes.</p>
+<ul>
+<li>L'analyse se fait <strong>entièrement sur ton téléphone</strong>, par un réseau de neurones embarqué dans l'application.</li>
+<li><strong>Aucune image n'est envoyée nulle part.</strong> Aucune n'est enregistrée : les images sont analysées puis jetées, à la volée.</li>
+<li>L'accès à la caméra est demandé par iOS et peut être refusé ou retiré à tout moment dans les réglages du téléphone ; le reste de l'application continue de fonctionner.</li>
+</ul>
+<hr />
+<h2>3. Ce que l'application fait AVEC un compte</h2>
+<p>Créer un compte est un choix. Tant que tu n'en crées pas, la section précédente décrit tout ce qui se passe.</p>
+<h3>3.1. Données traitées</h3>
+<table><thead><tr><th>Donnée</th><th>Pourquoi</th><th>D'où elle vient</th></tr></thead><tbody>
+<tr><td><strong>Adresse e-mail</strong></td><td>Identifier ton compte, confirmer l'inscription, réinitialiser le mot de passe</td><td>Toi, ou ton compte Google / Apple</td></tr>
+<tr><td><strong>Mot de passe</strong></td><td>Te connecter. Il est <strong>haché</strong> (bcrypt) : il n'est jamais stocké ni lisible en clair</td><td>Toi</td></tr>
+<tr><td><strong>Identifiant interne</strong> (UUID)</td><td>Relier ton profil et ta collection à ton compte</td><td>Généré automatiquement</td></tr>
+<tr><td><strong>Pseudo</strong></td><td>T'identifier dans l'application</td><td>Toi, ou déduit de ton e-mail / de ton nom Google à l'inscription</td></tr>
+<tr><td><strong>Photo de profil</strong></td><td>L'afficher. C'est <strong>un numéro de Pokémon</strong>, pas une image : rien n'est téléversé</td><td>Toi</td></tr>
+<tr><td><strong>Ta collection</strong></td><td>La retrouver sur un autre appareil : Pokémon capturés, boîtes, ordre, équipes, et préférences (jeu, vue, thème, langue)</td><td>Ton usage de l'application</td></tr>
+<tr><td><strong>Type d'appareil</strong></td><td>Pouvoir t'écrire « enregistrée depuis iPhone » quand deux appareils divergent. C'est le <strong>type</strong> (« iPhone » ou « Navigateur »), jamais un identifiant ni un nom d'appareil</td><td>Déduit</td></tr>
+<tr><td><strong>Date du dernier envoi</strong></td><td>Savoir laquelle de deux collections est la plus récente</td><td>Automatique</td></tr>
+</tbody></table>
+<p>Si tu te connectes avec <strong>Google</strong> ou <strong>Apple</strong>, le fournisseur transmet ton adresse e-mail et, le cas échéant, ton nom — rien d'autre. Unydex ne demande aucun autre accès à ton compte Google ou Apple : ni contacts, ni agenda, ni fichiers. Avec Apple, tu peux choisir de <strong>masquer ton adresse</strong> : l'application n'en verra qu'un alias.</p>
+<h3>3.2. Ce qui n'est JAMAIS collecté</h3>
+<p>Ni localisation, ni carnet d'adresses, ni agenda, ni photos, ni micro, ni santé, ni identifiant publicitaire, ni historique de navigation, ni liste d'applications installées, ni données de paiement. L'application n'a aucun achat intégré.</p>
+<h3>3.3. Pas de suivi publicitaire</h3>
+<p>Aucune donnée n'est utilisée pour te suivre à travers d'autres applications ou sites. Il n'y a <strong>aucune régie publicitaire, aucun SDK d'analyse, aucun pixel</strong>. Au sens du cadre « App Tracking Transparency » d'Apple, Unydex <strong>ne fait pas de suivi</strong>.</p>
+<hr />
+<h2>4. Sur quelle base légale</h2>
+<table><thead><tr><th>Traitement</th><th>Base légale (RGPD)</th></tr></thead><tbody>
+<tr><td>Création et tenue du compte, connexion</td><td><strong>Exécution du contrat</strong> (art. 6.1.b) : c'est le service que tu demandes</td></tr>
+<tr><td>Sauvegarde et restitution de la collection</td><td><strong>Exécution du contrat</strong> (art. 6.1.b)</td></tr>
+<tr><td>Journaux techniques de l'hébergeur, lutte contre l'abus</td><td><strong>Intérêt légitime</strong> (art. 6.1.f) : garder le service debout et sûr</td></tr>
+</tbody></table>
+<p>Le consentement n'est pas la base retenue, et c'est volontaire : le compte est facultatif, et les données traitées sont <strong>strictement celles qu'il faut</strong> pour rendre le service demandé. Ne pas créer de compte est le moyen de ne rien transmettre.</p>
+<hr />
+<h2>5. Qui héberge, et où</h2>
+<p>Les données du compte sont hébergées par <strong>Supabase</strong> (Supabase, Inc.), qui agit comme sous-traitant au sens de l'article 28 du RGPD.</p>
+<ul>
+<li>Région du projet : *[à compléter — voir Supabase → Project Settings → General → Region]*.</li>
+<li>Supabase publie un <a href="https://supabase.com/legal/customer-resources/data-processing-addendum" target="_blank" rel="noopener">addendum de traitement des données</a> et la <a href="https://supabase.com/legal/customer-resources/subprocessor-list" target="_blank" rel="noopener">liste de ses sous-traitants ultérieurs</a>.</li>
+<li>Si la région choisie est <strong>hors Union européenne</strong>, le transfert est encadré par les <strong>clauses contractuelles types</strong> de la Commission européenne, incorporées à cet addendum.</li>
+</ul>
+<blockquote>
+<p><strong>À vérifier avant publication.</strong> Choisir une région européenne (Paris, Francfort,</p>
+<p>Irlande ou Stockholm) simplifie considérablement ce paragraphe — et c'est un</p>
+<p>changement qui se fait en créant le projet, pas après. Voir</p>
+<p><a href="PUBLICATION.md">PUBLICATION.md</a>.</p>
+</blockquote>
+<p>L'hébergeur conserve des <strong>journaux techniques</strong> (adresses IP, horodatages des requêtes) pendant une courte durée, pour la sécurité et le diagnostic. Unydex ne les consulte pas et n'en tire aucun profil. Le site <code>gls13600.github.io</code> est servi par <strong>GitHub Pages</strong> (GitHub, Inc.), qui tient ses propres journaux d'accès.</p>
+<hr />
+<h2>6. Combien de temps</h2>
+<ul>
+<li><strong>Compte et collection</strong> : conservés tant que le compte existe. Ils sont effacés <strong>immédiatement</strong> à sa suppression.</li>
+<li><strong>Données locales sur l'appareil</strong> : tant que l'application est installée. Les désinstaller les efface.</li>
+<li><strong>Journaux de l'hébergeur</strong> : quelques jours, selon la politique de Supabase.</li>
+</ul>
+<p>Il n'y a <strong>aucune conservation « au cas où »</strong> après la suppression d'un compte, ni sauvegarde parallèle conservée de notre côté.</p>
+<hr />
+<h2>7. Tes droits</h2>
+<p>Tu disposes des droits d'<strong>accès</strong>, de <strong>rectification</strong>, d'<strong>effacement</strong>, de <strong>limitation</strong>, d'<strong>opposition</strong> et de <strong>portabilité</strong> (RGPD, art. 15 à 22). En pratique, dans l'application :</p>
+<table><thead><tr><th>Droit</th><th>Comment l'exercer</th></tr></thead><tbody>
+<tr><td><strong>Accès et portabilité</strong></td><td>Réglages → Sauvegarde → <strong>Exporter toutes mes données</strong>. Tu obtiens un fichier JSON lisible, complet, immédiatement et sans rien demander à personne</td></tr>
+<tr><td><strong>Rectification</strong></td><td>Réglages → Compte : le pseudo et la photo se modifient sur place</td></tr>
+<tr><td><strong>Effacement</strong></td><td>Réglages → Compte → <strong>Supprimer mon compte</strong>. Immédiat et définitif : compte, profil et collection serveur disparaissent ensemble</td></tr>
+<tr><td><strong>Opposition, limitation</strong></td><td>Écris à l'adresse de contact ci-dessus</td></tr>
+</tbody></table>
+<p>La suppression du compte <strong>ne touche pas</strong> à ta collection locale : elle reste sur ton téléphone, et l'application continue de marcher sans compte. Tu peux introduire une réclamation auprès de la <strong>CNIL</strong> (3 place de Fontenoy, 75007 Paris — <a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>) si tu estimes que tes droits ne sont pas respectés.</p>
+<hr />
+<h2>8. Sécurité</h2>
+<ul>
+<li>Toutes les communications passent en <strong>HTTPS</strong>.</li>
+<li>Les mots de passe sont <strong>hachés</strong> par Supabase ; ils ne sont ni stockés ni consultables en clair.</li>
+<li>L'accès aux données est verrouillé au niveau de la base par la **sécurité au niveau des lignes** (RLS) : techniquement, un compte ne peut lire ni écrire que ses propres lignes. La clé publique embarquée dans l'application ne donne accès à rien par elle-même.</li>
+<li>Les profils (pseudo et photo) sont lisibles par les comptes authentifiés : c'est ce qui permet de dire « ce pseudo est déjà pris ». **Ni l'adresse e-mail ni la collection ne le sont.**</li>
+</ul>
+<p>Aucun système n'est infaillible. En cas de violation de données présentant un risque, tu serais informé conformément à l'article 34 du RGPD.</p>
+<hr />
+<h2>9. Âge minimum</h2>
+<p>Le compte est réservé aux personnes de <strong>16 ans ou plus</strong>. En dessous, l'application reste parfaitement utilisable <strong>sans compte</strong> : toutes ses fonctions marchent en local. Unydex ne s'adresse pas spécifiquement aux enfants et ne collecte sciemment aucune donnée de personne de moins de 16 ans. Si tu constates qu'un tel compte a été créé, écris à l'adresse de contact : il sera supprimé.</p>
+<hr />
+<h2>10. Modifications</h2>
+<p>Cette politique peut évoluer. La date en tête indique la dernière version. Un changement significatif sera annoncé dans l'application. L'historique complet des modifications est public dans le dépôt du code.</p>
+<hr />
+<h2>11. Contact</h2>
+<p><em>[à compléter — adresse e-mail de contact]</em></p>
+<footer>
+  <a href="confidentialite.html">Confidentialité</a> ·
+  <a href="conditions.html">Conditions</a> ·
+  <a href="mentions.html">Mentions légales</a> ·
+  <a href="privacy.html" lang="en">Privacy (EN)</a> ·
+  <a href="../">Unydex</a>
+</footer>
+</main>
+</body>
+</html>

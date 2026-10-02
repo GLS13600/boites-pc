@@ -84,6 +84,79 @@ export async function sb() {
 
 export const estNatif = () => !!window.Capacitor?.isNativePlatform?.();
 
+// ---------------------------------------------------------------- retour d'OAuth
+//
+// Sur le WEB, « Continuer avec Google » QUITTE LA PAGE : le navigateur part chez
+// Google, repasse par Supabase, puis revient ici. L'application se recharge donc
+// entièrement — et comme elle s'ouvre toujours sur l'accueil, on retombait à la case
+// départ sans le moindre signe. Vu de l'utilisateur : « la page s'actualise » et il
+// ne se passe rien, alors que la connexion a très bien pu réussir.
+//
+// Deux renseignements sont à relever À L'IMPORT DU MODULE, donc AVANT que supabase-js
+// ne nettoie l'URL — ce qu'il fait dès la création du client (`detectSessionInUrl`) :
+//   - revient-on d'une connexion ? l'appli doit alors rouvrir les Réglages ;
+//   - le fournisseur a-t-il renvoyé une erreur ? il faut alors la dire.
+//
+// Rien de tout ceci ne concerne l'IPA : en natif, la connexion passe par un
+// navigateur système et revient par un lien profond, sans jamais recharger la page.
+const CLE_RETOUR = 'pcbox.oauth';
+const RETOUR = litRetour();
+
+function litRetour() {
+  if (typeof location === 'undefined') return { revient: false, erreur: null };
+  const p = new URLSearchParams(location.search);
+  const h = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+  const lu = (k) => p.get(k) ?? h.get(k);
+
+  // Le repère posé avant de quitter la page. Il se consomme : un rechargement plus
+  // tard ne doit pas rouvrir les Réglages.
+  let marque = false;
+  try {
+    marque = sessionStorage.getItem(CLE_RETOUR) === '1';
+    if (marque) sessionStorage.removeItem(CLE_RETOUR);
+  } catch { /* mode privé : on se rabat sur les paramètres de l'URL */ }
+
+  const erreur = lu('error_description') || lu('error') || null;
+  const revient = marque || !!erreur || !!lu('code') || !!lu('access_token');
+
+  // On n'efface QUE l'erreur, jamais le `code` : c'est supabase-js qui l'échange
+  // contre une session, et le lui retirer casserait la connexion.
+  if (erreur) {
+    try {
+      for (const k of ['error', 'error_code', 'error_description']) p.delete(k);
+      const q = p.toString();
+      const hash = h.has('error') || h.has('error_description') ? '' : location.hash;
+      history.replaceState(null, '', location.pathname + (q ? `?${q}` : '') + hash);
+    } catch { /* sans importance : l'erreur est déjà relevée */ }
+  }
+  return { revient, erreur };
+}
+
+// Vrai quand la page vient d'un aller-retour chez un fournisseur. L'appli s'ouvre
+// alors sur les Réglages au lieu de l'accueil.
+export const revientDeConnexion = () => RETOUR.revient;
+
+// Le `code` est retiré de l'URL UNE FOIS la session relue, et pas avant : c'est
+// supabase-js qui l'échange, le lui enlever trop tôt casserait la connexion. Quand
+// l'échange échoue, il reste sinon dans l'URL et chaque rechargement rejoue la même
+// tentative perdue d'avance.
+function nettoieCodeURL() {
+  try {
+    const p = new URLSearchParams(location.search);
+    if (!p.has('code')) return;
+    p.delete('code');
+    const q = p.toString();
+    history.replaceState(null, '', location.pathname + (q ? `?${q}` : '') + location.hash);
+  } catch { /* sans importance */ }
+}
+
+let erreurRetourEnClair;
+export function erreurDeConnexion(t) {
+  if (!RETOUR.erreur) return null;
+  if (erreurRetourEnClair === undefined) erreurRetourEnClair = enClair(RETOUR.erreur, t);
+  return erreurRetourEnClair;
+}
+
 // ---------------------------------------------------------------- état
 
 // Ce que le reste de l'appli lit. `null` = déconnecté, et c'est l'état par défaut.
@@ -109,6 +182,7 @@ export async function demarre() {
   await poseSession(data?.session ?? null);
   etat.pret = true;
   previens();
+  nettoieCodeURL();
 
   // Connexion, déconnexion, jeton rafraîchi : on suit.
   c.auth.onAuthStateChange(async (_evt, session) => {
@@ -267,9 +341,15 @@ export async function connecteAvec(fournisseur, t) {
     const { connecteOAuthNatif } = await import('./compte-natif.js');
     return connecteOAuthNatif(c, fournisseur, t);
   }
+  // Posé AVANT de partir : la page va être quittée et rechargée au retour, et
+  // l'appli s'ouvre toujours sur l'accueil. Sans ce repère, on revenait connecté
+  // mais sur la page d'accueil, sans rien qui dise que ça avait marché.
+  try { sessionStorage.setItem(CLE_RETOUR, '1'); } catch { /* mode privé */ }
   const { error } = await c.auth.signInWithOAuth({
     provider: fournisseur,
     options: { redirectTo: retourWeb() },
   });
-  return error ? { erreur: enClair(error, t) } : { ok: true };
+  if (!error) return { ok: true };
+  try { sessionStorage.removeItem(CLE_RETOUR); } catch { /* mode privé */ }
+  return { erreur: enClair(error, t) };
 }

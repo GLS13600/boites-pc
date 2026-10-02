@@ -22,6 +22,7 @@ import {
   configure, etat, demarre, surChangement, estNatif, GOOGLE_CLIENT_ID,
   inscris, connecte, deconnecte, motDePasseOublie,
   changePseudo, changeAvatar, supprimeCompte, pseudoDisponible, PSEUDO_RE, sb,
+  revientDeConnexion, erreurDeConnexion,
 } from './compte.js';
 
 const AVATAR_DEFAUT = '25';
@@ -41,9 +42,28 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
     avatarQ: '',
     avatarChoix: null,   // choix EN ATTENTE de validation, jamais encore enregistré
     avatarShiny: false,
+    retourVu: false,   // l'erreur venue de l'URL de retour a eu sa chance d'être lue
   };
 
   let racine = null;     // l'application, où vit le bloc des Réglages
+
+  // Erreur rapportée par le fournisseur DANS l'URL de retour, relevée au chargement
+  // de compte.js avant que le client ne nettoie l'URL : sans elle, un Google mal
+  // configuré se traduisait par un simple rechargement muet.
+  //
+  // Elle vit À PART de `ui.erreur`, et ce n'est pas un détail : `surChangement` vide
+  // `ui.erreur` à chaque notification, et `demarre()` en émet une dès la session
+  // relue — le message aurait donc clignoté puis disparu avant d'être lu. Elle
+  // s'efface quand on est connecté, ou dès qu'on tente autre chose.
+  //
+  // Lue au RENDU et non à la création du module : la langue n'est chargée qu'après,
+  // et le message serait sinon figé en français.
+  const erreurRetour = () => (ui.retourVu || etat.user ? null : erreurDeConnexion(t));
+
+  // On revient de Google et la session n'est pas encore relue : on annonce l'attente
+  // plutôt que de faire clignoter le formulaire de connexion, qui donnerait à croire
+  // qu'il ne s'est rien passé.
+  const attenteRetour = () => revientDeConnexion() && !etat.pret && !erreurRetour();
 
   // Un rendu suffit : le bloc est reconstruit avec le reste de la page.
   surChangement(() => { ui.erreur = null; rafraichit(); });
@@ -61,11 +81,14 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
   // ------------------------------------------------------------ rendu de la page
   function htmlCompte() {
     if (!configure()) return '';
+    const erreur = ui.erreur ?? erreurRetour();
     return `
       <div class="reg-bloc cpte b-compte" style="--i:3">
         <h3><span class="reg-pastille">${ICO_REG.compte}</span>${t('compte')}</h3>
-        ${etat.user ? htmlConnecte() : htmlDeconnecte()}
-        ${ui.erreur ? `<p class="cpte-err">${esc(ui.erreur)}</p>` : ''}
+        ${etat.user ? htmlConnecte()
+          : attenteRetour() ? `<p class="reg-aide">${t('cpteConnexionEnCours')}</p>`
+          : htmlDeconnecte()}
+        ${erreur ? `<p class="cpte-err">${esc(erreur)}</p>` : ''}
         ${ui.message ? `<p class="cpte-ok">${esc(ui.message)}</p>` : ''}
       </div>`;
   }
@@ -421,6 +444,7 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
   async function lance(action) {
     if (ui.occupe) return;
     ui.occupe = true;
+    ui.retourVu = true;
     ui.erreur = ui.message = null;
     rafraichit();
     try {
@@ -434,5 +458,5 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
     }
   }
 
-  return { htmlCompte, branche, demarre, panneauFerme };
+  return { htmlCompte, branche, demarre, panneauFerme, revientDeConnexion };
 }

@@ -4617,6 +4617,12 @@ app.addEventListener('click', (e) => {
   if (carte) openSheet(Number(carte.dataset.dex));
 });
 
+// Retour d'une connexion par Google : sur le web, le navigateur a quitté la page
+// puis y est revenu. L'appli s'ouvre TOUJOURS sur l'accueil — on retombait donc à la
+// case départ, connecté mais sans rien qui le dise, ce qui se vit comme « la page
+// s'actualise et il ne se passe rien ». On rouvre les Réglages, là où le compte est.
+if (compteUI.revientDeConnexion()) state.vue = 'reglages';
+
 // La surcouche doit être en place AVANT le premier rendu : sinon l'appli s'ouvrirait
 // une fraction de seconde en français avant de se retraduire. En français il n'y a
 // rien à charger et `chargeLangue` rend la main tout de suite.

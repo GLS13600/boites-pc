@@ -1823,6 +1823,47 @@ choisit puis valide, et de toucher le pseudo pour l'écrire puis valider.
 - Le module écoute désormais sur **DEUX racines** (`branche(app, compteSheet)`) : le
   panneau vit dans `document.body`, hors de `#app`, donc rien n'y remonterait.
 
+### Revenir d'une connexion Google (02/10/2026)
+
+Deuxième signalement du même symptôme : « la page s'actualise quand je veux me
+connecter avec Google ». Ce n'en était pas un bug du rendu — **c'est le fonctionnement
+même d'OAuth sur le web** : `signInWithOAuth` QUITTE la page, part chez Google, repasse
+par Supabase et revient ici. L'application se recharge donc entièrement.
+
+Ce qui était fautif, c'est ce qu'elle faisait AU RETOUR : elle s'ouvre toujours sur
+l'accueil, donc on retombait à la case départ — connecté peut-être, mais sans rien qui
+le dise. Vu de l'utilisateur, la page s'actualise et il ne se passe rien.
+
+- **Le retour rouvre les RÉGLAGES**, là où vit le compte. Deux signaux, l'un
+  rattrapant l'autre : un repère posé dans `sessionStorage` (`pcbox.oauth`) juste avant
+  de quitter la page, et les paramètres que Supabase ajoute à l'URL de retour (`code`,
+  `error`). Le repère se consomme à la lecture — un rechargement plus tard ne doit pas
+  rouvrir les Réglages.
+- **Tout cela se relève À L'IMPORT de `compte.js`**, donc avant que supabase-js ne
+  nettoie l'URL — ce qu'il fait dès la création du client (`detectSessionInUrl`).
+  Attendre le premier rendu arrivait trop tard.
+- **L'erreur du fournisseur était avalée.** Supabase renvoie `?error_description=…`
+  (« Unsupported provider… ») dans l'URL de retour ; personne ne la lisait, d'où le
+  rechargement muet. Elle passe maintenant par `enClair()` comme les autres.
+  - Elle vit **à part de `ui.erreur`**, et ce n'est pas un détail : `surChangement`
+    vide `ui.erreur` à chaque notification, et `demarre()` en émet une dès la session
+    relue — le message aurait clignoté puis disparu avant d'être lu.
+  - Elle est lue **au rendu**, pas à la création du module : la langue n'est chargée
+    qu'après, et le message serait sinon figé en français.
+- **« Connexion en cours… »** pendant que la session se relit, au lieu du formulaire
+  de connexion qui clignoterait et donnerait à croire que rien ne s'est passé.
+- Le `code` est **retiré de l'URL une fois la session relue**, jamais avant : c'est
+  supabase-js qui l'échange. Quand l'échange échoue il y restait, et chaque
+  rechargement rejouait la même tentative perdue d'avance.
+- **Rien de tout ceci ne concerne l'IPA** : en natif la connexion passe par un
+  navigateur système et revient par un lien profond (`unydex://auth`), sans jamais
+  recharger la page. Le repère n'est posé que dans la branche web.
+
+Vérifié dans l'aperçu : retour avec `?error=…` → les Réglages s'ouvrent, le message
+« Ce mode de connexion n'est pas encore activé côté serveur. » reste affiché et l'URL
+est nettoyée ; retour avec `?code=…` → « Connexion en cours… » puis l'état réel, URL
+nettoyée ; repère seul → les Réglages s'ouvrent et le repère est consommé.
+
 ## Traduction : français, anglais, japonais
 
 Demandée le 30/09/2026, avec une étendue explicitement choisie : **tout**, descriptions

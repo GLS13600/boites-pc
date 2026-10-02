@@ -479,7 +479,13 @@ img { display: block; }
    CHIFFRE VIVANT — l'avancement de la collection, l'équipe en cours, le mode de scan.
    L'accueil informe désormais au lieu de décorer, ce qu'aucune illustration ne faisait. */
 
-.accueil { padding: var(--e-3) var(--e-3) calc(var(--e-5) + var(--safe-bottom)); }
+/* L'accueil est la SEULE vue sans barre de retour : c'est donc à lui de porter la
+   zone sûre du haut, que `.retour` porte pour toutes les autres. Sans elle, le titre
+   passait sous l'heure et la batterie de l'iPhone — constaté sur l'appareil, invisible
+   dans un navigateur de bureau où `env(safe-area-inset-top)` vaut 0. */
+.accueil {
+  padding: calc(var(--e-3) + var(--safe-top)) var(--e-3) calc(var(--e-5) + var(--safe-bottom));
+}
 .accueil-tete { padding: var(--e-2) var(--e-2) var(--e-4); }
 .accueil-tete h1 {
   margin: 0;

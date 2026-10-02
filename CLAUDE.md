@@ -1620,6 +1620,13 @@ occasion — tout part d'ici, et une barre ferait doublon.
     la liste, une grille du Pokédex à son menu — comme leurs boutons « ‹ ». Vérifié
     dans l'aperçu par de vrais `TouchEvent` : grille → menu → accueil, fiche → liste →
     accueil, glissement trop court ou vertical sans effet.
+- **L'accueil porte LUI-MÊME la zone sûre du haut** (`--safe-top` dans le padding de
+  `.accueil`) : c'est la seule vue sans barre de retour, donc personne d'autre ne la
+  portait, et sur iPhone le titre « Unydex » passait sous l'heure et la batterie.
+  **Invisible sur un navigateur de bureau**, où `env(safe-area-inset-top)` vaut 0 :
+  pour le vérifier, forcer `--safe-top` à 59 px (iPhone à Dynamic Island) dans
+  l'aperçu. Mesuré après correction : titre à 79 px, soit 20 px sous la barre, et les
+  quatre autres vues inchangées — leur barre de retour n'a pas doublé sa marge.
 - **Une barre « ‹ Accueil » coiffe toutes les autres vues** (`.retour`, construite une
   fois, hors de la zone qui défile). Elle porte désormais la marge de zone sûre du haut,
   que les vues portaient elles-mêmes. Y revenir **ferme les panneaux ouverts**.

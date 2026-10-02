@@ -2200,7 +2200,14 @@ Aucune classe lue par le JS n'a été renommée (`.slot`, `.gen-tab`, `.grid`, `
   La barre des onglets reste collée en haut, comme avant.
 - **Onglets de génération** : pastilles de 44 px, l'actif rempli du rouge de l'appli —
   blanc sur ce rouge tient le contraste AA (4,6:1).
-- **Cases de boîte** : coins à 12 px, capturé = teinte + anneau + Poké Ball dessinée.
+- **Cases de boîte** : coins à 12 px, capturé = teinte + Poké Ball dessinée.
+  **L'anneau rouge a été retiré le 02/10/2026**, à la demande : trente contours
+  colorés d'un coup chargeaient la grille, et l'état était déjà dit trois fois — la
+  couleur du sprite contre le gris, la teinte de fond, le marqueur. Il était dessiné
+  deux fois (`border-color` ET une ombre intérieure), et c'est l'ombre qui se voyait
+  sur un fond de boîte : `.grid.papered .slot.caught` remettait bien la bordure à
+  transparent, mais ne touchait pas au `box-shadow`. Ne pas le réintroduire sans
+  demande.
   Deux animations, toutes deux coupées par `prefers-reduced-motion` :
   - **cascade** à l'entrée dans une génération (classe `entre` sur la grille,
     `--i` par case). Elle ne joue QUE sur un changement de génération : un simple

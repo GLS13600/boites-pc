@@ -313,10 +313,15 @@ img { display: block; }
 }
 /* Non capturé : sprite 2D en gris. Capturé : sprite animé en couleur. */
 .slot:not(.caught) img { filter: grayscale(1); opacity: 0.66; }
+/* Capturé : la teinte de fond et la Poké Ball, RIEN DE PLUS. Le liseré rouge et son
+   doublement en ombre intérieure ont été retirés à la demande (02/10/2026) : trente
+   contours colorés d'un coup chargeaient la grille, et le signal était déjà porté
+   trois fois — la couleur du sprite contre le gris, la teinte, le marqueur.
+   L'ombre intérieure était le plus visible des deux sur un fond de boîte : la règle
+   `.grid.papered .slot.caught` remettait bien la bordure à transparent, mais ne
+   touchait pas au `box-shadow`, qui restait seul à dessiner l'anneau. */
 .slot.caught {
   background: var(--caught-tint);
-  border-color: var(--caught-edge);
-  box-shadow: inset 0 0 0 1px var(--caught-edge);
 }
 
 .slot.caught::after {

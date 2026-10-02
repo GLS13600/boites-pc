@@ -1775,6 +1775,54 @@ artistique de l'appli.
   générale qui est en cause, pas cette page — le corriger demanderait de toucher
   `--muted`, lu partout.
 
+### Modifier son profil SUR PLACE (02/10/2026)
+
+Le bloc Compte avait deux lignes « Changer de photo » et « Changer de pseudo » qui
+dépliaient un formulaire DANS la page. Chaque geste la redessinait, et **la page
+repartait du haut** : on perdait l'endroit où l'on était à chaque fois. Signalé comme
+tel ; la demande était de toucher directement la photo pour ouvrir un menu où l'on
+choisit puis valide, et de toucher le pseudo pour l'écrire puis valider.
+
+- **La photo et le pseudo SONT les commandes.** Les deux lignes ont disparu ; un
+  crayon posé sur la photo et à côté du nom dit qu'on peut les toucher. Une ligne
+  d'aide le redit sous le bandeau (`cpteToucherModifier`).
+- **La photo ouvre un PANNEAU**, `compteSheet` dans main.js, un `.sheet` comme celui
+  de la boîte ou du sélecteur de Pokémon : même voile partagé, même fermeture par
+  glissement vers le bas, même `syncBackdrop`. C'est compte-ui.js qui en écrit le
+  contenu ; main.js ne fournit que le contenant, d'où l'objet `panneau`
+  (`ouvre` / `maj` / `ferme` / `corps`) passé à `creeCompteUI`.
+  - Il se ferme de TROIS façons — le voile, le glissement, le retour à l'accueil —,
+    et `fermeComptePanneau()` prévient alors le module (`panneauFerme()`) : sans cet
+    avis il croirait son panneau encore ouvert et continuerait de le redessiner.
+  - `majComptePanneau()` **rend sa position de défilement** après avoir remplacé le
+    contenu : on la remplace à chaque recherche, et repartir en haut de la grille
+    serait exactement le défaut qu'on corrige.
+  - **Rien n'est écrit tant qu'on n'a pas validé** : `ui.avatarChoix` est un choix EN
+    ATTENTE, et rouvrir le panneau le ramène à l'avatar enregistré. Vérifié.
+  - **L'aperçu et le bouton Enregistrer sont COLLÉS en haut** (`.cpte-barre`) : la
+    grille fait plusieurs écrans, il ne faut pas remonter pour valider. `top: -8px`
+    et non `0` — une boîte collante se cale sur la zone de défilement, dont le haut
+    est la boîte de PADDING du panneau, et à `0` une bande de 8 px laissait voir les
+    vignettes passer au-dessus de la barre.
+  - **L'erreur est répétée DANS le panneau** : il couvre la page, et le message posé
+    dans le bloc des Réglages y serait invisible.
+  - La liste en lignes est devenue une **grille** de vignettes (`.cpte-grille`) : on
+    choisit une photo à l'œil, et on en voit vingt au lieu de six. Le **chromatique**
+    se choisit aussi, ce que la base permettait déjà (`avatar_shiny`) sans que
+    l'interface le propose.
+- **Le pseudo se modifie EN PLACE**, là où il s'affiche : le champ prend la place du
+  nom, avec un ✕ et un ✓ à côté. Il reçoit le focus et son contenu est sélectionné
+  dès l'ouverture — on vient de toucher son nom pour l'écrire. La disponibilité
+  s'affiche pendant la frappe, comme à l'inscription.
+- **`renderReglages()` REND SA POSITION DE DÉFILEMENT**, comme la barre d'onglets
+  récupère son décalage horizontal : `poser()` remplace la zone qui défile, et un
+  élément neuf repart en haut. Seulement si l'on ÉTAIT déjà sur les Réglages — la
+  position mémorisée serait sinon celle d'une autre vue. C'est la correction de fond :
+  changer de thème ou de langue ne renvoie plus en haut non plus. Mesuré : 200 avant
+  et après l'ouverture du panneau, sa fermeture et un changement de thème.
+- Le module écoute désormais sur **DEUX racines** (`branche(app, compteSheet)`) : le
+  panneau vit dans `document.body`, hors de `#app`, donc rien n'y remonterait.
+
 ## Traduction : français, anglais, japonais
 
 Demandée le 30/09/2026, avec une étendue explicitement choisie : **tout**, descriptions

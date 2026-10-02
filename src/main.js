@@ -515,6 +515,9 @@ const ICO = {
   moins: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>',
   exporte: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14"/></svg>',
   importe: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V5m0 0L8 9m4-4l4 4M5 19h14"/></svg>',
+  crayon: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5h4L19 9l-4-4L4.5 15.5v4z"/><path d="M14.3 5.7l4 4"/></svg>',
+  coche: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  croix: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>',
 };
 
 // Icônes des blocs de Réglages. La pastille qui les porte prend `--c` en CSS.
@@ -563,11 +566,22 @@ function construitCatalogue() {
 // besoin plutôt que d'importer main.js. Sans configuration Supabase il rend une
 // chaîne vide, et l'appli se comporte exactement comme avant — hors ligne, sans
 // compte, et sans la moindre requête réseau.
+//
+// Il reçoit aussi un PANNEAU à lui — le choix de l'avatar s'y fait, au lieu de
+// pousser une liste dans la page : la page restait alors à redessiner à chaque
+// geste, et l'on repartait du haut. Les fonctions passées ici sont déclarées plus
+// bas, avec les autres panneaux ; elles sont hissées, donc utilisables dès ici.
 const compteUI = creeCompteUI({
-  t, esc, sprites, spriteKey, CATALOGUE, ICO, ICO_REG,
+  t, esc, sprites, spriteKey, imgFallback, CATALOGUE, ICO, ICO_REG,
   // Un rendu ne sert que si la page Réglages est à l'écran : le compte peut changer
   // d'état pendant qu'on est ailleurs, sans qu'il y ait rien à redessiner.
   rend: () => { if (state.vue === 'reglages') render(); },
+  panneau: {
+    ouvre: ouvreComptePanneau,
+    maj: majComptePanneau,
+    ferme: fermeComptePanneau,
+    corps: () => compteBody,
+  },
 });
 
 // ---------- Rendu ----------
@@ -809,7 +823,7 @@ document.body.append(backdrop, sheet);
 // Toucher le fond assombri referme le panneau ouvert, quel qu'il soit. Le panneau de
 // la boîte de combat y échappait : il affichait bien le fond, mais seul un glissement
 // vers le bas le fermait — on tapait à côté sans effet.
-backdrop.addEventListener('click', () => { closeSheet(); closeBoxSheet(); closeAddSheet(); closeBattleSheet(); });
+backdrop.addEventListener('click', () => { closeSheet(); closeBoxSheet(); closeAddSheet(); closeBattleSheet(); fermeComptePanneau(); });
 
 // Stats de base en barres.
 //
@@ -1317,7 +1331,8 @@ function closeBoxSheet() {
 function syncBackdrop() {
   backdrop.classList.toggle('open',
     sheet.classList.contains('open') || boxSheet.classList.contains('open')
-    || addSheet.classList.contains('open') || battleSheet.classList.contains('open'));
+    || addSheet.classList.contains('open') || battleSheet.classList.contains('open')
+    || compteSheet.classList.contains('open'));
 }
 
 // ---------- Panneau « ajouter un Pokémon à un emplacement » ----------
@@ -1340,6 +1355,42 @@ function openAddSheet(index) {
   renderAddSheet();
   addBody.scrollTop = 0;
   addSheet.classList.add('open');
+  syncBackdrop();
+}
+
+// ---------- Panneau du compte ----------
+//
+// Le choix de la photo de profil s'y fait, comme le choix d'un fond ou d'un Pokémon
+// se fait dans le sien. Avant, la liste s'ajoutait DANS la page Réglages : chaque
+// geste la redessinait, et la page repartait du haut. C'est compte-ui.js qui en
+// écrit le contenu ; main.js ne fournit que le contenant et le voile partagé.
+const compteSheet = h(`<aside class="sheet" role="dialog" aria-modal="true"><div class="sheet-grip"></div><div class="sheet-body"></div></aside>`);
+document.body.append(compteSheet);
+const compteBody = compteSheet.querySelector('.sheet-body');
+enableSwipeClose(compteSheet, fermeComptePanneau);
+
+function ouvreComptePanneau(html) {
+  compteBody.innerHTML = html;
+  compteBody.scrollTop = 0;
+  compteSheet.classList.add('open');
+  syncBackdrop();
+}
+
+// Le défilement est RENDU après coup : on remplace le contenu d'un panneau déjà
+// ouvert (un choix, une recherche), et repartir en haut de la liste à chaque fois
+// serait exactement le défaut qu'on corrige dans la page.
+function majComptePanneau(html) {
+  const y = compteBody.scrollTop;
+  compteBody.innerHTML = html;
+  compteBody.scrollTop = y;
+}
+
+// Fermé de trois façons — le bouton, le glissement vers le bas, le voile —, d'où
+// l'avis donné au module : sans lui il croirait son panneau encore ouvert.
+function fermeComptePanneau() {
+  if (!compteSheet.classList.contains('open')) return;
+  compteSheet.classList.remove('open');
+  compteUI.panneauFerme();
   syncBackdrop();
 }
 
@@ -2889,6 +2940,14 @@ const rail = (options, actif, attribut, aria) => {
 };
 
 function renderReglages() {
+  // `poser()` remplace la zone qui défile : un élément neuf repart en haut. On rend
+  // donc sa position à la page, comme on rend son décalage à la barre d'onglets —
+  // sans quoi enregistrer un pseudo ou changer de thème renvoyait tout en haut.
+  // Seulement si l'on ÉTAIT déjà sur les Réglages : en y arrivant depuis l'accueil,
+  // la position mémorisée serait celle d'une autre vue.
+  const vueActuelle = app.querySelector('.vue');
+  const defileReg = vueActuelle?.querySelector('.reg') ? vueActuelle.scrollTop : 0;
+
   poser(entete(t('reglages')), h(`
     <section class="reg">
       ${bloc(0, 'apparence', t('apparence'), t('apparenceAide'),
@@ -2915,6 +2974,8 @@ function renderReglages() {
       <!-- D'autres réglages viendront ici : un bloc par sujet, sur le même gabarit. -->
       ${bloc(4, 'avenir', t('aVenir'), t('aVenirSous'), '', true)}
     </section>`));
+
+  if (defileReg) app.querySelector('.vue').scrollTop = defileReg;
 }
 
 // Changer de langue : charger la surcouche, refaire ce qui porte des noms, rendre.
@@ -4315,6 +4376,7 @@ function fermeLesPanneaux() {
   closeSheet();
   closeBoxSheet();
   closeAddSheet();
+  fermeComptePanneau();
 }
 
 app.addEventListener('click', (e) => {
@@ -4562,7 +4624,7 @@ poseLangueEtRend(langue());
 
 // Le compte se relit au démarrage. `demarre()` rend la main tout de suite quand rien
 // n'est configuré, et n'attend jamais le réseau : le premier rendu n'en dépend pas.
-compteUI.branche(app);
+compteUI.branche(app, compteSheet);
 compteUI.demarre().catch((e) => console.error('compte', e));
 
 // ---------- Outil de calage des fonds (développement seulement) ----------

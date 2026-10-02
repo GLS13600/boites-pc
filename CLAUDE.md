@@ -1867,6 +1867,43 @@ Vérifié dans l'aperçu : retour avec `?error=…` → les Réglages s'ouvrent,
 est nettoyée ; retour avec `?code=…` → « Connexion en cours… » puis l'état réel, URL
 nettoyée ; repère seul → les Réglages s'ouvrent et le repère est consommé.
 
+### Connexion Google DANS L'IPA : ce qu'il manquait (02/10/2026)
+
+Signalé depuis l'application installée : « ça me met *ce mode de connexion n'est pas
+disponible ici*, alors que ça marche en localhost sur l'iPhone ». Les deux faits sont
+cohérents — ce sont **deux chemins de code entièrement différents** :
+
+- en **web** (Safari, localhost, le site), `signInWithOAuth` redirige la page et
+  Supabase relit le jeton au retour. Rien d'autre n'est nécessaire ;
+- en **natif**, il n'y a pas de page à rediriger. `src/compte-natif.js` ouvre un Safari
+  View Controller (plugin `Browser`), écoute le lien profond du retour (plugin `App`)
+  et pose la session à la main. Le message venait de là : **les deux greffons
+  n'étaient pas installés**, et le garde-fou en tête de `connecteOAuthNatif` faisait
+  exactement son travail.
+
+Trois pièces, toutes nécessaires, aucune suffisante :
+
+1. **`@capacitor/browser` et `@capacitor/app`** en dépendances, puis `npx cap update
+   ios` pour les inscrire dans `ios/App/CapApp-SPM/Package.swift` — ce fichier est
+   versionné, et c'est lui qui décide de ce que la compilation embarque. Sans cette
+   ligne, l'IPA est compilé sans le code natif et `Capacitor.Plugins.Browser` n'existe
+   pas. (Même règle que pour Filesystem et Share, déjà notée plus haut.)
+2. **Le schéma d'URL dans `Info.plist`** (`CFBundleURLTypes` → `unydex`). Sans lui,
+   iOS ne sait à qui remettre `unydex://auth` : la connexion aboutirait côté Google et
+   l'application ne l'apprendrait jamais. C'est le piège le plus silencieux des trois —
+   rien n'échoue, il ne se passe simplement rien.
+3. **`unydex://auth` dans les URL de redirection de Supabase** (Authentication → URL
+   Configuration). Une redirection non listée est ignorée : Supabase renvoie alors
+   vers le *Site URL*, et la fenêtre afficherait le site web au lieu de rendre la main
+   à l'application. Celle-là est côté tableau de bord, pas dans le dépôt.
+
+Google, lui, n'a rien à savoir du schéma : il ne voit que l'adresse de rappel de
+Supabase, et c'est Supabase qui redirige ensuite vers `unydex://auth`.
+
+Vérifié ici : les six greffons sont inscrits dans `Package.swift`, le `plist` reste
+équilibré et déclare bien `unydex`, et **aucun des deux greffons ne fuit dans le
+bundle web** — ils sont lus sur `window.Capacitor.Plugins`, jamais importés.
+
 ### Sauvegarde des boîtes et des équipes dans le compte (02/10/2026)
 
 Demandée telle quelle : « je veux sauvegarder les boîtes et les équipes dans le compte

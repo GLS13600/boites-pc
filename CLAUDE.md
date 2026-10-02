@@ -1900,6 +1900,11 @@ Trois pièces, toutes nécessaires, aucune suffisante :
 Google, lui, n'a rien à savoir du schéma : il ne voit que l'adresse de rappel de
 Supabase, et c'est Supabase qui redirige ensuite vers `unydex://auth`.
 
+Au passage, les deux écoutes (`appUrlOpen`, `browserFinished`) sont désormais posées
+AVANT d'ouvrir la fenêtre : `addListener` rend une promesse — il faut un aller-retour
+par le pont natif —, et ouvrir d'abord laissait un court instant pendant lequel un
+retour n'aurait été entendu par personne, laissant la connexion bloquée sans erreur.
+
 Vérifié ici : les six greffons sont inscrits dans `Package.swift`, le `plist` reste
 équilibré et déclare bien `unydex`, et **aucun des deux greffons ne fuit dans le
 bundle web** — ils sont lus sur `window.Capacitor.Plugins`, jamais importés.

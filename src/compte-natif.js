@@ -29,41 +29,42 @@ export async function connecteOAuthNatif(c, fournisseur, t) {
   });
   if (error || !data?.url) return { erreur: error?.message ?? t('cpteOAuthEchec') };
 
-  return new Promise((resolve) => {
-    let fini = false;
-    const termine = async (resultat) => {
-      if (fini) return;
-      fini = true;
-      ecoute?.remove?.();
-      fermeture?.remove?.();
-      try { await Browser.close(); } catch { /* déjà fermé */ }
-      resolve(resultat);
-    };
+  let fini = false;
+  let ecoute, fermeture, resoudre;
+  const fin = new Promise((r) => { resoudre = r; });
 
-    // Le retour : Supabase renvoie un `code` (PKCE) à échanger contre une session.
-    const ecoutePromesse = App.addListener('appUrlOpen', async ({ url }) => {
-      if (!url?.startsWith(SCHEMA)) return;
-      const u = new URL(url);
-      const code = u.searchParams.get('code');
-      const refus = u.searchParams.get('error_description') || u.searchParams.get('error');
-      if (refus) return termine({ erreur: refus });
-      if (!code) return termine({ erreur: t('cpteOAuthEchec') });
-      const { error: e2 } = await c.auth.exchangeCodeForSession(code);
-      termine(e2 ? { erreur: e2.message } : { ok: true });
-    });
+  const termine = async (resultat) => {
+    if (fini) return;
+    fini = true;
+    ecoute?.remove?.();
+    fermeture?.remove?.();
+    try { await Browser.close(); } catch { /* déjà fermé */ }
+    resoudre(resultat);
+  };
 
-    // Fermer la fenêtre sans aller au bout n'est pas une erreur : on annule, sans
-    // message d'échec — l'utilisateur sait très bien ce qu'il vient de faire.
-    const fermePromesse = Browser.addListener('browserFinished', () => termine({ annule: true }));
-
-    let ecoute, fermeture;
-    Promise.all([ecoutePromesse, fermePromesse]).then(([a, b]) => {
-      ecoute = a; fermeture = b;
-      if (fini) { a?.remove?.(); b?.remove?.(); }
-    });
-
-    Browser.open({ url: data.url, presentationStyle: 'popover' });
+  // Le retour : Supabase renvoie un `code` (PKCE) à échanger contre une session.
+  //
+  // LES DEUX ÉCOUTES SONT POSÉES AVANT D'OUVRIR LA FENÊTRE. `addListener` rend une
+  // promesse — il faut un aller-retour par le pont natif —, et ouvrir d'abord
+  // laisserait un court instant pendant lequel un retour ne serait entendu par
+  // personne. La connexion resterait alors bloquée, fenêtre ouverte, sans erreur.
+  ecoute = await App.addListener('appUrlOpen', async ({ url }) => {
+    if (!url?.startsWith(SCHEMA)) return;
+    const u = new URL(url);
+    const code = u.searchParams.get('code');
+    const refus = u.searchParams.get('error_description') || u.searchParams.get('error');
+    if (refus) return termine({ erreur: refus });
+    if (!code) return termine({ erreur: t('cpteOAuthEchec') });
+    const { error: e2 } = await c.auth.exchangeCodeForSession(code);
+    termine(e2 ? { erreur: e2.message } : { ok: true });
   });
+
+  // Fermer la fenêtre sans aller au bout n'est pas une erreur : on annule, sans
+  // message d'échec — l'utilisateur sait très bien ce qu'il vient de faire.
+  fermeture = await Browser.addListener('browserFinished', () => termine({ annule: true }));
+
+  await Browser.open({ url: data.url, presentationStyle: 'popover' });
+  return fin;
 }
 
 // ---------------------------------------------------------------- Sign in with Apple

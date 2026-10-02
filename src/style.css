@@ -3056,6 +3056,26 @@ img {
 .cpte-edite-btns button:active { transform: scale(0.92); }
 .cpte-edite-btns button[disabled] { opacity: 0.5; }
 
+/* ---- Panneau « garder laquelle ? » ----
+   Il s'ouvre quand l'appareil ET le compte portent une collection, et qu'elles
+   diffèrent. Les deux réponses sont de MÊME POIDS — aucune n'est « primaire » : on ne
+   pousse pas vers l'une ou l'autre quand l'autre va être remplacée. */
+.cpte-choix { display: grid; gap: var(--e-2); margin: var(--e-3) 0; }
+.cpte-opt {
+  display: grid;
+  gap: 2px;
+  padding: var(--e-3) var(--e-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md);
+  background: var(--panel);
+  text-align: left;
+  transition: transform var(--d-court) var(--c-ressort), background var(--d-court) ease;
+}
+.cpte-opt b { font-size: var(--t-corps); font-weight: 600; }
+.cpte-opt small { font-size: var(--t-petit); color: var(--muted); }
+.cpte-opt:active { transform: scale(0.985); background: var(--rule-soft); }
+.cpte-plus-tard { width: 100%; color: var(--muted); }
+
 /* ---- Panneau « choisir une photo de profil » ----
    L'aperçu et le bouton d'enregistrement sont COLLÉS en haut : la grille fait
    plusieurs écrans, et il ne faut pas remonter pour valider son choix. Les marges

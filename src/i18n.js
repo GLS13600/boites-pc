@@ -612,6 +612,13 @@ const TEXTES = {
     syncPlusTard: 'Décider plus tard',
     syncLocal: 'Sur cet appareil',
     syncServeur: 'Sur le compte',
+    // -- Ligne d'état, dans les Réglages
+    syncBloc: 'Sauvegarde en ligne',
+    syncJamais: 'Boîtes et équipes partiront au prochain changement.',
+    syncEnCours: 'Envoi en cours…',
+    syncLe: (quand) => `Boîtes et équipes envoyées le ${quand}.`,
+    syncErreur: 'Dernier envoi manqué. Il repartira tout seul.',
+    syncFaite: 'Collection sauvegardée dans ton compte.',
   },
 
   // ================================================================== ANGLAIS
@@ -981,6 +988,12 @@ const TEXTES = {
     syncPlusTard: 'Decide later',
     syncLocal: 'On this device',
     syncServeur: 'On the account',
+    syncBloc: 'Online backup',
+    syncJamais: 'Boxes and teams will go up on the next change.',
+    syncEnCours: 'Uploading…',
+    syncLe: (quand) => `Boxes and teams sent on ${quand}.`,
+    syncErreur: 'Last upload failed. It will go again on its own.',
+    syncFaite: 'Collection saved to your account.',
   },
 
   // ================================================================= JAPONAIS
@@ -1350,5 +1363,11 @@ const TEXTES = {
     syncPlusTard: 'あとで 決める',
     syncLocal: 'この端末',
     syncServeur: 'アカウント',
+    syncBloc: 'オンライン保存',
+    syncJamais: 'ボックスと てもちは 次の 変更で 送られます。',
+    syncEnCours: '送信中…',
+    syncLe: (quand) => `ボックスと てもちを ${quand} に 送りました。`,
+    syncErreur: '前回の 送信に 失敗。あとで やり直します。',
+    syncFaite: 'コレクションを アカウントに 保存しました。',
   },
 };

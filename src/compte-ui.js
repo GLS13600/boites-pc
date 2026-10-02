@@ -24,6 +24,7 @@ import {
   changePseudo, changeAvatar, supprimeCompte, pseudoDisponible, PSEUDO_RE, sb,
   revientDeConnexion, erreurDeConnexion,
 } from './compte.js';
+import { etatSync, surSync, synchroniseMaintenant, suitLeCompte } from './sync.js';
 
 const AVATAR_DEFAUT = '25';
 const MAX_AVATARS = 120;
@@ -38,7 +39,8 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
     occupe: false,
     pseudoEdit: false,   // le pseudo est en cours de modification, sur place
     pseudoEtat: null,    // 'libre' | 'pris' | 'invalide'
-    avatarOuvert: false,
+    panneau: null,       // 'avatar' | 'fusion' | null — le panneau n'en montre qu'un
+    fusion: null,        // { infos, resoudre } quand on arbitre deux collections
     avatarQ: '',
     avatarChoix: null,   // choix EN ATTENTE de validation, jamais encore enregistré
     avatarShiny: false,
@@ -67,6 +69,10 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
 
   // Un rendu suffit : le bloc est reconstruit avec le reste de la page.
   surChangement(() => { ui.erreur = null; rafraichit(); });
+  // La ligne « envoyée à … » resterait figée sans cela.
+  surSync(() => rafraichit());
+  // Et c'est ici qu'on arbitre, à l'arrivée d'une session.
+  suitLeCompte(demandeFusion);
 
   const avatarUrl = (cle, shiny) => sprites.still(spriteKey(cle), !!shiny);
   const entreeDe = (cle) => CATALOGUE.find((e) => String(e.id) === String(cle));
@@ -75,7 +81,7 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
   // La page ET le panneau, quand il est ouvert : les deux montrent le même profil.
   function rafraichit() {
     rend();
-    if (ui.avatarOuvert) panneau.maj(htmlPanneauAvatar());
+    if (ui.panneau) panneau.maj(htmlPanneau());
   }
 
   // ------------------------------------------------------------ rendu de la page
@@ -163,6 +169,12 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
     return `
       ${ui.pseudoEdit ? htmlPseudoEnPlace(p) : htmlIdentite(p)}
 
+      <div class="reg-lignes">
+        <button class="reg-ligne" data-cpte-sync ${ui.occupe ? 'disabled' : ''}>
+          ${ICO.nuage}<span><b>${t('syncBloc')}</b><small>${texteSync()}</small></span>
+        </button>
+      </div>
+
       <div class="cpte-liens">
         <button data-cpte-sortir>${t('cpteDeconnexion')}</button>
         <button class="danger" data-cpte-supprimer>${t('cpteSupprimer')}</button>
@@ -208,6 +220,25 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
                   title="${t('cpteEnregistrer')}" aria-label="${t('cpteEnregistrer')}">${ICO.coche}</button>
         </div>
       </form>`;
+  }
+
+  // La date est formatée dans la langue de l'appli : `document.documentElement.lang`
+  // est posé par `chargeLangue`, c'est donc la seule chose à lire ici.
+  const dateCourte = (iso) => {
+    try {
+      return new Date(iso).toLocaleString(document.documentElement.lang || 'fr',
+        { dateStyle: 'short', timeStyle: 'short' });
+    } catch { return ''; }
+  };
+
+  function texteSync() {
+    const e = etatSync();
+    if (e.enCours) return t('syncEnCours');
+    // Un échec n'est PAS une alerte : l'envoi repartira au prochain changement, et la
+    // collection locale n'a rien perdu. On le dit, sans dramatiser.
+    if (e.erreur) return t('syncErreur');
+    if (!e.envoyeLe) return t('syncJamais');
+    return t('syncLe', dateCourte(e.envoyeLe));
   }
 
   // ------------------------------------------------------------ panneau de l'avatar
@@ -261,18 +292,25 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
       <div class="cpte-grille">${htmlPicks()}</div>`;
   }
 
+  const htmlPanneau = () => (ui.panneau === 'fusion' ? htmlPanneauFusion() : htmlPanneauAvatar());
+
   function ouvreAvatar() {
     const p = etat.profil ?? {};
-    ui.avatarOuvert = true;
+    ui.panneau = 'avatar';
     ui.avatarQ = '';
     ui.avatarChoix = p.avatar ?? AVATAR_DEFAUT;
     ui.avatarShiny = !!p.avatar_shiny;
-    panneau.ouvre(htmlPanneauAvatar());
+    panneau.ouvre(htmlPanneau());
   }
 
   // Appelé par main.js : le panneau se ferme aussi par le voile et par le
   // glissement vers le bas, qu'on ne voit pas d'ici.
-  function panneauFerme() { ui.avatarOuvert = false; }
+  // Fermer le panneau d'arbitrage SANS avoir choisi vaut « plus tard » : on ne
+  // touche à rien, ni ici ni sur le serveur, et la question se reposera.
+  function panneauFerme() {
+    ui.panneau = null;
+    if (ui.fusion) { const f = ui.fusion; ui.fusion = null; f.resoudre('rien'); }
+  }
 
   // Un choix ne redessine QUE ce qui change : refaire le panneau entier rendrait la
   // frappe et le défilement de la grille désagréables.
@@ -292,6 +330,50 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
   function majPicks() {
     const grille = panneau.corps()?.querySelector('.cpte-grille');
     if (grille) grille.innerHTML = htmlPicks();
+  }
+
+  // ------------------------------------------------------------ arbitrage
+  //
+  // Appelé par sync.js quand L'APPAREIL ET LE COMPTE portent tous deux une
+  // collection, et qu'elles diffèrent. On ne tranche jamais à la place de
+  // l'utilisateur : ce sont des centaines d'heures de jeu, et l'une des deux va
+  // être remplacée. Les deux sont donc résumées, avec la date et l'appareil.
+  function demandeFusion(infos) {
+    return new Promise((resoudre) => {
+      ui.fusion = { infos, resoudre };
+      ui.panneau = 'fusion';
+      panneau.ouvre(htmlPanneau());
+    });
+  }
+
+  // Mise au point : ouvrir l'arbitrage sans serveur, avec les chiffres qu'on veut.
+  // Même idiome que `window.__suivi` et `window.__ia` du scan, et retiré du build.
+  if (import.meta.env.DEV) {
+    window.__fusion = (infos) => demandeFusion(infos ?? {
+      quand: new Date().toISOString(),
+      appareil: 'iPhone',
+      local: { captures: 342, equipes: 2 },
+      serveur: { captures: 310, equipes: 1 },
+    });
+  }
+
+  function htmlPanneauFusion() {
+    const { infos } = ui.fusion ?? { infos: { local: {}, serveur: {} } };
+    const resume = (c) => t('syncResume', c.captures ?? 0, c.equipes ?? 0);
+    return `
+      <h2 class="bs-title">${t('syncTitre')}</h2>
+      <p class="reg-aide">${esc(t('syncTexte', dateCourte(infos.quand), infos.appareil || ''))}</p>
+      <div class="cpte-choix">
+        <button class="cpte-opt" data-cpte-fusion="local">
+          <b>${t('syncGarderLocal')}</b>
+          <small>${esc(resume(infos.local))}</small>
+        </button>
+        <button class="cpte-opt" data-cpte-fusion="serveur">
+          <b>${t('syncGarderServeur')}</b>
+          <small>${esc(resume(infos.serveur))}</small>
+        </button>
+      </div>
+      <button class="btn cpte-plus-tard" data-cpte-fusion="rien">${t('syncPlusTard')}</button>`;
   }
 
   // ------------------------------------------------------------ interactions
@@ -320,6 +402,25 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
       }
 
       if (e.target.closest('[data-cpte-avatar]')) return ouvreAvatar();
+
+      const fusion = e.target.closest('[data-cpte-fusion]');
+      if (fusion) {
+        const choix = fusion.dataset.cpteFusion;
+        const f = ui.fusion;
+        ui.fusion = null;
+        ui.panneau = null;
+        panneau.ferme();
+        f?.resoudre(choix);
+        return;
+      }
+
+      // Envoi immédiat, à la demande. L'envoi automatique se tait ; celui-ci répond,
+      // parce qu'on l'a demandé pour être rassuré.
+      if (e.target.closest('[data-cpte-sync]')) return lance(async () => {
+        const r = await synchroniseMaintenant();
+        if (r.ok) ui.message = t('syncFaite');
+        return r;
+      });
       if (e.target.closest('[data-cpte-shiny]')) {
         ui.avatarShiny = !ui.avatarShiny;
         const b = panneau.corps()?.querySelector('[data-cpte-shiny]');
@@ -333,7 +434,7 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
 
       if (e.target.closest('[data-cpte-valide]')) return lance(async () => {
         const r = await changeAvatar(ui.avatarChoix ?? AVATAR_DEFAUT, ui.avatarShiny, t);
-        if (r.ok) panneau.ferme();
+        if (r.ok) panneau.ferme();   // `panneauFerme` suit, par le rappel de main.js
         return r;
       });
 

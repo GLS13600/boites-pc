@@ -147,6 +147,9 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 |---|---|
 | `src/main.js` | Toute la logique : état, rendu, gestes, fiche |
 | `src/i18n.js` | Traduction : textes d'interface et surcouche des données |
+| `src/compte.js` | Compte Supabase : session, profil, OAuth |
+| `src/compte-ui.js` | Le bloc Compte des Réglages et ses panneaux |
+| `src/sync.js` | Sauvegarde de la collection dans le compte |
 | `src/data/i18n/en.json` | Surcouche anglaise, **générée**, 1,7 Mo |
 | `src/data/i18n/ja.json` | Surcouche japonaise, **générée**, 1,9 Mo |
 | `scripts/fetch-i18n.mjs` | Produit ces deux surcouches (`npm run fetch-i18n`) |
@@ -1863,6 +1866,91 @@ Vérifié dans l'aperçu : retour avec `?error=…` → les Réglages s'ouvrent,
 « Ce mode de connexion n'est pas encore activé côté serveur. » reste affiché et l'URL
 est nettoyée ; retour avec `?code=…` → « Connexion en cours… » puis l'état réel, URL
 nettoyée ; repère seul → les Réglages s'ouvrent et le repère est consommé.
+
+### Sauvegarde des boîtes et des équipes dans le compte (02/10/2026)
+
+Demandée telle quelle : « je veux sauvegarder les boîtes et les équipes dans le compte
+utilisateur ». `src/sync.js` était écrit depuis la mise en place des comptes mais
+n'était branché à rien ; il l'est désormais.
+
+**La règle qui prime : `localStorage` reste la SOURCE DE VÉRITÉ**, le serveur n'est
+qu'une copie. Aucune écriture n'attend le réseau, aucune interface ne montre de
+sablier, et un échec d'envoi ne casse rien — il repart au changement suivant. Capturer
+un Pokémon dans le métro marche exactement comme avant.
+
+- **Une seule ligne par compte, un seul objet JSON** (`public.collections`), et c'est
+  EXACTEMENT la charge de l'export : `donneesCompletes()` sert aux deux, et
+  `appliqueDonnees()` relit indifféremment un fichier ou ce qui vient du compte. Le
+  serveur n'a donc rien à traduire, et l'import accepte toujours les anciens formats.
+  - `donneesCompletes()` ne porte **pas de date** — c'est l'export qui l'ajoute au
+    fichier. La synchronisation compare deux charges pour savoir s'il y a quelque
+    chose à envoyer, et un horodatage les rendrait toujours différentes : on
+    renverrait la collection entière à chaque capture.
+  - Ces deux fonctions sont nées de `exportTout` / `importTout`, dont elles reprennent
+    le corps **tel quel**. `importTout` ne fait plus que choisir le fichier et annoncer
+    le résultat.
+- **`marqueChange()` est accroché aux CINQ écritures locales** (`save`, `saveOrder`,
+  `saveBoxes`, `saveOrdreOnglets`, `saveCombat`), plus les trois préférences qui n'en
+  passent pas par là (vue chromatique, thème, langue). C'est le seul endroit à tenir :
+  ces fonctions sont les seules portes d'entrée de la progression dans `localStorage`,
+  et les accrocher là évite d'y penser aux quelque soixante points d'appel.
+- **L'envoi est différé de 2,5 s** : ranger une boîte, c'est trente captures en vingt
+  secondes, et autant de requêtes n'apprendraient rien de plus au serveur.
+- **Sans compte connecté, `marqueChange()` rend la main immédiatement.** Vérifié dans
+  l'aperçu : deux captures, déconnecté, **zéro requête** vers Supabase. L'application
+  reste exactement ce qu'elle était pour qui n'a pas de compte.
+
+#### Quand les deux côtés divergent
+
+C'est le seul moment délicat, et il n'arrive qu'À LA CONNEXION. Trois cas :
+
+- rien sur le serveur → on envoie le local, sans rien demander ;
+- rien en local → on prend le serveur, sans rien demander ;
+- **les deux portent quelque chose → ON DEMANDE.** Un panneau résume les deux
+  collections (captures, équipes), dit d'où et de quand vient celle du compte, et
+  propose trois réponses : garder celle de l'appareil, prendre celle du compte,
+  décider plus tard. Écraser des centaines d'heures de jeu en silence serait
+  impardonnable, et c'est la seule raison pour laquelle ce panneau existe.
+  - **Fermer sans répondre vaut « plus tard »** — le voile, le glissement vers le
+    bas : on ne touche alors à rien, ni ici ni sur le serveur, et la question se
+    reposera à la connexion suivante.
+  - Les deux réponses ont le **même poids visuel** : aucune n'est « primaire », on ne
+    pousse pas vers l'une quand l'autre va être remplacée.
+- Après avoir pris la collection du serveur, on **relit l'état réel** pour marquer ce
+  qui est « déjà envoyé », au lieu de recopier l'objet reçu : `jsonb` réordonne les
+  clés, le texte comparé ne correspondrait jamais, et la collection repartirait à
+  chaque changement.
+- La confrontation n'a lieu qu'au **passage** à un compte connecté : `surChangement`
+  est aussi émis quand le jeton se rafraîchit, toutes les heures, et reposer la
+  question à chaque fois serait insupportable.
+- La déconnexion **oublie ce qu'on croyait envoyé** : se reconnecter doit reconfronter
+  les deux côtés, pas repartir d'une certitude périmée.
+
+#### Ce qui n'est PAS fait, et pourquoi
+
+- **Pas de fusion champ par champ** (CRDT, journal d'opérations) : c'est le DERNIER
+  ÉCRIT qui gagne, et on le dit. Un journal coûterait un schéma, une rejouabilité et
+  une migration des données existantes, pour un cas — deux appareils modifiés hors
+  ligne en même temps — qui n'arrive pas pour un usage personnel.
+- **Pas de rafraîchissement en direct** (`realtime`) : la collection est relue à la
+  connexion, pas à chaque instant. Deux appareils ouverts côte à côte ne se suivent
+  pas en temps réel.
+
+#### Mise au point
+
+Trois crochets de développement, tous retirés du build par Vite (vérifié : zéro
+occurrence dans `dist/`), sur le modèle de `window.__suivi` et `window.__ia` du scan :
+
+- `window.__compte` — l'état du compte, pour simuler une session sans créer de compte ;
+- `window.__fusion(infos)` — ouvre le panneau d'arbitrage sans serveur ;
+- `window.__donnees` — `{ lit, pose }`, le contrat de la synchronisation.
+
+Vérifié dans l'aperçu : la charge envoyée porte bien `id`, `donnees`, `modifie_le` et
+`appareil`, et `donnees` exactement les douze champs de l'export, sans date ;
+`pose` puis `lit` rendent la charge à l'identique — c'est ce qui garantit qu'on ne
+renvoie pas en boucle ; une charge vide, nulle ou textuelle est refusée, un tableau nu
+(le tout premier format d'export) est accepté ; les trois réponses du panneau et sa
+fermeture par le voile résolvent correctement.
 
 ## Traduction : français, anglais, japonais
 

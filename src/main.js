@@ -16,6 +16,9 @@ import NATURES from './data/natures.json';
 import formDesc from './data/form-desc.json';
 import { creeScan } from './scan.js';
 import { creeCompteUI } from './compte-ui.js';
+// La synchronisation ne connaît ni l'état ni les clés de stockage : main.js lui
+// fournit de quoi lire et poser la collection, elle se charge du transport.
+import { brancher as brancheSync, marqueChange } from './sync.js';
 import {
   t, langue, chargeLangue, LANGUES, estLangue, LANGUE_KEY,
   nomKind, obtention, nomMethode, libStat, statLignes, groupesApprentissage,
@@ -290,17 +293,29 @@ const state = {
   })(),
   bs: null, // panneau de la boîte de combat : { mode, slot, emplacement, q }
 };
+// CHAQUE écriture locale prévient la synchronisation. C'est le seul endroit où la
+// brancher : ces cinq fonctions sont les seules portes d'entrée de la progression
+// dans `localStorage`, et les accrocher ici évite d'y penser aux quelque soixante
+// points d'appel. `marqueChange()` ne fait que programmer un envoi différé — sans
+// compte connecté elle rend la main aussitôt, et rien n'attend jamais le réseau.
 const save = () => {
   localStorage.setItem(STORE_KEY, JSON.stringify([...state.caught]));
   localStorage.setItem(SHINY_KEY, JSON.stringify([...state.caughtShiny]));
+  marqueChange();
 };
-const saveOrder = () => localStorage.setItem(ORDER_KEY, JSON.stringify(state.order));
+const saveOrder = () => {
+  localStorage.setItem(ORDER_KEY, JSON.stringify(state.order));
+  marqueChange();
+};
 
 // La vue chromatique tient sa propre collection : c'est un shiny dex à part entière.
 const shinyView = () => state.view === 'shiny';
 const caughtSet = () => (shinyView() ? state.caughtShiny : state.caught);
 const isCaught = (k) => caughtSet().has(k);
-const saveBoxes = () => localStorage.setItem(BOXES_KEY, JSON.stringify(state.boxes));
+const saveBoxes = () => {
+  localStorage.setItem(BOXES_KEY, JSON.stringify(state.boxes));
+  marqueChange();
+};
 
 // Par défaut une génération suit l'ordre du Pokédex ; à la première modification on
 // matérialise la liste et on la stocke en entier. Simple, et robuste au fait que le
@@ -361,8 +376,10 @@ function moveTo(gen, from, to) {
 }
 function resetOrder(gen) { delete state.order[gen]; saveOrder(); }
 
-const saveOrdreOnglets = () =>
+const saveOrdreOnglets = () => {
   localStorage.setItem(ONGLETS_KEY, JSON.stringify(state.ordreOnglets));
+  marqueChange();
+};
 
 // `vers` est le rang D'AFFICHAGE final, une fois l'onglet retiré de la liste —
 // même convention que `bougeBoite`, à ne pas corriger par un `vers - 1`.
@@ -517,6 +534,7 @@ const ICO = {
   importe: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V5m0 0L8 9m4-4l4 4M5 19h14"/></svg>',
   crayon: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5h4L19 9l-4-4L4.5 15.5v4z"/><path d="M14.3 5.7l4 4"/></svg>',
   coche: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  nuage: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18.5a3.9 3.9 0 0 1-.3-7.8 5.2 5.2 0 0 1 10-1.3A3.6 3.6 0 0 1 17.6 18.5z"/><path d="M12 15.5v-5m0 0L9.8 12.7M12 10.5l2.2 2.2"/></svg>',
   croix: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>',
 };
 
@@ -1647,6 +1665,7 @@ app.addEventListener('click', (e) => {
     // La fiche suit la vue : en shiny dex, on veut voir les formes chromatiques.
     state.shiny = shinyView();
     localStorage.setItem(VIEW_KEY, state.view);
+    marqueChange();
     render();
   }
 });
@@ -2372,14 +2391,19 @@ async function remetFichier(nom, objet) {
 //
 // Les champs gardent les noms des anciens exports : un fichier produit par cette
 // version se relit donc aussi par les anciennes, et l'inverse reste vrai.
-function exportTout() {
-  const payload = {
+//
+// `donneesCompletes()` est partagée avec la sauvegarde en ligne (`src/sync.js`) : le
+// serveur reçoit donc exactement ce que l'export écrit, et l'import relit les deux
+// sans distinction. Elle ne porte PAS de date — c'est l'export qui l'ajoute au
+// fichier. La synchronisation compare deux charges pour savoir s'il y a quelque chose
+// à envoyer, et un horodatage les rendrait toujours différentes.
+function donneesCompletes() {
+  return {
     // Simple marqueur de format, jamais relu à l'import : `importTout` reconnaît un
     // fichier à ses CHAMPS, pas à son type. L'application a porté le nom Guiguidex
     // jusqu'au 01/10/2026, et les sauvegardes d'alors se relisent sans rien changer.
     type: 'unydex',
     v: 2,
-    date: new Date().toISOString(),
     // Boîtes
     caught: [...state.caught],
     caughtShiny: [...state.caughtShiny],
@@ -2394,6 +2418,10 @@ function exportTout() {
     theme: state.theme,
     langue: langue(),
   };
+}
+
+function exportTout() {
+  const payload = { ...donneesCompletes(), date: new Date().toISOString() };
   remetFichier(`unydex-${new Date().toISOString().slice(0, 10)}.json`, payload);
 }
 // L'import prend ce qu'il TROUVE : un fichier complet, un ancien export de boîtes
@@ -2403,80 +2431,87 @@ function importTout() {
   const input = Object.assign(document.createElement('input'), { type: 'file', accept: '.json' });
   input.onchange = async () => {
     try {
-      const data = JSON.parse(await input.files[0].text());
-      // Tableau nu = tout premier format, qui ne portait que les captures.
-      const d = Array.isArray(data) ? { caught: data } : data;
-      if (!d || typeof d !== 'object') throw new Error('format');
-      // Des CLÉS, traduites seulement au moment du message : le fichier peut changer la
-      // langue, et la confirmation doit alors partir dans la NOUVELLE.
-      const repris = [];
-
-      if (Array.isArray(d.caught)) {
-        // Les clés de formes cosmétiques sont des chaînes : ne pas tout forcer en nombre.
-        state.caught = new Set(d.caught.map(asKey));
-        state.caughtShiny = new Set((d.caughtShiny || []).map(asKey));
-        state.boxes = d.boxes || {};
-        state.order = d.order || {};
-        save();
-        saveBoxes();
-        saveOrder();
-        repris.push(['partieBoites']);
-      }
-
-      // L'ordre des onglets : repris index par index, comme au chargement.
-      if (Array.isArray(d.onglets)) {
-        const vus = new Set();
-        const liste = d.onglets.filter((i) => Number.isInteger(i) && ONGLETS[i] && !vus.has(i) && vus.add(i));
-        ONGLETS.forEach((_, i) => { if (!vus.has(i)) liste.push(i); });
-        state.ordreOnglets = liste;
-        saveOrdreOnglets();
-      }
-
-      // Les équipes FUSIONNENT : les versions absentes du fichier restent en place.
-      const brut = d.equipes && typeof d.equipes === 'object' && !Array.isArray(d.equipes) ? d.equipes : null;
-      if (brut) {
-        let n = 0;
-        for (const [cle, eq] of Object.entries(brut)) {
-          // Jeu inconnu : on ignore plutôt que de créer une clé fantôme.
-          if (!JEUX.some((v) => v.k === cle) || !Array.isArray(eq)) continue;
-          // Le contenu vient d'un fichier : on le rebâtit à six cases et on écarte
-          // tout ce qui ne ressemble pas à un membre.
-          state.equipes[cle] = Array.from({ length: 6 }, (_, i) => {
-            const m = eq[i];
-            return m && typeof m === 'object' && m.key != null ? m : null;
-          });
-          n++;
-        }
-        if (n) { saveCombat(); repris.push(['partieEquipes', n]); }
-      }
-
-      // Préférences : chacune n'est reprise que si elle est valide.
-      if (JEUX.some((v) => v.k === d.jeu)) { state.jeu = d.jeu; saveCombat(); }
-      if (d.view === 'normal' || d.view === 'shiny') {
-        state.view = d.view;
-        state.shiny = shinyView();
-        localStorage.setItem(VIEW_KEY, state.view);
-      }
-      if (['clair', 'sombre', 'auto'].includes(d.theme)) {
-        state.theme = d.theme;
-        localStorage.setItem(THEME_KEY, state.theme);
-        appliqueTheme();
-      }
-
-      if (!repris.length) throw new Error('vide');
-      // La langue en dernier : elle refait le rendu elle-même, une fois la surcouche
-      // chargée, et le message de confirmation part alors dans la bonne langue.
-      if (estLangue(d.langue) && d.langue !== langue()) {
-        await poseLangueEtRend(d.langue);
-      } else {
-        render();
-      }
+      const repris = await appliqueDonnees(JSON.parse(await input.files[0].text()));
       alert(t('restaure', repris.map(([cle, ...a]) => t(cle, ...a)).join(', ')));
     } catch {
       alert(t('fichierIllisible'));
     }
   };
   input.click();
+}
+
+// Applique une charge, d'où qu'elle vienne : un fichier choisi à la main, ou la
+// collection rapportée du compte. Elle LÈVE sur un contenu inexploitable et rend la
+// liste de ce qui a été repris — c'est à l'appelant de décider s'il faut le dire.
+async function appliqueDonnees(data) {
+  // Tableau nu = tout premier format, qui ne portait que les captures.
+  const d = Array.isArray(data) ? { caught: data } : data;
+  if (!d || typeof d !== 'object') throw new Error('format');
+  // Des CLÉS, traduites seulement au moment du message : le fichier peut changer la
+  // langue, et la confirmation doit alors partir dans la NOUVELLE.
+  const repris = [];
+
+  if (Array.isArray(d.caught)) {
+    // Les clés de formes cosmétiques sont des chaînes : ne pas tout forcer en nombre.
+    state.caught = new Set(d.caught.map(asKey));
+    state.caughtShiny = new Set((d.caughtShiny || []).map(asKey));
+    state.boxes = d.boxes || {};
+    state.order = d.order || {};
+    save();
+    saveBoxes();
+    saveOrder();
+    repris.push(['partieBoites']);
+  }
+
+  // L'ordre des onglets : repris index par index, comme au chargement.
+  if (Array.isArray(d.onglets)) {
+    const vus = new Set();
+    const liste = d.onglets.filter((i) => Number.isInteger(i) && ONGLETS[i] && !vus.has(i) && vus.add(i));
+    ONGLETS.forEach((_, i) => { if (!vus.has(i)) liste.push(i); });
+    state.ordreOnglets = liste;
+    saveOrdreOnglets();
+  }
+
+  // Les équipes FUSIONNENT : les versions absentes du fichier restent en place.
+  const brut = d.equipes && typeof d.equipes === 'object' && !Array.isArray(d.equipes) ? d.equipes : null;
+  if (brut) {
+    let n = 0;
+    for (const [cle, eq] of Object.entries(brut)) {
+      // Jeu inconnu : on ignore plutôt que de créer une clé fantôme.
+      if (!JEUX.some((v) => v.k === cle) || !Array.isArray(eq)) continue;
+      // Le contenu vient d'un fichier : on le rebâtit à six cases et on écarte
+      // tout ce qui ne ressemble pas à un membre.
+      state.equipes[cle] = Array.from({ length: 6 }, (_, i) => {
+        const m = eq[i];
+        return m && typeof m === 'object' && m.key != null ? m : null;
+      });
+      n++;
+    }
+    if (n) { saveCombat(); repris.push(['partieEquipes', n]); }
+  }
+
+  // Préférences : chacune n'est reprise que si elle est valide.
+  if (JEUX.some((v) => v.k === d.jeu)) { state.jeu = d.jeu; saveCombat(); }
+  if (d.view === 'normal' || d.view === 'shiny') {
+    state.view = d.view;
+    state.shiny = shinyView();
+    localStorage.setItem(VIEW_KEY, state.view);
+  }
+  if (['clair', 'sombre', 'auto'].includes(d.theme)) {
+    state.theme = d.theme;
+    localStorage.setItem(THEME_KEY, state.theme);
+    appliqueTheme();
+  }
+
+  if (!repris.length) throw new Error('vide');
+  // La langue en dernier : elle refait le rendu elle-même, une fois la surcouche
+  // chargée, et le message de confirmation part alors dans la bonne langue.
+  if (estLangue(d.langue) && d.langue !== langue()) {
+    await poseLangueEtRend(d.langue);
+  } else {
+    render();
+  }
+  return repris;
 }
 
 // ---------- Boîte de combat ----------
@@ -2520,6 +2555,7 @@ const equipe = () => (state.equipes[state.jeu] ??= EQUIPE_VIDE());
 const saveCombat = () => {
   localStorage.setItem(EQUIPES_KEY, JSON.stringify(state.equipes));
   localStorage.setItem(JEU_KEY, state.jeu);
+  marqueChange();
 };
 
 // ---------- Talents et objets, filtrés par version ----------
@@ -2983,6 +3019,7 @@ function renderReglages() {
 // seule fois — d'où ces deux reconstructions.
 async function poseLangueEtRend(l) {
   await chargeLangue(l, { TYPES, GENS, CLASSES });
+  marqueChange();   // la langue fait partie de la charge sauvegardée
   renommeOnglets();
   construitFormes();
   construitCatalogue();
@@ -3024,6 +3061,7 @@ app.addEventListener('click', (e) => {
   if (th) {
     state.theme = th.dataset.theme;
     localStorage.setItem(THEME_KEY, state.theme);
+    marqueChange();
     appliqueTheme();
     retourHaptique();
     render();
@@ -4631,6 +4669,14 @@ poseLangueEtRend(langue());
 // Le compte se relit au démarrage. `demarre()` rend la main tout de suite quand rien
 // n'est configuré, et n'attend jamais le réseau : le premier rendu n'en dépend pas.
 compteUI.branche(app, compteSheet);
+// La synchronisation reçoit de quoi lire et poser la collection. Elle ne part que
+// s'il y a un compte connecté : sans configuration Supabase, `marqueChange()` est un
+// appel vide, et rien ne change pour qui n'a pas de compte.
+brancheSync({ lit: donneesCompletes, pose: appliqueDonnees });
+
+// Mise au point : le contrat de la synchronisation, pour le vérifier dans l'aperçu
+// sans passer par un fichier ni par un serveur. Retiré du build par Vite.
+if (import.meta.env.DEV) window.__donnees = { lit: donneesCompletes, pose: appliqueDonnees };
 compteUI.demarre().catch((e) => console.error('compte', e));
 
 // ---------- Outil de calage des fonds (développement seulement) ----------

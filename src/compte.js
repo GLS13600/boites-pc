@@ -167,6 +167,10 @@ export const etat = {
   erreur: null,
 };
 
+// Mise au point : l'état du compte, pour simuler une session dans l'aperçu sans créer
+// de vrai compte. Même idiome que `window.__suivi` du scan, et retiré du build.
+if (import.meta.env.DEV) window.__compte = etat;
+
 const abonnes = new Set();
 export function surChangement(f) { abonnes.add(f); return () => abonnes.delete(f); }
 const previens = () => { for (const f of abonnes) { try { f(etat); } catch (e) { console.error(e); } } };

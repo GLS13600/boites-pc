@@ -1,12 +1,14 @@
 # Étiquette de confidentialité App Store — réponses à recopier
 
-App Store Connect → ton application → **App Privacy**. Le questionnaire est long et
-piégeux : une réponse trop large fait apparaître des mentions alarmantes sur ta fiche,
-une réponse trop étroite est une fausse déclaration. Voici les réponses exactes pour
-Unydex **tel qu'il est aujourd'hui**, avec la raison de chacune.
+App Store Connect → l'application → **App Privacy**.
 
-> À refaire si l'application ajoute un jour une mesure d'audience, un partage entre
-> utilisateurs, ou le moindre SDK tiers.
+Le questionnaire est long et ses intitulés sont trompeurs : une réponse trop large
+fait apparaître des mentions alarmantes sur la fiche publique, une réponse trop
+étroite constitue une déclaration inexacte. Le présent document consigne les réponses
+exactes pour Unydex **dans son état actuel**, ainsi que leur justification.
+
+> **À réviser** en cas d'ajout d'un outil de mesure d'audience, d'un partage de
+> données entre utilisateurs, ou de tout kit de développement tiers.
 
 ---
 

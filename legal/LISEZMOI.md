@@ -3,10 +3,11 @@
 Tout ce qu'il faut pour publier Unydex proprement — et, pour un point, ce qui empêche
 de la publier du tout.
 
-**Je ne suis pas juriste.** Ces documents rassemblent des faits vérifiables (ce que
-contient l'application, ce que disent les licences, ce qu'exigent Apple et le RGPD) et
-les mettent en forme. Pour un engagement qui compte — publier sous ton nom et ton
-adresse —, un conseil en propriété intellectuelle vaut son prix.
+**Ces documents ne constituent pas un avis juridique.** Ils réunissent et mettent en
+forme des éléments vérifiables : la composition de l'application, la teneur des
+licences applicables, et les exigences d'Apple et du RGPD. La publication engageant
+l'éditeur sous son nom et son adresse, la consultation d'un conseil en propriété
+intellectuelle est recommandée avant toute mise en ligne.
 
 ---
 
@@ -14,7 +15,7 @@ adresse —, un conseil en propriété intellectuelle vaut son prix.
 
 | Document | À quoi il sert |
 |---|---|
-| **[DROITS-ET-LICENCES.md](DROITS-ET-LICENCES.md)** | **Lis celui-ci en premier.** L'audit de ce que contient l'application et à qui ça appartient. C'est lui qui décide si une publication est possible |
+| **[DROITS-ET-LICENCES.md](DROITS-ET-LICENCES.md)** | **À consulter en premier.** Audit de la composition de l'application et de la titularité des droits. C'est cette pièce qui détermine si une publication est possible |
 | [PUBLICATION.md](PUBLICATION.md) | La liste complète de ce qui bloque, technique et légal, avec l'état et la solution de chaque point, et l'ordre dans lequel s'y prendre |
 
 ## Les documents à publier
@@ -46,21 +47,27 @@ elles s'ouvrent hors ligne.
 
 ## Ce qu'il reste à compléter
 
-Quatre informations seulement, mais aucune n'est facultative. Elles reviennent dans
-plusieurs documents : cherche `[à compléter]`.
+Quatre informations, dont aucune n'est facultative. Elles figurent dans plusieurs
+documents sous la forme de mentions entre crochets et en capitales, du type
+`[ADRESSE POSTALE COMPLÈTE]`. **Tant qu'elles subsistent, les documents ne doivent pas
+être publiés** : une politique de confidentialité sans responsable de traitement
+identifié ne satisfait ni l'article 13 du RGPD, ni la règle 5.1.1 d'Apple.
 
-1. **Identité du responsable** — nom, adresse postale. Voir le point B4 de
-   [PUBLICATION.md](PUBLICATION.md) avant de choisir : elle sera **publiée sur la
-   fiche App Store**.
-2. **Adresse e-mail de contact.** Une adresse dédiée vaut mieux qu'une adresse
-   personnelle : elle se change sans refaire les documents.
-3. **Région du projet Supabase** — à relever dans Project Settings → General.
-4. **Âge minimum du compte** — 16 ans par défaut dans les documents.
+1. **Identité du responsable du traitement** — nom et adresse postale. Le point B4 de
+   [PUBLICATION.md](PUBLICATION.md) est à lire avant de trancher : cette adresse sera
+   **publiée sur la fiche App Store** au titre du règlement sur les services
+   numériques.
+2. **Adresse électronique de contact.** Une adresse dédiée est préférable à une
+   adresse personnelle : elle se modifie sans refonte des documents.
+3. **Région du projet Supabase** — relevée dans Project Settings → General.
+4. **Âge minimum du compte** — fixé à 16 ans dans la rédaction actuelle, avec renvoi
+   à l'âge inférieur éventuellement fixé par la législation nationale.
 
 ## La règle de tenue
 
-Ces documents décrivent le code. **Ils deviennent faux dès que le code change.**
-À vérifier à chaque fois que l'on touche à :
+Ces documents décrivent l'état réel du code. **Ils deviennent inexacts dès que le code
+change**, et un document de conformité inexact est plus dangereux qu'un document
+absent. Une vérification s'impose à chaque modification portant sur :
 
 - une colonne de la base, une table, une politique RLS → [REGISTRE-DES-TRAITEMENTS.md](REGISTRE-DES-TRAITEMENTS.md) et la politique de confidentialité ;
 - un service externe appelé par l'application → le registre, la politique, et l'étiquette App Store ;

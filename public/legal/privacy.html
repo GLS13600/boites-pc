@@ -43,8 +43,20 @@
     border-radius: 0 10px 10px 0;
   }
   blockquote p { margin: .4rem 0; }
-  /* Les tableaux défilent plutôt que de déborder : ces pages se lisent au téléphone. */
-  table { width: 100%; border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+  /* Ces pages se lisent au téléphone : les tableaux occupent la largeur disponible et
+     leur texte passe à la ligne, plutôt que de déborder et d'imposer un défilement
+     horizontal qui masque la dernière colonne. L'enveloppe garde le débordement sous
+     le coude pour un tableau qui serait un jour trop large. */
+  .tableau { width: 100%; overflow-x: auto; margin: 1rem 0; }
+  /* Largeur FIXE et césure autorisée : en disposition automatique, la plus longue
+     suite de caractères insécables de chaque colonne impose une largeur minimale, et
+     trois colonnes de texte juridique débordaient du cadre — la dernière se trouvait
+     coupée au bord de l’écran. */
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  /* La césure vient AVANT la coupure brutale : sans elle, les colonnes étroites
+     tranchaient au milieu des mots (« d emprisonne-ment »). La page déclare lang="fr",
+     le navigateur coupe donc aux syllabes françaises. */
+  th, td { -webkit-hyphens: auto; hyphens: auto; overflow-wrap: break-word; }
   th, td { border: 1px solid var(--rule); padding: 8px 10px; text-align: left; vertical-align: top; font-size: .92rem; }
   th { background: var(--panel); font-weight: 700; }
   footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .85rem; }
@@ -53,116 +65,129 @@
 </head>
 <body>
 <main>
-<h1>Privacy Policy — Unydex</h1>
-<p><strong>Last updated: 2 October 2026.</strong> Unydex is a personal collection tracker. This policy states exactly what it does with your data — and, above all, everything it does not do.</p>
+<h1>Privacy Policy</h1>
+<p><strong>Version 1.0 — Effective 4 October 2026</strong></p>
+<h2>Preamble</h2>
+<p>This policy informs users of the Unydex application (the "Application") of the processing of personal data carried out by the publisher, in accordance with Articles 12 to 14 of Regulation (EU) 2016/679 of 27 April 2016 (the "GDPR") and with French Act No. 78-17 of 6 January 1978, as amended.</p>
+<p>It forms an integral part of the <a href="conditions.html">Terms of Use</a>.</p>
 <blockquote>
-<p>The French version, <a href="confidentialite.html">POLITIQUE-CONFIDENTIALITE.md</a>,</p>
-<p>is the reference text. This translation is provided for App Review and for users</p>
-<p>outside France.</p>
+<p>The French version, <a href="confidentialite.html">POLITIQUE-CONFIDENTIALITE.md</a>, is the authoritative text. This translation is provided for information purposes. In the event of any discrepancy, the French version prevails.</p>
 </blockquote>
+<p><strong>Summary.</strong> The Application works entirely offline. Where no account is created, <strong>no data leaves the user's device</strong>: no network request is issued. Creating an account is optional and serves only to let the user recover their collection on another device. The Application contains <strong>no advertising, no trackers and no analytics</strong>. No data is sold, rented or disclosed to third parties for commercial purposes.</p>
 <hr />
-<h2>In short</h2>
+<h2>Article 1 — Data controller</h2>
+<p>The controller, within the meaning of Article 4(7) GDPR, is:</p>
 <ul>
-<li><strong>Without an account, nothing leaves your device.</strong> No network request, no data sent, no analytics. The app works entirely offline.</li>
-<li><strong>The account is optional.</strong> It only serves to find your collection again on another device and to keep it safe from a reinstall.</li>
-<li><strong>No advertising, no trackers, no analytics</strong>, in the app or on the website.</li>
-<li><strong>No data is sold, rented or passed to third parties</strong> for commercial purposes.</li>
-<li><strong>The camera transmits nothing.</strong> Recognition runs on your phone.</li>
-<li><strong>You can delete everything from inside the app</strong>, immediately and permanently.</li>
+<li><strong>Name</strong>: [FULL NAME OR COMPANY NAME]</li>
+<li><strong>Address</strong>: [FULL POSTAL ADDRESS]</li>
+<li><strong>Email</strong>: [CONTACT EMAIL ADDRESS]</li>
+</ul>
+<p>The appointment of a data protection officer is not required under Article 37 GDPR: the processing carried out involves neither regular and systematic monitoring on a large scale, nor large-scale processing of data falling within Article 9 GDPR.</p>
+<hr />
+<h2>Article 2 — Processing where no account is created</h2>
+<p>Where no account is created, the user's progress — saved entries, box organisation and customisation, teams, display preferences — is stored <strong>solely in the Application's local storage</strong> on the device. This information is transmitted to no recipient and is subject to no processing by the controller.</p>
+<p>All descriptive information displayed by the Application is embedded within it. No request is made to any third-party server in order to display it.</p>
+<h3>2.1. Camera-based recognition feature</h3>
+<p>The Application includes an image-recognition feature using the device's rear camera.</p>
+<ul>
+<li>Image processing is <strong>performed entirely on the device</strong>, by means of a machine learning model embedded in the Application.</li>
+<li><strong>No image is transmitted to any server, to the publisher or to any third party. No image is stored</strong>: frames are analysed and immediately discarded.</li>
+<li>Camera access is subject to an operating-system permission request. It may be refused or revoked at any time in the device settings, with no effect on the rest of the Application.</li>
 </ul>
 <hr />
-<h2>1. Who is responsible</h2>
-<p>The data controller is:</p>
+<h2>Article 3 — Data processed where an account is created</h2>
+<h3>3.1. Categories of data</h3>
 <ul>
-<li><strong>Name</strong>: <em>[to be completed]</em></li>
-<li><strong>Address</strong>: <em>[to be completed]</em></li>
-<li><strong>Contact</strong>: <em>[to be completed]</em></li>
+<li><strong>Identification data</strong> — email address; password, stored as a hash (bcrypt) and never accessible in clear text; internal identifier (UUID). <em>Source: the user, or their identity provider.</em></li>
+<li><strong>Profile data</strong> — username; profile picture, consisting of a <strong>numeric identifier</strong> and not of an image file; creation and modification dates. <em>Source: the user, or derived on sign-up.</em></li>
+<li><strong>Collection</strong> — saved entries, box organisation and customisation, display order, teams, usage preferences (game version, display mode, theme, language). <em>Source: use of the Application.</em></li>
+<li><strong>Technical data</strong> — date of last upload; <strong>type</strong> of originating device ("iPhone" or "Browser"), excluding any device identifier or device name. <em>Source: automatic.</em></li>
 </ul>
+<h3>3.2. Sign-in through an identity provider</h3>
+<p>Where the user chooses to sign in using a Google or Apple account, the identity provider discloses to the controller <strong>the email address and, where applicable, the name</strong> associated with that account, and nothing else. No other access to the provider's account is requested: not to contacts, calendar, files or messages.</p>
+<p>Apple's authentication service allows the user to <strong>hide their email address</strong>; in that case the controller only ever receives a relay address.</p>
+<p>Sign-in with the identity provider takes place directly between the user and that provider. Processing carried out by the provider on that occasion is governed by its own privacy policy.</p>
+<h3>3.3. Data not collected</h3>
+<p>No collection is made of: location data, address book, calendar, photo library, microphone, health data, advertising identifiers, browsing history, list of installed applications, or payment data. The Application contains no in-app purchases.</p>
+<h3>3.4. No profiling or automated decision-making</h3>
+<p>No profiling within the meaning of Article 4(4) GDPR is carried out. No decision producing legal effects concerning the user or significantly affecting them is taken on the basis of automated processing, within the meaning of Article 22 GDPR.</p>
+<h3>3.5. No marketing</h3>
+<p>The data collected is not used for any marketing purpose. No advertising message or newsletter is sent to the user.</p>
+<h3>3.6. No advertising tracking</h3>
+<p>No data is combined with data held by third parties, disclosed to a data broker, or used for targeted advertising. The Application carries out no tracking within the meaning of Apple's App Tracking Transparency framework and accordingly requests no permission in that respect.</p>
 <hr />
-<h2>2. What the app does WITHOUT an account</h2>
-<p>Nothing leaves the device. Your progress — caught Pokémon, boxes, box names and wallpapers, teams, preferences — is stored <strong>only in the app's local storage</strong>. Nobody but you reads it, and it disappears if you uninstall the app without exporting it first. All game data (sprites, descriptions, locations, moves, sounds) is **bundled inside the app**: it queries no server to display them.</p>
-<h3>The camera</h3>
-<p>The Scan view uses the rear camera to recognise what you point it at.</p>
+<h2>Article 4 — Purposes and legal bases</h2>
+<div class="tableau"><table><thead><tr><th>Purpose</th><th>Legal basis</th></tr></thead><tbody>
+<tr><td>Creating, managing and authenticating the account</td><td>Performance of a contract — Art. 6(1)(b) GDPR</td></tr>
+<tr><td>Storing and restoring the collection on another device</td><td>Performance of a contract — Art. 6(1)(b) GDPR</td></tr>
+<tr><td>Checking the availability of a username</td><td>Performance of a contract — Art. 6(1)(b) GDPR</td></tr>
+<tr><td>System security, technical logging, abuse prevention</td><td>Legitimate interests — Art. 6(1)(f) GDPR</td></tr>
+<tr><td>Compliance with the controller's legal obligations</td><td>Legal obligation — Art. 6(1)(c) GDPR</td></tr>
+</tbody></table></div>
+<p>Consent is not relied upon as a legal basis: creating an account is optional, and the only data processed is that necessary to provide the service expressly requested. A user who does not create an account transmits no data.</p>
+<p><strong>Mandatory nature of the data.</strong> The data referred to in Article 3.1 is necessary for the creation and operation of the account. Failure to provide it means the user cannot benefit from the online features; the Application remains fully usable without an account.</p>
+<hr />
+<h2>Article 5 — Recipients and processors</h2>
+<p>The data is intended for the controller alone and, strictly for the purposes of performing their services, for the following processors:</p>
 <ul>
-<li>Analysis happens <strong>entirely on your phone</strong>, through a neural network embedded in the app.</li>
-<li><strong>No image is ever sent anywhere.</strong> None is stored: frames are analysed and discarded on the fly.</li>
-<li>Camera access is requested by iOS and can be refused or revoked at any time in the phone's settings; the rest of the app keeps working.</li>
+<li><strong>Supabase, Inc.</strong> — database hosting and authentication service. Safeguards: data processing addendum and public list of sub-processors; European Commission standard contractual clauses.</li>
+<li><strong>GitHub, Inc.</strong> — hosting of the website and application files. Safeguards: GitHub data protection addendum.</li>
+<li><strong>Apple Inc.</strong> — application distribution and, where applicable, authentication service. Safeguards: Apple Media Services Terms and Conditions.</li>
 </ul>
+<p>Each processor acts on the controller's documented instructions, under the conditions of Article 28 GDPR.</p>
+<p>Data may further be disclosed to any competent administrative or judicial authority making a request under the conditions provided for by law.</p>
+<p><strong>No data is sold, rented or exchanged for commercial purposes.</strong></p>
 <hr />
-<h2>3. What the app does WITH an account</h2>
-<p>Creating an account is a choice. As long as you don't, the section above describes everything that happens.</p>
-<h3>3.1. Data processed</h3>
-<table><thead><tr><th>Data</th><th>Why</th><th>Where it comes from</th></tr></thead><tbody>
-<tr><td><strong>Email address</strong></td><td>Identify your account, confirm sign-up, reset your password</td><td>You, or your Google / Apple account</td></tr>
-<tr><td><strong>Password</strong></td><td>Sign you in. It is <strong>hashed</strong> (bcrypt): never stored or readable in clear text</td><td>You</td></tr>
-<tr><td><strong>Internal identifier</strong> (UUID)</td><td>Link your profile and collection to your account</td><td>Generated automatically</td></tr>
-<tr><td><strong>Username</strong></td><td>Identify you inside the app</td><td>You, or derived from your email / Google name at sign-up</td></tr>
-<tr><td><strong>Profile picture</strong></td><td>Display it. It is <strong>a Pokémon number</strong>, not an image: nothing is uploaded</td><td>You</td></tr>
-<tr><td><strong>Your collection</strong></td><td>Find it again on another device: caught Pokémon, boxes, order, teams, and preferences (game, view, theme, language)</td><td>Your use of the app</td></tr>
-<tr><td><strong>Device type</strong></td><td>So we can tell you "saved from iPhone" when two devices disagree. It is the <strong>type</strong> ("iPhone" or "Browser"), never an identifier or a device name</td><td>Derived</td></tr>
-<tr><td><strong>Last upload time</strong></td><td>Know which of two collections is the more recent</td><td>Automatic</td></tr>
-</tbody></table>
-<p>If you sign in with <strong>Google</strong> or <strong>Apple</strong>, the provider passes your email address and, where applicable, your name — nothing else. Unydex requests no other access to your Google or Apple account: no contacts, no calendar, no files. With Apple you may choose to <strong>hide your address</strong>: the app will only ever see an alias.</p>
-<h3>3.2. What is NEVER collected</h3>
-<p>No location, address book, calendar, photos, microphone, health data, advertising identifier, browsing history, list of installed apps, or payment data. The app has no in-app purchases.</p>
-<h3>3.3. No advertising tracking</h3>
-<p>No data is used to track you across other apps or websites. There is **no ad network, no analytics SDK, no pixel**. Under Apple's App Tracking Transparency framework, Unydex <strong>does not track</strong>.</p>
+<h2>Article 6 — Transfers outside the European Union</h2>
+<p>Account data is hosted in the <strong>[PROJECT REGION]</strong> region.</p>
+<p>Where the hosting region is located outside the European Union, or where a sub-processor is established outside the Union, the transfer is governed by the <strong>standard contractual clauses</strong> adopted by the European Commission under Article 46(2)(c) GDPR, incorporated into the relevant processor's data processing addendum, together with supplementary technical measures where appropriate.</p>
+<p>A copy of the applicable safeguards may be obtained on request to the controller.</p>
 <hr />
-<h2>4. Legal basis</h2>
-<table><thead><tr><th>Processing</th><th>Legal basis (GDPR)</th></tr></thead><tbody>
-<tr><td>Creating and keeping the account, signing in</td><td><strong>Performance of a contract</strong> (Art. 6(1)(b)): it is the service you asked for</td></tr>
-<tr><td>Backing up and restoring the collection</td><td><strong>Performance of a contract</strong> (Art. 6(1)(b))</td></tr>
-<tr><td>Host's technical logs, abuse prevention</td><td><strong>Legitimate interests</strong> (Art. 6(1)(f)): keeping the service up and safe</td></tr>
-</tbody></table>
-<p>Consent is deliberately not the basis used: the account is optional, and the data processed is <strong>strictly what is needed</strong> to deliver the service requested. Not creating an account is the way to transmit nothing.</p>
+<h2>Article 7 — Retention periods</h2>
+<div class="tableau"><table><thead><tr><th>Data</th><th>Period</th></tr></thead><tbody>
+<tr><td>Account, profile and collection stored on the servers</td><td>Until the user deletes the account. Erasure is immediate and cascading</td></tr>
+<tr><td>Data stored on the device</td><td>Until the Application is uninstalled, or its data erased by the user</td></tr>
+<tr><td>Hosts' technical logs</td><td>Period set by each host, in the order of a few days</td></tr>
+</tbody></table></div>
+<p>No intermediate archiving is carried out after an account is deleted, and no copy is retained by the controller, save for the hosts' technical backups, whose rotation results in erasure within the periods stated above.</p>
 <hr />
-<h2>5. Who hosts it, and where</h2>
-<p>Account data is hosted by <strong>Supabase</strong> (Supabase, Inc.), acting as a processor within the meaning of Article 28 GDPR.</p>
+<h2>Article 8 — Security</h2>
+<p>The controller implements appropriate technical and organisational measures within the meaning of Article 32 GDPR, in particular:</p>
 <ul>
-<li>Project region: <em>[to be completed]</em>.</li>
-<li>Supabase publishes a <a href="https://supabase.com/legal/customer-resources/data-processing-addendum" target="_blank" rel="noopener">Data Processing Addendum</a> and a <a href="https://supabase.com/legal/customer-resources/subprocessor-list" target="_blank" rel="noopener">sub-processor list</a>.</li>
-<li>If the region is <strong>outside the European Union</strong>, the transfer is covered by the European Commission's <strong>Standard Contractual Clauses</strong>, incorporated into that addendum.</li>
+<li>encryption of all communications (HTTPS);</li>
+<li>storage of passwords as hashes, precluding any retrieval in clear text;</li>
+<li>partitioning enforced <strong>at database level</strong> (row level security), ensuring that an account can read and write only its own records;</li>
+<li>the absence of any privilege attached to the public key embedded in the Application, which by itself grants no access to data;</li>
+<li>restriction of elevated-privilege functions and pinning of their search path.</li>
 </ul>
-<p>The host keeps <strong>technical logs</strong> (IP addresses, request timestamps) for a short period, for security and diagnostics. Unydex does not consult them and builds no profile from them. The site <code>gls13600.github.io</code> is served by <strong>GitHub Pages</strong> (GitHub, Inc.), which keeps its own access logs.</p>
+<p>The username and profile picture are accessible to authenticated accounts, which is what allows the Application to indicate that a username is already taken. <strong>Neither email addresses nor collections are accessible to other users.</strong></p>
+<p>As no system is immune to failure, the controller undertakes, in the event of a personal data breach likely to result in a high risk to the rights and freedoms of data subjects, to inform them under the conditions of Article 34 GDPR, and to notify the breach to the supervisory authority under the conditions of Article 33.</p>
 <hr />
-<h2>6. How long</h2>
-<ul>
-<li><strong>Account and collection</strong>: kept as long as the account exists. Erased <strong>immediately</strong> when it is deleted.</li>
-<li><strong>Local data on the device</strong>: as long as the app is installed. Uninstalling erases it.</li>
-<li><strong>Host logs</strong>: a few days, per Supabase's policy.</li>
-</ul>
-<p>There is <strong>no "just in case" retention</strong> after an account is deleted, and no parallel backup kept on our side.</p>
+<h2>Article 9 — Rights of data subjects</h2>
+<p>The user has, under the conditions and within the limits laid down by the GDPR, the following rights: <strong>access</strong> (Art. 15), <strong>rectification</strong> (Art. 16), <strong>erasure</strong> (Art. 17), <strong>restriction of processing</strong> (Art. 18), <strong>portability</strong> (Art. 20) and <strong>objection</strong> (Art. 21). The user may also issue <strong>directives concerning the fate of their data after death</strong>, pursuant to Article 85 of French Act No. 78-17 of 6 January 1978, as amended.</p>
+<h3>9.1. Exercising rights within the Application</h3>
+<div class="tableau"><table><thead><tr><th>Right</th><th>How</th></tr></thead><tbody>
+<tr><td>Access and portability</td><td>Settings → Backup → "Export all my data". A complete, readable and structured file is provided immediately, with no formality</td></tr>
+<tr><td>Rectification</td><td>Settings → Account: the username and profile picture can be changed directly</td></tr>
+<tr><td>Erasure</td><td>Settings → Account → "Delete my account". Erasure of the account, profile and server-side collection is immediate and permanent</td></tr>
+</tbody></table></div>
+<p>Deleting the account has no effect on the collection stored on the device, which remains accessible offline.</p>
+<h3>9.2. Exercising rights with the controller</h3>
+<p>Other rights are exercised by request to the email address given in Article 1, accompanied by any evidence establishing the requester's identity where there is reasonable doubt. A reply is provided within one month of receipt of the request, extendable by two months where the request is complex, in which case the user is informed of the extension and of the reasons for it.</p>
+<h3>9.3. Complaints</h3>
+<p>A user who considers, having contacted the controller, that their rights are not being respected may lodge a complaint with the French supervisory authority, the <strong>Commission nationale de l'informatique et des libertés</strong> (CNIL), 3 place de Fontenoy, TSA 80715, 75334 Paris Cedex 07, France — <a href="https://www.cnil.fr" target="_blank" rel="noopener">www.cnil.fr</a>, or with the supervisory authority of their Member State of habitual residence.</p>
 <hr />
-<h2>7. Your rights</h2>
-<p>You have the rights of <strong>access</strong>, <strong>rectification</strong>, <strong>erasure</strong>, <strong>restriction</strong>, <strong>objection</strong> and <strong>portability</strong> (GDPR, Art. 15–22). In practice, inside the app:</p>
-<table><thead><tr><th>Right</th><th>How to exercise it</th></tr></thead><tbody>
-<tr><td><strong>Access and portability</strong></td><td>Settings → Backup → <strong>Export all my data</strong>. You get a readable, complete JSON file, immediately, without asking anyone</td></tr>
-<tr><td><strong>Rectification</strong></td><td>Settings → Account: username and picture can be changed in place</td></tr>
-<tr><td><strong>Erasure</strong></td><td>Settings → Account → <strong>Delete my account</strong>. Immediate and permanent: account, profile and server-side collection go together</td></tr>
-<tr><td><strong>Objection, restriction</strong></td><td>Write to the contact address above</td></tr>
-</tbody></table>
-<p>Deleting the account <strong>does not touch</strong> your local collection: it stays on your phone, and the app keeps working without an account. You may lodge a complaint with your national supervisory authority — in France, the <strong>CNIL</strong> (<a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>).</p>
+<h2>Article 10 — Minors</h2>
+<p>Account creation is restricted to persons aged <strong>sixteen (16) years or over</strong>, or the lower age set by the applicable national legislation pursuant to Article 8(1) GDPR — fifteen (15) years in France, pursuant to Article 7-1 of French Act No. 78-17 of 6 January 1978, as amended.</p>
+<p>Below that age, the Application remains <strong>fully usable without an account</strong>: all of its features run locally, with no transmission of data.</p>
+<p>The Application is not directed at children and knowingly collects no data concerning them. A holder of parental authority who finds that an account has been created in breach of this Article may request its erasure at the address given in Article 1; it is carried out without delay.</p>
 <hr />
-<h2>8. Security</h2>
-<ul>
-<li>All communication uses <strong>HTTPS</strong>.</li>
-<li>Passwords are <strong>hashed</strong> by Supabase; they are neither stored nor viewable in clear text.</li>
-<li>Data access is enforced in the database itself through <strong>row level security</strong>: technically, an account can only read and write its own rows. The public key embedded in the app grants nothing by itself.</li>
-<li>Profiles (username and picture) are readable by authenticated accounts: that is what allows "this username is already taken". **Neither email addresses nor collections are.**</li>
-</ul>
-<p>No system is infallible. In the event of a data breach presenting a risk, you would be informed in accordance with Article 34 GDPR.</p>
+<h2>Article 11 — Amendments to this policy</h2>
+<p>This policy may change, in particular where processing operations or the applicable regulations evolve. The applicable version is the one published at the addresses referred to within the Application. Any substantial amendment is brought to the user's attention by appropriate means within the Application.</p>
+<p>The history of successive versions is public and may be consulted in the source code repository.</p>
 <hr />
-<h2>9. Minimum age</h2>
-<p>Accounts are restricted to people <strong>aged 16 or over</strong>. Below that, the app remains fully usable <strong>without an account</strong>: every feature works locally. Unydex is not directed at children and knowingly collects no data from anyone under</p>
-<ol>
-<li>If you believe such an account was created, write to the contact address and it will be deleted.</li>
-</ol>
-<hr />
-<h2>10. Changes</h2>
-<p>This policy may change. The date at the top marks the latest version. A significant change will be announced in the app. The full history of changes is public in the source repository.</p>
-<hr />
-<h2>11. Contact</h2>
-<p><em>[to be completed]</em></p>
+<h2>Article 12 — Contact</h2>
+<p>Any question relating to this policy may be addressed to the controller at the address given in Article 1.</p>
 <footer>
   <a href="confidentialite.html">Confidentialité</a> ·
   <a href="conditions.html">Conditions</a> ·

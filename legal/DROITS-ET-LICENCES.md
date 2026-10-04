@@ -1,15 +1,15 @@
 # Droits et licences — audit pièce par pièce
 
-> **Ce document est le plus important du dossier.** Il ne décrit pas un risque
-> théorique : il décrit la raison pour laquelle Unydex, **dans son état actuel, ne
-> peut pas être publié sur l'App Store**. Tout le reste du dossier (confidentialité,
-> RGPD, documents Apple) est valable et nécessaire quoi qu'il arrive — mais aucun ne
-> règle celui-ci.
+> **Document déterminant du dossier.** Il n'expose pas un risque théorique : il
+> établit la raison pour laquelle Unydex, **dans son état actuel, ne peut pas être
+> publiée sur l'App Store**. Les autres pièces du dossier — confidentialité, RGPD,
+> documents Apple — demeurent nécessaires en toute hypothèse, mais aucune ne règle
+> ce point.
 >
-> Je ne suis pas juriste et ce document n'est pas un avis juridique. Il rassemble des
-> faits vérifiables : ce que contient l'application, d'où ça vient, et ce que disent
-> les licences et les règles d'Apple. Pour une décision engageante, un conseil en
-> propriété intellectuelle est indiqué.
+> **Ce document ne constitue pas un avis juridique.** Il réunit des éléments
+> vérifiables : la composition de l'application, la provenance de chaque élément, et
+> la teneur des licences et des règles applicables. Toute décision d'exploitation
+> appelle la consultation d'un conseil en propriété intellectuelle.
 
 Dernière vérification : **02/10/2026**.
 
@@ -49,8 +49,8 @@ particuliers.
 | `public/scan/modele.onnx`, `modeles/scan-ia/` | 196 Mo | entraînés **sur ces images** | œuvre dérivée | ❌ bloquant |
 | Le nom **« Unydex »** | — | « Unys » = nom français d'Unova | marque **Nintendo** | ❌ bloquant |
 | `public/types/` | 18 SVG, 22 Ko | `partywhale/pokemon-type-icons` | James Watkins | ✅ **MIT**, avis conservé |
-| `public/icon.svg` | 1 fichier | dessinée pour l'application | **toi** | ✅ |
-| Code de l'application | — | écrit pour l'application | **toi** | ✅ |
+| `public/icon.svg` | 1 fichier | dessinée pour l'application | **l'éditeur** | ✅ |
+| Code de l'application | — | écrit pour l'application | **l'éditeur** | ✅ |
 | `onnxruntime-web`, `@supabase/supabase-js`, Capacitor et ses greffons | — | npm | divers | ✅ **MIT** |
 
 ### Le point qui tranche
@@ -74,11 +74,12 @@ application. Ce n'est pas une zone grise : c'est une absence.
 
 ### Ce que l'usage privé ne change pas
 
-Tant que l'application reste installée sur ton téléphone et distribuée par un IPA
-sideloadé que toi seul utilises, la question est pratiquement sans objet. **La
-publication change la nature de l'acte** : mise à disposition du public, à l'échelle
-mondiale, sous ton nom et ton adresse (voir l'obligation DSA, document
-[PUBLICATION.md](PUBLICATION.md)).
+Tant que l'application demeure installée sur le terminal de son auteur et distribuée
+par un IPA sideloadé à son seul usage, la question est pratiquement sans objet. **La
+publication change la nature de l'acte** : il s'agit alors d'une mise à disposition du
+public, à l'échelle mondiale, sous le nom et l'adresse de l'éditeur, rendus publics au
+titre du règlement sur les services numériques (voir [PUBLICATION.md](PUBLICATION.md),
+point B4).
 
 ---
 
@@ -96,16 +97,16 @@ traitements sont dus **dès maintenant**, App Store ou pas.
 
 ### B. Obtenir une licence
 
-Honnêtement : The Pokémon Company ne licencie pas ses personnages à des développeurs
-individuels. Il n'existe pas de programme de contenu dérivé pour les applications.
-Cette voie n'est pas réaliste, et je préfère le dire que te laisser écrire.
+The Pokémon Company ne concède pas de licence sur ses personnages à des développeurs
+individuels, et il n'existe aucun programme de contenu dérivé ouvert aux applications.
+Cette voie doit être tenue pour fermée.
 
 ### C. Publier une version SANS aucun élément Nintendo
 
-C'est la seule voie de publication qui tienne. Le travail n'est pas mince, mais il est
-borné, et **l'essentiel de l'application survit** — toute la mécanique (boîtes,
-glisser-déposer, équipes, analyse de types, sauvegarde, comptes, traduction) est de
-toi et ne pose aucun problème.
+C'est la seule voie de publication envisageable. Le travail est substantiel mais
+borné, et **l'essentiel de l'application subsiste** : toute la mécanique — boîtes,
+glisser-déposer, équipes, analyse de types, sauvegarde, comptes, traduction — a été
+écrite pour elle et ne soulève aucune difficulté.
 
 Ce qu'il faut remplacer :
 
@@ -119,27 +120,30 @@ Ce qu'il faut remplacer :
 | Le scan et ses modèles | Retiré, ou réentraîné sur les images de l'utilisateur | élevée |
 | Le nom « Unydex » | Un nom sans racine Pokémon | faible |
 
-L'application devient **un suiveur de collection générique** : des boîtes, des
-emplacements, des équipes, une analyse de types, une synchronisation. L'utilisateur
-y met ce qu'il veut. C'est un produit différent, mais c'en est un, et il est
-publiable sous ton seul nom.
+L'application devient **un outil de suivi de collection générique** : des boîtes, des
+emplacements, des équipes, une analyse de types, une synchronisation, l'utilisateur
+fournissant lui-même le contenu. Il s'agit d'un produit distinct, mais d'un produit
+réel, et publiable sous le seul nom de l'éditeur.
 
 ### D. Publier quand même
 
-À écarter. Deux issues, et aucune n'est bonne : refus à la revue (le plus probable —
-un relecteur reconnaît un Pokémon), ou acceptation suivie d'un retrait sur
-signalement. Dans le second cas, ton compte développeur est exposé, et ton nom et
-ton adresse postale sont **publiés sur la fiche App Store** au titre du DSA.
+Voie à écarter. Deux issues sont prévisibles, également défavorables : le refus à la
+revue, hypothèse la plus probable dès lors qu'un relecteur identifie l'univers en
+cause, ou l'acceptation suivie d'un retrait sur signalement du titulaire des droits.
+Dans cette seconde hypothèse, le compte développeur est exposé à une résiliation, et
+le nom et l'adresse postale de l'éditeur figurent alors **publiquement sur la fiche
+App Store** au titre du règlement sur les services numériques.
 
 ---
 
 ## 4. Recommandation
 
-**A pour ce que tu as, C pour ce que tu publies.**
+**Option A pour l'usage existant, option C pour toute publication.**
 
-Garde Unydex tel quel pour toi, par SideStore — c'est une très bonne application et
-elle n'a aucune raison d'être amputée pour un usage privé. Et si la publication
-compte vraiment, pars de la même base pour un suiveur de collection générique :
-quatre cinquièmes du code se réutilisent sans rien changer.
+Unydex peut être conservée en l'état pour un usage personnel, par distribution
+sideloadée : rien ne justifie de l'amputer dans ce cadre. Si la publication constitue
+un objectif, elle appelle un produit distinct, bâti sur la même base, dont quatre
+cinquièmes du code sont réutilisables sans modification.
 
-Le travail de conformité qui suit dans ce dossier sert aux deux.
+Le travail de conformité exposé dans les autres pièces du dossier vaut pour les deux
+hypothèses.

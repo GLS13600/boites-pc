@@ -43,8 +43,20 @@
     border-radius: 0 10px 10px 0;
   }
   blockquote p { margin: .4rem 0; }
-  /* Les tableaux défilent plutôt que de déborder : ces pages se lisent au téléphone. */
-  table { width: 100%; border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+  /* Ces pages se lisent au téléphone : les tableaux occupent la largeur disponible et
+     leur texte passe à la ligne, plutôt que de déborder et d'imposer un défilement
+     horizontal qui masque la dernière colonne. L'enveloppe garde le débordement sous
+     le coude pour un tableau qui serait un jour trop large. */
+  .tableau { width: 100%; overflow-x: auto; margin: 1rem 0; }
+  /* Largeur FIXE et césure autorisée : en disposition automatique, la plus longue
+     suite de caractères insécables de chaque colonne impose une largeur minimale, et
+     trois colonnes de texte juridique débordaient du cadre — la dernière se trouvait
+     coupée au bord de l’écran. */
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  /* La césure vient AVANT la coupure brutale : sans elle, les colonnes étroites
+     tranchaient au milieu des mots (« d emprisonne-ment »). La page déclare lang="fr",
+     le navigateur coupe donc aux syllabes françaises. */
+  th, td { -webkit-hyphens: auto; hyphens: auto; overflow-wrap: break-word; }
   th, td { border: 1px solid var(--rule); padding: 8px 10px; text-align: left; vertical-align: top; font-size: .92rem; }
   th { background: var(--panel); font-weight: 700; }
   footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .85rem; }
@@ -54,35 +66,52 @@
 <body>
 <main>
 <h1>Mentions légales</h1>
-<p>Obligation des articles 6-III et 19 de la loi pour la confiance dans l'économie numérique (LCEN) pour tout site édité depuis la France, même non professionnel et même gratuit.</p>
+<p><strong>Version 1.0 — En vigueur au 4 octobre 2026</strong></p>
+<p>Conformément aux dispositions des articles 6-III et 19 de la loi n° 2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique (LCEN), il est porté à la connaissance des utilisateurs de l'application Unydex et du site qui lui est associé les présentes mentions légales.</p>
 <hr />
-<h2>Éditeur</h2>
+<h2>Article 1 — Éditeur</h2>
+<p>L'application mobile Unydex et le site accessible à l'adresse <code>https://gls13600.github.io/boites-pc</code> (ci-après ensemble « le Service ») sont édités par :</p>
 <ul>
-<li><strong>Nom</strong> : <em>[à compléter — nom et prénom, ou raison sociale]</em></li>
-<li><strong>Statut</strong> : <em>[particulier / micro-entreprise / association]</em></li>
-<li><strong>Adresse</strong> : <em>[à compléter]</em></li>
-<li><strong>Contact</strong> : <em>[à compléter — adresse e-mail]</em></li>
-<li><strong>Directeur de la publication</strong> : <em>[idem éditeur]</em></li>
+<li><strong>Nom</strong> : [NOM ET PRÉNOM, OU DÉNOMINATION SOCIALE]</li>
+<li><strong>Statut</strong> : [PARTICULIER / ENTREPRENEUR INDIVIDUEL / ASSOCIATION / SOCIÉTÉ]</li>
+<li><strong>Adresse</strong> : [ADRESSE POSTALE COMPLÈTE]</li>
+<li><strong>Adresse électronique</strong> : [ADRESSE DE CONTACT]</li>
+<li><strong>Numéro SIREN</strong> : [LE CAS ÉCHÉANT]</li>
+<li><strong>Numéro de TVA intracommunautaire</strong> : [LE CAS ÉCHÉANT]</li>
 </ul>
-<blockquote>
-<p><strong>Un particulier qui édite un site non professionnel</strong> peut ne publier que son nom</p>
-<p>et l'identité de son hébergeur, en réservant ses coordonnées complètes à ce dernier</p>
-<p>(art. 6-III-2 LCEN). <strong>Cette réserve ne vaut pas pour l'App Store</strong> : le règlement</p>
-<p>européen sur les services numériques impose d'y déclarer nom, adresse, téléphone et</p>
-<p>e-mail, et Apple les <strong>affiche publiquement</strong> sur la fiche de l'application. Voir</p>
-<p><a href="PUBLICATION.md">PUBLICATION.md</a>, point B4.</p>
-</blockquote>
-<h2>Hébergeurs</h2>
-<table><thead><tr><th>Service</th><th>Hébergeur</th></tr></thead><tbody>
+<p><strong>Directeur de la publication</strong> : [NOM ET PRÉNOM], en sa qualité d'éditeur.</p>
+<p>L'éditeur peut être contacté à l'adresse électronique mentionnée ci-dessus. Toute demande reçoit une réponse dans un délai raisonnable.</p>
+<hr />
+<h2>Article 2 — Hébergement</h2>
+<div class="tableau"><table><thead><tr><th>Composant</th><th>Hébergeur</th></tr></thead><tbody>
 <tr><td>Site web <code>gls13600.github.io</code></td><td><strong>GitHub, Inc.</strong>, 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis</td></tr>
-<tr><td>Comptes et sauvegarde des collections</td><td><strong>Supabase, Inc.</strong>, 970 Toa Payoh North, Singapour — infrastructure en région <em>[à compléter]</em></td></tr>
-</tbody></table>
-<h2>Propriété intellectuelle</h2>
-<p>Le code source d'Unydex et les éléments créés pour elle appartiennent à leur auteur. Les symboles de type proviennent de <code>partywhale/pokemon-type-icons</code> (James Watkins), sous licence MIT ; l'avis de copyright est conservé dans l'application. Les marques, personnages et œuvres de tiers éventuellement cités ou affichés restent la propriété de leurs titulaires. **Unydex n'est ni éditée, ni approuvée, ni soutenue par Nintendo, Game Freak ou The Pokémon Company.** Voir <a href="DROITS-ET-LICENCES.md">DROITS-ET-LICENCES.md</a>.</p>
-<h2>Données personnelles</h2>
-<p>Voir la <a href="confidentialite.html">politique de confidentialité</a>.</p>
-<h2>Cookies</h2>
-<p>Le site <strong>ne dépose aucun cookie</strong> et n'utilise aucun traceur ni mesure d'audience. Aucun bandeau de consentement n'est donc nécessaire — et il n'y en a pas. L'application enregistre des données dans le <strong>stockage local</strong> du navigateur ou de la vue web : la progression, les préférences, et la session si un compte est connecté. Ce sont des données <strong>strictement nécessaires au service demandé</strong> par l'utilisateur (article 82 de la loi Informatique et Libertés) : elles ne relèvent pas du consentement préalable. Elles ne sont lues par personne d'autre et ne quittent l'appareil que vers le compte, si l'utilisateur en a créé un.</p>
+<tr><td>Base de données des comptes et des collections</td><td><strong>Supabase, Inc.</strong>, 970 Toa Payoh North, Singapour — infrastructure localisée en région [RÉGION DU PROJET]</td></tr>
+<tr><td>Distribution de l'application mobile</td><td><strong>Apple Distribution International Ltd.</strong>, Hollyhill Industrial Estate, Hollyhill, Cork, Irlande</td></tr>
+</tbody></table></div>
+<hr />
+<h2>Article 3 — Propriété intellectuelle</h2>
+<p>Le code source de l'application, son architecture, son interface, son icône et les illustrations créées pour elle sont protégés par le droit d'auteur et demeurent la propriété exclusive de l'éditeur.</p>
+<p>Les symboles de types affichés par l'application sont issus du projet <code>partywhale/pokemon-type-icons</code>, diffusé sous licence MIT ; l'avis de droit d'auteur correspondant est conservé dans l'application, conformément aux termes de cette licence. Les bibliothèques logicielles tierces utilisées sont diffusées sous licence MIT ; la liste en est publiée dans le dépôt du code source.</p>
+<p>Les marques, dénominations, personnages et œuvres de tiers susceptibles d'être cités ou représentés demeurent la propriété exclusive de leurs titulaires respectifs. <strong>L'application Unydex n'est ni éditée, ni produite, ni approuvée, ni soutenue, ni sponsorisée par Nintendo Co., Ltd., Game Freak Inc., Creatures Inc. ou The Pokémon Company International.</strong> Aucun lien, partenariat ou affiliation de quelque nature que ce soit n'existe avec ces sociétés.</p>
+<p>Toute reproduction, représentation, modification, publication ou adaptation, totale ou partielle, des éléments du Service, quel que soit le moyen ou le procédé utilisé, est interdite sans autorisation écrite préalable de l'éditeur ou du titulaire des droits concerné.</p>
+<p>Il est rappelé qu'aux termes de l'article L. 335-2 du code de la propriété intellectuelle, <strong>la contrefaçon est punie de trois ans d'emprisonnement et de 300 000 euros d'amende</strong>, ces peines étant portées à sept ans d'emprisonnement et 750 000 euros d'amende lorsque les faits sont commis en bande organisée.</p>
+<hr />
+<h2>Article 4 — Protection des données à caractère personnel</h2>
+<p>Le traitement des données à caractère personnel mis en œuvre dans le cadre du Service est décrit dans la <a href="confidentialite.html">politique de confidentialité</a>, qui fait partie intégrante des présentes mentions légales.</p>
+<hr />
+<h2>Article 5 — Traceurs et stockage local</h2>
+<p>Le site ne dépose <strong>aucun cookie</strong> et ne met en œuvre <strong>aucun traceur, aucun outil de mesure d'audience et aucun dispositif publicitaire</strong>. Aucun recueil de consentement préalable n'est par conséquent nécessaire, et aucun bandeau d'information n'est affiché.</p>
+<p>L'application et le site inscrivent des informations dans l'espace de stockage local du terminal (progression, préférences d'affichage et, le cas échéant, jeton de session). Ces opérations sont <strong>strictement nécessaires à la fourniture du service expressément demandé par l'utilisateur</strong> au sens du II de l'article 82 de la loi n° 78-17 du 6 janvier 1978 modifiée, et sont à ce titre dispensées de consentement. Ces informations ne sont accessibles à aucun tiers et ne quittent le terminal que vers le compte de l'utilisateur, lorsque celui-ci en a créé un.</p>
+<hr />
+<h2>Article 6 — Limitation de responsabilité</h2>
+<p>L'éditeur s'efforce d'assurer l'exactitude et la mise à jour des informations diffusées. Il ne saurait toutefois garantir l'exhaustivité, la précision ni l'actualité des informations relatives aux jeux vidéo affichées par le Service, qui proviennent de sources publiques tierces et n'ont <strong>aucun caractère officiel</strong>.</p>
+<p>Les conditions dans lesquelles la responsabilité de l'éditeur est susceptible d'être engagée, et les limites qui s'y attachent, sont précisées aux articles 10 et 11 des <a href="conditions.html">conditions générales d'utilisation</a>.</p>
+<hr />
+<h2>Article 7 — Signalement d'un contenu illicite</h2>
+<p>Toute personne estimant qu'un contenu diffusé par le Service présente un caractère illicite, ou porte atteinte à ses droits, peut le signaler à l'adresse électronique mentionnée à l'article 1. Le signalement comporte utilement la description du contenu en cause, sa localisation et les motifs invoqués. Il est procédé à son examen dans les meilleurs délais.</p>
+<hr />
+<h2>Article 8 — Droit applicable</h2>
+<p>Les présentes mentions légales sont régies par le droit français.</p>
 <footer>
   <a href="confidentialite.html">Confidentialité</a> ·
   <a href="conditions.html">Conditions</a> ·

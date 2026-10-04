@@ -2019,6 +2019,30 @@ rendu — deux versions d'un même texte, c'est toujours la seconde qu'on oublie
 - `ITSAppUsesNonExemptEncryption = false` dans `Info.plist` : sans cette clé, App Store
   Connect repose la question du chiffrement à chaque livraison.
 
+Les quatre textes publiés — politique de confidentialité (fr et en), conditions
+générales d’utilisation, mentions légales — sont rédigés **au registre juridique** :
+vouvoiement ou troisième personne, articles numérotés, définitions en préambule,
+numéro de version et date d’entrée en vigueur. Ils citent les dispositions pénales
+applicables (articles 323-1 à 323-3 et 226-4-1 du code pénal, L. 335-2 du code de la
+propriété intellectuelle, 226-16 et suivants pour la protection des données) et les
+dispositions minimales exigées par Apple pour un contrat de licence utilisateur,
+reprises en annexe des CGU. **Aucune formulation à la première personne, aucun
+tutoiement** : ce sont des actes opposables, pas des notes de travail.
+
+- **Piège vérifié** : la plateforme européenne de règlement en ligne des litiges a
+  fermé le 20 juillet 2025 (règlement (UE) 2024/3228). La citer, comme le font encore
+  quantité de CGU, daterait le document aussitôt. Les textes renvoient aux centres
+  européens des consommateurs.
+- **Le convertisseur Markdown de `build-legal.mjs` assemble le bloc AVANT de le
+  convertir.** Convertir ligne par ligne laissait passer tout gras, lien ou italique à
+  cheval sur deux lignes — ce que la mise à la marge produit sans arrêt —, et les
+  astérisques s’affichaient dans la page. Les fermetures de bloc sortent par ailleurs
+  sans rien faire quand le bloc n’est pas ouvert : sans cette garde, chaque ligne du
+  Markdown devenait son propre paragraphe.
+- **Pas de tableau à trois colonnes dans les textes publiés** : à 375 px, chaque
+  colonne reçoit une centaine de pixels et les mots se coupent en leur milieu. Les
+  énumérations juridiques sont rendues en listes, comme dans les textes réglementaires.
+
 **Le point qui décide de tout est dans `legal/DROITS-ET-LICENCES.md`** : le fichier de
 licence du dépôt des sprites dit lui-même « All image contents within are Copyright The
 Pokémon Company », et le CC0 ne porte que sur le dépôt. Lire ce document avant toute

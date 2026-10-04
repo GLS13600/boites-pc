@@ -43,22 +43,42 @@ function enLigne(s) {
     });
 }
 
+// Le texte d'un paragraphe ou d'un élément de liste est ACCUMULÉ LIGNE À LIGNE, puis
+// converti d'un bloc une fois le bloc achevé.
+//
+// Convertir ligne par ligne était faux, et le défaut était discret : un passage en
+// gras à cheval sur deux lignes — ce que la mise à la marge de 80 colonnes produit
+// constamment — n'était reconnu par aucune des deux moitiés, et les astérisques
+// s'affichaient tels quels dans la page publiée. Même raison pour un lien ou un
+// passage en italique coupés par un retour à la ligne.
 function enHtml(md) {
   const out = [];
   const lignes = md.split(/\r?\n/);
-  let liste = null;      // 'ul' ou null
+  let liste = null;      // 'ul', 'ol' ou null
   let tableau = false;
   let citation = false;
+  let tampon = null;     // { balise: 'p' | 'li', texte: [] }
 
-  const fermeListe = () => { if (liste) { out.push(`</${liste}>`); liste = null; } };
-  const fermeTableau = () => { if (tableau) { out.push('</tbody></table>'); tableau = false; } };
-  const fermeCitation = () => { if (citation) { out.push('</blockquote>'); citation = false; } };
+  const videTampon = () => {
+    if (!tampon) return;
+    out.push(`<${tampon.balise}>${enLigne(tampon.texte.join(' '))}</${tampon.balise}>`);
+    tampon = null;
+  };
+  // Ces trois fermetures sortent SANS RIEN FAIRE quand le bloc n'est pas ouvert.
+  // Sans cette garde, `fermeCitation()` — appelée à chaque ligne ordinaire — vidait le
+  // tampon à chaque passage, et chaque ligne du Markdown devenait son propre
+  // paragraphe : la coupure à 80 colonnes se retrouvait dans la page publiée.
+  const fermeListe = () => { if (!liste) return; videTampon(); out.push(`</${liste}>`); liste = null; };
+  const fermeTableau = () => { if (!tableau) return; out.push('</tbody></table></div>'); tableau = false; };
+  const fermeCitation = () => { if (!citation) return; videTampon(); out.push('</blockquote>'); citation = false; };
   const fermeTout = () => { fermeListe(); fermeTableau(); fermeCitation(); };
 
   for (let i = 0; i < lignes.length; i++) {
     const l = lignes[i];
 
-    if (!l.trim()) { fermeListe(); fermeTableau(); continue; }
+    // Ligne vide : elle termine le paragraphe courant, mais pas une citation, dont
+    // les lignes vides sont elles-mêmes préfixées par « > ».
+    if (!l.trim()) { fermeListe(); fermeTableau(); videTampon(); continue; }
 
     const titre = /^(#{1,4})\s+(.*)$/.exec(l);
     if (titre) {
@@ -70,19 +90,23 @@ function enHtml(md) {
 
     if (/^---+$/.test(l.trim())) { fermeTout(); out.push('<hr />'); continue; }
 
-    if (l.startsWith('> ')) {
+    if (l.startsWith('>')) {
       fermeListe(); fermeTableau();
       if (!citation) { out.push('<blockquote>'); citation = true; }
-      out.push(`<p>${enLigne(l.slice(2))}</p>`);
+      const contenu = l.replace(/^>\s?/, '');
+      if (!contenu.trim()) { videTampon(); continue; }
+      if (tampon) tampon.texte.push(contenu.trim());
+      else tampon = { balise: 'p', texte: [contenu.trim()] };
       continue;
     }
     fermeCitation();
 
-    // Tableau : une ligne d'en-tête, une ligne de tirets, puis le corps.
+    // Tableau : une ligne d'en-tête, une ligne de tirets, puis le corps. Une cellule
+    // tient sur une seule ligne, elle se convertit donc directement.
     if (l.startsWith('|') && /^\|[\s:|-]+\|$/.test(lignes[i + 1] ?? '')) {
       fermeListe();
-      const cols = (s) => s.split('|').slice(1, -1).map((c) => c.trim());
-      out.push('<table><thead><tr>' + cols(l).map((c) => `<th>${enLigne(c)}</th>`).join('') + '</tr></thead><tbody>');
+      const cols = (t) => t.split('|').slice(1, -1).map((c) => c.trim());
+      out.push('<div class="tableau"><table><thead><tr>' + cols(l).map((c) => `<th>${enLigne(c)}</th>`).join('') + '</tr></thead><tbody>');
       tableau = true;
       i++;   // la ligne de séparation
       continue;
@@ -98,17 +122,15 @@ function enHtml(md) {
     const num = /^\d+\.\s+(.*)$/.exec(l);
     if (puce || num) {
       const type = puce ? 'ul' : 'ol';
+      videTampon();
       if (liste !== type) { fermeListe(); out.push(`<${type}>`); liste = type; }
-      out.push(`<li>${enLigne((puce ?? num)[1])}</li>`);
+      tampon = { balise: 'li', texte: [(puce ?? num)[1].trim()] };
       continue;
     }
-    // Suite d'un paragraphe ou d'un élément de liste : on recolle.
-    if (liste) { out[out.length - 1] = out[out.length - 1].replace(/<\/li>$/, ' ' + enLigne(l.trim()) + '</li>'); continue; }
-    if (out.length && out[out.length - 1].startsWith('<p>')) {
-      out[out.length - 1] = out[out.length - 1].replace(/<\/p>$/, ' ' + enLigne(l.trim()) + '</p>');
-      continue;
-    }
-    out.push(`<p>${enLigne(l.trim())}</p>`);
+
+    // Toute autre ligne prolonge le bloc en cours, ou en ouvre un nouveau.
+    if (tampon) tampon.texte.push(l.trim());
+    else tampon = { balise: 'p', texte: [l.trim()] };
   }
   fermeTout();
   return out.join('\n');
@@ -161,8 +183,20 @@ const gabarit = (titre, corps) => `<!doctype html>
     border-radius: 0 10px 10px 0;
   }
   blockquote p { margin: .4rem 0; }
-  /* Les tableaux défilent plutôt que de déborder : ces pages se lisent au téléphone. */
-  table { width: 100%; border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+  /* Ces pages se lisent au téléphone : les tableaux occupent la largeur disponible et
+     leur texte passe à la ligne, plutôt que de déborder et d'imposer un défilement
+     horizontal qui masque la dernière colonne. L'enveloppe garde le débordement sous
+     le coude pour un tableau qui serait un jour trop large. */
+  .tableau { width: 100%; overflow-x: auto; margin: 1rem 0; }
+  /* Largeur FIXE et césure autorisée : en disposition automatique, la plus longue
+     suite de caractères insécables de chaque colonne impose une largeur minimale, et
+     trois colonnes de texte juridique débordaient du cadre — la dernière se trouvait
+     coupée au bord de l’écran. */
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  /* La césure vient AVANT la coupure brutale : sans elle, les colonnes étroites
+     tranchaient au milieu des mots (« d emprisonne-ment »). La page déclare lang="fr",
+     le navigateur coupe donc aux syllabes françaises. */
+  th, td { -webkit-hyphens: auto; hyphens: auto; overflow-wrap: break-word; }
   th, td { border: 1px solid var(--rule); padding: 8px 10px; text-align: left; vertical-align: top; font-size: .92rem; }
   th { background: var(--panel); font-weight: 700; }
   footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .85rem; }

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Manifeste de confidentialité de l'application.
+
+  EXIGÉ PAR APPLE depuis mai 2024 pour toute application qui utilise une « API à
+  raison requise » — `UserDefaults` en fait partie, et Capacitor s'en sert. Un
+  manifeste absent fait échouer la livraison vers App Store Connect, pas la
+  compilation : on ne s'en aperçoit qu'au moment de publier.
+
+  Il doit DIRE LA MÊME CHOSE que l'étiquette de confidentialité d'App Store Connect
+  (voir legal/ETIQUETTE-APP-STORE.md) et que la politique de confidentialité. Trois
+  endroits, une seule vérité : les désaccorder est un motif de rejet.
+
+  Les greffons Capacitor apportent chacun leur propre manifeste ; celui-ci ne couvre
+  que la cible de l'application.
+-->
+<plist version="1.0">
+<dict>
+  <!-- Aucun suivi publicitaire : pas de régie, pas de SDK d'analyse, pas d'IDFA.
+       Rien à demander au titre d'App Tracking Transparency. -->
+  <key>NSPrivacyTracking</key>
+  <false/>
+  <key>NSPrivacyTrackingDomains</key>
+  <array/>
+
+  <key>NSPrivacyCollectedDataTypes</key>
+  <array>
+    <!-- Les trois catégories ci-dessous ne sont collectées QUE si l'utilisateur crée
+         un compte, ce qui est facultatif : sans compte, rien ne quitte l'appareil. -->
+    <dict>
+      <key>NSPrivacyCollectedDataType</key>
+      <string>NSPrivacyCollectedDataTypeEmailAddress</string>
+      <key>NSPrivacyCollectedDataTypeLinked</key>
+      <true/>
+      <key>NSPrivacyCollectedDataTypeTracking</key>
+      <false/>
+      <key>NSPrivacyCollectedDataTypePurposes</key>
+      <array>
+        <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+      </array>
+    </dict>
+    <dict>
+      <!-- Le nom transmis par Google ou Apple à l'inscription : il sert à proposer un
+           pseudo, et reste dans les métadonnées du compte chez l'hébergeur. -->
+      <key>NSPrivacyCollectedDataType</key>
+      <string>NSPrivacyCollectedDataTypeName</string>
+      <key>NSPrivacyCollectedDataTypeLinked</key>
+      <true/>
+      <key>NSPrivacyCollectedDataTypeTracking</key>
+      <false/>
+      <key>NSPrivacyCollectedDataTypePurposes</key>
+      <array>
+        <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+      </array>
+    </dict>
+    <dict>
+      <key>NSPrivacyCollectedDataType</key>
+      <string>NSPrivacyCollectedDataTypeUserID</string>
+      <key>NSPrivacyCollectedDataTypeLinked</key>
+      <true/>
+      <key>NSPrivacyCollectedDataTypeTracking</key>
+      <false/>
+      <key>NSPrivacyCollectedDataTypePurposes</key>
+      <array>
+        <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+      </array>
+    </dict>
+    <dict>
+      <!-- Le pseudo, la photo de profil (un numéro, pas une image) et la collection
+           sauvegardée : la catégorie d'Apple pour ce que l'utilisateur a produit. -->
+      <key>NSPrivacyCollectedDataType</key>
+      <string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+      <key>NSPrivacyCollectedDataTypeLinked</key>
+      <true/>
+      <key>NSPrivacyCollectedDataTypeTracking</key>
+      <false/>
+      <key>NSPrivacyCollectedDataTypePurposes</key>
+      <array>
+        <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+      </array>
+    </dict>
+  </array>
+
+  <key>NSPrivacyAccessedAPITypes</key>
+  <array>
+    <dict>
+      <!-- CA92.1 : accès aux seules valeurs écrites par l'application elle-même, sans
+           les partager avec quiconque. C'est exactement l'usage de Capacitor. -->
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>CA92.1</string>
+      </array>
+    </dict>
+    <dict>
+      <!-- C617.1 : horodatages de fichiers du bac à sable de l'application, pour les
+           fichiers qu'elle a elle-même écrits — l'export passe par le cache. -->
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>C617.1</string>
+      </array>
+    </dict>
+    <dict>
+      <!-- E174.1 : espace disque, consulté par le système de fichiers de la vue web.
+           Les modèles du scan pèsent 196 Mo, l'écriture peut échouer faute de place. -->
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryDiskSpace</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>E174.1</string>
+      </array>
+    </dict>
+  </array>
+</dict>
+</plist>

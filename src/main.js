@@ -544,6 +544,7 @@ const ICO_REG = {
   langue: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.2 9.5h17.6M3.2 14.5h17.6M12 3a15 15 0 0 1 0 18A15 15 0 0 1 12 3z"/></svg>',
   compte: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/></svg>',
   sauvegarde: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14v4.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V14M12 3.5v11M8 10.5l4 4 4-4"/></svg>',
+  legal: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.2v15.6M7 19.8h10M5 8h14M12 5.6 5 8m7-2.4L19 8"/><path d="M2.6 14.2 5 8l2.4 6.2a2.6 2.6 0 0 1-4.8 0zM16.6 14.2 19 8l2.4 6.2a2.6 2.6 0 0 1-4.8 0z"/></svg>',
   avenir: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/></svg>',
 };
 
@@ -3007,8 +3008,24 @@ function renderReglages() {
 
       ${compteUI.htmlCompte()}
 
+      <!-- Apple exige (5.1.1(i)) un lien vers la politique de confidentialité DANS
+           l'application, « easily accessible ». Les pages sont produites depuis le
+           Markdown de legal/ par scripts/build-legal.mjs et déployées avec le site ;
+           elles sont aussi embarquées, donc ces liens s'ouvrent hors ligne.
+           PAS D'ACCENT GRAVE dans ce commentaire : il vit dans un gabarit de chaîne,
+           et le moindre y terminerait le gabarit. -->
+      ${bloc(4, 'legal', t('legal'), t('legalAide'), `
+        <div class="reg-lignes">
+          ${[['confidentialite', 'legalConfidentialite', 'legalConfidentialiteSous'],
+              ['conditions', 'legalConditions', 'legalConditionsSous'],
+              ['mentions', 'legalMentions', 'legalMentionsSous']].map(([page, titre, sous]) => `
+            <button class="reg-ligne" data-legal="${page}">
+              ${ICO.droite}<span><b>${t(titre)}</b><small>${t(sous)}</small></span>
+            </button>`).join('')}
+        </div>`)}
+
       <!-- D'autres réglages viendront ici : un bloc par sujet, sur le même gabarit. -->
-      ${bloc(4, 'avenir', t('aVenir'), t('aVenirSous'), '', true)}
+      ${bloc(5, 'avenir', t('aVenir'), t('aVenirSous'), '', true)}
     </section>`));
 
   if (defileReg) app.querySelector('.vue').scrollTop = defileReg;
@@ -3027,6 +3044,20 @@ async function poseLangueEtRend(l) {
   // pas au rendu et doit reposer ses libellés elle-même.
   scan.retraduit();
   render();
+}
+
+// Les pages légales s'ouvrent HORS de l'application : les charger dans la vue web
+// remplacerait l'appli par la page, sans aucun moyen de revenir — il n'y a pas de
+// barre d'adresse sous Capacitor. Le greffon Browser présente un Safari système
+// qu'on referme d'un geste ; sur le web, un nouvel onglet suffit.
+//
+// Les pages sont embarquées dans `dist/legal/`, donc le chemin RELATIF marche aussi
+// bien sur le site que dans l'IPA — même raison que les sprites, avec `base: './'`.
+async function ouvreLegal(page) {
+  const url = new URL(`legal/${page}.html`, location.href).href;
+  const B = window.Capacitor?.Plugins?.Browser;
+  if (B) { try { await B.open({ url, presentationStyle: 'popover' }); return; } catch { /* repli */ } }
+  window.open(url, '_blank', 'noopener');
 }
 
 // Barre de retour, construite une fois : elle coiffe toutes les vues sauf l'accueil.
@@ -3057,6 +3088,9 @@ app.addEventListener('click', (e) => {
   // sur <html>, que `closest` finit donc par trouver pour N'IMPORTE quel clic dans
   // l'appli. Le thème « celui du téléphone » se figeait ainsi en clair ou en sombre
   // au premier clic venu, et le choix de la langue n'était jamais atteint.
+  const doc = e.target.closest('button[data-legal]');
+  if (doc) { ouvreLegal(doc.dataset.legal); return; }
+
   const th = e.target.closest('button[data-theme]');
   if (th) {
     state.theme = th.dataset.theme;

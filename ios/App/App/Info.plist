@@ -22,6 +22,13 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!-- Conformité à l'export : l'application n'utilise que HTTPS, donc du chiffrement
+	     standard, qui relève de l'exemption. Sans cette clé, App Store Connect repose
+	     la question à CHAQUE livraison et bloque la soumission tant qu'on n'a pas
+	     répondu. Elle ne vaut que tant que rien d'autre ne chiffre : ajouter un
+	     chiffrement propriétaire obligerait à la revoir. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<!-- Le schéma d'URL de l'application, SANS LEQUEL la connexion Google ne revient
 	     jamais : le navigateur système termine sur `unydex://auth`, et iOS ne sait
 	     à qui le remettre que si le schéma est déclaré ici. Sans cette entrée, la

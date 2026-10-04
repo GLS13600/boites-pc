@@ -1994,6 +1994,36 @@ renvoie pas en boucle ; une charge vide, nulle ou textuelle est refusée, un tab
 (le tout premier format d'export) est accepté ; les trois réponses du panneau et sa
 fermeture par le voile résolvent correctement.
 
+### Bloc « Légal » et dossier de conformité (02/10/2026)
+
+Le dossier `legal/` porte l'audit des droits, la politique de confidentialité (fr et
+en), les conditions, les mentions légales, le registre RGPD et les réponses au
+questionnaire App Privacy. `scripts/build-legal.mjs` en produit les pages servies par
+le site, enchaîné à `npm run build` : **le Markdown fait foi**, les pages en sont le
+rendu — deux versions d'un même texte, c'est toujours la seconde qu'on oublie.
+
+- **Un bloc « Légal » dans les Réglages**, exigé par Apple (5.1.1(i)) : le lien vers la
+  politique de confidentialité doit vivre DANS l'application. Trois lignes, vers les
+  pages embarquées dans `dist/legal/`.
+- **Elles s'ouvrent HORS de la vue web** (`ouvreLegal`) : les charger dedans
+  remplacerait l'application par la page, sans aucun moyen de revenir — il n'y a pas
+  de barre d'adresse sous Capacitor. Safari système par le greffon Browser en natif,
+  un onglet sur le web.
+- **Piège** : le commentaire HTML qui annonce ce bloc vit dans un gabarit de chaîne.
+  Un seul accent grave dedans termine le gabarit, et la page ne compile plus. Aucun
+  nom de fichier entre accents graves dans le balisage de `renderReglages`.
+- `ios/App/App/PrivacyInfo.xcprivacy` est **inscrit dans la cible Xcode** (référence,
+  entrée de compilation, groupe, phase Resources) : un fichier posé sur le disque ne
+  part pas dans l'IPA. Il doit dire la MÊME chose que l'étiquette App Store et la
+  politique de confidentialité.
+- `ITSAppUsesNonExemptEncryption = false` dans `Info.plist` : sans cette clé, App Store
+  Connect repose la question du chiffrement à chaque livraison.
+
+**Le point qui décide de tout est dans `legal/DROITS-ET-LICENCES.md`** : le fichier de
+licence du dépôt des sprites dit lui-même « All image contents within are Copyright The
+Pokémon Company », et le CC0 ne porte que sur le dépôt. Lire ce document avant toute
+démarche de publication.
+
 ## Traduction : français, anglais, japonais
 
 Demandée le 30/09/2026, avec une étendue explicitement choisie : **tout**, descriptions

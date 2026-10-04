@@ -28,7 +28,12 @@ import {
 // Service worker : il ne sert QUE la version web hébergée. Sous Capacitor la page
 // n'est pas servie en HTTP et tout est déjà embarqué dans l'app — l'enregistrement
 // est donc conditionné au protocole, et un échec est sans conséquence.
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+//
+// Ni en DÉVELOPPEMENT : `sw.js` n'est produit qu'à la compilation, le serveur de dev
+// répondait donc par la page HTML, et le navigateur consignait « unsupported MIME
+// type » à chaque chargement. Le `.catch` taisait la promesse, pas la console — et
+// une erreur répétée à chaque rechargement finit par masquer les vraies.
+if (!import.meta.env.DEV && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
@@ -305,6 +310,10 @@ const state = {
   theme: ['clair', 'sombre', 'auto'].includes(localStorage.getItem('pcbox.theme'))
     ? localStorage.getItem('pcbox.theme') : 'clair',
   dexGen: null, // Pokédex affiché : null = menu, 0 = national, 1 à 9 = une génération
+  // Filtre de la grille du Pokédex : 'tous', 'manquants' ou 'captures'. Gardé le temps
+  // de la session, d'une région à l'autre — on cherche ce qui manque à Kanto, puis à
+  // Johto —, mais pas d'un lancement à l'autre : la grille complète reste l'accueil.
+  dexFiltre: 'tous',
   jeu: localStorage.getItem('pcbox.jeu') || 'scarlet-violet',
   // Une équipe par version de jeu : on garde une composition distincte pour chaque
   // opus, puisque attaques, talents et objets n'y sont pas les mêmes.
@@ -576,6 +585,16 @@ const ICO_REG = {
 // L’APOSTROPHE EST ÉCHAPPÉE elle aussi : tous les attributs ne sont pas écrits entre
 // guillemets, et un attribut de gestionnaire (`onerror`) contient du JavaScript où
 // l’apostrophe délimite les chaînes. L’omettre avait rendu un chemin exploitable.
+// Un nombre à une décimale, au format de la langue de l'appli : « 0,6 » en français,
+// « 0.6 » en anglais. `toFixed` écrivait toujours le point, et la fiche affichait
+// « 0.6 m » au milieu d'un texte français.
+const decimale = (n) => {
+  try {
+    return Number(n).toLocaleString(document.documentElement.lang || 'fr',
+      { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  } catch { return Number(n).toFixed(1); }
+};
+
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 // Recherche insensible aux accents et à la casse.
 const fold = (t) => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -996,8 +1015,8 @@ function openSheet(id) {
     <dl class="facts">
       <div class="fact"><dt>${t('habitat')}</dt><dd>${cap(p.habitat) || t('habitatInconnu')}</dd></div>
       <div class="fact"><dt>${t('couleur')}</dt><dd>${p.color || '—'}</dd></div>
-      <div class="fact"><dt>${t('taille')}</dt><dd>${p.height ? p.height.toFixed(1) + ' m' : '—'}</dd></div>
-      <div class="fact"><dt>${t('poids')}</dt><dd>${p.weight ? p.weight.toFixed(1) + ' kg' : '—'}</dd></div>
+      <div class="fact"><dt>${t('taille')}</dt><dd>${p.height ? decimale(p.height) + ' m' : '—'}</dd></div>
+      <div class="fact"><dt>${t('poids')}</dt><dd>${p.weight ? decimale(p.weight) + ' kg' : '—'}</dd></div>
       ${p.flavor ? `<div class="fact wide"><dt>${t('description')}</dt><dd>${p.flavor}</dd></div>` : ''}
     </dl>
 
@@ -1007,7 +1026,7 @@ function openSheet(id) {
     <h3>${t('faiblessesEtResistances')} <small>${t('tableActuelle')}</small></h3>
     ${renderFaiblesses(base, 9)}
 
-    <h3>${t('familleEvolution')}</h3>
+    <h3>${t('familleEvolution')}${compteFamille(base)}</h3>
     ${renderEvolution(base, id)}
 
     ${renderForms(base, id)}
@@ -1040,15 +1059,34 @@ function renderEvolution(id, courant = id) {
     return d;
   };
 
-  return '<div class="evo">' + membres.map((m) => `
+  // La famille suit la règle de la GRILLE : un membre manquant est gris, un membre
+  // capturé est en couleur et porte sa Poké Ball. Tout était en couleur, avec une
+  // pastille de 9 px pour seul signal — à rebours du reste de l'appli, et c'est
+  // pourtant ici qu'on se demande lesquels de la famille il reste à attraper. Les
+  // sprites suivent aussi la collection active : chromatiques en vue chromatique.
+  return '<div class="evo">' + membres.map((m) => {
+    const vu = isCaught(m.id);
+    return `
     <div class="evo-row" style="--d:${profondeur(m)}">
       ${m.how ? `<div class="evo-how">${esc(m.how)}</div>` : ''}
-      <button class="evo-mon ${m.id === courant || m.id === id ? 'on' : ''}" data-evo="${m.id}">
-        <img src="${sprites.still(spriteKey(m.id))}" alt="" loading="lazy" ${imgFallback(m.id, false)} />
+      <button class="evo-mon ${m.id === courant || m.id === id ? 'on' : ''} ${vu ? 'vu' : 'manque'}" data-evo="${m.id}"
+              aria-label="${esc(monName(m.id))}${vu ? ', ' + t('capture') : ''}">
+        <img src="${sprites.still(spriteKey(m.id), shinyView())}" alt="" loading="lazy" ${imgFallback(m.id, shinyView())} />
         <span>${esc(monName(m.id))}</span>
-        ${isCaught(m.id) ? `<i class="evo-ok" aria-label="${t('capture')}"></i>` : ''}
+        ${vu ? '<i class="evo-ok" aria-hidden="true"></i>' : ''}
       </button>
-    </div>`).join('') + '</div>';
+    </div>`;
+  }).join('') + '</div>';
+}
+
+// « 2 / 3 » à côté du titre : l'avancement de la famille d'un coup d'œil. Rien pour
+// une espèce qui n'évolue pas — le compte d'un seul n'apprendrait rien.
+function compteFamille(id) {
+  const membres = evolutions.chains[evolutions.of[id]]?.membres ?? [];
+  if (membres.length < 2) return '';
+  const pris = membres.filter((m) => isCaught(m.id)).length;
+  const complet = pris === membres.length;
+  return ` <small class="evo-compte ${complet ? 'complet' : ''}">${pris} / ${membres.length}</small>`;
 }
 
 // Formes alternatives de l'espèce, si PokéAPI en connaît.
@@ -1598,7 +1636,7 @@ boxBody.addEventListener('input', (e) => {
 
 // ---------- Interactions ----------
 
-function toggle(id) {
+function toggle(id, { annulable = false } = {}) {
   const set = caughtSet();
   const prise = !set.has(id);
   set.has(id) ? set.delete(id) : set.add(id);
@@ -1607,7 +1645,58 @@ function toggle(id) {
   state.pris = prise ? id : null;
   save();
   render();
+
+  // Décocher depuis la GRILLE se signale, avec de quoi revenir en arrière. En mode
+  // Capturer, un simple toucher retire un Pokémon de la collection, et le seul indice
+  // en est un sprite de 50 px qui repasse au gris : un toucher égaré en faisant
+  // défiler passait inaperçu, et c'est une capture chromatique qu'on pouvait perdre
+  // ainsi. Le bandeau rend la chose visible, et réversible d'un geste.
+  //
+  // La vue est relevée MAINTENANT : si l'on bascule entre normal et chromatique avant
+  // d'annuler, la capture doit revenir dans la collection d'où elle est partie.
+  if (!prise && annulable) {
+    const vue = state.view;
+    proposeAnnulation(t('retireDeLaCollection', monName(id)), () => {
+      (vue === 'shiny' ? state.caughtShiny : state.caught).add(id);
+      save();
+      render();
+    });
+  }
 }
+
+// ---------- Annulation ----------
+//
+// Un bandeau unique, en bas de l'écran, au gabarit des « snackbars » d'iOS et
+// d'Android : un message, un bouton, et il s'efface seul. Un nouvel appel remplace
+// le précédent — seule la dernière action s'annule, comme partout ailleurs.
+const bandeauAnnule = h(`<div class="annule" role="status" aria-live="polite"><span></span><button type="button"></button></div>`);
+document.body.append(bandeauAnnule);
+let minuteurAnnule = 0;
+let aRetablir = null;
+
+function proposeAnnulation(texte, retablir) {
+  aRetablir = retablir;
+  bandeauAnnule.querySelector('span').textContent = texte;
+  bandeauAnnule.querySelector('button').textContent = t('annuler');
+  bandeauAnnule.classList.add('visible');
+  clearTimeout(minuteurAnnule);
+  // 5 s : le temps de lire une ligne et de tendre le pouce, pas davantage — au-delà,
+  // le bandeau masquerait le bas de la vue pour rien.
+  minuteurAnnule = setTimeout(cacheAnnulation, 5000);
+}
+
+function cacheAnnulation() {
+  clearTimeout(minuteurAnnule);
+  bandeauAnnule.classList.remove('visible');
+  aRetablir = null;
+}
+
+bandeauAnnule.querySelector('button').addEventListener('click', () => {
+  const f = aRetablir;
+  cacheAnnulation();
+  retourHaptique();
+  f?.();
+});
 
 app.addEventListener('click', (e) => {
   const tab = e.target.closest('.gen-tab');
@@ -1659,7 +1748,7 @@ app.addEventListener('click', (e) => {
 
     // Hors mode Ranger, une case libre ouvre le sélecteur, sinon capture ou fiche.
     if (key === undefined) { openAddSheet(index); return; }
-    state.mode === 'catch' ? toggle(key) : openSheet(key);
+    state.mode === 'catch' ? toggle(key, { annulable: true }) : openSheet(key);
     return;
   }
 
@@ -2936,7 +3025,11 @@ const TUILES = [
     },
   },
   {
-    cle: 'reglages', vue: 'reglages',
+    // En BANDEAU sur toute la largeur : six tuiles dont une pleine largeur en tête,
+    // c'est cinq demi-tuiles — la dernière restait seule, un trou à sa droite.
+    // Réglages n'est pas une destination qu'on visite souvent ; une bande basse, en
+    // pied de planche, lui va mieux qu'une tuile carrée.
+    cle: 'reglages', vue: 'reglages', bandeau: true,
     nom: () => t('tuileReglages'),
     sous: () => t('tuileReglagesSous', (THEMES().find(([v]) => v === state.theme)?.[1] || '').toLowerCase()),
   },
@@ -2948,11 +3041,16 @@ function renderAccueil() {
   let pris = 0;
   for (let id = 1; id <= 1025; id++) if (isCaught(id)) pris++;
   const pct = Math.round((100 * pris) / 1025);
+  // Quatre Pokémon sur 1025 font 0,4 % : arrondi, l'anneau affichait « 0 % » et restait
+  // VIDE, comme si rien n'avait été fait. Il montre désormais « <1 », et son arc suit
+  // la valeur exacte — un filet de couleur dès la première capture.
+  const pctExact = (100 * pris) / 1025;
+  const pctTexte = pris > 0 && pct < 1 ? '<1' : String(pct);
 
   const carte = (tu) => `
-    <button class="tuile t-${tu.cle} ${tu.grande ? 'grande' : ''}" data-tuile="${tu.cle}">
+    <button class="tuile t-${tu.cle} ${tu.grande ? 'grande' : ''} ${tu.bandeau ? 'bandeau' : ''}" data-tuile="${tu.cle}">
       ${ART[tu.cle]}
-      ${tu.grande ? `<span class="anneau" style="--p:${pct}" aria-hidden="true"><i>${pct}<em>%</em></i></span>` : ''}
+      ${tu.grande ? `<span class="anneau" style="--p:${pctExact.toFixed(2)}" aria-hidden="true"><i>${pctTexte}<em>%</em></i></span>` : ''}
       <span class="tuile-txt">
         <b>${esc(tu.nom())}</b>
         <small>${esc(tu.sous())}</small>
@@ -4618,6 +4716,10 @@ const caseDex = (id) => {
 // Le numéro est indexé au même titre que le nom, et `fold` retire les accents :
 // « ecaiglaire » doit trouver Écaiglaire.
 function especesDex() {
+  return filtreDex(especesDexBrutes());
+}
+
+function especesDexBrutes() {
   const q = state.dexQ.trim();
   if (!q) {
     if (state.dexGen === null) return []; // dans le menu, sans recherche : les cartes
@@ -4627,6 +4729,47 @@ function especesDex() {
   const f = fold(q);
   return range(1, 1025).filter((id) =>
     String(id).includes(f) || fold(pokedex[id]?.name || '').includes(f));
+}
+
+// LA question d'un Living Dex est « qu'est-ce qui me manque ? ». Sans ce filtre, il
+// fallait la poser en parcourant à l'œil une grille de 151 cases à la recherche des
+// sprites gris. Il suit la collection ACTIVE (`isCaught`), donc la vue chromatique.
+// Le menu n'est pas filtré : ses cartes montrent déjà l'avancement de chaque région.
+function filtreDex(ids) {
+  if (state.dexGen === null || state.dexFiltre === 'tous') return ids;
+  const voulu = state.dexFiltre === 'captures';
+  return ids.filter((id) => isCaught(id) === voulu);
+}
+
+// Le rail du filtre, avec le nombre d'espèces de chaque position : il dit d'avance ce
+// qu'on va trouver, et « Manquants · 0 » annonce une région complète sans qu'on ait à
+// y entrer. Même composant que les rails des Réglages, curseur glissant compris.
+function htmlFiltreDex() {
+  const ids = especesDexBrutes();
+  const pris = ids.filter(isCaught).length;
+  const options = [
+    ['tous', t('dexFiltreTous'), ids.length],
+    ['manquants', t('dexFiltreManquants'), ids.length - pris],
+    ['captures', t('dexFiltreCaptures'), pris],
+  ];
+  const i = Math.max(0, options.findIndex(([v]) => v === state.dexFiltre));
+  return `
+    <div class="reg-rail dex-filtre" role="radiogroup" aria-label="${t('dexFiltreAria')}"
+         style="--i:${i};--n:${options.length}">
+      ${options.map(([v, lib, n]) => `
+        <button class="${v === state.dexFiltre ? 'on' : ''}" role="radio"
+                aria-checked="${v === state.dexFiltre}" data-dexfiltre="${v}">
+          ${esc(lib)}<small>${n}</small>
+        </button>`).join('')}
+    </div>`;
+}
+
+// Ce qu'affiche une grille vide, selon ce qui l'a vidée.
+function videDex() {
+  if (state.dexQ.trim()) return '';
+  if (state.dexFiltre === 'manquants') return `<p class="dex-vide complet">${t('dexRienNeManque')}</p>`;
+  if (state.dexFiltre === 'captures') return `<p class="dex-vide">${t('dexAucunCapture')}</p>`;
+  return '';
 }
 
 // ---------- Vue Scan ----------
@@ -4683,9 +4826,11 @@ function renderPokedex() {
                  value="${esc(state.dexQ)}" aria-label="${t('chercherPokemon')}"
                  autocomplete="off" autocorrect="off" spellcheck="false" />
         </div>
+        ${htmlFiltreDex()}
         <p class="dex-res" ${state.dexQ.trim() ? '' : 'hidden'}>${state.dexQ.trim() ? texteRes(ids.length) : ''}</p>
 
         <div class="dex-grid">${cases}</div>
+        <div class="dex-vide-zone">${ids.length ? '' : videDex()}</div>
 
         <p class="hint">${t('aideDex')}</p>
       </section>`),
@@ -4698,16 +4843,44 @@ app.addEventListener('input', (e) => {
   const champ = e.target.closest('[data-dexq]');
   if (!champ) return;
   state.dexQ = champ.value;
+  majGrilleDex();
+});
+
+// Met à jour la grille, le rail et l'état vide EN PLACE, sans rendre la vue : la
+// frappe garde le focus, et le curseur du rail GLISSE d'une position à l'autre — ce
+// qu'il ne peut faire que si l'élément survit au changement.
+function majGrilleDex() {
   const ids = especesDex();
   const q = state.dexQ.trim();
   const grille = app.querySelector('.dex-grid');
   if (grille) grille.innerHTML = ids.map(caseDex).join('');
+  const rail = app.querySelector('.dex-filtre');
+  if (rail) {
+    const neuf = h(htmlFiltreDex());
+    rail.style.setProperty('--i', neuf.style.getPropertyValue('--i'));
+    rail.querySelectorAll('button').forEach((b, k) => {
+      const n = neuf.querySelectorAll('button')[k];
+      b.className = n.className;
+      b.setAttribute('aria-checked', n.getAttribute('aria-checked'));
+      b.querySelector('small').textContent = n.querySelector('small').textContent;
+    });
+  }
+  const vide = app.querySelector('.dex-vide-zone');
+  if (vide) vide.innerHTML = ids.length ? '' : videDex();
   const info = app.querySelector('.dex-res');
   if (info) { info.hidden = !q; info.textContent = q ? texteRes(ids.length) : ''; }
   // Dans le menu, les résultats prennent la place des cartes, qui reviennent quand
   // le champ se vide.
   const cartes = app.querySelector('.dex-cartes');
   if (cartes && grille) { cartes.hidden = !!q; grille.hidden = !q; }
+}
+
+app.addEventListener('click', (e) => {
+  const f = e.target.closest('[data-dexfiltre]');
+  if (!f) return;
+  state.dexFiltre = f.dataset.dexfiltre;
+  retourHaptique();
+  majGrilleDex();
 });
 
 app.addEventListener('click', (e) => {

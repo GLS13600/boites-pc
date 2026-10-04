@@ -550,6 +550,16 @@ img { display: block; }
 
 /* En tête, le Pokédex : pleine largeur et plus basse, comme une bannière. */
 .tuile.grande { grid-column: 1 / -1; aspect-ratio: 16 / 7; }
+/* Bandeau de pied de planche : toute la largeur, peu de hauteur. Le dessin, en
+   `slice`, n'en montre que la bande centrale — celle des curseurs, qui suffit à dire
+   « réglages ». */
+.tuile.bandeau { grid-column: 1 / -1; aspect-ratio: 16 / 5; }
+/* Dans le bandeau, le dessin n’est PAS recadré pour remplir : étiré sur toute la
+   largeur, il devenait un gros plan d’un seul curseur, et le texte chevauchait la
+   commande qui passait dessous. Il garde ici sa forme carrée, à droite, entier — et
+   le texte occupe la gauche, sur le seul dégradé, comme sur la carte du Pokédex. */
+.tuile.bandeau .tuile-art { left: auto; right: 0; width: auto; aspect-ratio: 1; }
+.tuile.bandeau .tuile-txt { right: 40%; }
 
 .tuile-txt {
   position: absolute;
@@ -1653,6 +1663,32 @@ img { display: block; }
 }
 .dex-res { margin: -4px 0 10px; font-size: 11.5px; color: var(--muted); }
 
+/* Filtre Tous / Manquants / Capturés : le rail des Réglages, curseur glissant compris,
+   avec le nombre d’espèces de chaque position en petit à côté du libellé. */
+.dex-filtre { margin: 0 0 12px; }
+.dex-filtre button { display: inline-flex; align-items: baseline; justify-content: center; gap: 5px; }
+.dex-filtre button small {
+  font-size: var(--t-mini);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  opacity: 0.85;
+}
+.dex-filtre button.on small { color: var(--ball); opacity: 1; }
+
+/* Grille vidée par le filtre : on dit pourquoi, plutôt que de laisser un trou. Une
+   région sans manquant est une réussite, et le message le dit en rouge Poké Ball. */
+.dex-vide {
+  margin: 8px 0 0;
+  padding: var(--e-5) var(--e-4);
+  border: 1px dashed var(--rule);
+  border-radius: var(--r-lg);
+  text-align: center;
+  font-size: var(--t-petit);
+  color: var(--muted);
+}
+.dex-vide.complet { border-style: solid; border-color: var(--ball); color: var(--ball); font-weight: 600; }
+
 /* Trois par ligne, comme demandé : sur 375 px chaque case fait ~111 px, de quoi
    loger un sprite de 68 px, le numéro et le nom sans troncature. */
 .dex-grid {
@@ -2154,13 +2190,28 @@ img { display: block; }
 .evo-mon img { width: 34px; height: 34px; object-fit: contain; image-rendering: pixelated; }
 .evo-mon span { font-size: 14px; font-weight: 600; }
 .evo-mon.on { background: var(--slot); border-color: var(--rule); }
+/* Même signal que la grille : manquant en gris, capturé en couleur avec sa Poké Ball,
+   alignée à droite pour qu'on lise la famille comme une liste à cocher. */
+.evo-mon.manque img { filter: grayscale(1); opacity: 0.6; }
+.evo-mon.manque span { color: var(--muted); }
 .evo-ok {
-  width: 9px;
-  height: 9px;
+  flex: none;
+  margin-left: auto;
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
-  background: linear-gradient(to bottom, var(--ball) 50%, #fff 50%);
+  background: linear-gradient(to bottom, var(--ball) 47%, var(--ink) 47% 53%, var(--panel) 53%);
   box-shadow: 0 0 0 1.2px var(--ink);
 }
+/* L'avancement de la famille, dans le titre. Complet, il passe au rouge Poké Ball. */
+.evo-compte {
+  margin-left: 6px;
+  font-size: var(--t-mini);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.evo-compte.complet { color: var(--ball); }
 
 /* ---------- Autres formes ---------- */
 
@@ -2263,8 +2314,58 @@ img { display: block; }
 .slot.cible { border-style: dashed; border-color: var(--muted); }
 .box.ranger .slot { cursor: move; }
 
-/* Bascule de vue chromatique. */
-.tools button.on { color: var(--shiny); font-weight: 700; }
+/* Bascule de vue chromatique — et elle SEULE. La règle visait `.tools button.on` :
+   elle attrapait aussi le rail « Capturer / Fiche / Ranger », dont les boutons vivent
+   dans la même barre d'outils, et l'onglet actif s'y écrivait en or au lieu du noir
+   que déclare `.segmente button.on`. Même spécificité, règle plus tardive : elle
+   gagnait sans bruit. */
+.tools .bascule.on { color: var(--shiny); font-weight: 700; }
+
+/* Bandeau d'annulation : une pastille sombre en bas de l'écran, au-dessus de la zone
+   sûre. Les couleurs s'inversent avec le thème (encre et papier échangent leurs
+   rôles), comme les bandeaux système. Il monte en ressort et ne capte rien tant
+   qu'il est caché. */
+.annule {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--e-4) + var(--safe-bottom));
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  max-width: calc(100% - 2 * var(--e-4));
+  padding: 8px 8px 8px 16px;
+  border-radius: var(--r-rond);
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--ombre-3);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, calc(100% + var(--e-4) + var(--safe-bottom)));
+  transition: transform var(--d-moyen) var(--c-ressort), opacity var(--d-court) ease;
+}
+.annule.visible { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+.annule span {
+  min-width: 0;
+  font-size: var(--t-petit);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.annule button {
+  flex: none;
+  padding: 8px 14px;
+  border-radius: var(--r-rond);
+  background: var(--ball);
+  color: var(--sur-ball);
+  font-size: var(--t-petit);
+  font-weight: 700;
+}
+.annule button:active { transform: scale(0.95); }
+@media (prefers-reduced-motion: reduce) {
+  .annule { transition: opacity var(--d-court) ease; transform: translate(-50%, 0); }
+}
 
 .reset-btn {
   display: block;

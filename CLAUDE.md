@@ -2173,6 +2173,81 @@ lieu : c'est ce qui permet de superposer sans rien réapparier. Vérifié sur le
 espèces, 0 désaccord de longueur ; un garde à l'application saute la traduction d'un
 jeu si les deux divergeaient un jour.
 
+## Revue d'ensemble de l'expérience (04/10/2026)
+
+Demandée telle quelle : « vérifie entièrement l'application et ajoute des options qui
+te semblent utiles ». Un tour complet de chaque vue, à 375 px, en clair et en sombre,
+en français et en anglais, a relevé trois défauts et quatre manques.
+
+### Défauts corrigés
+
+- **Le rail « Capturer / Fiche / Ranger » s'écrivait en or.** La règle de la bascule
+  chromatique visait `.tools button.on` : elle attrapait aussi les boutons du rail, qui
+  vivent dans la même barre d'outils. Même spécificité que `.segmente button.on`, règle
+  plus tardive : elle gagnait sans bruit. Elle vise désormais `.tools .bascule.on`.
+- **Erreur de console à chaque chargement en développement.** Le service worker
+  s'enregistrait aussi sous `npm run dev`, où `sw.js` n'existe pas ; le serveur
+  répondait par la page HTML, et le navigateur consignait « unsupported MIME type ».
+  Le `.catch` taisait la promesse, pas la console. L'enregistrement est désormais
+  écarté sous `import.meta.env.DEV`.
+- **« 0.6 m » au milieu d'un texte français.** `toFixed` écrit toujours le point.
+  `decimale()` formate selon la langue de l'appli : « 0,6 m » en français, « 0.6 m » en
+  anglais.
+
+### Ajouts
+
+- **Filtre du Pokédex : Tous / Manquants / Capturés** (`state.dexFiltre`). LA question
+  d'un Living Dex est « qu'est-ce qui me manque ? » ; il fallait jusqu'ici la poser en
+  parcourant 151 cases à la recherche des sprites gris.
+  - Même composant que les rails des Réglages, avec le **nombre** de chaque position :
+    « Manquants · 0 » annonce une région complète sans qu'on ait à y entrer.
+  - **Mise à jour EN PLACE** (`majGrilleDex`), sans rendre la vue : le curseur ne peut
+    glisser que si l'élément survit au changement, et la frappe dans la recherche garde
+    son focus. La recherche passe par la même fonction.
+  - Le filtre suit la recherche, qui balaie les neuf générations, et il est **gardé
+    d'une région à l'autre** le temps de la session — on cherche ce qui manque à Kanto,
+    puis à Johto. Pas d'un lancement à l'autre : la grille complète reste l'accueil.
+  - Une grille vidée par le filtre dit pourquoi : « cette région est complète », en
+    rouge Poké Ball, ou « aucun Pokémon capturé ici pour l'instant ».
+  - **Piège évité** : la clé de traduction `dexComplet` existait déjà (l'étiquette
+    « complet » des cartes du menu). Une seconde clé du même nom l'aurait écrasée en
+    silence — un objet littéral garde la dernière. Le message s'appelle donc
+    `dexRienNeManque`. Les trois langues ont été vérifiées : 360 clés chacune, à
+    parité, aucun doublon.
+- **La famille d'évolution suit la règle de la grille.** Tout y était en couleur, avec
+  une pastille de 9 px pour seul signal. Un membre manquant est désormais gris, un
+  membre capturé en couleur avec sa Poké Ball alignée à droite, et le titre porte
+  l'avancement de la famille (« 2 / 3 », en rouge quand elle est complète). Les sprites
+  suivent la collection active : chromatiques en vue chromatique.
+- **Annuler un retrait.** En mode Capturer, un simple toucher retire un Pokémon de la
+  collection, et le seul indice en est un sprite de 50 px qui repasse au gris. Un
+  bandeau en bas de l'écran l'annonce désormais — « Bulbizarre retiré de la
+  collection » — avec un bouton **Annuler**, pendant 5 secondes.
+  - Seul le retrait depuis la GRILLE est annonçable (`toggle(id, { annulable })`) : le
+    bouton de la fiche dit déjà lui-même ce qu'il vient de faire.
+  - La **vue est relevée au moment du retrait** : si l'on bascule entre normal et
+    chromatique avant d'annuler, la capture revient dans la collection d'où elle est
+    partie. Vérifié.
+  - Un nouvel appel remplace le précédent : seule la dernière action s'annule.
+  - Les couleurs s'inversent avec le thème, comme les bandeaux système.
+- **Accueil : Réglages en bandeau.** Six tuiles dont une pleine largeur en tête, c'est
+  cinq demi-tuiles : la dernière restait seule, un trou à sa droite. Réglages occupe
+  désormais toute la largeur sur une hauteur réduite (16 / 5). Le dessin n'y est PAS
+  recadré pour remplir — étiré, il devenait le gros plan d'un seul curseur sur lequel
+  le texte se posait — : il garde sa forme carrée, entier, à droite.
+- **L'anneau de l'accueil affiche « <1 % »** au lieu de « 0 % » dès la première capture,
+  et son arc suit la valeur exacte : avec quatre Pokémon sur 1025, il restait vide
+  comme si rien n'avait été fait.
+
+### Vérifié dans l'aperçu
+
+Filtre : 151 / 146 / 5 sur Kanto, région complète, région vide, recherche combinée,
+filtre conservé d'une région à l'autre, curseur conservé (même élément). Famille :
+Salamèche et Reptincel capturés, Dracaufeu gris, titre « 2 / 3 ». Annulation :
+retrait puis restauration, effacement au bout de 5 s avec retrait maintenu, aucune
+annonce à la capture, retour dans la collection chromatique après bascule de vue. En
+anglais et en sombre : libellés contenus dans le rail, bandeau inversé.
+
 ## Interface
 
 - 9 onglets de génération, boîtes de **30** en grille 6×5, comme le PC des jeux.

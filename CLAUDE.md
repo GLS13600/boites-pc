@@ -2048,6 +2048,34 @@ licence du dépôt des sprites dit lui-même « All image contents within are Co
 Pokémon Company », et le CC0 ne porte que sur le dépôt. Lire ce document avant toute
 démarche de publication.
 
+### Sécurité : ce qui a été trouvé et corrigé (04/10/2026)
+
+Audit complet dans [legal/AUDIT-SECURITE.md](legal/AUDIT-SECURITE.md). Trois règles
+en sont sorties, à ne pas défaire :
+
+- **Une clé de capture ne va JAMAIS telle quelle dans une URL.** Le repli d’image
+  écrit l’URL dans un attribut `onerror`, donc dans du JavaScript entre apostrophes :
+  une clé contenant une apostrophe en sortait et s’exécutait. Vérifié exploitable —
+  une sauvegarde fabriquée faisait exécuter son contenu au simple affichage d’une
+  boîte, avec accès au jeton de session dans `localStorage`. Trois barrières
+  désormais : filtrage à l’import (`cleAdmise`), liste blanche au plus près du DOM
+  (`cleSure`), et `esc()` qui échappe aussi l’apostrophe. Chacune suffit seule ;
+  les trois ont été éprouvées séparément.
+- **`esc()` échappe l’apostrophe.** Tous les attributs ne sont pas entre guillemets, et
+  un gestionnaire en ligne contient du JavaScript où l’apostrophe délimite les chaînes.
+- **La politique de sécurité de contenu est posée à la compilation** par un greffon de
+  `vite.config.js`, dans une balise `meta` — Pages ne permet pas d’en-tête HTTP. Sa
+  valeur tient dans `connect-src` : un script injecté ne peut plus expédier le jeton
+  ailleurs. L’origine Supabase vient de `loadEnv`, pas de `process.env` : `npm run
+  build` ne charge pas `.env` dans l’environnement du processus, et la directive
+  aurait coupé les comptes sur le site publié.
+
+La table `profils` était lisible par quiconque relevait la clé publique dans le
+bundle — énumération de tous les comptes. La migration
+`20261004000000_profils_non_publics.sql` restreint la lecture au propriétaire ; la
+vérification de disponibilité d’un pseudo passait déjà par `pseudo_disponible()`, la
+politique publique était redondante. **Cette migration reste à exécuter dans Supabase.**
+
 ## Traduction : français, anglais, japonais
 
 Demandée le 30/09/2026, avec une étendue explicitement choisie : **tout**, descriptions

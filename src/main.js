@@ -122,14 +122,34 @@ const CLASSES = {
 // chemin est relatif SANS « / » initial, comme les fonds de boîte — indispensable
 // avec base: './', sinon Capacitor ne les trouve pas sur l'iPhone.
 // Rapatriement : npm run fetch-sprites
+// Forme admise pour une clé de sprite : un numéro, un slug (`585-summer`), ou un
+// chemin de dossier (`female/902`). Rien d’autre ne peut atteindre une URL.
+//
+// C’est volontairement une LISTE BLANCHE, et non un échappement : on sait exactement
+// ce qu’est une clé légitime, et tout ce qui n’y ressemble pas est une donnée
+// fabriquée. Une clé refusée retombe sur le sprite 0, que le repli `onerror`
+// remplacera comme pour n’importe quel fichier manquant.
+const CLE_SPRITE = /^[A-Za-z0-9][A-Za-z0-9_-]*(\/[A-Za-z0-9][A-Za-z0-9_-]*)*$/;
+const cleSure = (k) => (CLE_SPRITE.test(String(k ?? '')) ? k : '0');
+
 const REPO = 'sprites';
 const sprites = {
-  still: (id, shiny) => `${REPO}/${shiny ? 'shiny/' : ''}${id}.png`,
+  still: (id, shiny) => `${REPO}/${shiny ? 'shiny/' : ''}${cleSure(id)}.png`,
   // Les artworks sont recompressés en WebP à 384 px par le script : 260 Mo de PNG
   // tombent à ~37 Mo. D'où l'extension qui diffère de celle des sprites fixes.
-  art: (id, shiny) => `${REPO}/other/official-artwork/${shiny ? 'shiny/' : ''}${id}.webp`,
+  art: (id, shiny) => `${REPO}/other/official-artwork/${shiny ? 'shiny/' : ''}${cleSure(id)}.webp`,
 };
 // Un gif animé peut manquer pour quelques formes : on retombe sur le sprite fixe.
+//
+// Le repli écrit l'URL dans un attribut `onerror`, donc DANS DU CODE JAVASCRIPT entre
+// apostrophes, lui-même dans un attribut HTML entre guillemets. Une clé contenant une
+// apostrophe en sortait et exécutait ce qui suit — `esc()` n'échappe pas l'apostrophe,
+// et ce chemin ne l'appelait pas davantage. Vérifié exploitable : une sauvegarde
+// fabriquée portant la clé `x';…;'` faisait exécuter son contenu au chargement de la
+// boîte, avec accès à `localStorage` et donc au jeton de session.
+//
+// `cleSure` est le garde-fou de dernier recours, appliqué au plus près du DOM : une
+// clé qui n'a pas la forme d'un numéro ou d'un slug ne produit plus d'URL du tout.
 const imgFallback = (id, shiny) => `onerror="this.onerror=null;this.src='${sprites.still(spriteKey(id), shiny)}'"`;
 
 // Repli du grand portrait, à DEUX niveaux : l'artwork peut manquer pour une forme,
@@ -162,6 +182,11 @@ function construitFormes() {
 construitFormes();
 // Un attribut HTML revient toujours en chaîne : on rétablit le type d'origine.
 const asKey = (v) => (/^[0-9]+$/.test(v) ? Number(v) : v);
+// Pendant de `asKey` : une clé acceptable est un entier positif, ou un slug. Sert à
+// filtrer ce qui arrive d'un fichier d'import ou du compte — voir `appliqueDonnees`.
+const cleAdmise = (k) =>
+  (typeof k === 'number' && Number.isInteger(k) && k >= 0)
+  || (typeof k === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(k));
 
 const monName = (k) => pokedex[k]?.name || FORM_BY_KEY.get(k)?.name || t('numero', k);
 // Le sprite d'une forme cosmétique s'appelle « 585-summer », pas « 10068 ».
@@ -548,7 +573,10 @@ const ICO_REG = {
   avenir: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/></svg>',
 };
 
-const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+// L’APOSTROPHE EST ÉCHAPPÉE elle aussi : tous les attributs ne sont pas écrits entre
+// guillemets, et un attribut de gestionnaire (`onerror`) contient du JavaScript où
+// l’apostrophe délimite les chaînes. L’omettre avait rendu un chemin exploitable.
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 // Recherche insensible aux accents et à la casse.
 const fold = (t) => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -2454,10 +2482,23 @@ async function appliqueDonnees(data) {
 
   if (Array.isArray(d.caught)) {
     // Les clés de formes cosmétiques sont des chaînes : ne pas tout forcer en nombre.
-    state.caught = new Set(d.caught.map(asKey));
-    state.caughtShiny = new Set((d.caughtShiny || []).map(asKey));
+    //
+    // ELLES SONT FILTRÉES : la charge vient d'un fichier choisi par l'utilisateur ou
+    // du serveur, donc d'une source qui n'est pas sous notre contrôle. Une clé
+    // fabriquée se retrouvait écrite telle quelle dans l'URL d'un sprite, et de là
+    // dans un attribut `onerror` — soit du code exécuté au simple affichage de la
+    // boîte. C'est la première des trois barrières, et la seule qui empêche la
+    // donnée d'entrer : les deux autres (`cleSure`, `esc`) sont au plus près du DOM.
+    state.caught = new Set(d.caught.map(asKey).filter(cleAdmise));
+    state.caughtShiny = new Set((d.caughtShiny || []).map(asKey).filter(cleAdmise));
     state.boxes = d.boxes || {};
-    state.order = d.order || {};
+    // Une case vide (`null`) est légitime et doit survivre au filtrage : elle porte
+    // la mise en page des boîtes.
+    state.order = Object.fromEntries(
+      Object.entries(d.order || {})
+        .filter(([g, l]) => Number.isInteger(+g) && Array.isArray(l))
+        .map(([g, l]) => [g, l.map((k) => (k == null ? null : asKey(k))).map((k) => (k == null || cleAdmise(k) ? k : null))]),
+    );
     save();
     saveBoxes();
     saveOrder();

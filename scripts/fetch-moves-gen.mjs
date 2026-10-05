@@ -87,8 +87,14 @@ for (const v of JEUX) {
 
 const sortie = {};
 let historiques = 0;
+// PokéAPI note 0 la puissance ou la précision de certaines attaques récentes (Lame
+// Tachyonique, Décalquage, Pression Extrême…) là où les autres portent null. Un 0 est
+// toujours faux — aucune attaque n'a une puissance ou une précision nulle — et il
+// s'affichait tel quel au lieu du « — » des attaques de statut ou à puissance variable.
+const sansZero = (x) => ({ ...x, p: x.p || null, a: x.a || null });
+
 for (const id of liste) {
-  const b = BASE[id];
+  const b = sansZero(BASE[id]);
   const histo = HISTO[id] || { g: null, past: [] };
   const passes = histo.past
     .map((p) => ({ ...p, ordre: VG[p.vg]?.ordre ?? Infinity }))
@@ -120,6 +126,8 @@ verifie('Charge actuelle en gén. 9', !sortie[33]?.h?.[9]);
 verifie('Morsure Normal en gén. 1, Ténèbres en gén. 2', sortie[44]?.h?.[1]?.t === 'normal' && !sortie[44]?.h?.[2]);
 verifie('Charme Normal en gén. 5, Fée en gén. 6', sortie[204]?.h?.[5]?.t === 'normal' && !sortie[204]?.h?.[6]);
 verifie('Charme apparaît en gén. 2', sortie[204]?.g === 2);
+verifie('aucune puissance ni précision à 0', Object.values(sortie).every((m) => m.p !== 0 && m.a !== 0));
+verifie('Lame Tachyonique sans précision', sortie[911]?.a === null && sortie[911]?.p === 50);
 
 await writeFile(new URL('moves.json', DATA), JSON.stringify(sortie));
 const ko = (Buffer.byteLength(JSON.stringify(sortie)) / 1024).toFixed(0);

@@ -138,8 +138,10 @@ function enHtml(md) {
 
 // La page reprend les couleurs de l'application, en dur : elle doit s'afficher seule,
 // sans la feuille de style ni les jetons, et rester lisible dans les deux thèmes.
-const gabarit = (titre, corps) => `<!doctype html>
-<html lang="fr">
+// La langue du document compte : la césure et la lecture à voix haute en dépendent,
+// et la politique anglaise se déclarait en français.
+const gabarit = (titre, corps, lang = 'fr') => `<!doctype html>
+<html lang="${lang}">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -221,6 +223,6 @@ ${corps}
 mkdirSync(resolve(RACINE, 'public/legal'), { recursive: true });
 for (const [md, html, titre] of PAGES) {
   const source = readFileSync(resolve(RACINE, 'legal', md), 'utf8');
-  writeFileSync(resolve(RACINE, 'public/legal', html), gabarit(titre, enHtml(source)), 'utf8');
+  writeFileSync(resolve(RACINE, 'public/legal', html), gabarit(titre, enHtml(source), html === 'privacy.html' ? 'en' : 'fr'), 'utf8');
   console.log(`legal/${html} ← ${md}`);
 }

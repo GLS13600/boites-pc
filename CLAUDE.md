@@ -207,6 +207,39 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 - PokéAPI ne renseigne `habitat` que pour les générations 1 à 3. Au-delà c'est `null` et
   l'interface affiche « Non renseigné » — c'est une limite de la source, pas un bug.
 
+### Lieux de capture des remakes (05/10/2026)
+
+Signalé : « certains Pokémon dispo dans RO/SA n'ont pas d'emplacement ». Mesuré, c'est
+la SOURCE : PokéAPI n'a de lieux de Rubis Oméga / Saphir Alpha que pour **70 espèces
+sur les 211** du Pokédex régional — aucune pêche, aucun surf, aucun fond marin (ses
+seules méthodes y sont herbes, hordes, Éclate-Roc, dons et rencontres fixes) — et
+**aucun** lieu de Diamant Étincelant / Perle Scintillante.
+
+`renderEncounters` comble chaque onglet de remake (`REMAKES_LIEUX`) dont l'espèce fait
+partie mais que la source ignore, avec ce qui est SÛR, et le dit (carte en pointillés,
+`.game.deduit`) :
+
+1. une évolution : « Par évolution de Salamèche », avec la condition ;
+2. un bébé — forme de base dont l'évolution est d'une génération ANTÉRIEURE (Pichu,
+   Azurill…), règle qui évite toute liste à tenir — : œuf de son évolution ;
+3. sinon les lieux du jeu d'ORIGINE (Rubis / Saphir / Émeraude pour RO/SA), annoncés
+   comme indicatifs : le remake reprend la carte, pas toujours à l'identique ;
+4. sinon « mode d'obtention non renseigné » — jamais un lieu inventé.
+
+- **Les jeux sont reconnus par une clé relevée AU CHARGEMENT** (`CLES_RENCONTRES`), pas
+  par leur nom : la surcouche de traduction réécrit `g.game` en place.
+- **`HORS_CARTE`** écarte de la déduction ce qui ne passe pas par la carte ou ne se
+  reproduit pas dans le remake : disques bonus de Colosseum, Pokémon Channel, échanges,
+  Pokémon errants. Sans ce filtre, Jirachi était annoncé « au Centre Pokémon de Hoenn »
+  dans RO/SA.
+- **Note Navidex** sous RO/SA, réelle ou déduite, SEULEMENT si l'espèce s'y promène
+  (`NAVIDEX_METHODES` : herbes, surf, fonds marins, hordes). Le Navidex ne cherche ni
+  à la canne ni à Éclate-Roc, et Arcko, offert par le Prof. Seko, n'en a pas.
+- **44 méthodes de rencontre** s'affichaient sous leur identifiant (`horde`,
+  `max-raid`, `npc-trade`, `honey-tree`…) dans les trois langues : elles ont leur
+  libellé dans `methodes` d'i18n.js. Et 5 lieux sans nom chez PokéAPI
+  (`hoenn-pokecenter-area`…) passent par `nomLieu()`.
+
 ## Sprites
 
 **Tout est local, dans `public/sprites/`.** L'appli ne fait plus **aucune** requête
@@ -1681,6 +1714,11 @@ donc été retiré, et la vue combat ne mène plus aux attaques.
   - Il manquait **102 attaques** dans `moves.json`, qui ne gardait que celles citées par
     la fiche du Pokédex (jeu le plus récent) : surtout celles retirées d'Écarlate /
     Violet. 833 attaques désormais, dont 148 avec un historique, 167 Ko.
+  - **PokéAPI note 0** la puissance ou la précision de 18 attaques récentes (Lame
+    Tachyonique, Décalquage, Pression Extrême, Rempart Brûlant…) là où les autres
+    portent `null`. L'appli affichait « Puis. 0 » ou « Préc. 0 » au lieu du « — ».
+    `sansZero` les ramène à `null` dans fetch-moves-gen, et deux contrôles le
+    vérifient avant d'écrire.
 - **Catégorie avant la gén. 4** : physique ou spéciale dépendait du TYPE (Normal,
   Combat, Vol, Poison, Sol, Roche, Insecte, Spectre, Acier physiques ; les autres
   spéciaux). `attaqueEnGen` l'applique : Morsure est Normal/Physique en gén. 1,
@@ -2005,10 +2043,19 @@ rendu — deux versions d'un même texte, c'est toujours la seconde qu'on oublie
 - **Un bloc « Légal » dans les Réglages**, exigé par Apple (5.1.1(i)) : le lien vers la
   politique de confidentialité doit vivre DANS l'application. Trois lignes, vers les
   pages embarquées dans `dist/legal/`.
-- **Elles s'ouvrent HORS de la vue web** (`ouvreLegal`) : les charger dedans
-  remplacerait l'application par la page, sans aucun moyen de revenir — il n'y a pas
-  de barre d'adresse sous Capacitor. Safari système par le greffon Browser en natif,
-  un onglet sur le web.
+- **Elles s'ouvrent dans un PANNEAU de l'appli** (`ouvreLegal`, `legalSheet`), qui lit
+  la page embarquée et n'en garde que le `<main>`. **Pas dans Safari** : la première
+  version passait par le greffon Browser, et rien ne s'ouvrait dans l'IPA — Safari
+  n'accepte que http(s), la page de l'appli est en `capacitor://localhost`, et le
+  repli `window.open` ne fait rien dans une vue web Capacitor. Pas dans la vue web
+  elle-même non plus : sans barre d'adresse, on ne pourrait plus revenir.
+  - Les liens entre documents restent dans le panneau ; un lien https (la CNIL) part
+    dans Safari, qui l'accepte. Le lien « Unydex » du pied (`../`) est retiré.
+  - Hors du français, « Politique de confidentialité » ouvre la version anglaise.
+  - Les styles du document sont ceux des pages web, ramenés aux jetons sous
+    `.legal-doc` : il suit le thème de l'appli.
+  - `build-legal.mjs` déclare désormais `lang="en"` pour `privacy.html` (elle se
+    disait française : césure et lecture vocale fausses).
 - **Piège** : le commentaire HTML qui annonce ce bloc vit dans un gabarit de chaîne.
   Un seul accent grave dedans termine le gabarit, et la page ne compile plus. Aucun
   nom de fichier entre accents graves dans le balisage de `renderReglages`.

@@ -21,7 +21,7 @@ import { creeCompteUI } from './compte-ui.js';
 import { brancher as brancheSync, marqueChange } from './sync.js';
 import {
   t, langue, chargeLangue, LANGUES, estLangue, LANGUE_KEY,
-  nomKind, obtention, nomMethode, libStat, statLignes, groupesApprentissage,
+  nomKind, obtention, nomMethode, nomLieu, libStat, statLignes, groupesApprentissage,
   nomRole, nomOrientation, nomRemake,
 } from './i18n.js';
 
@@ -889,7 +889,7 @@ document.body.append(backdrop, sheet);
 // Toucher le fond assombri referme le panneau ouvert, quel qu'il soit. Le panneau de
 // la boîte de combat y échappait : il affichait bien le fond, mais seul un glissement
 // vers le bas le fermait — on tapait à côté sans effet.
-backdrop.addEventListener('click', () => { closeSheet(); closeBoxSheet(); closeAddSheet(); closeBattleSheet(); fermeComptePanneau(); });
+backdrop.addEventListener('click', () => { closeSheet(); closeBoxSheet(); closeAddSheet(); closeBattleSheet(); fermeComptePanneau(); fermeLegal(); });
 
 // Stats de base en barres.
 //
@@ -1038,7 +1038,7 @@ function openSheet(id) {
     ${renderMoves(base)}
 
     <h3>${t('ouLeTrouver')}</h3>
-    ${renderEncounters(p)}
+    ${renderEncounters(p, base)}
   `;
   sheetBody.scrollTop = keepScroll;
   sheet.classList.add('open');
@@ -1229,23 +1229,169 @@ function renderMoves(base) {
   `;
 }
 
-function renderEncounters(p) {
-  const enc = p.encounters || [];
-  if (!enc.length) {
-    return `<p class="none">${t('aucuneRencontre')}</p>`;
+// ---------- Lieux de capture : les trous de la source dans les remakes ----------
+//
+// PokéAPI a importé les rencontres des remakes de façon très lacunaire. Mesuré sur les
+// Pokédex régionaux : Rubis Oméga / Saphir Alpha n'a de lieu que pour 70 espèces sur
+// 211 — ni Magicarpe, ni Tentacool, ni Wailmer, qui se pêchent et se trouvent en
+// surfant —, et Diamant Étincelant / Perle Scintillante n'en a AUCUN. Une espèce du
+// Pokédex de RO/SA s'affichait donc sans la moindre ligne pour ce jeu.
+//
+// On comble avec ce qui est SÛR, et on le dit :
+//   1. une évolution s'obtient en faisant évoluer sa forme précédente ;
+//   2. un bébé apparu après son évolution (Pichu, Azurill, Rozbouton…) s'obtient par
+//      un œuf de celle-ci ;
+//   3. un Pokémon sauvage est donné aux lieux du jeu D'ORIGINE, explicitement marqués
+//      comme indicatifs — un remake reprend la carte de son modèle, mais pas toujours
+//      à l'identique ;
+//   4. à défaut, on dit que la source ne renseigne pas le mode d'obtention.
+// Jamais un lieu inventé.
+//
+// Les jeux sont reconnus par une CLÉ relevée au chargement, quand les noms sont encore
+// français : la surcouche de traduction réécrit `g.game` en place, et « Rubis Oméga »
+// devient « Omega Ruby ». Les index restent alignés, c'est elle qui le garantit.
+const JEU_PAR_NOM = {
+  'Rouge': 'red', 'Bleu': 'blue', 'Jaune': 'yellow', 'Vert': 'green',
+  'Rouge Feu': 'firered', 'Vert Feuille': 'leafgreen',
+  'Or': 'gold', 'Argent': 'silver', 'Cristal': 'crystal',
+  'Or HeartGold': 'heartgold', 'Argent SoulSilver': 'soulsilver',
+  'Rubis': 'ruby', 'Saphir': 'sapphire', 'Émeraude': 'emerald',
+  'Rubis Oméga': 'omega-ruby', 'Saphir Alpha': 'alpha-sapphire',
+  'Diamant': 'diamond', 'Perle': 'pearl', 'Platine': 'platinum',
+  'Let’s Go, Pikachu': 'lgp', 'Let’s Go, Évoli': 'lge',
+};
+const CLES_RENCONTRES = new Map();
+for (const [id, e] of Object.entries(pokedex)) {
+  CLES_RENCONTRES.set(Number(id), (e.encounters || []).map((g) => JEU_PAR_NOM[g.game] ?? null));
+}
+
+// Chaque remake, ses propres jeux, et le jeu dont il reprend la carte.
+const REMAKES_LIEUX = [
+  { cle: 'frlg', jeux: ['firered', 'leafgreen'], origine: ['red', 'blue', 'yellow', 'green'] },
+  { cle: 'hgss', jeux: ['heartgold', 'soulsilver'], origine: ['gold', 'silver', 'crystal'] },
+  { cle: 'rosa', jeux: ['omega-ruby', 'alpha-sapphire'], origine: ['ruby', 'sapphire', 'emerald'], navidex: true },
+  { cle: 'lgpe', jeux: ['lgp', 'lge'], origine: ['red', 'blue', 'yellow'] },
+  { cle: 'deps', jeux: [], origine: ['diamond', 'pearl', 'platinum'] },
+];
+const LISTES_REMAKES = Object.fromEntries(Object.entries(remakes).map(([k, r]) => [k, new Set(r.liste)]));
+
+// Bébé : forme de base dont l'évolution est apparue dans une génération ANTÉRIEURE.
+// Pichu (gén. 2) précède Pikachu (gén. 1) : on ne le trouve qu'en œuf. Aucune donnée
+// `is_baby` n'est embarquée ; cette règle les couvre tous sans liste à tenir.
+function enfantDuBebe(id) {
+  const ch = evolutions.chains[evolutions.of[id]];
+  const m = ch?.membres?.find((x) => x.id === id);
+  if (!m || m.from !== null) return null;
+  const suite = ch.membres.find((x) => x.from === id);
+  if (!suite) return null;
+  return (pokedex[suite.id]?.generation ?? 99) < (pokedex[id]?.generation ?? 0) ? suite.id : null;
+}
+
+const htmlLieu = (pl) => `
+  <div class="loc">
+    <div>
+      <div class="where">${esc(nomLieu(pl.location))}</div>
+      <div class="how">${pl.methods.map((m) => nomMethode(m.method)).join(', ')}</div>
+    </div>
+    <div class="lvl">${t('niveauCourt', pl.min, pl.max !== pl.min ? '–' + pl.max : '')}${pl.chance ? ` · ${pl.chance} %` : ''}</div>
+  </div>`;
+
+const NOTE_NAVIDEX = () => `<p class="loc-note navidex">${t('lieuNavidex')}</p>`;
+
+// Le Navidex ne cherche que les Pokémon qui se promènent : herbes, grottes, surf et
+// fonds marins. Ni la pêche, ni Éclate-Roc, ni un don ou une rencontre fixe — la note
+// sous Arcko, offert par le Prof. Seko, aurait été fausse.
+const NAVIDEX_METHODES = new Set(['walk', 'surf', 'seaweed', 'horde', 'dark-grass']);
+const navidexPossible = (places) => places.some((pl) => pl.methods.some((m) => NAVIDEX_METHODES.has(m.method)));
+
+// Ce qui ne passe pas par la carte du jeu d'origine, ou ne s'y reproduit pas dans le
+// remake : disques bonus de Colosseum, Pokémon Channel, Ranger, échanges avec un
+// personnage, Pokémon errants (Latios et Latias sont fixes dans RO/SA). Les reprendre
+// comme lieux « indicatifs » aurait donné Jirachi au Centre Pokémon de Hoenn.
+const HORS_CARTE = new Set([
+  'colosseum-bonus-disc-jpn', 'colosseum-bonus-disc-us', 'pokemon-channel-pal',
+  'pokemon-ranger', 'snag', 'snag-rematch', 'pokespot', 'npc-trade',
+  'roaming-grass', 'roaming-water',
+]);
+
+// Le bloc d'un remake absent de la source, ou rien si la source le couvre déjà.
+function blocRemake(id, enc, cles, r) {
+  if (!LISTES_REMAKES[r.cle]?.has(id)) return '';
+  const present = cles.some((k) => r.jeux.includes(k));
+  if (present) return '';
+  const nom = esc(nomRemake(r.cle, 'nom'));
+  const ch = evolutions.chains[evolutions.of[id]];
+  const m = ch?.membres?.find((x) => x.id === id);
+
+  // 1. Évolution.
+  if (m && m.from !== null) {
+    return `
+    <div class="game deduit">
+      <div class="game-name">${nom}</div>
+      <div class="loc"><div>
+        <div class="where">${t('lieuParEvolution', esc(monName(m.from)))}</div>
+        ${m.how ? `<div class="how">${esc(m.how)}</div>` : ''}
+      </div></div>
+    </div>`;
   }
-  return `<div class="games">${enc.map((g) => `
+  // 2. Bébé : œuf.
+  const enfant = enfantDuBebe(id);
+  if (enfant) {
+    return `
+    <div class="game deduit">
+      <div class="game-name">${nom}</div>
+      <div class="loc"><div>
+        <div class="where">${t('lieuParOeuf')}</div>
+        <div class="how">${t('lieuOeufDe', esc(monName(enfant)))}</div>
+      </div></div>
+    </div>`;
+  }
+  // 3. Lieux du jeu d'origine, dédoublonnés d'un jeu à l'autre.
+  const blocs = enc.filter((_, i) => r.origine.includes(cles[i]));
+  const vus = new Map();
+  if (blocs.length) {
+    for (const g of blocs) for (const lieu of g.places) {
+      const pl = { ...lieu, methods: lieu.methods.filter((x) => !HORS_CARTE.has(x.method)) };
+      if (!pl.methods.length) continue;
+      const k = pl.location + '|' + pl.methods.map((x) => x.method).join(',');
+      if (!vus.has(k)) vus.set(k, pl);
+    }
+  }
+  if (vus.size) {
+    const jeuxOrigine = [...new Set(blocs.map((g) => g.game))].join(' / ');
+    return `
+    <div class="game deduit">
+      <div class="game-name">${nom}</div>
+      <p class="loc-note">${t('lieuIndicatif', esc(jeuxOrigine))}</p>
+      ${[...vus.values()].map(htmlLieu).join('')}
+      ${r.navidex && navidexPossible([...vus.values()]) ? NOTE_NAVIDEX() : ''}
+    </div>`;
+  }
+  // 4. Rien de sûr à dire.
+  return `
+    <div class="game deduit">
+      <div class="game-name">${nom}</div>
+      <p class="loc-note">${t('lieuNonRenseigne')}</p>
+    </div>`;
+}
+
+function renderEncounters(p, id) {
+  const enc = p.encounters || [];
+  const cles = CLES_RENCONTRES.get(Number(id)) || [];
+  // La note du Navidex ne vient qu'une fois, sous le DERNIER des deux blocs de RO/SA,
+  // et seulement si l'un d'eux le trouve à l'état sauvage.
+  const oras = enc.filter((_, i) => cles[i] === 'omega-ruby' || cles[i] === 'alpha-sapphire');
+  const dernierOras = navidexPossible(oras.flatMap((g) => g.places))
+    ? Math.max(cles.lastIndexOf('omega-ruby'), cles.lastIndexOf('alpha-sapphire')) : -1;
+  const reels = enc.map((g, i) => `
     <div class="game">
       <div class="game-name">${g.game}</div>
-      ${g.places.map((pl) => `
-        <div class="loc">
-          <div>
-            <div class="where">${pl.location}</div>
-            <div class="how">${pl.methods.map((m) => nomMethode(m.method)).join(', ')}</div>
-          </div>
-          <div class="lvl">${t('niveauCourt', pl.min, pl.max !== pl.min ? '–' + pl.max : '')}${pl.chance ? ` · ${pl.chance} %` : ''}</div>
-        </div>`).join('')}
-    </div>`).join('')}</div>`;
+      ${g.places.map(htmlLieu).join('')}
+      ${i === dernierOras ? NOTE_NAVIDEX() : ''}
+    </div>`).join('');
+  const deduits = REMAKES_LIEUX.map((r) => blocRemake(Number(id), enc, cles, r)).join('');
+  if (!reels && !deduits) return `<p class="none">${t('aucuneRencontre')}</p>`;
+  return `<div class="games">${reels}${deduits}</div>`;
 }
 
 function closeSheet() {
@@ -1417,7 +1563,7 @@ function syncBackdrop() {
   backdrop.classList.toggle('open',
     sheet.classList.contains('open') || boxSheet.classList.contains('open')
     || addSheet.classList.contains('open') || battleSheet.classList.contains('open')
-    || compteSheet.classList.contains('open'));
+    || compteSheet.classList.contains('open') || legalSheet.classList.contains('open'));
 }
 
 // ---------- Panneau « ajouter un Pokémon à un emplacement » ----------
@@ -1478,6 +1624,71 @@ function fermeComptePanneau() {
   compteUI.panneauFerme();
   syncBackdrop();
 }
+
+// ---------- Documents légaux ----------
+//
+// Ils s'ouvrent DANS UN PANNEAU de l'appli. La première version les confiait au
+// greffon Browser — un Safari système — et rien ne s'ouvrait dans l'IPA : Safari
+// n'accepte que des adresses http(s), et la page de l'appli est servie en
+// capacitor://localhost. La promesse était rejetée, le repli `window.open` ne fait
+// rien dans une vue web Capacitor : le toucher restait sans effet.
+//
+// Le panneau lit les pages embarquées dans `dist/legal/` — produites depuis le
+// Markdown de `legal/` par scripts/build-legal.mjs — et n'en garde que le <main>.
+// Même source que le site, donc toujours le même texte, et hors ligne. Le chemin est
+// RELATIF, comme celui des sprites, à cause de `base: './'`.
+const legalSheet = h(`<aside class="sheet" role="dialog" aria-modal="true"><div class="sheet-grip"></div><div class="sheet-body legal-doc"></div></aside>`);
+document.body.append(legalSheet);
+const legalBody = legalSheet.querySelector('.sheet-body');
+enableSwipeClose(legalSheet, fermeLegal);
+
+function fermeLegal() {
+  if (!legalSheet.classList.contains('open')) return;
+  legalSheet.classList.remove('open');
+  syncBackdrop();
+}
+
+// Hors du français, la politique de confidentialité existe en anglais : on la donne
+// plutôt que le texte français. Les autres documents n'existent qu'en français.
+const pageLegale = (page) => (page === 'confidentialite' && langue() !== 'fr' ? 'privacy' : page);
+
+async function ouvreLegal(page) {
+  legalBody.innerHTML = `<p class="legal-attente">…</p>`;
+  legalBody.scrollTop = 0;
+  legalSheet.classList.add('open');
+  syncBackdrop();
+  try {
+    const r = await fetch(`legal/${pageLegale(page)}.html`);
+    if (!r.ok) throw new Error(String(r.status));
+    // DOMParser n'exécute aucun script ; et ces pages sont les nôtres, embarquées.
+    const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+    const main = doc.querySelector('main');
+    if (!main) throw new Error('main');
+    // Le pied de page des pages web renvoie au site (« ../ ») : dans l'appli il n'a
+    // pas de sens, le panneau se referme d'un geste.
+    main.querySelector('a[href="../"]')?.remove();
+    legalBody.innerHTML = main.innerHTML;
+    legalBody.lang = doc.documentElement.lang || 'fr';
+  } catch {
+    legalBody.innerHTML = `<p class="legal-attente">${t('legalIndispo')}</p>`;
+  }
+}
+
+// Les liens entre documents restent dans le panneau ; un lien vers l'extérieur (la
+// CNIL) part dans Safari, qui l'accepte puisqu'il est en https.
+legalBody.addEventListener('click', (e) => {
+  const a = e.target.closest('a[href]');
+  if (!a) return;
+  const href = a.getAttribute('href');
+  const interne = href.match(/^([a-z-]+)\.html$/);
+  if (interne) { e.preventDefault(); ouvreLegal(interne[1]); return; }
+  if (/^https:\/\//.test(href)) {
+    e.preventDefault();
+    const B = window.Capacitor?.Plugins?.Browser;
+    if (B) B.open({ url: href }).catch(() => {});
+    else window.open(href, '_blank', 'noopener');
+  }
+});
 
 // Une seule fabrique de liste : le rendu complet et la frappe s'en servent tous deux.
 function picksHTML(res) {
@@ -3185,20 +3396,6 @@ async function poseLangueEtRend(l) {
   render();
 }
 
-// Les pages légales s'ouvrent HORS de l'application : les charger dans la vue web
-// remplacerait l'appli par la page, sans aucun moyen de revenir — il n'y a pas de
-// barre d'adresse sous Capacitor. Le greffon Browser présente un Safari système
-// qu'on referme d'un geste ; sur le web, un nouvel onglet suffit.
-//
-// Les pages sont embarquées dans `dist/legal/`, donc le chemin RELATIF marche aussi
-// bien sur le site que dans l'IPA — même raison que les sprites, avec `base: './'`.
-async function ouvreLegal(page) {
-  const url = new URL(`legal/${page}.html`, location.href).href;
-  const B = window.Capacitor?.Plugins?.Browser;
-  if (B) { try { await B.open({ url, presentationStyle: 'popover' }); return; } catch { /* repli */ } }
-  window.open(url, '_blank', 'noopener');
-}
-
 // Barre de retour, construite une fois : elle coiffe toutes les vues sauf l'accueil.
 const barreRetour = h(`
   <header class="retour">
@@ -4588,6 +4785,7 @@ function fermeLesPanneaux() {
   closeBoxSheet();
   closeAddSheet();
   fermeComptePanneau();
+  fermeLegal();
 }
 
 app.addEventListener('click', (e) => {

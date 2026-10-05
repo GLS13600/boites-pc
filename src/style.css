@@ -3245,3 +3245,47 @@ img {
   border-color: var(--ball);
   background: color-mix(in srgb, var(--ball) 10%, transparent);
 }
+
+/* Lieux de capture DÉDUITS — évolution, œuf, ou lieux du jeu d'origine quand la source
+   n'a rien publié pour un remake. Bordure en pointillés : on voit d'un coup d'œil que
+   ce n'est pas une donnée relevée, mais une indication. */
+.game.deduit { border-style: dashed; }
+.loc-note { margin: 0; padding: var(--e-2) var(--e-3); font-size: var(--t-mini); line-height: 1.45; color: var(--muted); }
+.loc-note.navidex { color: var(--ink); opacity: 0.8; }
+
+/* Documents légaux, lus DANS un panneau (voir ouvreLegal). Les règles reprennent
+   celles des pages web produites par build-legal.mjs, ramenées aux jetons : le texte
+   suit le thème de l'appli, et rien ne déborde à 375 px. Le texte reste
+   sélectionnable — c'est un document qu'on peut vouloir citer. */
+.legal-doc { font-size: var(--t-corps); line-height: 1.6; user-select: text; -webkit-user-select: text; }
+.legal-doc h1 { font-size: var(--t-titre); line-height: 1.2; margin: var(--e-2) 0 var(--e-3); }
+.legal-doc h2 { font-size: var(--t-tete); margin: var(--e-6) 0 var(--e-2); }
+.legal-doc h3 { font-size: var(--t-corps); margin: var(--e-5) 0 var(--e-1); }
+.legal-doc h4 { font-size: var(--t-petit); margin: var(--e-4) 0 var(--e-1); color: var(--muted); }
+.legal-doc p, .legal-doc li { margin: var(--e-2) 0; }
+.legal-doc ul, .legal-doc ol { padding-left: 1.3em; }
+.legal-doc a { color: var(--ball); }
+.legal-doc hr { border: 0; border-top: 1px solid var(--rule); margin: var(--e-5) 0; }
+.legal-doc code {
+  background: var(--panel-2); border: 1px solid var(--rule-soft); border-radius: 5px;
+  padding: 1px 5px; font-size: .88em; overflow-wrap: anywhere;
+}
+.legal-doc blockquote {
+  margin: var(--e-4) 0; padding: var(--e-2) var(--e-3);
+  border-left: 3px solid var(--ball); background: var(--panel-2);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+.legal-doc .tableau { width: 100%; overflow-x: auto; margin: var(--e-3) 0; }
+.legal-doc table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.legal-doc th, .legal-doc td {
+  -webkit-hyphens: auto; hyphens: auto; overflow-wrap: break-word;
+  border: 1px solid var(--rule); padding: 6px 8px; text-align: left; vertical-align: top; font-size: var(--t-petit);
+}
+.legal-doc th { background: var(--panel-2); }
+.legal-doc footer {
+  margin-top: var(--e-6); padding-top: var(--e-3); border-top: 1px solid var(--rule);
+  color: var(--muted); font-size: var(--t-petit);
+}
+.legal-doc footer a { color: var(--muted); }
+.legal-attente { color: var(--muted); text-align: center; padding: var(--e-6) 0; }
+

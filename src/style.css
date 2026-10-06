@@ -691,6 +691,7 @@ img { display: block; }
 .b-sauvegarde  { --c: #b86a05; }
 .b-avenir      { --c: #6b7280; }
 .b-pubs        { --c: #b3261e; } /* blanc dessus : 6,3 pour 1 */
+.b-plus        { --c: #a06a00; } /* or Unydex+ assombri : blanc dessus 4,6 pour 1 */
 
 .reg-aide { margin: 0 0 var(--e-3); font-size: var(--t-petit); color: var(--muted); line-height: 1.45; }
 .reg-bloc.vide { border-style: dashed; background: none; }
@@ -3412,3 +3413,71 @@ img {
 /* Calcul de dégâts : réglages de la cible et effets comptés sous chaque attaque. */
 .cible-reglages { margin-top: var(--e-2); }
 .dg-effets { grid-column: 1 / -1; font-size: var(--t-mini); color: var(--muted); }
+
+/* ---------- Unydex+ ----------
+   L'écran d'abonnement suit la direction de l'appli : papier, carte blanche, rouge
+   Poké Ball pour l'action. L'or des chromatiques signe Unydex+ (le logo, la formule
+   choisie) : c'est la couleur de ce qui est rare dans l'appli. */
+.plus-tete { display: flex; align-items: center; gap: var(--e-3); margin: var(--e-2) 0 var(--e-1); }
+.plus-tete h2 { margin: 0; font-size: var(--t-titre); }
+.plus-logo {
+  display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--r-md);
+  background: linear-gradient(160deg, #e6b94a, #a06a00); color: #fff;
+}
+.plus-logo .ico { width: 26px; height: 26px; fill: currentColor; stroke: none; }
+.plus-sous { margin: 0 0 var(--e-3); color: var(--muted); }
+.plus-raison {
+  margin: 0 0 var(--e-3); padding: var(--e-2) var(--e-3); border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--shiny) 14%, transparent); color: var(--ink); font-size: var(--t-petit);
+}
+.plus-liste { list-style: none; margin: 0 0 var(--e-4); padding: 0; display: flex; flex-direction: column; gap: var(--e-3); }
+.plus-liste li { display: flex; gap: var(--e-3); align-items: flex-start; }
+.plus-liste .ico { flex: 0 0 auto; width: 22px; height: 22px; color: var(--shiny); }
+.plus-liste b { display: block; }
+.plus-liste small { color: var(--muted); font-size: var(--t-petit); }
+.plus-formules { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e-2); }
+.plus-formule {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: var(--e-3); min-height: 84px; border: 2px solid var(--rule); border-radius: var(--r-lg);
+  background: var(--panel); color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+}
+.plus-formule.on { border-color: var(--shiny); background: color-mix(in srgb, var(--shiny) 8%, var(--panel)); }
+.pf-nom { font-weight: 700; }
+.pf-prix { font-size: var(--t-tete); font-weight: 800; font-variant-numeric: tabular-nums; }
+.pf-sous { font-size: var(--t-mini); color: var(--muted); }
+.pf-badge {
+  position: absolute; top: -10px; right: var(--e-2); padding: 2px 8px; border-radius: var(--r-rond);
+  background: var(--shiny); color: #fff; font-size: var(--t-mini); font-weight: 700;
+}
+.plus-go { margin-top: var(--e-4); }
+.plus-simu { margin: var(--e-1) 0 0; font-size: var(--t-mini); color: var(--muted); text-align: center; }
+.plus-erreur { margin: var(--e-3) 0 0; color: var(--ball); font-size: var(--t-petit); text-align: center; }
+.plus-ok { margin: 0 0 var(--e-4); font-weight: 600; color: var(--shiny); }
+.plus-lien {
+  display: inline; padding: var(--e-1) 0; border: 0; background: none; color: var(--muted);
+  font: inherit; font-size: var(--t-petit); text-decoration: underline; cursor: pointer;
+}
+.plus-sheet .plus-lien[data-act="plus-restaurer"] { display: block; margin: var(--e-2) auto 0; }
+.plus-mentions { margin: var(--e-3) 0 0; font-size: var(--t-mini); line-height: 1.45; color: var(--muted); text-align: center; }
+
+/* Le verrou de la vue Équipes : l'équipe reste visible, atténuée, sous un bandeau. */
+.plus-verrou {
+  margin: 0 0 var(--e-3); padding: var(--e-3); border-radius: var(--r-lg);
+  border: 1px solid color-mix(in srgb, var(--shiny) 45%, transparent);
+  background: color-mix(in srgb, var(--shiny) 10%, var(--panel));
+}
+.plus-verrou p { margin: 0 0 var(--e-2); font-size: var(--t-petit); }
+.plus-cta {
+  display: inline-flex; align-items: center; gap: var(--e-2); min-height: 40px; padding: 0 var(--e-4);
+  border: 0; border-radius: var(--r-rond); background: var(--shiny); color: #fff; font: inherit; font-weight: 700; cursor: pointer;
+}
+.plus-cta .ico { width: 18px; height: 18px; fill: currentColor; stroke: none; }
+.equipe.verrou { opacity: 0.55; }
+/* Le « + » des boîtes, réservé : une petite étoile d'or dans son coin. */
+.dot-btn.verrou { position: relative; }
+.dot-btn.verrou::after {
+  content: ''; position: absolute; top: -2px; right: -2px; width: 9px; height: 9px;
+  border-radius: 50%; background: var(--shiny); box-shadow: 0 0 0 2px var(--panel);
+}
+.b-plus .reg-pastille .ico { fill: currentColor; stroke: none; }
+

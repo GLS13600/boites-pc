@@ -16,7 +16,8 @@ import NATURES from './data/natures.json';
 import formDesc from './data/form-desc.json';
 import elevage from './data/elevage.json';
 import { creeScan } from './scan.js';
-import { majPubs, pauseNaturelle, pubsDisponibles, pubsActivees, interrupteurPubs, activePubs } from './pubs.js';
+import { majPubs, pauseNaturelle, pubsDisponibles, pubsActivees, interrupteurPubs, activePubs, rafraichitPubs } from './pubs.js';
+import { estPremium, surChangement as surAbonnement, FORMULES, souscrire, restaurer, simulation, arreteSimulation } from './abonnement.js';
 import { creeCompteUI } from './compte-ui.js';
 // La synchronisation ne connaît ni l'état ni les clés de stockage : main.js lui
 // fournit de quoi lire et poser la collection, elle se charge du transport.
@@ -585,6 +586,7 @@ const ICO = {
 
 // Icônes des blocs de Réglages. La pastille qui les porte prend `--c` en CSS.
 const ICO_REG = {
+  plus: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></svg>',
   pubs: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h3l6 4V6L7 10H4z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
   apparence: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>',
   langue: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.2 9.5h17.6M3.2 14.5h17.6M12 3a15 15 0 0 1 0 18A15 15 0 0 1 12 3z"/></svg>',
@@ -745,8 +747,9 @@ function render() {
           <button class="dot-btn" data-act="del-box" ${boxes <= 1 ? 'disabled' : ''}
                   title="${t('supprimerBoite')}" aria-label="${t('supprimerBoite')}">${ICO.moins}</button>
           <span class="dots">${Array.from({ length: boxes }, (_, i) => `<i class="${i === b ? 'on' : ''}" data-boite="${i}"></i>`).join('')}</span>
-          <button class="dot-btn" data-act="add-box"
-                  title="${t('ajouterBoite')}" aria-label="${t('ajouterBoiteCourt')}">${ICO.plus}</button>
+          <button class="dot-btn ${estPremium() ? '' : 'verrou'}" data-act="add-box"
+                  title="${estPremium() ? t('ajouterBoite') : t('ajouterBoitePlus')}"
+                  aria-label="${estPremium() ? t('ajouterBoiteCourt') : t('ajouterBoitePlus')}">${ICO.plus}</button>
         </div>
       </section>
     `),
@@ -903,7 +906,12 @@ document.body.append(backdrop, sheet);
 // Toucher le fond assombri referme le panneau ouvert, quel qu'il soit. Le panneau de
 // la boîte de combat y échappait : il affichait bien le fond, mais seul un glissement
 // vers le bas le fermait — on tapait à côté sans effet.
-backdrop.addEventListener('click', () => { closeSheet(); closeBoxSheet(); closeAddSheet(); closeBattleSheet(); fermeComptePanneau(); fermeLegal(); });
+backdrop.addEventListener('click', () => {
+  // Le panneau légal peut s'ouvrir PAR-DESSUS l'écran d'abonnement : le voile ne
+  // referme alors que lui, pour revenir à l'abonnement.
+  if (legalSheet.classList.contains('open') && plusSheet.classList.contains('open')) { fermeLegal(); return; }
+  closeSheet(); closeBoxSheet(); closeAddSheet(); closeBattleSheet(); fermeComptePanneau(); fermeLegal(); fermePlus();
+});
 
 // Stats de base en barres.
 //
@@ -1647,7 +1655,8 @@ function syncBackdrop() {
   backdrop.classList.toggle('open',
     sheet.classList.contains('open') || boxSheet.classList.contains('open')
     || addSheet.classList.contains('open') || battleSheet.classList.contains('open')
-    || compteSheet.classList.contains('open') || legalSheet.classList.contains('open'));
+    || compteSheet.classList.contains('open') || legalSheet.classList.contains('open')
+    || plusSheet.classList.contains('open'));
 }
 
 // ---------- Panneau « ajouter un Pokémon à un emplacement » ----------
@@ -1773,6 +1782,145 @@ legalBody.addEventListener('click', (e) => {
     else window.open(href, '_blank', 'noopener');
   }
 });
+
+// ---------- Unydex+ : les limites de la version gratuite ----------
+//
+// UNE seule équipe en tout, celle d'une version. Laquelle : celle que l'utilisateur a
+// commencée — retenue au premier Pokémon posé (`pcbox.equipe.libre`). Si elle est
+// vidée, la place se libère d'elle-même : la règle relit l'équipe, pas un drapeau.
+// Ce qui existait AVANT (équipes de plusieurs versions, boîtes ajoutées) n'est jamais
+// effacé : visible, mais verrouillé. Une limite ne détruit pas le travail de quelqu'un.
+const LIBRE_KEY = 'pcbox.equipe.libre';
+const equipeNonVide = (k) => (state.equipes[k] || []).some(Boolean);
+
+function equipeLibre() {
+  let k = null;
+  try { k = localStorage.getItem(LIBRE_KEY); } catch { /* lecture impossible : repli */ }
+  if (k && equipeNonVide(k)) return k;
+  // Repli — des équipes existaient avant la règle, ou la mémoire a été perdue : la
+  // version OUVERTE si elle a une équipe, sinon la première qui en porte une. Le choix
+  // est aussitôt RETENU : recalculé à chaque fois, il suivrait la version affichée, et
+  // changer de version suffirait à contourner la limite.
+  const choix = equipeNonVide(state.jeu) ? state.jeu : JEUX.find((v) => equipeNonVide(v.k))?.k ?? null;
+  if (choix) { try { localStorage.setItem(LIBRE_KEY, choix); } catch { /* sans mémoire, le repli reste stable tant que les équipes ne changent pas */ } }
+  return choix;
+}
+
+function equipeAutorisee(jeu = state.jeu) {
+  if (estPremium()) return true;
+  const libre = equipeLibre();
+  return !libre || libre === jeu;
+}
+
+function retientEquipeLibre() {
+  if (estPremium() || equipeLibre()) return;
+  try { localStorage.setItem(LIBRE_KEY, state.jeu); } catch { /* le repli suffira */ }
+}
+
+// L'écran d'abonnement : un panneau, comme les autres. Il s'ouvre là où l'on bute sur
+// une limite — avec la raison en tête — ou depuis les Réglages.
+const plusSheet = h(`<aside class="sheet plus-sheet" role="dialog" aria-modal="true"><div class="sheet-grip"></div><div class="sheet-body"></div></aside>`);
+// AVANT le panneau légal dans le document : ses liens (conditions, confidentialité)
+// ouvrent celui-ci, qui doit passer PAR-DESSUS.
+document.body.insertBefore(plusSheet, legalSheet);
+const plusBody = plusSheet.querySelector('.sheet-body');
+enableSwipeClose(plusSheet, fermePlus);
+let plusEtat = { raison: null, formule: 'annuel', message: null };
+
+function fermePlus() {
+  if (!plusSheet.classList.contains('open')) return;
+  plusSheet.classList.remove('open');
+  syncBackdrop();
+}
+
+function ouvrePlus(raison = null) {
+  plusEtat = { raison, formule: 'annuel', message: null };
+  plusBody.innerHTML = htmlPlus();
+  plusBody.scrollTop = 0;
+  plusSheet.classList.add('open');
+  syncBackdrop();
+}
+
+// Prix au format de la langue : « 9,99 € », « €9.99 ».
+const prixLisible = (p) => {
+  try { return p.toLocaleString(document.documentElement.lang || 'fr', { style: 'currency', currency: 'EUR' }); }
+  catch { return `${p} €`; }
+};
+
+function htmlPlus() {
+  const avantages = [
+    ['plusSansPub', 'plusSansPubSous'],
+    ['plusBoites', 'plusBoitesSous'],
+    ['plusEquipes', 'plusEquipesSous'],
+  ];
+  const raison = plusEtat.raison === 'boites' ? t('plusRaisonBoites')
+    : plusEtat.raison === 'equipes' ? t('plusRaisonEquipes', esc(JEUX.find((v) => v.k === equipeLibre())?.nom || ''))
+    : '';
+  if (estPremium()) {
+    return `
+      <div class="plus-tete"><span class="plus-logo">${ICO_REG.plus}</span><h2>Unydex+</h2></div>
+      <p class="plus-ok">${t('plusActif')}</p>
+      <ul class="plus-liste">${avantages.map(([a, b]) => `<li>${ICO.coche}<span><b>${t(a)}</b><small>${t(b)}</small></span></li>`).join('')}</ul>
+      <button class="catch-btn" data-act="plus-fermer">${t('fermer')}</button>`;
+  }
+  const mensuel = FORMULES.find((f) => f.cle === 'mensuel');
+  return `
+    <div class="plus-tete"><span class="plus-logo">${ICO_REG.plus}</span><h2>Unydex+</h2></div>
+    <p class="plus-sous">${t('plusSous')}</p>
+    ${raison ? `<p class="plus-raison">${raison}</p>` : ''}
+    <ul class="plus-liste">${avantages.map(([a, b]) => `<li>${ICO.coche}<span><b>${t(a)}</b><small>${t(b)}</small></span></li>`).join('')}</ul>
+    <div class="plus-formules" role="radiogroup" aria-label="${t('plusFormules')}">
+      ${FORMULES.map((f) => {
+        const on = f.cle === plusEtat.formule;
+        const economie = f.mois === 12 && mensuel ? Math.round(12 - f.prix / mensuel.prix) : 0;
+        return `
+          <button class="plus-formule ${on ? 'on' : ''}" role="radio" aria-checked="${on}" data-plus-formule="${f.cle}">
+            <span class="pf-nom">${f.mois === 12 ? t('plusAnnuel') : t('plusMensuel')}</span>
+            <span class="pf-prix">${f.mois === 12 ? t('plusParAn', prixLisible(f.prix)) : t('plusParMois', prixLisible(f.prix))}</span>
+            ${f.mois === 12 ? `<span class="pf-sous">${t('plusSoitParMois', prixLisible(Math.floor((f.prix / 12) * 100) / 100))}</span>` : ''}
+            ${economie > 0 ? `<span class="pf-badge">${t('plusMoisOfferts', economie)}</span>` : ''}
+          </button>`;
+      }).join('')}
+    </div>
+    ${plusEtat.message ? `<p class="plus-erreur">${plusEtat.message}</p>` : ''}
+    <button class="catch-btn plus-go" data-act="plus-souscrire">${t('plusSouscrire')}</button>
+    ${simulation() ? `<p class="plus-simu">${t('plusSimulation')}</p>` : ''}
+    <button class="plus-lien" data-act="plus-restaurer">${t('plusRestaurer')}</button>
+    <p class="plus-mentions">${t('plusMentions')}</p>
+    <p class="plus-mentions">
+      <button class="plus-lien" data-legal="conditions">${t('legalConditions')}</button> ·
+      <button class="plus-lien" data-legal="confidentialite">${t('legalConfidentialite')}</button>
+    </p>`;
+}
+
+plusBody.addEventListener('click', async (e) => {
+  const f = e.target.closest('[data-plus-formule]');
+  if (f) {
+    plusEtat.formule = f.dataset.plusFormule;
+    retourHaptique();
+    plusBody.innerHTML = htmlPlus();
+    return;
+  }
+  const doc = e.target.closest('[data-legal]');
+  if (doc) { ouvreLegal(doc.dataset.legal); return; }
+  if (e.target.closest('[data-act="plus-fermer"]')) { fermePlus(); return; }
+  if (e.target.closest('[data-act="plus-souscrire"]')) {
+    const r = await souscrire(plusEtat.formule);
+    plusEtat.message = r.ok ? null : t('plusIndispo');
+    retourHaptique();
+    plusBody.innerHTML = htmlPlus();
+    return;
+  }
+  if (e.target.closest('[data-act="plus-restaurer"]')) {
+    const r = await restaurer();
+    plusEtat.message = r.ok ? null : t('plusRienARestaurer');
+    plusBody.innerHTML = htmlPlus();
+  }
+});
+
+// L'abonnement change : les pubs partent ou reviennent, et la vue se redessine — le
+// « + » des boîtes, le verrou des équipes, le bloc des Réglages.
+surAbonnement(() => { rafraichitPubs(); render(); });
 
 // Une seule fabrique de liste : le rendu complet et la frappe s'en servent tous deux.
 function picksHTML(res) {
@@ -2050,6 +2198,8 @@ app.addEventListener('click', (e) => {
   const act = e.target.closest('[data-act]')?.dataset.act;
   if (act === 'add') { openAddSheet(null); return; }
   if (act === 'add-box') {
+    // Les boîtes du Pokédex sont gratuites ; en AJOUTER est réservé à Unydex+.
+    if (!estPremium()) { ouvrePlus('boites'); return; }
     ajouteBoite(state.gen);
     state.box[state.gen] = boxCount(state.gen) - 1;   // on se pose dans la nouvelle
     render();
@@ -3440,7 +3590,16 @@ function renderReglages() {
           </button>
         </div>`)}
 
-      ${interrupteurPubs() && (pubsDisponibles() || import.meta.env.DEV) ? bloc(3, 'pubs', t('pubs'),
+      ${bloc(3, 'plus', 'Unydex+', estPremium() ? t('plusRegActif') : t('plusRegAide'), `
+        <div class="reg-lignes">
+          ${estPremium()
+            ? (simulation()
+              ? `<button class="reg-ligne" data-act="plus-arret">${ICO.croix}<span><b>${t('plusArretSimu')}</b><small>${t('plusArretSimuSous')}</small></span></button>`
+              : `<button class="reg-ligne" data-act="plus-gerer">${ICO.droite}<span><b>${t('plusGerer')}</b><small>${t('plusGererSous')}</small></span></button>`)
+            : `<button class="reg-ligne" data-act="plus-ouvrir">${ICO_REG.plus}<span><b>${t('plusDecouvrir')}</b><small>${t('plusRegSous')}</small></span></button>`}
+        </div>`)}
+
+      ${interrupteurPubs() && !estPremium() && (pubsDisponibles() || import.meta.env.DEV) ? bloc(3, 'pubs', t('pubs'),
         pubsDisponibles() ? t('pubsAide') : t('pubsAideWeb'),
         rail([['1', t('pubsAffichees')], ['0', t('pubsCoupees')]], pubsActivees() ? '1' : '0', 'data-pubs', t('pubs'))) : ''}
 
@@ -3515,6 +3674,16 @@ app.addEventListener('click', (e) => {
   // au premier clic venu, et le choix de la langue n'était jamais atteint.
   const doc = e.target.closest('button[data-legal]');
   if (doc) { ouvreLegal(doc.dataset.legal); return; }
+
+  if (e.target.closest('[data-act="plus-ouvrir"]')) { ouvrePlus(); return; }
+  if (e.target.closest('[data-act="plus-arret"]')) { arreteSimulation(); retourHaptique(); return; }
+  if (e.target.closest('[data-act="plus-gerer"]')) {
+    // Les abonnements se gèrent chez Apple, jamais dans l'appli.
+    const url = 'https://apps.apple.com/account/subscriptions';
+    const B = window.Capacitor?.Plugins?.Browser;
+    if (B) B.open({ url }).catch(() => {}); else window.open(url, '_blank', 'noopener');
+    return;
+  }
 
   const pb = e.target.closest('button[data-pubs]');
   if (pb) {
@@ -3613,7 +3782,13 @@ function renderCombat() {
           <div class="combat-compte"><b>${pleines}</b>/6</div>
         </div>
 
-        <div class="equipe">
+        ${equipeAutorisee() ? '' : `
+        <div class="plus-verrou">
+          <p>${t('plusVerrouEquipe', esc(jeu.nom), esc(JEUX.find((v) => v.k === equipeLibre())?.nom || ''))}</p>
+          <button class="plus-cta" data-act="plus-equipes">${ICO_REG.plus}<span>${t('plusDecouvrir')}</span></button>
+        </div>`}
+
+        <div class="equipe ${equipeAutorisee() ? '' : 'verrou'}">
           ${equipe().map(renderEquipeSlot).join('')}
         </div>
 
@@ -4505,6 +4680,7 @@ function importeShowdown() {
     return;
   }
   const avant = equipe().slice();
+  retientEquipeLibre();
   state.equipes[state.jeu] = [...membres, ...Array(6 - membres.length).fill(null)];
   saveCombat();
   closeBattleSheet();
@@ -5393,6 +5569,7 @@ const clicCombat = (e) => {
 
   const pick = e.target.closest('[data-eqpick]');
   if (pick) {
+    retientEquipeLibre();
     equipe()[bs.slot] = { key: asKey(pick.dataset.eqpick), niv: NIV_DEFAUT, moves: [] };
     saveCombat();
     render();
@@ -5496,6 +5673,7 @@ function fermeLesPanneaux() {
   closeAddSheet();
   fermeComptePanneau();
   fermeLegal();
+  fermePlus();
 }
 
 app.addEventListener('click', (e) => {
@@ -5504,11 +5682,19 @@ app.addEventListener('click', (e) => {
 
   if (e.target.closest('[data-act="choix-jeu"]')) { openBattleSheet('version'); return; }
   if (e.target.closest('[data-act="sd-export"]')) { ouvreShowdown('sd-export'); return; }
-  if (e.target.closest('[data-act="sd-import"]')) { ouvreShowdown('sd-import'); return; }
+  if (e.target.closest('[data-act="sd-import"]')) {
+    if (!equipeAutorisee()) { ouvrePlus('equipes'); return; }
+    ouvreShowdown('sd-import');
+    return;
+  }
   if (e.target.closest('[data-act="menu-attaques"]')) { ouvreMenuAttaques(); return; }
+
+  if (e.target.closest('[data-act="plus-equipes"]')) { ouvrePlus('equipes'); return; }
 
   const eq = e.target.closest('[data-eq]');
   if (eq) {
+    // Version gratuite : une seule équipe, celle d'une seule version.
+    if (!equipeAutorisee()) { ouvrePlus('equipes'); return; }
     const i = +eq.dataset.eq;
     state.addGen = ONGLETS[state.gen].n;
     openBattleSheet(equipe()[i] ? 'detail' : 'mon', i);

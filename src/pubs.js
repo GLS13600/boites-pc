@@ -20,6 +20,8 @@
 //     l'accueil —, jamais pendant un geste, au plus une fois toutes les 4 minutes et
 //     jamais dans les 2 premières minutes.
 
+import { estPremium } from './abonnement.js';
+
 const DEMO = {
   banniere: 'ca-app-pub-3940256099942544/2435281174',     // bannière adaptative de démo
   interstitiel: 'ca-app-pub-3940256099942544/4411468910', // plein écran de démo
@@ -42,6 +44,8 @@ export const pubsDisponibles = () => !!plugin() && !!IDS.banniere;
 // pubs (un achat pour les retirer viendra, le cas échéant, d'ailleurs).
 export const interrupteurPubs = () => !STORE;
 export function pubsActivees() {
+  // Unydex+ : plus aucune pub, quelle que soit la variante.
+  if (estPremium()) return false;
   if (STORE) return true;
   try { return localStorage.getItem(CLE) !== '0'; } catch { return true; }
 }
@@ -142,6 +146,11 @@ export function pauseNaturelle() {
   interstitielPret = false;
   dernierPleinEcran = Date.now();
   plugin().showInterstitial().catch(() => prepareInterstitiel());
+}
+
+// À appeler quand l'abonnement change : la bannière part ou revient aussitôt.
+export function rafraichitPubs() {
+  if (pubsDisponibles()) applique();
 }
 
 // L'interrupteur des Réglages (Unydex Dev).

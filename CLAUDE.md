@@ -115,6 +115,61 @@ Swift Package Manager, inscrit par `npx cap update ios` dans `CapApp-SPM/Package
   étiquette App Privacy, et `NSPrivacyTracking` de `PrivacyInfo.xcprivacy`, qui dit
   aujourd'hui « pas de suivi ». Sans objet pour Unydex Dev, usage personnel.
 
+### Unydex+, l'abonnement (06/10/2026)
+
+Demandé : « un système d'abonnement qui permet de ne plus avoir de pub, de débloquer
+plus de boîtes PC ; sans abonnement, une seule équipe de combat ». Choix arrêtés :
+
+| | Gratuit | Unydex+ |
+|---|---|---|
+| Publicités | oui | **aucune** |
+| Boîtes PC | celles du Pokédex — le Living Dex reste complet | **en ajouter** (le « + ») |
+| Équipes de combat | **une seule en tout**, pour une version | une par version (21) |
+| Formules | — | mensuelle (1,99 €) ou annuelle (9,99 €) |
+
+- **`src/abonnement.js`** porte l'état ; le reste de l'appli ne lit que `estPremium()`
+  et ne s'abonne qu'à `surChangement`. Brancher le vrai paiement ne touchera que ce
+  fichier.
+- **Unydex Dev SIMULE l'achat** (`pcbox.plus.simule`). Une appli installée par SideStore
+  ne peut pas acheter : Apple exige un compte développeur payant et une appli déclarée
+  dans App Store Connect. L'écran le dit sous le bouton, et les Réglages proposent
+  « Arrêter la simulation » pour revenir aux limites. **La version store répond
+  « indisponible »**, jamais un faux succès, tant que le paiement n'est pas branché.
+- **Le paiement réel (à faire avec la version store)** : StoreKit, par un greffon —
+  RevenueCat (`@revenuecat/purchases-capacitor`) est le plus simple, et gère la
+  restauration et la synchronisation entre appareils. Les prix affichés devront venir
+  d'Apple (monnaie et format du pays) : ceux de `FORMULES` ne servent qu'à la simulation.
+- **Une seule équipe** : la version retenue est celle où l'on pose son premier Pokémon
+  (`pcbox.equipe.libre`). Vidée, l'équipe libère la place d'elle-même : la règle relit
+  l'équipe, pas un drapeau. Pour des équipes ANTÉRIEURES à la règle, le repli prend la
+  version ouverte si elle en a une, sinon la première dans l'ordre des jeux — et le
+  RETIENT aussitôt : recalculé à chaque fois, il suivrait la version affichée, et
+  changer de version suffirait à contourner la limite.
+- **Rien n'est jamais effacé** : équipes d'autres versions et boîtes déjà ajoutées
+  restent visibles, verrouillées. Dans une version verrouillée, l'équipe est atténuée
+  sous un bandeau, et toucher un emplacement ou « Importer » ouvre l'abonnement.
+  L'export Showdown reste libre : c'est une lecture.
+- **L'écran d'abonnement** est un panneau (`plusSheet`), ouvert là où l'on bute — avec
+  la raison en tête — ou depuis le bloc « Unydex+ » des Réglages. L'or des chromatiques
+  le signe (logo, formule choisie, étoile sur le « + » des boîtes) : c'est la couleur
+  de ce qui est rare dans l'appli ; l'action reste au rouge de l'appli.
+  - Il porte ce qu'Apple exige (3.1.2) : nom et durée de chaque formule, prix, mention
+    du renouvellement automatique et de la résiliation 24 h avant, liens vers les
+    conditions et la confidentialité, et « Restaurer mes achats ».
+  - Il est inséré AVANT le panneau légal dans le document, pour que les conditions
+    s'ouvrent PAR-DESSUS ; le voile ne referme alors que le document légal.
+  - « 7 mois offerts » est exact : 9,99 € par an contre 12 × 1,99 € = 23,88 €.
+- **Unydex+ coupe les pubs** (`pubsActivees` lit `estPremium`), et l'interrupteur des
+  pubs disparaît des Réglages — il n'y a plus rien à couper.
+- Vérifié dans l'aperçu : version verrouillée et son bandeau, emplacement verrouillé →
+  écran d'abonnement avec la raison, « + » des boîtes → écran, nombre de boîtes
+  inchangé ; souscription simulée → bannière cachée, réserve à 0, verrous levés ;
+  arrêt de la simulation → retour des limites ; nouvel utilisateur → la version du
+  premier Pokémon est retenue, une autre version est verrouillée.
+- **Avant la version store** : les CGU devront décrire l'abonnement (prix, durée,
+  renouvellement, résiliation, droit de rétractation et sa renonciation pour un contenu
+  numérique fourni immédiatement), et App Store Connect déclarer les deux produits.
+
 Le nom affiché sur l'écran d'accueil est **Unydex** (version store) ou **Unydex Dev**
 (IPA sideloadé). Il vit à trois endroits : `APP_DISPLAY_NAME` dans les réglages de la
 cible App, lu par `CFBundleDisplayName` d'`Info.plist` — c'est celui-là qui compte
@@ -249,6 +304,7 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `src/compte-ui.js` | Le bloc Compte des Réglages et ses panneaux |
 | `src/sync.js` | Sauvegarde de la collection dans le compte |
 | `src/pubs.js` | Publicités AdMob : bannière, plein écran, interrupteur |
+| `src/abonnement.js` | Unydex+ : état de l'abonnement, formules, achat (simulé en Dev) |
 | `src/data/i18n/en.json` | Surcouche anglaise, **générée**, 1,7 Mo |
 | `src/data/i18n/ja.json` | Surcouche japonaise, **générée**, 1,9 Mo |
 | `scripts/fetch-i18n.mjs` | Produit ces deux surcouches (`npm run fetch-i18n`) |

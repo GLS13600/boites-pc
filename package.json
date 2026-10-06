@@ -31,6 +31,7 @@
     "vite": "^6.0.0"
   },
   "dependencies": {
+    "@capacitor-community/admob": "^8.2.0",
     "@capacitor/app": "^8.1.2",
     "@capacitor/browser": "^8.0.5",
     "@capacitor/core": "^8.5.1",

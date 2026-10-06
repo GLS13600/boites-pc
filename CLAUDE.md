@@ -30,15 +30,16 @@ tout de suite**, plutôt que le jour de la sortie.
 | Identifiant | `com.guillaume.unydex` | `com.guillaume.unydex.dev` |
 | Nom sur l'écran d'accueil | Unydex | Unydex Dev |
 | Schéma du retour OAuth | `unydex://auth` | `unydexdev://auth` |
-| Publicités | oui, à venir | jamais |
+| Publicités | réelles (`VITE_ADMOB_*`) | de TEST, interrupteur dans les Réglages |
 
 - **Côté web**, `vite.config.js` lit `APP_VARIANTE` et pose `__VARIANTE__` et
-  `__SCHEMA_URL__`. `perso` par défaut : le serveur de dev, le site et l'IPA
-  sideloadé sont tous sans pub ; seule une compilation qui le DEMANDE produit la
-  version store. **Tout code de pub s'écrit sous `if (__VARIANTE__ === 'store')`** :
-  Vite remplace la constante, la branche devient morte et disparaît du bundle perso.
-  Vérifié : chaque compilation ne contient que SON schéma (`unydex://auth` ou
-  `unydexdev://auth`), et aucune trace des noms de constantes.
+  `__SCHEMA_URL__`. `perso` par défaut ; seule une compilation qui le DEMANDE produit
+  la version store. Vérifié : chaque compilation ne contient que SON schéma
+  (`unydex://auth` ou `unydexdev://auth`), et aucune trace des noms de constantes.
+- **Unydex Dev porte les pubs de TEST** (décidé le 06/10/2026 : « cette version avec
+  les pubs doit être celle de dev, avec un bouton dans les réglages pour les couper ») —
+  voir « Publicités » ci-dessous. Le site, lui, n'en a jamais : le greffon n'existe pas
+  hors de l'application.
 - **Côté iOS**, l'identité est faite de trois réglages propres à la cible App
   (`APP_BUNDLE_ID`, `APP_DISPLAY_NAME`, `APP_URL_SCHEME`), lus par
   `PRODUCT_BUNDLE_IDENTIFIER` et par `Info.plist`. Le projet porte ceux de la version
@@ -61,6 +62,58 @@ tout de suite**, plutôt que le jour de la sortie.
 - **La version store n'a pas encore de chaîne de compilation** : elle exige un compte
   Apple Developer payant et une signature. Le jour venu : `APP_VARIANTE=store npm run
   build`, `npx cap sync ios`, puis une archive Xcode SANS surcharge d'identité.
+
+### Publicités (06/10/2026)
+
+Tout vit dans **`src/pubs.js`** ; main.js ne fait que l'appeler à chaque rendu
+(`majPubs(vue)`), aux deux pauses naturelles (`pauseNaturelle()`) et depuis
+l'interrupteur des Réglages. Greffon **`@capacitor-community/admob` 8.2**, compatible
+Swift Package Manager, inscrit par `npx cap update ios` dans `CapApp-SPM/Package.swift`.
+
+- **Unydex Dev : pubs de DÉMONSTRATION de Google**, liées à aucun compte AdMob — aucun
+  risque de trafic invalide, rien à configurer, et elles s'affichent sur un IPA
+  sideloadé qu'AdMob ne relie à aucun store. **Ne JAMAIS mettre de vrais identifiants
+  dans un IPA sideloadé** : diffusion limitée, et cliquer sur ses propres pubs fait
+  suspendre le compte. La version store lit les siens dans `VITE_ADMOB_BANNIERE` et
+  `VITE_ADMOB_INTERSTITIEL` ; absents, aucune pub n'est demandée. Vérifié : la
+  compilation store ne contient aucun identifiant de démonstration.
+- **Bannière** adaptative en bas, sur Accueil, Pokédex, Attaques, Équipes, Réglages.
+  **Jamais sur les Boîtes** — on y glisse les Pokémon jusqu'au bord, et le bord
+  déclenche le changement de boîte — **ni sur le Scan**, dont l'écran est la caméra.
+  - Elle est posée PAR-DESSUS la vue web, au-dessus de la zone sûre : la page ne bouge
+    pas d'elle-même. Sa hauteur va dans **`--nav-h`** (resté à 0 depuis le retrait de
+    la barre du bas) : `#app` la retire de la zone qui défile, les panneaux et le
+    bandeau d'annulation la gardent en réserve. 0 sans bannière, donc rien ne change sur
+    le site.
+  - Les appels au greffon passent **un par un** (`file`), et chacun relit l'état
+    VOULU au moment où il s'exécute : un changement de vue rapide ne croise pas une
+    bannière qu'on montre et une qu'on cache.
+- **Plein écran** à une pause naturelle seulement — en refermant la fiche d'un Pokémon,
+  en revenant à l'accueil —, jamais pendant un geste ; au plus un toutes les 4 minutes,
+  et aucun dans les 2 premières minutes. Préparé d'avance, pour s'afficher sans attente.
+- **Ordre au premier affichage** : consentement européen (formulaire de Google s'il est
+  requis), puis demande de suivi d'iOS, puis initialisation du SDK. Une fois par
+  lancement, déclenché par la première vue qui porte une bannière.
+- **Interrupteur « Publicités : Affichées / Coupées »** dans les Réglages, Unydex Dev
+  seulement (`pcbox.pubs`, affichées par défaut). Couper cache la bannière et
+  supprime les pleins écrans aussitôt. Préférence d'appareil, hors de la sauvegarde.
+  Dans le navigateur de dev, le bloc s'affiche pour qu'on le voie, et dit que les pubs
+  n'existent que dans l'application.
+- **Info.plist** : `GADApplicationIdentifier` = `$(ADMOB_APP_ID)`, réglage de la cible
+  App — sans lui le SDK FERME l'application au lancement. C'est l'identifiant de
+  DÉMONSTRATION de Google ; la version store y mettra le sien. Plus
+  `NSUserTrackingUsageDescription` (obligatoire pour demander le suivi) et
+  `SKAdNetworkItems` (celui de Google seul ; la version store devra reprendre la liste
+  complète publiée par Google).
+- Vérifié dans l'aperçu avec un **faux greffon** qui consigne chaque appel : ordre
+  consentement → suivi → initialisation → bannière de démo ; réserve de 62 px posée,
+  retirée sur les Boîtes, rendue à l'accueil ; aucun plein écran avant 2 minutes, un
+  après 5 (horloge avancée), aucun pubs coupées ; interrupteur mémorisé. Le SDK réel ne
+  se vérifie que sur l'iPhone.
+- **Avant la version store**, le dossier juridique devra suivre : politique de
+  confidentialité (publicité, identifiant publicitaire, Google comme destinataire),
+  étiquette App Privacy, et `NSPrivacyTracking` de `PrivacyInfo.xcprivacy`, qui dit
+  aujourd'hui « pas de suivi ». Sans objet pour Unydex Dev, usage personnel.
 
 Le nom affiché sur l'écran d'accueil est **Unydex** (version store) ou **Unydex Dev**
 (IPA sideloadé). Il vit à trois endroits : `APP_DISPLAY_NAME` dans les réglages de la
@@ -195,6 +248,7 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `src/compte.js` | Compte Supabase : session, profil, OAuth |
 | `src/compte-ui.js` | Le bloc Compte des Réglages et ses panneaux |
 | `src/sync.js` | Sauvegarde de la collection dans le compte |
+| `src/pubs.js` | Publicités AdMob : bannière, plein écran, interrupteur |
 | `src/data/i18n/en.json` | Surcouche anglaise, **générée**, 1,7 Mo |
 | `src/data/i18n/ja.json` | Surcouche japonaise, **générée**, 1,9 Mo |
 | `scripts/fetch-i18n.mjs` | Produit ces deux surcouches (`npm run fetch-i18n`) |

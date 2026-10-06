@@ -6,6 +6,17 @@
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>GADApplicationIdentifier</key>
+	<string>$(ADMOB_APP_ID)</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Cet identifiant sert à vous proposer des publicités plus pertinentes. Refuser n’empêche pas d’utiliser l’application.</string>
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+	</array>
 	<key>CFBundleDisplayName</key>
         <string>$(APP_DISPLAY_NAME)</string>
 	<key>CFBundleExecutable</key>

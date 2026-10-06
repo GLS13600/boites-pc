@@ -16,6 +16,7 @@ import NATURES from './data/natures.json';
 import formDesc from './data/form-desc.json';
 import elevage from './data/elevage.json';
 import { creeScan } from './scan.js';
+import { majPubs, pauseNaturelle, pubsDisponibles, pubsActivees, interrupteurPubs, activePubs } from './pubs.js';
 import { creeCompteUI } from './compte-ui.js';
 // La synchronisation ne connaît ni l'état ni les clés de stockage : main.js lui
 // fournit de quoi lire et poser la collection, elle se charge du transport.
@@ -584,6 +585,7 @@ const ICO = {
 
 // Icônes des blocs de Réglages. La pastille qui les porte prend `--c` en CSS.
 const ICO_REG = {
+  pubs: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h3l6 4V6L7 10H4z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
   apparence: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>',
   langue: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.2 9.5h17.6M3.2 14.5h17.6M12 3a15 15 0 0 1 0 18A15 15 0 0 1 12 3z"/></svg>',
   compte: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/></svg>',
@@ -671,6 +673,8 @@ function render() {
   // render() ne concerne que la gestion des boîtes.
   // Hors de la vue Scan, la caméra est coupée : sans effet si elle l'est déjà.
   if (state.vue !== 'scan') scan.arrete();
+  // La bannière suit la vue : absente des Boîtes et du Scan (voir pubs.js).
+  majPubs(state.vue);
   if (state.vue === 'accueil') return renderAccueil();
   if (state.vue === 'attaques') return renderAttaques();
   if (state.vue === 'reglages') return renderReglages();
@@ -1467,6 +1471,9 @@ function renderEncounters(p, id) {
 }
 
 function closeSheet() {
+  // Refermer une fiche est une pause naturelle : c'est là, et seulement là, qu'un
+  // plein écran peut venir — jamais au milieu d'un geste.
+  if (sheet.classList.contains('open')) pauseNaturelle();
   sheet.classList.remove('open');
   state.open = null;
   syncBackdrop();
@@ -3433,6 +3440,10 @@ function renderReglages() {
           </button>
         </div>`)}
 
+      ${interrupteurPubs() && (pubsDisponibles() || import.meta.env.DEV) ? bloc(3, 'pubs', t('pubs'),
+        pubsDisponibles() ? t('pubsAide') : t('pubsAideWeb'),
+        rail([['1', t('pubsAffichees')], ['0', t('pubsCoupees')]], pubsActivees() ? '1' : '0', 'data-pubs', t('pubs'))) : ''}
+
       ${compteUI.htmlCompte()}
 
       <!-- Apple exige (5.1.1(i)) un lien vers la politique de confidentialité DANS
@@ -3483,6 +3494,7 @@ barreRetour.addEventListener('click', () => vaVers('accueil'));
 function vaVers(vue) {
   if (vue === state.vue) return;
   fermeLesPanneaux();
+  if (vue === 'accueil') pauseNaturelle();
   state.vue = vue;
   // Entrer dans le Pokédex ramène TOUJOURS à son menu : on vient choisir quel
   // Pokédex regarder, pas reprendre là où l'on s'était arrêté.
@@ -3503,6 +3515,14 @@ app.addEventListener('click', (e) => {
   // au premier clic venu, et le choix de la langue n'était jamais atteint.
   const doc = e.target.closest('button[data-legal]');
   if (doc) { ouvreLegal(doc.dataset.legal); return; }
+
+  const pb = e.target.closest('button[data-pubs]');
+  if (pb) {
+    activePubs(pb.dataset.pubs === '1');
+    retourHaptique();
+    render();
+    return;
+  }
 
   const th = e.target.closest('button[data-theme]');
   if (th) {

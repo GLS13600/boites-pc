@@ -305,6 +305,7 @@
 				APP_BUNDLE_ID = com.guillaume.unydex;
 				APP_DISPLAY_NAME = Unydex;
 				APP_URL_SCHEME = unydex;
+				ADMOB_APP_ID = "ca-app-pub-3940256099942544~1458002511";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -330,6 +331,7 @@
 				APP_BUNDLE_ID = com.guillaume.unydex;
 				APP_DISPLAY_NAME = Unydex;
 				APP_URL_SCHEME = unydex;
+				ADMOB_APP_ID = "ca-app-pub-3940256099942544~1458002511";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;

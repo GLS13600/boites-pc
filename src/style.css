@@ -25,7 +25,13 @@ img { display: block; }
 /* Coquille : hauteur d'écran fixe, la zone .vue défile à l'intérieur et la barre
    du bas reste le dernier élément. C'est ce qui garantit qu'elle se pose au même
    endroit quelle que soit la longueur de la vue. */
-#app { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+#app {
+  height: 100%; display: flex; flex-direction: column; overflow: hidden;
+  /* La bannière de pub (Unydex Dev, version store) est posée PAR-DESSUS la vue web :
+     sa hauteur arrive dans --nav-h (pubs.js), soustraite ici de la zone qui défile.
+     0 sans bannière, donc sans effet sur le site. */
+  padding-bottom: var(--nav-h);
+}
 .vue {
   flex: 1 1 auto;
   min-height: 0;   /* sans quoi un enfant flex refuse de rétrécir sous son contenu */
@@ -684,6 +690,7 @@ img { display: block; }
 .b-compte      { --c: #08862c; }
 .b-sauvegarde  { --c: #b86a05; }
 .b-avenir      { --c: #6b7280; }
+.b-pubs        { --c: #b3261e; } /* blanc dessus : 6,3 pour 1 */
 
 .reg-aide { margin: 0 0 var(--e-3); font-size: var(--t-petit); color: var(--muted); line-height: 1.45; }
 .reg-bloc.vide { border-style: dashed; background: none; }
@@ -2328,7 +2335,7 @@ img { display: block; }
 .annule {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--e-4) + var(--safe-bottom));
+  bottom: calc(var(--e-4) + var(--safe-bottom) + var(--nav-h));
   z-index: 50;
   display: flex;
   align-items: center;
@@ -3405,4 +3412,3 @@ img {
 /* Calcul de dégâts : réglages de la cible et effets comptés sous chaque attaque. */
 .cible-reglages { margin-top: var(--e-2); }
 .dg-effets { grid-column: 1 / -1; font-size: var(--t-mini); color: var(--muted); }
-

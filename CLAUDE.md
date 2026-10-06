@@ -2334,6 +2334,17 @@ le hors-ligne complet et l'analyse d'équipe. Ajouté :
 - **`voisinFiche` suit l'ordre AFFICHÉ** : trié par Vitesse, glisser mène au suivant
   de la liste, pas au numéro d'à côté. Hors de la liste affichée, l'ancien parcours
   par numéro reste le repli.
+- **Vue liste** (demandée dans les avis de ProDex), bascule grille / liste en tête des
+  filtres. Une ligne : sprite, numéro et nom, types, et **la valeur triée** — triée par
+  Vitesse, la liste dit aussi QUELLE vitesse (`valeurTri`).
+  - **Un seul balisage pour les deux vues** : la case porte toujours types et valeur, la
+    grille les masque en CSS (`.dex-grid.liste`). `majGrilleDex` reste l'unique
+    chemin de mise à jour, et la bascule n'a pas à rendre la vue.
+  - C'est une préférence d'affichage : **gardée d'un lancement à l'autre**
+    (`pcbox.dexliste`), à la différence du type et du tri, qui sont de passage. Elle
+    ne part pas dans la sauvegarde — elle tient à l'écran, pas à la collection.
+  - La ligne des filtres passe à trois colonnes par la classe `avec-vues`, et non par
+    `:has()` : la même ligne sert aux réglages de la cible des dégâts, sans bascule.
 
 ### Calculateur de types (vue Équipes)
 
@@ -2358,9 +2369,32 @@ le hors-ligne complet et l'analyse d'équipe. Ajouté :
 - L'attaquant prend ses stats SAISIES quand elles le sont (`statMembre`), sinon niveau,
   EV et nature ; la cible est à IV 31, EV 0, nature neutre, au niveau du membre sauf
   réglage. Saisir une stat ou un EV refait le bloc sur place (`majDegats`).
-- **Non comptés, et dit sous le bloc** : talents, objets, météo, critiques, statuts,
-  modificateurs. Vérifié à la main : Lance-Flammes de Dracaufeu N.50 sur Florizarre
-  N.50 = 110–132 sur 155 PV, soit 71–85 %, ce qu'affiche l'appli.
+- Vérifié à la main : Lance-Flammes de Dracaufeu N.50 sur Florizarre N.50 = 110–132
+  sur 155 PV, soit 71–85 %, ce qu'affiche l'appli.
+- **Talents et objets comptés** (06/10/2026), ceux de l'attaquant — déjà choisis dans
+  sa fiche — et ceux de la cible, réglés par deux listes sous son niveau :
+  - attaquant : talents « -peau » (le type de l'attaque CHANGE, et l'affichage suit),
+    Technicien, Force Pure / Coloforce, Agitation, Entêtement, Adaptabilité (STAB ×2),
+    Lentiteintée, Cerveau-Force, talents de type (Expert Acier, Dents de Dragon…) ;
+    Orbe Vie, Bandeau / Lunettes Choix, Ceinture Pro, Bandeau Muscle, Lunettes Sages,
+    objets et plaques de type, Ballumière, Massd'Os, Dent Océan ;
+  - cible : immunités (Lévitation, Torche, Absorb Eau, Paratonnerre, Herbivore…),
+    Garde Mystik, Filtre / Solide Roc / Prisme-Armure, Multiécaille (cible supposée à
+    PV pleins), Écailles Glacées, Isograisse, Ignifuge, Sel Purificateur, Peau Sèche,
+    Boule de Poils (contre le Feu), Toison Épaisse ; Veste de Combat, Évoluroc (si la
+    cible peut encore évoluer), Écaille Océan, les 18 baies de résistance.
+  - L'objet de la cible ne propose QUE ces objets : 292 dont 270 sans effet sur le
+    calcul, c'eût été un piège. Talent par défaut : le seul possible hors talent caché
+    (Lévitation de Motisma), sinon aucun — on ne devine pas.
+  - Chaque ligne dit ce qui a été compté (« Peau Féérique · Lunettes Choix »). Sans
+    effet, seule la cause reste : l'Orbe Vie d'un coup qui ne touche pas n'apprend rien.
+  - **Non comptés, et la note le dit** : ce qui dépend d'une donnée absente de la base —
+    contact (Griffe Dure, la moitié de Boule de Poils), effet secondaire (Sans Limite),
+    poing ou mâchoire —, la météo, les critiques, les statuts, les modificateurs.
+  - Vérifié à la main : Mégaphone de Nymphali (Peau Féérique, Lunettes Choix) sur
+    Carchacrok, 270 dégâts max sur 183 PV = 148 %, ce qu'affiche l'appli ; Lévitation
+    annule Séisme sur Motisma ; la Veste de Combat fait passer Lance-Flammes de 70–84 %
+    à 47–57 % ; la Baie Selro divise par deux.
 
 ### Échange d'équipe au format Showdown (vue Équipes)
 

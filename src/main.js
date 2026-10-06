@@ -319,6 +319,9 @@ const state = {
   // temps de la session, pas d'un lancement à l'autre.
   dexType: '',
   dexTri: 'num',
+  // Grille ou liste : une préférence d'affichage, gardée d'un lancement à l'autre —
+  // à la différence du type et du tri, qui sont de passage.
+  dexListe: (() => { try { return localStorage.getItem('pcbox.dexliste') === '1'; } catch { return false; } })(),
   jeu: localStorage.getItem('pcbox.jeu') || 'scarlet-violet',
   // Une équipe par version de jeu : on garde une composition distincte pour chaque
   // opus, puisque attaques, talents et objets n'y sont pas les mêmes.
@@ -575,6 +578,8 @@ const ICO = {
   coche: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   nuage: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18.5a3.9 3.9 0 0 1-.3-7.8 5.2 5.2 0 0 1 10-1.3A3.6 3.6 0 0 1 17.6 18.5z"/><path d="M12 15.5v-5m0 0L9.8 12.7M12 10.5l2.2 2.2"/></svg>',
   croix: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>',
+  grille: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h5.5v5.5H5zM13.5 5H19v5.5h-5.5zM5 13.5h5.5V19H5zM13.5 13.5H19V19h-5.5z"/></svg>',
+  liste: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.5h10M9 12h10M9 17.5h10M5 6.5h.01M5 12h.01M5 17.5h.01"/></svg>',
 };
 
 // Icônes des blocs de Réglages. La pastille qui les porte prend `--c` en CSS.
@@ -4527,7 +4532,64 @@ function ouvreShowdown(mode) {
 // un simulateur de combat — il dirait faux plus souvent qu'il ne dirait plus.
 //
 // La cible est prise à IV 31, EV 0, nature neutre, au niveau du membre sauf réglage.
-let cibleDegats = null; // { key, niv } — niv null = celui du membre
+let cibleDegats = null; // { key, niv, talent, objet } — niv null = celui du membre
+
+// Talents et objets, pour leur effet DIRECT sur les dégâts. Ceux qui dépendent d'une
+// donnée que la base n'a pas — contact (Griffe Dure, Toison Épaisse), effet secondaire
+// (Sans Limite), coup de poing ou de mâchoire — ne sont pas comptés, et la note le dit.
+const OBJET_TYPE = {
+  charcoal: 'fire', 'mystic-water': 'water', 'sea-incense': 'water', 'wave-incense': 'water',
+  'miracle-seed': 'grass', 'rose-incense': 'grass', magnet: 'electric', 'never-melt-ice': 'ice',
+  'black-belt': 'fighting', 'poison-barb': 'poison', 'soft-sand': 'ground', 'sharp-beak': 'flying',
+  'twisted-spoon': 'psychic', 'odd-incense': 'psychic', 'silver-powder': 'bug', 'hard-stone': 'rock',
+  'rock-incense': 'rock', 'spell-tag': 'ghost', 'dragon-fang': 'dragon', 'black-glasses': 'dark',
+  'metal-coat': 'steel', 'silk-scarf': 'normal',
+  'flame-plate': 'fire', 'splash-plate': 'water', 'meadow-plate': 'grass', 'zap-plate': 'electric',
+  'icicle-plate': 'ice', 'fist-plate': 'fighting', 'toxic-plate': 'poison', 'earth-plate': 'ground',
+  'sky-plate': 'flying', 'mind-plate': 'psychic', 'insect-plate': 'bug', 'stone-plate': 'rock',
+  'spooky-plate': 'ghost', 'draco-plate': 'dragon', 'dread-plate': 'dark', 'iron-plate': 'steel',
+  'pixie-plate': 'fairy',
+};
+// Baies qui divisent par deux un coup super efficace de leur type (la Baie Zalis,
+// type Normal, agit sur tout coup Normal).
+const BAIE_TYPE = {
+  'chilan-berry': 'normal', 'occa-berry': 'fire', 'passho-berry': 'water', 'wacan-berry': 'electric',
+  'rindo-berry': 'grass', 'yache-berry': 'ice', 'chople-berry': 'fighting', 'kebia-berry': 'poison',
+  'shuca-berry': 'ground', 'coba-berry': 'flying', 'payapa-berry': 'psychic', 'tanga-berry': 'bug',
+  'charti-berry': 'rock', 'kasib-berry': 'ghost', 'haban-berry': 'dragon', 'colbur-berry': 'dark',
+  'babiri-berry': 'steel', 'roseli-berry': 'fairy',
+};
+// Les objets de la cible qui comptent : on ne propose qu'eux, une liste de 292 objets
+// dont 270 sans effet sur le calcul serait un piège.
+const OBJETS_CIBLE = ['assault-vest', 'eviolite', 'deep-sea-scale', ...Object.keys(BAIE_TYPE)];
+// Talents « -peau » : les attaques Normal changent de type et gagnent 20 %.
+const TALENT_PEAU = { aerilate: 'flying', pixilate: 'fairy', refrigerate: 'ice', galvanize: 'electric' };
+// Talents qui renforcent l'attaquant pour un type.
+const TALENT_TYPE = {
+  steelworker: ['steel', 1.5], 'steely-spirit': ['steel', 1.5], 'dragons-maw': ['dragon', 1.5],
+  'rocky-payload': ['rock', 1.5], transistor: ['electric', 1.3], 'water-bubble': ['water', 2],
+};
+// Talents qui rendent la cible insensible à un type.
+const TALENT_IMMUNITE = {
+  levitate: 'ground', 'earth-eater': 'ground', 'flash-fire': 'fire', 'well-baked-body': 'fire',
+  'water-absorb': 'water', 'storm-drain': 'water', 'dry-skin': 'water', 'volt-absorb': 'electric',
+  'lightning-rod': 'electric', 'motor-drive': 'electric', 'sap-sipper': 'grass',
+};
+const nomEffet = (k) => abilities.list[k]?.n || items[k]?.n || k;
+
+// L'Évoluroc ne sert qu'à un Pokémon qui peut encore évoluer.
+function peutEvoluer(key) {
+  const sp = speciesOf(key);
+  const ch = evolutions.chains[evolutions.of[sp]];
+  return !!ch?.membres?.some((x) => x.from === sp);
+}
+
+// Talent de la cible par défaut : le seul qu'elle puisse avoir hors talent caché
+// (Lévitation d'Ectoplasma en gén. 3, de Motisma…). Sinon aucun : on ne devine pas.
+function talentParDefaut(key) {
+  const normaux = [...new Set(poolTalents(key).filter(([, cache]) => !cache).map(([slug]) => slug))];
+  return normaux.length === 1 ? normaux[0] : '';
+}
 
 // La stat réelle d'un membre : celle qu'on a relevée en jeu si elle est saisie, sinon
 // celle que donnent son niveau, ses EV et sa nature.
@@ -4547,25 +4609,80 @@ function calculeDegats(m, idAtq, cible, gen) {
   if (!mv || mv.c === 'status' || !mv.p) return null;
   const stC = statsDe(cible.key);
   if (!stC) return null;
+  // Talents à partir de la gén. 3, objets tenus à partir de la gén. 2.
+  const tA = gen >= 3 ? m.talent : null;
+  const oA = gen >= 2 ? m.objet : null;
+  const tD = gen >= 3 ? cible.talent : null;
+  const oD = gen >= 2 ? cible.objet : null;
+  const effets = [];
+  const note = (k) => { if (!effets.includes(nomEffet(k))) effets.push(nomEffet(k)); };
+  const spA = speciesOf(m.key), spD = speciesOf(cible.key);
+
   const nivA = m.niv ?? NIV_DEFAUT;
   const nivC = cible.niv ?? nivA;
-  // Avant la gén. 2, une seule stat « Spécial » servait à l'attaque comme à la défense.
   const physique = mv.c === 'physical';
+
+  // Type et puissance.
+  let type = mv.t;
+  let P = mv.p;
+  if (TALENT_PEAU[tA] && type === 'normal') { type = TALENT_PEAU[tA]; P = Math.floor(P * 1.2); note(tA); }
+  if (tA === 'technician' && P <= 60) { P = Math.floor(P * 1.5); note(tA); }
+  if (oA && OBJET_TYPE[oA] === type) { P = Math.floor(P * 1.2); note(oA); }
+  if ((oA === 'muscle-band' && physique) || (oA === 'wise-glasses' && !physique)) { P = Math.floor(P * 1.1); note(oA); }
+
+  // Stat d'attaque. Avant la gén. 2, une seule stat « Spécial » servait des deux côtés.
   const cleA = physique ? 'att' : 'atts';
   const cleD = physique ? 'def' : gen === 1 ? 'atts' : 'defs';
-  const A = statMembre(m, cleA);
-  const D = calcStat(stC[cleD], nivC);
-  const pv = calcPV(stC.pv, nivC, speciesOf(cible.key));
+  let A = statMembre(m, cleA);
+  if (physique && (tA === 'huge-power' || tA === 'pure-power')) { A *= 2; note(tA); }
+  if (physique && (tA === 'hustle' || tA === 'gorilla-tactics')) { A = Math.floor(A * 1.5); note(tA); }
+  if ((oA === 'choice-band' && physique) || (oA === 'choice-specs' && !physique)) { A = Math.floor(A * 1.5); note(oA); }
+  if (oA === 'light-ball' && spA === 25) { A *= 2; note(oA); }
+  if (oA === 'thick-club' && physique && (spA === 104 || spA === 105)) { A *= 2; note(oA); }
+  if (oA === 'deep-sea-tooth' && !physique && spA === 366) { A *= 2; note(oA); }
+  if (TALENT_TYPE[tA]?.[0] === type) { A = Math.floor(A * TALENT_TYPE[tA][1]); note(tA); }
+
+  // Stat de défense de la cible.
+  let D = calcStat(stC[cleD], nivC);
+  if (oD === 'assault-vest' && !physique) { D = Math.floor(D * 1.5); note(oD); }
+  if (oD === 'eviolite' && peutEvoluer(cible.key)) { D = Math.floor(D * 1.5); note(oD); }
+  if (oD === 'deep-sea-scale' && !physique && spD === 366) { D *= 2; note(oD); }
+  if (tD === 'fur-coat' && physique) { D *= 2; note(tD); }
+
+  const pv = calcPV(stC.pv, nivC, spD);
   const table = typechart.chart[gen];
-  const typesA = pokedex[speciesOf(m.key)]?.types || [];
-  const typesD = pokedex[speciesOf(cible.key)]?.types || [];
-  const eff = typesD.reduce((x, d) => x * (table[mv.t]?.[d] ?? 1), 1);
-  const stab = typesA.includes(mv.t) ? 1.5 : 1;
-  const base = Math.floor(Math.floor(Math.floor((2 * nivA) / 5 + 2) * mv.p * A / D) / 50) + 2;
+  const typesA = pokedex[spA]?.types || [];
+  const typesD = pokedex[spD]?.types || [];
+  let eff = typesD.reduce((x, d) => x * (table[type]?.[d] ?? 1), 1);
+  if (TALENT_IMMUNITE[tD] === type) { eff = 0; note(tD); }
+  if (tD === 'wonder-guard' && eff <= 1) { eff = 0; note(tD); }
+  const stab = typesA.includes(type) ? (tA === 'adaptability' ? 2 : 1.5) : 1;
+  if (stab === 2) note(tA);
+
+  // Modificateurs finaux, appliqués après l'efficacité.
+  let f = 1;
+  const fin = (k, x) => { f *= x; note(k); };
+  if (oA === 'life-orb') fin(oA, 1.3);
+  if (oA === 'expert-belt' && eff > 1) fin(oA, 1.2);
+  if (tA === 'tinted-lens' && eff > 0 && eff < 1) fin(tA, 2);
+  if (tA === 'neuroforce' && eff > 1) fin(tA, 1.25);
+  if (['filter', 'solid-rock', 'prism-armor'].includes(tD) && eff > 1) fin(tD, 0.75);
+  if (tD === 'multiscale' || tD === 'shadow-shield') fin(tD, 0.5); // cible à PV pleins
+  if (tD === 'ice-scales' && !physique) fin(tD, 0.5);
+  if (tD === 'thick-fat' && (type === 'fire' || type === 'ice')) fin(tD, 0.5);
+  if (tD === 'heatproof' && type === 'fire') fin(tD, 0.5);
+  if (tD === 'purifying-salt' && type === 'ghost') fin(tD, 0.5);
+  if (tD === 'dry-skin' && type === 'fire') fin(tD, 1.25);
+  if (tD === 'fluffy' && type === 'fire') fin(tD, 2);
+  if (oD && BAIE_TYPE[oD] === type && (eff > 1 || type === 'normal')) fin(oD, 0.5);
+
+  const base = Math.floor(Math.floor(Math.floor((2 * nivA) / 5 + 2) * P * A / D) / 50) + 2;
   // Les 16 tirages du facteur aléatoire (85 à 100 %), chacun arrondi comme en jeu.
   const tirages = Array.from({ length: 16 }, (_, k) =>
-    (eff ? Math.max(1, Math.floor(Math.floor(Math.floor((base * (85 + k)) / 100) * stab) * eff)) : 0));
-  return { mv, eff, stab, tirages, min: tirages[0], max: tirages[15], pv };
+    (eff ? Math.max(1, Math.floor(Math.floor(Math.floor(Math.floor((base * (85 + k)) / 100) * stab) * eff) * f)) : 0));
+  // Sans effet, seule compte la cause : l'Orbe Vie d'un coup qui ne touche pas n'apprend rien.
+  const causes = eff ? effets : effets.filter((n) => n === nomEffet(tD));
+  return { mv, type, eff, stab, tirages, min: tirages[0], max: tirages[15], pv, effets: causes };
 }
 
 // « 2 coups », « 2 ou 3 coups », « 1 coup (37 %) » : la question que l'on se pose
@@ -4603,10 +4720,27 @@ function htmlDegats(m) {
       <button data-nivcible="1">+1</button>
       <button data-nivcible="10">+10</button>
     </div>`;
+  // Talent et objet de la cible : deux listes, au gabarit des filtres. Le talent ne
+  // propose que ceux de l'espèce ; l'objet, que ceux qui changent les dégâts.
+  const option = (v, lib, courant) => `<option value="${v}" ${v === (courant || '') ? 'selected' : ''}>${esc(lib)}</option>`;
+  const talentsCible = poolTalents(cible.key);
+  const objetsCible = OBJETS_CIBLE.filter((k) => items[k] && (!items[k].g.length || items[k].g.includes(gen)));
+  const reglages = (talentsCible.length || (gen >= 2 && objetsCible.length)) ? `
+    <div class="atq-filtres dex-selects cible-reglages">
+      ${talentsCible.length ? `<select data-cibleset="talent" aria-label="${t('degatsTalentCible')}">
+        ${option('', t('degatsTalentCibleAucun'), cible.talent)}
+        ${talentsCible.map(([slug, cache]) => option(slug, (abilities.list[slug]?.n || slug) + (cache ? ' ' + t('talentCacheCourt') : ''), cible.talent)).join('')}
+      </select>` : ''}
+      ${gen >= 2 ? `<select data-cibleset="objet" aria-label="${t('degatsObjetCible')}">
+        ${option('', t('degatsObjetCibleAucun'), cible.objet)}
+        ${objetsCible.map((k) => option(k, items[k].n, cible.objet)).join('')}
+      </select>` : ''}
+    </div>` : '';
   const lignes = ids.map((id) => {
     const d = calculeDegats(m, id, cible, gen);
     const mv = attaqueEnGen(id, gen) || moves[id];
-    const [tn, tc] = TYPES[mv.t] || [mv.t || '—', '#888'];
+    // Un talent « -peau » change le type de l'attaque : on affiche celui qui frappe.
+    const [tn, tc] = TYPES[d?.type || mv.t] || [mv.t || '—', '#888'];
     if (!d) {
       return `
         <div class="dg">
@@ -4623,11 +4757,13 @@ function htmlDegats(m) {
         <span class="dg-pc">${d.eff ? `${pc(d.min)}–${pc(d.max)} %` : '0 %'}</span>
         <span class="dg-barre" aria-hidden="true"><i style="width:${pMax}%"></i><b style="width:${pMin}%"></b></span>
         <span class="dg-ko">${texteKo(d)}</span>
+        ${d.effets.length ? `<span class="dg-effets">${d.effets.map(esc).join(' · ')}</span>` : ''}
       </div>`;
   }).join('');
   return `
     ${choixCible}
     ${nivCible}
+    ${reglages}
     ${ids.length ? `<div class="degats-liste">${lignes}</div>` : `<p class="none">${t('degatsSansAttaque')}</p>`}
     <p class="stat-note">${t('degatsNote')}</p>`;
 }
@@ -5174,6 +5310,13 @@ const filtreCombat = (e) => {
 
 for (const c of [battleBody, corpsAtq]) c.addEventListener('change', filtreCombat);
 
+battleBody.addEventListener('change', (e) => {
+  const sel = e.target.closest('[data-cibleset]');
+  if (!sel || !cibleDegats) return;
+  cibleDegats[sel.dataset.cibleset] = sel.value;
+  majDegats();
+});
+
 // Après la saisie d'une stat ou d'un EV (écoute posée APRÈS celle qui l'enregistre).
 battleBody.addEventListener('input', (e) => {
   if (state.bs?.mode === 'detail' && e.target.closest('[data-ev], [data-stat]')) majDegats();
@@ -5212,7 +5355,8 @@ const clicCombat = (e) => {
 
   const cib = e.target.closest('[data-ciblepick]');
   if (cib) {
-    cibleDegats = { key: asKey(cib.dataset.ciblepick), niv: null };
+    const cle = asKey(cib.dataset.ciblepick);
+    cibleDegats = { key: cle, niv: null, talent: talentParDefaut(cle), objet: '' };
     retourHaptique();
     openBattleSheet('detail', bs.slot);
     return;
@@ -5435,7 +5579,7 @@ function renderMenuDex() {
              value="${esc(state.dexQ)}" aria-label="${t('chercherPokemon')}"
              autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
       <p class="dex-res" ${q ? '' : 'hidden'}>${q ? texteRes(ids.length) : ''}</p>
-      <div class="dex-grid" ${q ? '' : 'hidden'}>${ids.map(caseDex).join('')}</div>
+      <div class="dex-grid ${state.dexListe ? 'liste' : ''}" ${q ? '' : 'hidden'}>${ids.map(caseDex).join('')}</div>
       <div class="dex-cartes" ${q ? 'hidden' : ''}>${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(carteDex).join('')}</div>
     </section>`)
   );
@@ -5451,9 +5595,22 @@ const caseDex = (id) => {
            ${imgFallback(id, shinyView())} />
       <span class="dx-num">${t('numero', String(id).padStart(4, '0'))}</span>
       <span class="dx-nom">${esc(p.name || '—')}</span>
+      <span class="dx-types">${(p.types || []).map((ty) =>
+        `<span class="type mini" style="--t:${TYPES[ty]?.[1] || '#888'}">${esc(TYPES[ty]?.[0] || ty)}</span>`).join('')}</span>
+      ${valeurTri(id) != null ? `<span class="dx-val">${valeurTri(id)}</span>` : ''}
       ${vu ? '<span class="dx-ok" aria-hidden="true"></span>' : ''}
     </button>`;
 };
+
+// Ce qu'on trie se lit en face de chaque Pokémon : trié par Vitesse, la liste dit
+// aussi QUELLE vitesse. Rien pour le numéro ou le nom, déjà écrits.
+function valeurTri(id) {
+  const tri = state.dexTri;
+  if (tri === 'num' || tri === 'nom' || state.dexGen === null) return null;
+  const st = statsDe(id);
+  if (!st) return null;
+  return tri === 'total' ? STAT_CLES.reduce((n, k) => n + (st[k] || 0), 0) : st[tri] ?? null;
+}
 
 // La recherche BALAIE LES NEUF GÉNÉRATIONS et ignore donc l'onglet, comme celle du
 // sélecteur des boîtes : on cherche justement ce qu'on ne sait pas situer. Sans
@@ -5507,7 +5664,11 @@ const STAT_CLES = ['pv', 'att', 'def', 'atts', 'defs', 'vit'];
 function htmlSelectsDex() {
   const option = (v, lib, courant) => `<option value="${v}" ${v === courant ? 'selected' : ''}>${esc(lib)}</option>`;
   return `
-    <div class="atq-filtres dex-selects">
+    <div class="atq-filtres dex-selects avec-vues">
+      <div class="dex-vues" role="group" aria-label="${t('dexAffichage')}">
+        <button data-dexvue="grille" class="${state.dexListe ? '' : 'on'}" aria-pressed="${!state.dexListe}" aria-label="${t('dexVueGrille')}">${ICO.grille}</button>
+        <button data-dexvue="liste" class="${state.dexListe ? 'on' : ''}" aria-pressed="${state.dexListe}" aria-label="${t('dexVueListe')}">${ICO.liste}</button>
+      </div>
       <select data-dexsel="type" aria-label="${t('type')}">
         ${option('', t('tousLesTypes'), state.dexType)}
         ${typechart.types.map((ty) => option(ty, TYPES[ty]?.[0] || ty, state.dexType)).join('')}
@@ -5621,7 +5782,7 @@ function renderPokedex() {
         ${htmlFiltreDex()}
         <p class="dex-res" ${state.dexQ.trim() ? '' : 'hidden'}>${state.dexQ.trim() ? texteRes(ids.length) : ''}</p>
 
-        <div class="dex-grid">${cases}</div>
+        <div class="dex-grid ${state.dexListe ? 'liste' : ''}">${cases}</div>
         <div class="dex-vide-zone">${ids.length ? '' : videDex()}</div>
 
         <p class="hint">${t('aideDex')}</p>
@@ -5645,7 +5806,15 @@ function majGrilleDex() {
   const ids = especesDex();
   const q = state.dexQ.trim();
   const grille = app.querySelector('.dex-grid');
-  if (grille) grille.innerHTML = ids.map(caseDex).join('');
+  if (grille) {
+    grille.innerHTML = ids.map(caseDex).join('');
+    grille.classList.toggle('liste', state.dexListe);
+  }
+  app.querySelectorAll('[data-dexvue]').forEach((b) => {
+    const on = (b.dataset.dexvue === 'liste') === state.dexListe;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on);
+  });
   const rail = app.querySelector('.dex-filtre');
   if (rail) {
     const neuf = h(htmlFiltreDex());
@@ -5666,6 +5835,15 @@ function majGrilleDex() {
   const cartes = app.querySelector('.dex-cartes');
   if (cartes && grille) { cartes.hidden = !!q; grille.hidden = !q; }
 }
+
+app.addEventListener('click', (e) => {
+  const v = e.target.closest('[data-dexvue]');
+  if (!v) return;
+  state.dexListe = v.dataset.dexvue === 'liste';
+  try { localStorage.setItem('pcbox.dexliste', state.dexListe ? '1' : '0'); } catch { /* préférence perdue, sans gravité */ }
+  retourHaptique();
+  majGrilleDex();
+});
 
 app.addEventListener('change', (e) => {
   const sel = e.target.closest('[data-dexsel]');

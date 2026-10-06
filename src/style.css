@@ -3374,3 +3374,35 @@ img {
 }
 .sd-erreur { color: var(--ball); font-size: var(--t-petit); margin: 0 0 var(--e-2); }
 
+/* Vue liste du Pokédex : la même case, posée en ligne — sprite, numéro et nom, types,
+   et la valeur triée. En grille, types et valeur restent masqués. */
+.dx-types, .dx-val { display: none; }
+.dex-grid.liste { display: flex; flex-direction: column; gap: 6px; }
+.dex-grid.liste .dx {
+  grid-template-columns: 44px minmax(0, 1fr) auto auto;
+  grid-template-areas: "img num types val" "img nom types val";
+  justify-items: start; align-items: center; column-gap: var(--e-2);
+  padding: 4px var(--e-3) 4px 4px; min-height: 52px; text-align: left;
+}
+.dex-grid.liste .dx img { grid-area: img; width: 44px; height: 44px; }
+.dex-grid.liste .dx-num { grid-area: num; align-self: end; }
+.dex-grid.liste .dx-nom { grid-area: nom; align-self: start; font-size: var(--t-corps); text-align: left; }
+.dex-grid.liste .dx-types { grid-area: types; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.dex-grid.liste .dx-val { grid-area: val; display: block; min-width: 32px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.dex-grid.liste .dx-ok { top: 6px; left: 6px; right: auto; }
+
+/* La bascule grille / liste, au bout de la ligne des filtres. */
+.atq-filtres.avec-vues { grid-template-columns: auto repeat(2, minmax(0, 1fr)); }
+.dex-vues { display: flex; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--panel); overflow: hidden; }
+.dex-vues button {
+  display: grid; place-items: center; width: 40px; min-height: 40px; padding: 0;
+  border: 0; background: transparent; color: var(--muted); cursor: pointer;
+}
+.dex-vues button + button { border-left: 1px solid var(--rule); }
+.dex-vues button.on { background: var(--panel-2); color: var(--ink); }
+.dex-vues .ico { width: 20px; height: 20px; }
+
+/* Calcul de dégâts : réglages de la cible et effets comptés sous chaque attaque. */
+.cible-reglages { margin-top: var(--e-2); }
+.dg-effets { grid-column: 1 / -1; font-size: var(--t-mini); color: var(--muted); }
+

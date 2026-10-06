@@ -72,8 +72,12 @@ jobs:
       # Ce sont des VARIABLES et non des secrets : la clé publishable part dans le
       # bundle de toute façon, c'est la sécurité au niveau des lignes qui protège.
       # Vides, elles laissent simplement l'application sans compte — elle marche.
+      #
+      # APP_VARIANTE=perso : cet IPA est « Unydex Dev », la version SANS PUB, installée
+      # par SideStore à côté de la future version de l'App Store (voir vite.config.js).
       - run: npm run build
         env:
+          APP_VARIANTE: perso
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
@@ -93,6 +97,9 @@ jobs:
             -skipPackagePluginValidation \
             -skipMacroValidation \
             MARKETING_VERSION="$APP_VERSION" \
+            APP_BUNDLE_ID=com.guillaume.unydex.dev \
+            APP_DISPLAY_NAME="Unydex Dev" \
+            APP_URL_SCHEME=unydexdev \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
@@ -128,7 +135,7 @@ jobs:
           gh release create "v$APP_VERSION" \
             ios/App/build/Unydex.ipa \
             ios/App/build/source.json \
-            --title "Unydex $APP_VERSION" \
+            --title "Unydex Dev $APP_VERSION" \
             --notes "Build automatique $APP_VERSION. À installer par SideStore via la source, ou manuellement avec Sideloadly."
 
       # Doublon volontaire : l'artefact reste disponible même si la release est

@@ -6,13 +6,17 @@
 // Pourquoi ce fichier existe : sur le web, `signInWithOAuth` redirige la page et
 // Supabase relit le jeton dans l'URL au retour. Dans l'application il n'y a pas de
 // page à rediriger — il faut ouvrir un navigateur système, écouter le lien profond du
-// retour (`unydex://auth`), et poser la session à la main.
+// retour (`unydex://auth`, ou `unydexdev://auth` pour Unydex Dev), et poser la
+// session à la main.
 //
 // RÈGLE APPLE : Safari View Controller (plugin Browser) est obligatoire pour une
 // connexion OAuth. Une simple WebView intégrée est refusée (règle 4.0), et Google
 // bloque de son côté les WebView non conformes.
 
-const SCHEMA = 'unydex://auth';
+// Le schéma dépend de la variante (vite.config.js) : `unydex` pour la version de
+// l'App Store, `unydexdev` pour « Unydex Dev ». Les deux adresses doivent figurer
+// dans les URL de redirection de Supabase.
+const SCHEMA = `${__SCHEMA_URL__}://auth`;
 
 // Les plugins sont lus sur `window.Capacitor.Plugins`, comme Haptics, Filesystem et
 // Share : aucun import, donc rien dans le bundle web.

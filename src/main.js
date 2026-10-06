@@ -3349,7 +3349,7 @@ function renderAccueil() {
     <section class="accueil">
       <header class="accueil-tete">
         <h1>${t('appTitre')}</h1>
-        <p>${t('accueilSous', pris, shinyView())} <span>v${__APP_VERSION__}</span></p>
+        <p>${t('accueilSous', pris, shinyView())} <span>v${__APP_VERSION__}${__VARIANTE__ === 'perso' && window.Capacitor?.isNativePlatform?.() ? ' dev' : ''}</span></p>
       </header>
       <div class="tuiles">
         ${TUILES.map(carte).join('')}

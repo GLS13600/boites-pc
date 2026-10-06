@@ -22,9 +22,12 @@ function manifeste(version, size, downloadURL) {
     name: 'Unydex',
     identifier: 'com.guillaume.unydex.source',
     subtitle: 'Living Dex personnel',
+    // L'IPA sideloadé est la variante PERSO, « Unydex Dev » : son identifiant n'est
+    // plus celui de la version App Store, pour que les deux s'installent côte à côte.
+    // Il doit rester celui que le workflow passe à xcodebuild (APP_BUNDLE_ID).
     apps: [{
-      name: 'Unydex',
-      bundleIdentifier: 'com.guillaume.unydex',
+      name: 'Unydex Dev',
+      bundleIdentifier: 'com.guillaume.unydex.dev',
       developerName: 'Guillaume',
       subtitle: 'Suivi de Living Dex façon boîtes PC',
       localizedDescription:

@@ -10,6 +10,21 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
 // installée à celle du manifeste et de proposer la mise à jour.
 const version = process.env.APP_VERSION || pkg.version;
 
+// ---------------------------------------------------------------- variantes
+//
+// DEUX VARIANTES de la même application, choisies à la compilation :
+//   perso — le serveur de dev, le site, l'IPA sideloadé « Unydex Dev ». Sans pub.
+//   store — la version de l'App Store, la seule qui portera des publicités.
+// `perso` par défaut : seule une compilation qui le DEMANDE (APP_VARIANTE=store)
+// produit la version store. Tout code de pub devra être écrit sous
+// `if (__VARIANTE__ === 'store')` : Vite remplace la constante, la condition devient
+// fausse et le code disparaît du bundle perso — rien n'y est téléchargé ni exécuté.
+//
+// Le schéma d'URL du retour OAuth suit la variante : deux applis installées côte à
+// côte ne peuvent pas répondre au même `unydex://`, iOS n'en choisirait qu'une.
+const variante = process.env.APP_VARIANTE === 'store' ? 'store' : 'perso';
+const schemaUrl = variante === 'store' ? 'unydex' : 'unydexdev';
+
 // ---------------------------------------------------------------- sécurité
 //
 // POLITIQUE DE SÉCURITÉ DE CONTENU, posée à la compilation dans une balise `meta` —
@@ -103,6 +118,8 @@ export default defineConfig(({ mode }) => {
   server: { host: true },
   define: {
     __APP_VERSION__: JSON.stringify(version),
+    __VARIANTE__: JSON.stringify(variante),
+    __SCHEMA_URL__: JSON.stringify(schemaUrl),
   },
   build: {
     outDir: 'dist',

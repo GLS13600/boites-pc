@@ -18,13 +18,58 @@
 > la source SideStore, déjà enregistrée dans le téléphone, et renommer le dépôt
 > GitHub casserait l'URL de Pages sans redirection fiable.
 
-Le nom affiché sur l'écran d'accueil est **Unydex**. Il vit à trois endroits, à
-tenir synchronisés : `CFBundleDisplayName` dans `ios/App/App/Info.plist` — c'est
-celui-là qui compte pour l'iPhone —, `appName` dans `capacitor.config.json` pour un
-futur `cap add ios`, et le `<title>` plus la balise `apple-mobile-web-app-title`
-d'`index.html` pour le navigateur et l'ajout à l'écran d'accueil depuis Safari.
-`CFBundleName` reste à `$(PRODUCT_NAME)`, soit « App » : c'est un nom interne, jamais
-affiché.
+## Deux variantes : App Store et « Unydex Dev » (06/10/2026)
+
+Demandé en vue d'une publication avec publicités : « pour le dev, une version de
+l'appli sans pub en parallèle ». Décidé : **changer l'identifiant de l'IPA sideloadé
+tout de suite**, plutôt que le jour de la sortie.
+
+| | Version App Store | Unydex Dev (IPA sideloadé) |
+|---|---|---|
+| Variante (`APP_VARIANTE`) | `store` | `perso` (défaut) |
+| Identifiant | `com.guillaume.unydex` | `com.guillaume.unydex.dev` |
+| Nom sur l'écran d'accueil | Unydex | Unydex Dev |
+| Schéma du retour OAuth | `unydex://auth` | `unydexdev://auth` |
+| Publicités | oui, à venir | jamais |
+
+- **Côté web**, `vite.config.js` lit `APP_VARIANTE` et pose `__VARIANTE__` et
+  `__SCHEMA_URL__`. `perso` par défaut : le serveur de dev, le site et l'IPA
+  sideloadé sont tous sans pub ; seule une compilation qui le DEMANDE produit la
+  version store. **Tout code de pub s'écrit sous `if (__VARIANTE__ === 'store')`** :
+  Vite remplace la constante, la branche devient morte et disparaît du bundle perso.
+  Vérifié : chaque compilation ne contient que SON schéma (`unydex://auth` ou
+  `unydexdev://auth`), et aucune trace des noms de constantes.
+- **Côté iOS**, l'identité est faite de trois réglages propres à la cible App
+  (`APP_BUNDLE_ID`, `APP_DISPLAY_NAME`, `APP_URL_SCHEME`), lus par
+  `PRODUCT_BUNDLE_IDENTIFIER` et par `Info.plist`. Le projet porte ceux de la version
+  STORE ; `ios.yml` les surcharge pour Unydex Dev. **Pourquoi pas
+  `PRODUCT_BUNDLE_IDENTIFIER` directement** : un réglage passé en ligne de commande à
+  xcodebuild s'applique à TOUTES les cibles, paquets Swift compris — leur donner à
+  toutes le même identifiant ferait refuser l'installation. Nos propres noms ne sont
+  lus que par la cible App.
+- **Le schéma suit la variante** parce que deux applis installées côte à côte ne
+  peuvent pas répondre au même `unydex://` : iOS n'en choisirait qu'une, et le
+  retour de connexion tomberait au hasard. `unydexdev://auth` doit donc figurer AUSSI
+  dans les URL de redirection de Supabase.
+- `build-source.mjs` annonce désormais **« Unydex Dev », `com.guillaume.unydex.dev`** :
+  SideStore la voit comme une NOUVELLE application. L'ancienne « Unydex » ne reçoit
+  plus de mises à jour ; on installe Unydex Dev, on se connecte au compte (ou
+  export / import), puis on supprime l'ancienne — elle occupe sinon l'un des trois
+  emplacements du certificat gratuit.
+- L'accueil affiche « dev » après la version, **dans l'IPA seulement** : deux icônes
+  presque identiques sur le téléphone, il faut savoir laquelle est ouverte.
+- **La version store n'a pas encore de chaîne de compilation** : elle exige un compte
+  Apple Developer payant et une signature. Le jour venu : `APP_VARIANTE=store npm run
+  build`, `npx cap sync ios`, puis une archive Xcode SANS surcharge d'identité.
+
+Le nom affiché sur l'écran d'accueil est **Unydex** (version store) ou **Unydex Dev**
+(IPA sideloadé). Il vit à trois endroits : `APP_DISPLAY_NAME` dans les réglages de la
+cible App, lu par `CFBundleDisplayName` d'`Info.plist` — c'est celui-là qui compte
+pour l'iPhone, et le workflow le surcharge pour Unydex Dev —, `appName` dans
+`capacitor.config.json` pour un futur `cap add ios`, et le `<title>` plus la balise
+`apple-mobile-web-app-title` d'`index.html` pour le navigateur et l'ajout à l'écran
+d'accueil depuis Safari. `CFBundleName` reste à `$(PRODUCT_NAME)`, soit « App » : c'est
+un nom interne, jamais affiché.
 
 ### Réglages natifs iOS
 
@@ -1928,11 +1973,13 @@ Trois pièces, toutes nécessaires, aucune suffisante :
    versionné, et c'est lui qui décide de ce que la compilation embarque. Sans cette
    ligne, l'IPA est compilé sans le code natif et `Capacitor.Plugins.Browser` n'existe
    pas. (Même règle que pour Filesystem et Share, déjà notée plus haut.)
-2. **Le schéma d'URL dans `Info.plist`** (`CFBundleURLTypes` → `unydex`). Sans lui,
+2. **Le schéma d'URL dans `Info.plist`** (`CFBundleURLTypes` → `$(APP_URL_SCHEME)`,
+   soit `unydex`, ou `unydexdev` pour Unydex Dev). Sans lui,
    iOS ne sait à qui remettre `unydex://auth` : la connexion aboutirait côté Google et
    l'application ne l'apprendrait jamais. C'est le piège le plus silencieux des trois —
    rien n'échoue, il ne se passe simplement rien.
-3. **`unydex://auth` dans les URL de redirection de Supabase** (Authentication → URL
+3. **`unydex://auth` ET `unydexdev://auth` dans les URL de redirection de Supabase**
+   — une par variante (Authentication → URL
    Configuration). Une redirection non listée est ignorée : Supabase renvoie alors
    vers le *Site URL*, et la fenêtre afficherait le site web au lieu de rendre la main
    à l'application. Celle-là est côté tableau de bord, pas dans le dépôt.

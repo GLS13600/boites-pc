@@ -3289,3 +3289,88 @@ img {
 .legal-doc footer a { color: var(--muted); }
 .legal-attente { color: var(--muted); text-align: center; padding: var(--e-6) 0; }
 
+/* Capture et élevage : la grille des faits de la fiche, plus une barre des sexes —
+   bleu pour les mâles, rose pour les femelles, la part femelle portée par --f. */
+.elevage dd small { display: block; color: var(--muted); font-size: var(--t-petit); margin-top: 2px; }
+.sexe-bar {
+  display: block; height: 6px; border-radius: var(--r-rond); margin-top: var(--e-1);
+  background: linear-gradient(to right, var(--sexe-m) 0 calc(100% - var(--f)), var(--sexe-f) calc(100% - var(--f)) 100%);
+}
+.sheet-genus .statut { color: var(--shiny); font-weight: 700; }
+
+/* Filtres de la grille du Pokédex : deux listes, au gabarit de celles des attaques. */
+.atq-filtres.dex-selects { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0 0 var(--e-3); }
+
+/* Calculateur de types : dix-huit pastilles à cocher, puis les résultats en groupes
+   « ×4 : … ». */
+.tc-corps { padding: var(--e-3); }
+.tc-types { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--e-1); }
+.tc-type {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-height: 44px; padding: var(--e-1) 0; border: 1px solid transparent;
+  border-radius: var(--r-sm); background: transparent; color: var(--muted);
+  font: inherit; font-size: 10px; cursor: pointer;
+}
+.tc-type .tb { width: 26px; height: 26px; }
+.tc-type span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tc-types.choix .tc-type:not(.on) { opacity: 0.45; }
+.tc-type.on { border-color: var(--ink); background: var(--panel-2); color: var(--ink); font-weight: 600; }
+.tc-aide { margin: var(--e-3) 0 0; color: var(--muted); font-size: var(--t-petit); }
+.tc-titre { margin: var(--e-4) 0 var(--e-2); font-size: var(--t-petit); text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.tc-groupe { display: flex; align-items: center; gap: var(--e-2); margin: var(--e-1) 0; }
+.tc-lib { flex: 0 0 auto; min-width: 44px; padding: 2px 6px; border-radius: var(--r-xs); text-align: center; font-size: var(--t-petit); font-weight: 700; }
+/* Mêmes teintes que l'analyse d'équipe : en défense un ×2 est rouge, en attaque vert. */
+.tc-def .tc-lib.mx { background: #fbe3e0; color: #b03127; }
+.tc-def .tc-lib.md { background: #e2f0e4; color: #37733f; }
+.tc-def .tc-lib.m0 { background: #e3e8f2; color: #3d4f77; }
+.tc-off .tc-lib.mx { background: #e2f0e4; color: #37733f; }
+.tc-off .tc-lib.md { background: #f3efe2; color: #7a6a34; }
+.tc-off .tc-lib.m0 { background: #fbe3e0; color: #b03127; }
+.tc-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.tc-badges .tb { width: 24px; height: 24px; }
+.tc-mons { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: var(--e-1); }
+.tc-mon { padding: 0; border: 0; background: var(--panel-2); border-radius: var(--r-sm); aspect-ratio: 1; cursor: pointer; }
+.tc-mon img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.tc-mon.gris img { filter: grayscale(1); opacity: 0.7; }
+
+/* Calcul de dégâts : une ligne par attaque — nom, fourchette en % des PV de la cible,
+   barre (le minimum foncé, le maximum clair), et le nombre de coups pour le K.O. */
+.lc-i.lc-mon { width: 40px; height: 40px; image-rendering: pixelated; }
+.niv-cible { margin-top: var(--e-2); }
+.degats-liste { display: flex; flex-direction: column; gap: var(--e-2); margin-top: var(--e-3); }
+.dg {
+  display: grid; grid-template-columns: 1fr auto; gap: 4px var(--e-2); align-items: center;
+  padding: var(--e-2) var(--e-3); border: 1px solid var(--rule-soft); border-radius: var(--r-md);
+  background: var(--panel);
+}
+.dg-n { font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.dg-pc { font-variant-numeric: tabular-nums; font-weight: 700; }
+.dg-barre { grid-column: 1 / -1; position: relative; height: 6px; border-radius: var(--r-rond); background: var(--panel-2); overflow: hidden; }
+.dg-barre i, .dg-barre b { position: absolute; inset: 0 auto 0 0; border-radius: inherit; }
+.dg-barre i { background: color-mix(in srgb, var(--ball) 35%, transparent); }
+.dg-barre b { background: var(--ball); }
+.dg-ko { grid-column: 1 / -1; font-size: var(--t-petit); color: var(--muted); }
+.dg-ko.muet { grid-column: auto; }
+.dg.ko .dg-ko { color: var(--ball); font-weight: 600; }
+.dg-eff { font-style: normal; font-size: var(--t-mini); font-weight: 700; padding: 1px 5px; border-radius: var(--r-xs); }
+.dg-eff.mx { background: #e2f0e4; color: #37733f; }
+.dg-eff.md { background: #f3efe2; color: #7a6a34; }
+
+/* Échange au format Showdown : deux boutons sous l'équipe, et un panneau de texte. */
+.sd-barre { display: grid; grid-template-columns: 1fr auto; gap: var(--e-2); margin: var(--e-3) 0; }
+.sd-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--e-2);
+  min-height: 44px; padding: 0 var(--e-4); border: 1px solid var(--rule); border-radius: var(--r-md);
+  background: var(--panel); color: var(--ink); font: inherit; font-size: var(--t-corps); font-weight: 600; cursor: pointer;
+}
+.sd-btn:disabled { opacity: 0.45; cursor: default; }
+.sd-btn .ico { width: 20px; height: 20px; }
+.sd-texte {
+  display: block; width: 100%; box-sizing: border-box; margin: var(--e-3) 0;
+  padding: var(--e-3); border: 1px solid var(--rule); border-radius: var(--r-md);
+  background: var(--panel); color: var(--ink); resize: vertical;
+  font: 16px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; /* 16 px : pas de zoom iOS */
+  user-select: text; -webkit-user-select: text;
+}
+.sd-erreur { color: var(--ball); font-size: var(--t-petit); margin: 0 0 var(--e-2); }
+

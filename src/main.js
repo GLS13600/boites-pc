@@ -14,6 +14,7 @@ import abilities from './data/abilities.json';
 import items from './data/items.json';
 import NATURES from './data/natures.json';
 import formDesc from './data/form-desc.json';
+import elevage from './data/elevage.json';
 import { creeScan } from './scan.js';
 import { creeCompteUI } from './compte-ui.js';
 // La synchronisation ne connaît ni l'état ni les clés de stockage : main.js lui
@@ -314,6 +315,10 @@ const state = {
   // de la session, d'une région à l'autre — on cherche ce qui manque à Kanto, puis à
   // Johto —, mais pas d'un lancement à l'autre : la grille complète reste l'accueil.
   dexFiltre: 'tous',
+  // Type et tri de la grille du Pokédex : de passage, comme la recherche — gardés le
+  // temps de la session, pas d'un lancement à l'autre.
+  dexType: '',
+  dexTri: 'num',
   jeu: localStorage.getItem('pcbox.jeu') || 'scarlet-violet',
   // Une équipe par version de jeu : on garde une composition distincte pour chaque
   // opus, puisque attaques, talents et objets n'y sont pas les mêmes.
@@ -928,6 +933,65 @@ function renderStatsBase(key) {
     </div>`;
 }
 
+// ---------- Capture et élevage ----------
+//
+// Ce que l'on vient chercher en pleine partie et que la fiche ne disait pas : à quel
+// point il se capture, avec quoi il se reproduit, ce qu'il rapporte au K.O. Données
+// de l'ESPÈCE (scripts/fetch-elevage.mjs) : une forme emprunte celles de son espèce.
+
+// Points d'expérience totaux au niveau 100, par courbe : ils disent mieux que le nom
+// de la courbe ce qu'elle coûte.
+const COURBE_XP = {
+  slow: 1250000, medium: 1000000, fast: 800000, 'medium-slow': 1059860,
+  'slow-then-very-fast': 600000, 'fast-then-very-slow': 1640000,
+};
+
+// Un pourcentage lisible : une décimale sous 10 %, aucune au-delà — sauf demande
+// contraire : la répartition des sexes va par huitièmes (87,5 / 12,5), et l'arrondir
+// donnait 88 % et 13 %, soit 101 %.
+const pourcent = (x, dec) => {
+  const v = Math.min(100, x * 100);
+  try {
+    return v.toLocaleString(document.documentElement.lang || 'fr',
+      { maximumFractionDigits: dec ?? (v < 10 ? 1 : 0) });
+  } catch { return v.toFixed(dec ?? (v < 10 ? 1 : 0)); }
+};
+const entier = (n) => Number(n).toLocaleString(document.documentElement.lang || 'fr');
+
+function renderElevage(base) {
+  const e = elevage.especes[base];
+  if (!e) return '';
+  // Chance de capture d'une Poké Ball, sans statut, depuis la gén. 3 : la valeur
+  // modifiée vaut taux × (3 PVmax − 2 PV) / (3 PVmax), et la probabilité en est très
+  // proche de cette valeur sur 255. PV pleins : taux / 3 ; à 1 PV : presque le taux.
+  const plein = Math.min(1, e.c / 3 / 255);
+  const bas = Math.min(1, e.c / 255);
+  const sexe = e.s < 0
+    ? t('asexue')
+    : t('sexeRepartition', pourcent((8 - e.s) / 8, 1), pourcent(e.s / 8, 1));
+  const lg = ['fr', 'en', 'ja'].includes(langue()) ? langue() : 'fr';
+  const oeufs = e.o.map((g) => esc(elevage.groupes[g]?.[lg] ?? g)).join(', ');
+  const ev = e.v.map((n, i) => (n ? `${n} ${statLignes()[i][1]}` : '')).filter(Boolean).join(', ');
+  const courbe = e.r ? t(`courbeXp_${e.r.replace(/-/g, '_')}`) : '';
+  return `
+    <dl class="facts elevage">
+      <div class="fact wide">
+        <dt>${t('tauxCapture')}</dt>
+        <dd><b>${e.c}</b> <small>${t('chanceCapture', pourcent(plein), pourcent(bas))}</small></dd>
+      </div>
+      <div class="fact wide">
+        <dt>${t('sexe')}</dt>
+        <dd>${sexe}${e.s < 0 ? '' : `<span class="sexe-bar" style="--f:${(100 * e.s) / 8}%" aria-hidden="true"></span>`}</dd>
+      </div>
+      <div class="fact"><dt>${t('groupesOeufs')}</dt><dd>${oeufs}</dd></div>
+      <div class="fact"><dt>${t('eclosion')}</dt><dd>${t('eclosionVal', e.e, entier(e.e * 257))}</dd></div>
+      <div class="fact"><dt>${t('evDonnes')}</dt><dd>${ev || '—'}</dd></div>
+      <div class="fact"><dt>${t('expBase')}</dt><dd>${e.x ?? '—'}</dd></div>
+      <div class="fact"><dt>${t('courbeXp')}</dt><dd>${courbe ? t('courbeXpVal', courbe, entier(COURBE_XP[e.r])) : '—'}</dd></div>
+      <div class="fact"><dt>${t('bonheurBase')}</dt><dd>${e.b ?? '—'}</dd></div>
+    </dl>`;
+}
+
 // ---------- Cri du Pokémon ----------
 //
 // Les cris viennent de PokéAPI (github.com/PokeAPI/cries) et sont EMBARQUÉS dans
@@ -999,7 +1063,7 @@ function openSheet(id) {
       </div>
       <div>
         <h2 class="sheet-name">${esc(forme ? forme.name : (p.name || t('numero', id)))}<small>#${String(base).padStart(4, '0')}</small></h2>
-        <p class="sheet-genus">${forme ? `${esc(p.name || '')} · ${nomKind(forme.kind)}` : (p.genus || '')}${sh ? ' · ' + t('formeChromatique') : ''}</p>
+        <p class="sheet-genus">${forme ? `${esc(p.name || '')} · ${nomKind(forme.kind)}` : (p.genus || '')}${elevage.especes[base]?.l ? ` · <span class="statut">${t('statut_' + elevage.especes[base].l)}</span>` : ''}${sh ? ' · ' + t('formeChromatique') : ''}</p>
         <div class="types">${(p.types || []).map((t) => `<span class="type" style="--t:${TYPES[t]?.[1] || '#888'}">${TYPES[t]?.[0] || t}</span>`).join('')}</div>
       </div>
     </div>
@@ -1022,6 +1086,9 @@ function openSheet(id) {
 
     <h3>${t('statsDeBase')}</h3>
     ${renderStatsBase(id)}
+
+    <h3>${t('captureElevage')}</h3>
+    ${renderElevage(base)}
 
     <h3>${t('faiblessesEtResistances')} <small>${t('tableActuelle')}</small></h3>
     ${renderFaiblesses(base, 9)}
@@ -1419,6 +1486,11 @@ function voisinFiche(dir) {
   // Dans la vue Pokédex, les voisins sont les espèces de la génération affichée,
   // pas le contenu d'une boîte : on parcourt le Pokédex national dans l'ordre.
   if (state.vue === 'pokedex') {
+    // La grille est triée, filtrée ou cherchée : les voisins sont ceux qu'on VOIT.
+    // Trié par Vitesse, glisser doit mener au suivant de la liste, pas au numéro d'à côté.
+    const affiches = especesDex();
+    const k = affiches.indexOf(Number(state.open));
+    if (k >= 0) return affiches[k + dir] ?? null;
     const g = plageDex(state.dexGen ?? 0);
     const id = Number(state.open);
     if (!Number.isInteger(id) || id < g.from || id > g.to) return null;
@@ -1714,7 +1786,7 @@ function renderAddSheet(keepFocus) {
     <label class="bs-field">
       <span>${t('rechercher')}</span>
       <input class="bs-name add-q" type="text" value="${esc(state.addQuery || '')}"
-             placeholder="${t('placeholderPokemon')}" autocomplete="off" />
+             placeholder="${t('placeholderPokemon')}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
     </label>
     <div class="paper-gens" role="tablist">
       ${GENS.map((g) => `
@@ -3520,11 +3592,18 @@ function renderCombat() {
           ${equipe().map(renderEquipeSlot).join('')}
         </div>
 
+        <div class="sd-barre">
+          <button class="sd-btn" data-act="sd-export" ${pleines ? '' : 'disabled'}>${ICO.exporte}<span>${t('sdExporter')}</span></button>
+          <button class="sd-btn" data-act="sd-import">${ICO.importe}<span>${t('sdImporter')}</span></button>
+        </div>
+
         ${LEARN_VG ? '' : `<p class="combat-charge">${t('chargementAttaques')}</p>`}
 
         <div class="analyse">${renderAnalyse()}</div>
 
         ${renderTableTypes()}
+
+        ${renderCalcTypes()}
 
         <!-- L'aide ne sert qu'à la première prise en main : dès qu'un Pokémon est
              placé, le geste est compris et le pavé n'est plus que du bruit. -->
@@ -3834,6 +3913,115 @@ function renderTableTypes() {
     </details>`;
 }
 
+// ---------- Calculateur de types ----------
+//
+// Choisir un ou deux types et lire d'un coup ce qu'ils encaissent, ce qu'ils frappent,
+// et quels Pokémon les portent. La table complète répond à « Feu contre Plante ? » ;
+// ce calculateur répond à « que craint un Acier / Fée ? », qu'elle obligeait à
+// calculer de tête en croisant deux colonnes.
+//
+// Il suit la génération du jeu choisi, comme la table. Ses commandes agissent SUR LE
+// DOM (`majCalcTypes`) : rendre la vue refermerait le volet et ramènerait en haut.
+const calcTypes = [];
+let calcOuvert = false;
+
+function htmlCorpsCalc() {
+  const gen = genDuJeu();
+  const table = typechart.chart[gen];
+  const T = typesDeGen(gen);
+  // Un type sélectionné qui n'existe pas dans cette génération (Fée en gén. 1) est
+  // écarté du calcul plutôt que de fausser le résultat.
+  const choix = calcTypes.filter((x) => T.includes(x));
+  const boutons = T.map((ty) => `
+    <button class="tc-type ${choix.includes(ty) ? 'on' : ''}" data-calctype="${ty}"
+            aria-pressed="${choix.includes(ty)}">${badge(ty)}<span>${esc(TYPES[ty]?.[0] || ty)}</span></button>`).join('');
+  if (!choix.length) {
+    return `<div class="tc-types ${choix.length ? 'choix' : ''}">${boutons}</div>
+      <p class="tc-aide">${t('calcAide')}</p>`;
+  }
+
+  // Défense : multiplicateur subi de chaque type attaquant.
+  const def = new Map();
+  for (const a of T) {
+    let m = 1;
+    for (const d of choix) m *= table[a]?.[d] ?? 1;
+    if (m !== 1) def.set(a, m);
+  }
+  // Attaque : le meilleur multiplicateur que ces types infligent à chaque défenseur
+  // — c'est la couverture d'un Pokémon qui a une attaque de chacun de ses types.
+  const att = new Map();
+  for (const d of T) att.set(d, Math.max(...choix.map((a) => table[a]?.[d] ?? 1)));
+
+  const groupe = (lib, ids, classe) => (!ids.length ? '' : `
+    <div class="tc-groupe">
+      <span class="tc-lib ${classe}">${lib}</span>
+      <span class="tc-badges">${ids.map(badge).join('')}</span>
+    </div>`);
+  const parMult = (map, v) => [...map].filter(([, m]) => m === v).map(([k]) => k);
+
+  const defense = [4, 2, 0.5, 0.25, 0].map((v) =>
+    groupe(fmt(v), parMult(def, v), classeMult(v))).join('');
+  const attaque = [
+    groupe(t('calcSuperEfficace'), parMult(att, 2), 'mx'),
+    groupe(t('calcPeuEfficace'), parMult(att, 0.5), 'md'),
+    groupe(t('calcSansEffet'), parMult(att, 0), 'm0'),
+  ].join('');
+
+  // Les Pokémon qui portent EXACTEMENT cette combinaison, dans l'ordre du Pokédex et
+  // jusqu'à la génération du jeu : un type seul désigne les Pokémon de type unique.
+  const voulu = [...choix].sort().join();
+  const mons = range(1, 1025).filter((id) => {
+    const p = pokedex[id];
+    return p && p.generation <= gen && [...(p.types || [])].sort().join() === voulu;
+  });
+  const sh = shinyView();
+  return `
+    <div class="tc-types choix">${boutons}</div>
+    <h4 class="tc-titre">${t('calcDefense')}</h4>
+    <div class="tc-def">${defense || `<p class="none">${t('neutrePartout')}</p>`}</div>
+    <h4 class="tc-titre">${t('calcAttaque')}</h4>
+    <div class="tc-off">${attaque || `<p class="none">${t('neutrePartout')}</p>`}</div>
+    <h4 class="tc-titre">${t('calcPokemon', mons.length)}</h4>
+    ${mons.length ? `<div class="tc-mons">${mons.map((id) => `
+      <button class="tc-mon ${isCaught(id) ? '' : 'gris'}" data-calcmon="${id}" title="${esc(pokedex[id].name)}">
+        <img src="${sprites.still(id, sh)}" alt="${esc(pokedex[id].name)}" loading="lazy" ${imgFallback(id, sh)} />
+      </button>`).join('')}</div>` : `<p class="none">${t('calcAucunPokemon')}</p>`}`;
+}
+
+function renderCalcTypes() {
+  return `
+    <details class="tt tc" ${calcOuvert ? 'open' : ''}>
+      <summary>${t('calcTypes')} <small>${esc(jeuCourant().nom)}</small></summary>
+      <div class="tc-corps">${htmlCorpsCalc()}</div>
+    </details>`;
+}
+
+function majCalcTypes() {
+  const corps = app.querySelector('.tc-corps');
+  if (corps) corps.innerHTML = htmlCorpsCalc();
+}
+
+// Un troisième type remplace le plus ancien : un Pokémon n'en porte que deux.
+app.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-calctype]');
+  if (b) {
+    const ty = b.dataset.calctype;
+    const i = calcTypes.indexOf(ty);
+    if (i >= 0) calcTypes.splice(i, 1);
+    else { calcTypes.push(ty); if (calcTypes.length > 2) calcTypes.shift(); }
+    retourHaptique();
+    majCalcTypes();
+    return;
+  }
+  const m = e.target.closest('[data-calcmon]');
+  if (m) openSheet(Number(m.dataset.calcmon));
+});
+// Le volet se souvient d'être ouvert : un rendu de la vue (changer de membre, de
+// version) ne doit pas le refermer sous les yeux.
+app.addEventListener('toggle', (e) => {
+  if (e.target.classList?.contains('tc')) calcOuvert = e.target.open;
+}, true);
+
 function renderAnalyse() {
   const a = analyseEquipe();
   if (!a) return '';
@@ -3961,7 +4149,7 @@ function closeBattleSheet() {
 // attaque en bas de la fiche renvoyait tout en haut : on perdait sa place à chaque
 // attaque, soit quatre fois par Pokémon. Même principe que le `keepScroll` de la
 // fiche du Pokédex.
-const SOUS_PANNEAUX = new Set(['attaque', 'talent', 'objet', 'nature']);
+const SOUS_PANNEAUX = new Set(['attaque', 'talent', 'objet', 'nature', 'cible']);
 let defileDetail = { slot: null, y: 0 };
 
 function openBattleSheet(mode, slot = null, emplacement = null) {
@@ -3988,13 +4176,14 @@ function renderBattleSheet(gardeFocus) {
   const corps = corpsCombat();
   corps.innerHTML =
     bs.mode === 'version' ? htmlVersions()
-    : bs.mode === 'mon' ? htmlChoixMon()
+    : bs.mode === 'mon' || bs.mode === 'cible' ? htmlChoixMon()
     : bs.mode === 'detail' ? htmlDetail()
     : bs.mode === 'nature' ? htmlChoixNature()
     : bs.mode === 'talent' ? htmlChoixTalent()
     : bs.mode === 'objet' ? htmlChoixObjet()
     : bs.mode === 'attaques' ? htmlMenuAttaques()
     : bs.mode === 'infoAttaque' ? htmlInfoAttaque()
+    : bs.mode === 'sd-export' || bs.mode === 'sd-import' ? htmlShowdown()
     : htmlChoixAttaque();
   if (gardeFocus) {
     const c = corps.querySelector('.bs-name');
@@ -4028,11 +4217,11 @@ function htmlChoixMon() {
     ? CATALOGUE.filter((e) => e.cle.includes(q)).slice(0, 80)
     : CATALOGUE.filter((e) => e.gen === state.addGen);
   return `
-    <h2 class="bs-title">${t('choisirPokemon')}</h2>
+    <h2 class="bs-title">${state.bs?.mode === 'cible' ? t('degatsChoisirCible') : t('choisirPokemon')}</h2>
     <label class="bs-field">
       <span>${t('rechercher')}</span>
       <input class="bs-name bs-q" type="text" value="${esc(state.bs.q || '')}"
-             placeholder="${t('placeholderPokemon')}" autocomplete="off" />
+             placeholder="${t('placeholderPokemon')}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
     </label>
     ${q ? '' : `<div class="paper-gens" role="tablist">
       ${GENS.map((g) => `
@@ -4043,7 +4232,7 @@ function htmlChoixMon() {
     </div>`}
     <div class="picks">
       ${res.map((e) => `
-        <button class="pick ${isCaught(e.id) ? '' : 'gris'}" data-eqpick="${e.id}">
+        <button class="pick ${isCaught(e.id) ? '' : 'gris'}" ${state.bs?.mode === 'cible' ? 'data-ciblepick' : 'data-eqpick'}="${e.id}">
           <img src="${sprites.still(e.sprite)}" alt="" loading="lazy" ${imgFallback(e.num, false)} />
           <span>${esc(e.name)}<i>${esc(e.sub)}</i></span>
         </button>`).join('')}
@@ -4109,7 +4298,7 @@ function htmlChoixObjet() {
     <label class="bs-field">
       <span>${t('rechercher')}</span>
       <input class="bs-name bs-q" type="text" value="${esc(state.bs.q || '')}"
-             placeholder="${t('placeholderObjet')}" autocomplete="off" />
+             placeholder="${t('placeholderObjet')}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
     </label>
     ${m.objet ? `<button class="atq libre" data-pickobj="">${t('retirerObjet')}</button>` : ''}
     <div class="objets">
@@ -4123,6 +4312,334 @@ function htmlChoixObjet() {
 }
 
 // Détail d'un membre : niveau, stats calculées, quatre attaques.
+// ---------- Échange d'équipe au format Showdown ----------
+//
+// Le format texte de Pokémon Showdown est LA langue commune des joueurs : sites de
+// stratégie, forums, simulateurs, autres applis l'importent et l'exportent. Une équipe
+// d'Unydex se partage donc en un copier-coller, et une équipe trouvée ailleurs s'y
+// recopie de même.
+//
+//   Charizard @ Life Orb
+//   Ability: Blaze
+//   Level: 50
+//   Shiny: Yes
+//   EVs: 252 SpA / 4 SpD / 252 Spe
+//   Modest Nature
+//   - Flamethrower
+//
+// Le format exige les noms ANGLAIS, quelle que soit la langue de l'appli : ils sont lus
+// dans la surcouche anglaise, chargée à la demande (le même fichier que la traduction).
+// À l'import, les noms sont comparés réduits à leurs lettres et chiffres, comme le fait
+// Showdown lui-même : « Mr. Mime », « mr mime » et « MrMime » se valent.
+let EN = null;
+const chargeAnglais = () => (EN ? Promise.resolve(EN)
+  : import('./data/i18n/en.json').then((m) => (EN = m.default || m)));
+const versId = (x) => String(x ?? '').toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '');
+const STAT_SD = { pv: 'HP', att: 'Atk', def: 'Def', atts: 'SpA', defs: 'SpD', vit: 'Spe' };
+
+// Nom Showdown d'une clé : l'espèce en anglais, ou pour une forme à clé NUMÉRIQUE —
+// un vrai Pokémon pour PokéAPI : Méga, régionale, Motisma, Gigamax… — son identifiant PokéAPI — « charizard-mega-x » devient
+// « Charizard-Mega-X », exactement l'écriture de Showdown. Une forme cosmétique n'a
+// pas d'existence en combat : elle s'exporte sous le nom de son espèce.
+function nomShowdown(key) {
+  const espece = speciesOf(key);
+  const f = FORM_BY_KEY.get(key);
+  if (typeof key === 'number' && f?.slug) return f.slug.split('-').map((x) => (x ? x[0].toUpperCase() + x.slice(1) : x)).join('-');
+  return EN?.especes?.[espece]?.name || pokedex[espece]?.name || String(espece);
+}
+
+function texteShowdown(equipeListe) {
+  return equipeListe.filter(Boolean).map((m) => {
+    const lignes = [];
+    const objet = m.objet && EN?.objets?.[m.objet]?.n;
+    const sexe = typeof m.key === 'string' && m.key.endsWith('-female') ? ' (F)' : '';
+    lignes.push(`${nomShowdown(m.key)}${sexe}${objet ? ` @ ${objet}` : ''}`);
+    const talent = m.talent && EN?.talents?.[m.talent]?.n;
+    if (talent) lignes.push(`Ability: ${talent}`);
+    lignes.push(`Level: ${m.niv ?? NIV_DEFAUT}`);
+    if (m.shiny) lignes.push('Shiny: Yes');
+    // Dans l'ordre de Showdown — PV, Atq, Déf, Atq. Spé., Déf. Spé., Vitesse.
+    const evs = Object.keys(STAT_SD).filter((k) => m.evs?.[k] > 0).map((k) => [k, m.evs[k]]);
+    if (evs.length) lignes.push(`EVs: ${evs.map(([k, v]) => `${v} ${STAT_SD[k]}`).join(' / ')}`);
+    const nature = m.nature && EN?.natures?.[m.nature];
+    if (nature) lignes.push(`${nature} Nature`);
+    for (const id of m.moves || []) if (id && EN?.attaques?.[id]) lignes.push(`- ${EN.attaques[id].n}`);
+    return lignes.join('\n');
+  }).join('\n\n');
+}
+
+// Tables inverses, construites une fois : nom réduit → clé.
+let INDEX_SD = null;
+function indexShowdown() {
+  if (INDEX_SD) return INDEX_SD;
+  const especes = new Map();
+  for (const [id, e] of Object.entries(EN.especes || {})) especes.set(versId(e.name), Number(id));
+  // Les formes à clé numérique, par leur identifiant PokéAPI : « Ninetales-Alola »,
+  // « Rotom-Wash », « Charizard-Mega-X » se retrouvent ainsi sans table à tenir.
+  for (const liste of Object.values(forms)) {
+    for (const f of liste) if (typeof f.key === 'number' && f.slug) especes.set(versId(f.slug), f.key);
+  }
+  const depuis = (obj, nom) => new Map(Object.entries(obj || {}).map(([k, v]) => [versId(nom(v)), k]));
+  INDEX_SD = {
+    especes,
+    attaques: new Map(Object.entries(EN.attaques || {}).map(([k, v]) => [versId(v.n), Number(k)])),
+    talents: depuis(EN.talents, (v) => v.n),
+    objets: depuis(EN.objets, (v) => v.n),
+    natures: depuis(EN.natures, (v) => v),
+  };
+  return INDEX_SD;
+}
+
+// Lit un texte Showdown. Rend les membres reconnus et la liste de ce qui ne l'a pas
+// été — on dit ce qu'on a laissé de côté plutôt que de l'avaler en silence.
+function lisShowdown(texte) {
+  const ix = indexShowdown();
+  const inconnus = [];
+  const membres = [];
+  const blocs = String(texte).replace(/\r/g, '').split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+  for (const bloc of blocs) {
+    if (membres.length >= 6) break;
+    const lignes = bloc.split('\n').map((l) => l.trim()).filter(Boolean);
+    // Première ligne : « Surnom (Espèce) (F) @ Objet » ; surnom, sexe et objet facultatifs.
+    let [tete, objet] = lignes[0].split(/\s@\s/);
+    tete = tete.replace(/\((M|F)\)\s*$/, '').trim();
+    const sexeF = /\(F\)\s*(@|$)/.test(lignes[0]);
+    const paren = tete.match(/\(([^()]+)\)\s*$/);
+    const nomEspece = paren ? paren[1] : tete;
+    let key = ix.especes.get(versId(nomEspece));
+    if (key == null) { inconnus.push(nomEspece); continue; }
+    if (sexeF && FORM_BY_KEY.has(`${key}-female`)) key = `${key}-female`;
+    const m = { key, niv: NIV_DEFAUT, moves: [] };
+    if (objet) {
+      const k = ix.objets.get(versId(objet));
+      if (k) m.objet = k; else inconnus.push(objet.trim());
+    }
+    for (const l of lignes.slice(1)) {
+      let r;
+      if ((r = l.match(/^Ability:\s*(.+)$/i))) {
+        const k = ix.talents.get(versId(r[1]));
+        if (k) m.talent = k; else inconnus.push(r[1]);
+      } else if ((r = l.match(/^Level:\s*(\d+)/i))) {
+        m.niv = Math.max(1, Math.min(100, Number(r[1])));
+      } else if (/^Shiny:\s*Yes/i.test(l)) {
+        m.shiny = true;
+      } else if ((r = l.match(/^EVs:\s*(.+)$/i))) {
+        for (const part of r[1].split('/')) {
+          const p = part.trim().match(/^(\d+)\s+(\w+)/);
+          const cle = p && Object.keys(STAT_SD).find((c) => STAT_SD[c].toLowerCase() === p[2].toLowerCase());
+          if (cle) (m.evs ??= {})[cle] = Math.min(252, Number(p[1]));
+        }
+      } else if ((r = l.match(/^(\w+)\s+Nature$/i))) {
+        const k = ix.natures.get(versId(r[1]));
+        if (k) m.nature = k;
+      } else if ((r = l.match(/^[-~]\s*(.+)$/))) {
+        // « Hidden Power [Fire] » : Showdown précise le type, la base ne connaît que l'attaque.
+        const nom = r[1].replace(/\[.*\]/, '');
+        const id = ix.attaques.get(versId(nom));
+        if (id && m.moves.length < 4 && !m.moves.includes(id)) m.moves.push(id);
+        else if (!id) inconnus.push(r[1]);
+      }
+    }
+    if (!cleAdmise(m.key)) { inconnus.push(nomEspece); continue; }
+    membres.push(m);
+  }
+  return { membres, inconnus };
+}
+
+function htmlShowdown() {
+  const imp = state.bs.mode === 'sd-import';
+  if (!EN) return `<h2 class="bs-title">${imp ? t('sdTitreImport') : t('sdTitreExport')}</h2><p class="paper-note">${t('sdChargement')}</p>`;
+  if (!imp) {
+    const txt = texteShowdown(equipe());
+    return `
+      <h2 class="bs-title">${t('sdTitreExport')}</h2>
+      <p class="paper-note">${t('sdAideExport')}</p>
+      ${txt ? `<textarea class="sd-texte" readonly rows="12">${esc(txt)}</textarea>
+      <button class="catch-btn" data-act="sd-copier">${t('sdCopier')}</button>`
+      : `<p class="none">${t('sdEquipeVide')}</p>`}`;
+  }
+  return `
+    <h2 class="bs-title">${t('sdTitreImport')}</h2>
+    <p class="paper-note">${t('sdAideImport', esc(jeuCourant().nom))}</p>
+    <textarea class="sd-texte" rows="12" placeholder="${t('sdPlaceholder')}"
+              autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+    <p class="sd-erreur" hidden></p>
+    <button class="catch-btn" data-act="sd-valider">${t('sdValider')}</button>`;
+}
+
+// L'équipe importée REMPLACE celle de la version courante, et le bandeau d'annulation
+// la rend telle qu'elle était : pas de question préalable, un geste pour revenir.
+function importeShowdown() {
+  const zone = corpsCombat();
+  const txt = zone.querySelector('.sd-texte')?.value || '';
+  const { membres, inconnus } = lisShowdown(txt);
+  const err = zone.querySelector('.sd-erreur');
+  if (!membres.length) {
+    err.hidden = false;
+    err.textContent = t('sdVide') + (inconnus.length ? ' ' + t('sdInconnus', inconnus.slice(0, 6).join(', ')) : '');
+    return;
+  }
+  const avant = equipe().slice();
+  state.equipes[state.jeu] = [...membres, ...Array(6 - membres.length).fill(null)];
+  saveCombat();
+  closeBattleSheet();
+  render();
+  retourHaptique();
+  proposeAnnulation(
+    t('sdImporte', membres.length) + (inconnus.length ? ' · ' + t('sdInconnus', inconnus.slice(0, 3).join(', ')) : ''),
+    () => { state.equipes[state.jeu] = avant; saveCombat(); render(); });
+}
+
+async function copieShowdown(bouton) {
+  const zone = corpsCombat().querySelector('.sd-texte');
+  if (!zone) return;
+  try {
+    await navigator.clipboard.writeText(zone.value);
+  } catch {
+    // Repli : sélectionner le texte, que l'on copie alors soi-même — et la commande
+    // historique, que certaines vues web acceptent encore.
+    zone.focus();
+    zone.select();
+    try { document.execCommand('copy'); } catch { /* sélection laissée à l'utilisateur */ }
+  }
+  bouton.textContent = t('sdCopie');
+  retourHaptique();
+}
+
+function ouvreShowdown(mode) {
+  openBattleSheet(mode);
+  if (!EN) chargeAnglais().then(() => { if (state.bs?.mode === mode) renderBattleSheet(); });
+}
+
+// ---------- Calcul de dégâts ----------
+//
+// Demandé par les joueurs des applis concurrentes : « combien de coups pour mettre ce
+// Pokémon K.O. ? ». Chaque attaque choisie du membre est calculée contre UNE cible,
+// commune à toute l'équipe — on compare ainsi ses six Pokémon face à la même menace.
+//
+// Formule officielle depuis la gén. 3 : ((2N/5 + 2) × Puissance × A/D) / 50 + 2, puis
+// le facteur aléatoire (85 à 100 %), le bonus de type identique (×1,5) et l'efficacité
+// du type, arrondis vers le bas à chaque étape comme dans les jeux. La catégorie et la
+// puissance sont celles de la GÉNÉRATION du jeu (`attaqueEnGen`).
+//
+// Ce qui n'est PAS compté, et que la fiche dit : talents, objets, météo, coups
+// critiques, statuts, modificateurs de stats. C'est un ordre de grandeur fiable, pas
+// un simulateur de combat — il dirait faux plus souvent qu'il ne dirait plus.
+//
+// La cible est prise à IV 31, EV 0, nature neutre, au niveau du membre sauf réglage.
+let cibleDegats = null; // { key, niv } — niv null = celui du membre
+
+// La stat réelle d'un membre : celle qu'on a relevée en jeu si elle est saisie, sinon
+// celle que donnent son niveau, ses EV et sa nature.
+function statMembre(m, cle) {
+  const st = statsDe(m.key);
+  if (!st) return null;
+  if (m.stats?.[cle] != null) return m.stats[cle];
+  const niv = m.niv ?? NIV_DEFAUT;
+  const ev = m.evs?.[cle] || 0;
+  return cle === 'pv'
+    ? calcPV(st.pv, niv, speciesOf(m.key), ev)
+    : calcStat(st[cle], niv, ev, multNature(cle, m.nature));
+}
+
+function calculeDegats(m, idAtq, cible, gen) {
+  const mv = attaqueEnGen(idAtq, gen);
+  if (!mv || mv.c === 'status' || !mv.p) return null;
+  const stC = statsDe(cible.key);
+  if (!stC) return null;
+  const nivA = m.niv ?? NIV_DEFAUT;
+  const nivC = cible.niv ?? nivA;
+  // Avant la gén. 2, une seule stat « Spécial » servait à l'attaque comme à la défense.
+  const physique = mv.c === 'physical';
+  const cleA = physique ? 'att' : 'atts';
+  const cleD = physique ? 'def' : gen === 1 ? 'atts' : 'defs';
+  const A = statMembre(m, cleA);
+  const D = calcStat(stC[cleD], nivC);
+  const pv = calcPV(stC.pv, nivC, speciesOf(cible.key));
+  const table = typechart.chart[gen];
+  const typesA = pokedex[speciesOf(m.key)]?.types || [];
+  const typesD = pokedex[speciesOf(cible.key)]?.types || [];
+  const eff = typesD.reduce((x, d) => x * (table[mv.t]?.[d] ?? 1), 1);
+  const stab = typesA.includes(mv.t) ? 1.5 : 1;
+  const base = Math.floor(Math.floor(Math.floor((2 * nivA) / 5 + 2) * mv.p * A / D) / 50) + 2;
+  // Les 16 tirages du facteur aléatoire (85 à 100 %), chacun arrondi comme en jeu.
+  const tirages = Array.from({ length: 16 }, (_, k) =>
+    (eff ? Math.max(1, Math.floor(Math.floor(Math.floor((base * (85 + k)) / 100) * stab) * eff)) : 0));
+  return { mv, eff, stab, tirages, min: tirages[0], max: tirages[15], pv };
+}
+
+// « 2 coups », « 2 ou 3 coups », « 1 coup (37 %) » : la question que l'on se pose
+// vraiment. La chance d'un K.O. en un coup se lit sur les 16 tirages possibles du
+// facteur aléatoire, comme dans les jeux.
+function texteKo(d) {
+  if (!d.eff) return t('degatsSansEffet');
+  if (d.min >= d.pv) return t('degatsKo1');
+  if (d.max >= d.pv) {
+    const n = d.tirages.filter((v) => v >= d.pv).length;
+    return t('degatsKo1Chance', Math.round((100 * n) / 16));
+  }
+  const a = Math.ceil(d.pv / d.max), b = Math.ceil(d.pv / d.min);
+  return a === b ? t('degatsKoN', a) : t('degatsKoNM', a, b);
+}
+
+function htmlDegats(m) {
+  const gen = genDuJeu();
+  const ids = (m.moves || []).filter((id) => id && moves[id]);
+  const cible = cibleDegats && statsDe(cibleDegats.key) ? cibleDegats : null;
+  const nivC = cible ? (cible.niv ?? (m.niv ?? NIV_DEFAUT)) : null;
+  const choixCible = `
+    <button class="ligne-choix" data-choix="cible">
+      ${cible ? `<img class="lc-i lc-mon" src="${sprites.still(spriteKey(cible.key))}" alt="" ${imgFallback(speciesOf(cible.key), false)} />` : ''}
+      <span class="lc-t">${cible ? t('degatsContre', esc(monName(cible.key))) : t('degatsChoisirCible')}</span>
+      <span class="lc-d">${cible ? t('degatsCibleDetail', nivC) : t('degatsAide')}</span>
+    </button>`;
+  if (!cible) return choixCible;
+  const nivCible = `
+    <div class="niv-rang niv-cible">
+      <span>${t('degatsNiveauCible')}</span>
+      <button data-nivcible="-10">−10</button>
+      <button data-nivcible="-1">−1</button>
+      <b>${nivC}</b>
+      <button data-nivcible="1">+1</button>
+      <button data-nivcible="10">+10</button>
+    </div>`;
+  const lignes = ids.map((id) => {
+    const d = calculeDegats(m, id, cible, gen);
+    const mv = attaqueEnGen(id, gen) || moves[id];
+    const [tn, tc] = TYPES[mv.t] || [mv.t || '—', '#888'];
+    if (!d) {
+      return `
+        <div class="dg">
+          <span class="dg-n">${esc(mv.n)} <span class="type mini" style="--t:${tc}">${tn}</span></span>
+          <span class="dg-ko muet">${t('degatsNonCalcule')}</span>
+        </div>`;
+    }
+    const pMin = Math.min(100, (100 * d.min) / d.pv), pMax = Math.min(100, (100 * d.max) / d.pv);
+    const pc = (x) => Math.round((100 * x) / d.pv);
+    return `
+      <div class="dg ${d.max >= d.pv ? 'ko' : ''}">
+        <span class="dg-n">${esc(mv.n)} <span class="type mini" style="--t:${tc}">${tn}</span>
+          ${d.eff > 1 ? `<i class="dg-eff mx">×${d.eff}</i>` : d.eff && d.eff < 1 ? `<i class="dg-eff md">÷${Math.round(1 / d.eff)}</i>` : ''}</span>
+        <span class="dg-pc">${d.eff ? `${pc(d.min)}–${pc(d.max)} %` : '0 %'}</span>
+        <span class="dg-barre" aria-hidden="true"><i style="width:${pMax}%"></i><b style="width:${pMin}%"></b></span>
+        <span class="dg-ko">${texteKo(d)}</span>
+      </div>`;
+  }).join('');
+  return `
+    ${choixCible}
+    ${nivCible}
+    ${ids.length ? `<div class="degats-liste">${lignes}</div>` : `<p class="none">${t('degatsSansAttaque')}</p>`}
+    <p class="stat-note">${t('degatsNote')}</p>`;
+}
+
+// Saisir une stat ou un EV change les dégâts : on refait le bloc sur place, sans
+// reconstruire la fiche (le champ garderait sinon le focus perdu).
+function majDegats() {
+  const z = battleBody.querySelector('.degats');
+  const m = state.bs?.slot != null ? equipe()[state.bs.slot] : null;
+  if (z && m) z.innerHTML = htmlDegats(m);
+}
+
 function htmlDetail() {
   const m = equipe()[state.bs.slot];
   if (!m) return `<p class="none">${t('emplacementVide')}</p>`;
@@ -4259,6 +4776,9 @@ function htmlDetail() {
           }).join('')}
         </div>`}
 
+    <h3>${t('degatsTitre')} <small>${esc(jeuCourant().nom)}</small></h3>
+    <div class="degats">${htmlDegats(m)}</div>
+
     <button class="catch-btn retirer" data-act="eq-retirer">${t('retirerDeLequipe')}</button>
   `;
 }
@@ -4385,7 +4905,7 @@ function htmlMenuAttaques() {
     <p class="paper-note">${t('noteMenuAttaques', toutes.length, f.gen, esc(nomsJeux))}</p>
     <label class="bs-field">
       <span>${t('rechercher')}</span>
-      <input class="bs-name bs-q" type="text" value="${esc(f.q)}" placeholder="${t('placeholderAttaque')}" autocomplete="off" />
+      <input class="bs-name bs-q" type="text" value="${esc(f.q)}" placeholder="${t('placeholderAttaque')}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
     </label>
     <div class="atq-filtres">
       <select data-atqfiltre="type" aria-label="${t('type')}">
@@ -4538,7 +5058,7 @@ function htmlChoixAttaque() {
     <label class="bs-field">
       <span>${t('rechercher')}</span>
       <input class="bs-name bs-q" type="text" value="${esc(state.bs.q || '')}"
-             placeholder="${t('placeholderAttaque')}" autocomplete="off" />
+             placeholder="${t('placeholderAttaque')}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
     </label>
     <ul class="mlist">
       ${res.map((x) => {
@@ -4654,6 +5174,11 @@ const filtreCombat = (e) => {
 
 for (const c of [battleBody, corpsAtq]) c.addEventListener('change', filtreCombat);
 
+// Après la saisie d'une stat ou d'un EV (écoute posée APRÈS celle qui l'enregistre).
+battleBody.addEventListener('input', (e) => {
+  if (state.bs?.mode === 'detail' && e.target.closest('[data-ev], [data-stat]')) majDegats();
+});
+
 const clicCombat = (e) => {
   const bs = state.bs;
   if (!bs) return;
@@ -4680,6 +5205,27 @@ const clicCombat = (e) => {
 
   const gen = e.target.closest('[data-agen]');
   if (gen) { state.addGen = +gen.dataset.agen; renderBattleSheet(); return; }
+
+  if (e.target.closest('[data-act="sd-valider"]')) { importeShowdown(); return; }
+  const copier = e.target.closest('[data-act="sd-copier"]');
+  if (copier) { copieShowdown(copier); return; }
+
+  const cib = e.target.closest('[data-ciblepick]');
+  if (cib) {
+    cibleDegats = { key: asKey(cib.dataset.ciblepick), niv: null };
+    retourHaptique();
+    openBattleSheet('detail', bs.slot);
+    return;
+  }
+
+  const nivCib = e.target.closest('[data-nivcible]');
+  if (nivCib && cibleDegats) {
+    const m = equipe()[bs.slot];
+    const depart = cibleDegats.niv ?? (m?.niv ?? NIV_DEFAUT);
+    cibleDegats.niv = Math.max(1, Math.min(100, depart + Number(nivCib.dataset.nivcible)));
+    majDegats();
+    return;
+  }
 
   const pick = e.target.closest('[data-eqpick]');
   if (pick) {
@@ -4793,6 +5339,8 @@ app.addEventListener('click', (e) => {
   if (state.vue !== 'combat') return;
 
   if (e.target.closest('[data-act="choix-jeu"]')) { openBattleSheet('version'); return; }
+  if (e.target.closest('[data-act="sd-export"]')) { ouvreShowdown('sd-export'); return; }
+  if (e.target.closest('[data-act="sd-import"]')) { ouvreShowdown('sd-import'); return; }
   if (e.target.closest('[data-act="menu-attaques"]')) { ouvreMenuAttaques(); return; }
 
   const eq = e.target.closest('[data-eq]');
@@ -4885,7 +5433,7 @@ function renderMenuDex() {
     <section class="dexm">
       <input class="dexm-rech" type="search" data-dexq placeholder="${t('chercherPokemon')}"
              value="${esc(state.dexQ)}" aria-label="${t('chercherPokemon')}"
-             autocomplete="off" autocorrect="off" spellcheck="false" />
+             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
       <p class="dex-res" ${q ? '' : 'hidden'}>${q ? texteRes(ids.length) : ''}</p>
       <div class="dex-grid" ${q ? '' : 'hidden'}>${ids.map(caseDex).join('')}</div>
       <div class="dex-cartes" ${q ? 'hidden' : ''}>${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(carteDex).join('')}</div>
@@ -4919,14 +5467,58 @@ function especesDex() {
 
 function especesDexBrutes() {
   const q = state.dexQ.trim();
+  let ids;
   if (!q) {
     if (state.dexGen === null) return []; // dans le menu, sans recherche : les cartes
     const g = plageDex(state.dexGen);
-    return range(g.from, g.to);
+    ids = range(g.from, g.to);
+  } else {
+    const f = fold(q);
+    ids = range(1, 1025).filter((id) =>
+      String(id).includes(f) || fold(pokedex[id]?.name || '').includes(f));
   }
-  const f = fold(q);
-  return range(1, 1025).filter((id) =>
-    String(id).includes(f) || fold(pokedex[id]?.name || '').includes(f));
+  // Le type et le tri n'existent que dans la grille : le menu n'en a pas les commandes,
+  // et une recherche lancée depuis le menu ne doit pas hériter d'un filtre invisible.
+  if (state.dexGen === null) return ids;
+  if (state.dexType) ids = ids.filter((id) => pokedex[id]?.types?.includes(state.dexType));
+  return trieDex(ids);
+}
+
+// Tri de la grille. Les stats se lisent du plus fort au plus faible : on cherche le
+// Pokémon le plus rapide de sa région, pas le plus lent. À égalité, l'ordre du Pokédex.
+function trieDex(ids) {
+  const tri = state.dexTri;
+  if (tri === 'num') return ids;
+  if (tri === 'nom') {
+    const lg = document.documentElement.lang || 'fr';
+    return [...ids].sort((a, b) => (pokedex[a]?.name || '').localeCompare(pokedex[b]?.name || '', lg));
+  }
+  const val = (id) => {
+    const st = statsDe(id);
+    if (!st) return -1;
+    return tri === 'total' ? STAT_CLES.reduce((n, k) => n + (st[k] || 0), 0) : (st[tri] ?? -1);
+  };
+  return [...ids].sort((a, b) => val(b) - val(a) || a - b);
+}
+const STAT_CLES = ['pv', 'att', 'def', 'atts', 'defs', 'vit'];
+
+// Les deux listes déroulantes de la grille, au gabarit des filtres de la page des
+// attaques. Le libellé de la position par défaut sert d'intitulé : « Type », « Tri : n° ».
+function htmlSelectsDex() {
+  const option = (v, lib, courant) => `<option value="${v}" ${v === courant ? 'selected' : ''}>${esc(lib)}</option>`;
+  return `
+    <div class="atq-filtres dex-selects">
+      <select data-dexsel="type" aria-label="${t('type')}">
+        ${option('', t('tousLesTypes'), state.dexType)}
+        ${typechart.types.map((ty) => option(ty, TYPES[ty]?.[0] || ty, state.dexType)).join('')}
+      </select>
+      <select data-dexsel="tri" aria-label="${t('trierNumero')}">
+        ${option('num', t('trierNumero'), state.dexTri)}
+        ${option('nom', t('trierNom'), state.dexTri)}
+        ${option('total', t('trierTotal'), state.dexTri)}
+        ${statLignes().map(([k, lib]) => option(k, t('trierPar', lib), state.dexTri)).join('')}
+      </select>
+    </div>`;
 }
 
 // LA question d'un Living Dex est « qu'est-ce qui me manque ? ». Sans ce filtre, il
@@ -4965,6 +5557,7 @@ function htmlFiltreDex() {
 // Ce qu'affiche une grille vide, selon ce qui l'a vidée.
 function videDex() {
   if (state.dexQ.trim()) return '';
+  if (state.dexType && !especesDexBrutes().length) return `<p class="dex-vide">${t('dexAucunDeCeType')}</p>`;
   if (state.dexFiltre === 'manquants') return `<p class="dex-vide complet">${t('dexRienNeManque')}</p>`;
   if (state.dexFiltre === 'captures') return `<p class="dex-vide">${t('dexAucunCapture')}</p>`;
   return '';
@@ -5022,8 +5615,9 @@ function renderPokedex() {
         <div class="dex-rech">
           <input type="search" data-dexq placeholder="${t('chercherNomNumero')}"
                  value="${esc(state.dexQ)}" aria-label="${t('chercherPokemon')}"
-                 autocomplete="off" autocorrect="off" spellcheck="false" />
+                 autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
         </div>
+        ${htmlSelectsDex()}
         ${htmlFiltreDex()}
         <p class="dex-res" ${state.dexQ.trim() ? '' : 'hidden'}>${state.dexQ.trim() ? texteRes(ids.length) : ''}</p>
 
@@ -5073,6 +5667,14 @@ function majGrilleDex() {
   if (cartes && grille) { cartes.hidden = !!q; grille.hidden = !q; }
 }
 
+app.addEventListener('change', (e) => {
+  const sel = e.target.closest('[data-dexsel]');
+  if (!sel) return;
+  if (sel.dataset.dexsel === 'type') state.dexType = sel.value;
+  else state.dexTri = sel.value;
+  majGrilleDex();
+});
+
 app.addEventListener('click', (e) => {
   const f = e.target.closest('[data-dexfiltre]');
   if (!f) return;
@@ -5094,6 +5696,7 @@ app.addEventListener('click', (e) => {
   if (e.target.closest('[data-dex-retour]')) {
     state.dexGen = null;
     state.dexQ = '';
+    state.dexType = '';
     render();
     return;
   }

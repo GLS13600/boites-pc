@@ -191,6 +191,8 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `modeles/scan-ia/` | Classifieur S2 du mode IA en morceaux de 95 Mo (GitHub refuse plus de 100 Mo) |
 | `scripts/assemble-modeles.mjs` | Ré-assemble ces morceaux dans `public/scan-ia/` avant chaque build et dev |
 | `scripts/fetch-moves-gen.mjs` | Complète moves.json : toutes les attaques des 21 jeux, génération d'apparition, valeurs par génération |
+| `src/data/elevage.json` | Capture et élevage des 1025 espèces, **généré**, 95 Ko |
+| `scripts/fetch-elevage.mjs` | Le produit (`npm run fetch-elevage`) |
 
 ## Données
 
@@ -2294,6 +2296,107 @@ Salamèche et Reptincel capturés, Dracaufeu gris, titre « 2 / 3 ». Annulation
 retrait puis restauration, effacement au bout de 5 s avec retrait maintenu, aucune
 annonce à la capture, retour dans la collection chromatique après bascule de vue. En
 anglais et en sombre : libellés contenus dans le rail, bandeau inversé.
+
+## Face à ProDex (06/10/2026)
+
+Demandé : « prends en compte [ProDex et ses avis] et modifie l'appli pour qu'elle se
+place sur le même marché avec de meilleures fonctionnalités ». ProDex (App Store, depuis
+2019, 4,6/5 sur ~4 900 avis, pubs + packs premium à 1,99–5,99 $) est le concurrent
+direct : un guide de référence avec créateur d'équipe et listes de suivi. Ses avis
+réclament un **calculateur de dégâts**, des **filtres** (type, tri par stats), le
+**suivi des captures** ; ils se plaignent de la **correction automatique** dans la
+recherche et de pubs envahissantes. Unydex avait déjà le suivi (boîtes, chromatiques),
+le hors-ligne complet et l'analyse d'équipe. Ajouté :
+
+### Capture et élevage (fiche du Pokédex)
+
+- `npm run fetch-elevage` produit `elevage.json` : taux de capture, bonheur de base,
+  répartition des sexes (en huitièmes, -1 = asexué), cycles d'éclosion, groupes d'œufs
+  et leurs noms en trois langues, courbe d'expérience, EV rapportés, expérience de base,
+  statut légendaire / fabuleux / bébé. Données de l'ESPÈCE : une forme emprunte celles
+  de son espèce. Le script vérifie sept faits connus avant d'écrire, et reprend.
+- **Chance de capture** affichée en clair à PV pleins et à 1 PV, avec une Poké Ball :
+  depuis la gén. 3, la probabilité vaut presque exactement (taux × (3 PVmax − 2 PV) /
+  (3 PVmax)) / 255, soit taux / 765 à PV pleins.
+- La répartition des sexes garde **une décimale** (87,5 / 12,5) : arrondie, elle
+  donnait 88 % et 13 %, soit 101 %. Les couleurs de la barre sont des jetons
+  (`--sexe-m`, `--sexe-f`).
+- Pas de pas exacts pour l'éclosion — ils varient selon le jeu : « ≈ cycles × 257 ».
+
+### Filtres de la grille du Pokédex
+
+- **Type** et **tri** (n°, nom, total des stats, chacune des six stats), deux listes
+  au gabarit de celles des attaques. Le type filtre la liste BRUTE : le rail Tous /
+  Manquants / Capturés compte ce qui reste — « quels Feu me manquent à Kanto ? ».
+- Les stats se trient du plus fort au plus faible, à égalité par numéro.
+- Seulement dans la grille : le menu n'en a pas les commandes, et une recherche lancée
+  depuis le menu n'hérite pas d'un filtre invisible. Retour au menu = type oublié.
+- **`voisinFiche` suit l'ordre AFFICHÉ** : trié par Vitesse, glisser mène au suivant
+  de la liste, pas au numéro d'à côté. Hors de la liste affichée, l'ancien parcours
+  par numéro reste le repli.
+
+### Calculateur de types (vue Équipes)
+
+- Un ou deux types → ce qu'ils encaissent (×4 … 0), ce qu'ils frappent (meilleur
+  multiplicateur de l'un ou l'autre), et les Pokémon qui portent EXACTEMENT cette
+  combinaison, jusqu'à la génération du jeu. Un troisième choix remplace le plus ancien.
+- Suit la génération du jeu choisi, comme la table ; un type inexistant dans cette
+  génération est écarté du calcul.
+- Commandes **sur le DOM** (`majCalcTypes`) et volet qui se souvient d'être ouvert
+  (`calcOuvert`, écoute `toggle` en capture) : un rendu ne le referme pas.
+- Couleurs de l'analyse d'équipe : en défense ×2 est rouge, en attaque vert.
+
+### Calcul de dégâts (fiche d'un membre d'équipe)
+
+- Chaque attaque choisie contre UNE cible commune à toute l'équipe (`cibleDegats`, de
+  session) : on compare ses six Pokémon face à la même menace. La cible se choisit dans
+  le sélecteur d'espèces, en mode `cible` (sous-panneau : le retour rend la position).
+- Formule officielle depuis la gén. 3, **arrondie à chaque étape** ; 16 tirages du
+  facteur aléatoire, d'où « K.O. en 1 coup · 37 % ». STAB ×1,5, efficacité de la table
+  de la génération, catégorie et puissance de la génération (`attaqueEnGen`). En gén. 1,
+  la stat Spécial sert des deux côtés.
+- L'attaquant prend ses stats SAISIES quand elles le sont (`statMembre`), sinon niveau,
+  EV et nature ; la cible est à IV 31, EV 0, nature neutre, au niveau du membre sauf
+  réglage. Saisir une stat ou un EV refait le bloc sur place (`majDegats`).
+- **Non comptés, et dit sous le bloc** : talents, objets, météo, critiques, statuts,
+  modificateurs. Vérifié à la main : Lance-Flammes de Dracaufeu N.50 sur Florizarre
+  N.50 = 110–132 sur 155 PV, soit 71–85 %, ce qu'affiche l'appli.
+
+### Échange d'équipe au format Showdown (vue Équipes)
+
+- Le texte de Pokémon Showdown est la langue commune des joueurs : exporter (copier)
+  et importer (coller) une équipe. **Noms anglais obligatoires** : lus dans
+  `i18n/en.json`, chargé à la demande — le même chunk que la traduction (vérifié, un
+  seul fichier dans `dist/`).
+- Comparaison des noms **réduits à lettres et chiffres**, comme Showdown : « Mr. Mime »,
+  « MrMime » se valent. « Hidden Power [Fire] » → Puissance Cachée.
+- **Une forme à clé NUMÉRIQUE s'écrit par son slug PokéAPI** (« Charizard-Mega-X »,
+  « Ninetales-Alola », « Rotom-Wash »), exactement l'écriture de Showdown. Piège : le
+  drapeau `combat` de forms.json veut dire « se transforme en combat », PAS « forme
+  jouable » — s'y fier refusait Motisma Lavage. Une forme cosmétique s'exporte sous le
+  nom de son espèce ; une femelle porte « (F) » et se réimporte en femelle.
+- EV dans l'ordre de Showdown (HP / Atk / Def / SpA / SpD / Spe).
+- L'import **remplace** l'équipe de la version courante et propose **Annuler** dans le
+  bandeau (`proposeAnnulation`) : pas de question préalable, un geste pour revenir.
+  Ce qui n'est pas reconnu est listé, jamais avalé en silence. Clés filtrées par
+  `cleAdmise`, comme tout ce qui vient d'un texte extérieur.
+- Copie par `navigator.clipboard`, repli : texte sélectionné + `execCommand('copy')`.
+
+### Correctifs repris des avis
+
+- **Correction automatique coupée** sur tous les champs de recherche (`autocorrect`,
+  `autocapitalize`, `spellcheck`) : iOS remplaçait un début de nom par un mot du
+  dictionnaire.
+- Vérifié qu'ici, toucher une attaque de CT ou d'œuf déplie bien son effet — le défaut
+  signalé chez ProDex n'existe pas dans Unydex.
+
+### Ce qui n'est PAS repris, et pourquoi
+
+- Champions d'arène, Conseil 4, raids Téracristal : PokéAPI ne les publie pas. Les
+  saisir à la main pour 21 jeux serait un chantier de données, pas de code.
+- Pubs : pas encore. Monétiser une appli qui porte les éléments Nintendo est ce qui
+  déclenche les retraits (`legal/DROITS-ET-LICENCES.md`) ; ProDex le fait et tient
+  depuis 2019, mais c'est une tolérance, pas un droit. Décision laissée à l'éditeur.
 
 ## Interface
 

@@ -18,6 +18,7 @@
     "fetch-extras": "node scripts/fetch-extras.mjs",
     "fetch-cries": "node scripts/fetch-cries.mjs",
     "fetch-moves-gen": "node scripts/fetch-moves-gen.mjs",
+    "fetch-elevage": "node scripts/fetch-elevage.mjs",
     "predev": "node scripts/assemble-modeles.mjs",
     "fetch-i18n": "node scripts/fetch-i18n.mjs"
   },

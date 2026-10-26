@@ -18,6 +18,73 @@
 > la source SideStore, déjà enregistrée dans le téléphone, et renommer le dépôt
 > GitHub casserait l'URL de Pages sans redirection fiable.
 
+## Fusion avec Cartodex (depuis le 26/10/2026)
+
+Demandé : « combine Unydex et mon appli de cartes (G:\Cartodex) en une seule, avec un
+design harmonieux, fusionné et similaire entre chaque page ; garde une page d'accueil,
+une barre en bas et des onglets avec des tuiles ». Choix arrêtés avec l'utilisateur :
+**le nom reste Unydex**, barre **Accueil · Jeux · Scan · Cartes · Profil**, thème
+**papier clair par défaut + bleu nuit de Cartodex en sombre**, police **Urbanist**.
+
+**Cartodex** (`G:\Cartodex`, `www/`) : vanilla JS en un fichier de 8 800 lignes, à
+fonctions globales et gestionnaires en ligne. Ses fonctions sont **réécrites** en
+modules dans `src/cartes/`, au style d'Unydex — pas recopiées : son code ne tient pas
+la politique de contenu ni l'architecture de rendu d'ici. Ce qu'il fait :
+extensions TCGdex (séries → sets → grille, rareté, mode master set, recherche
+tolérante aux fautes, sélection multiple), fiche de carte (exemplaires par variante,
+favori avec compteur partagé, effet 3D gyroscopique), collection (filtres, tris,
+valeur), suivi des prix Cardmarket (historique, Vinted, eBay), classeurs (livre à
+pochettes, pages qui tournent), PokéAdvisor (assistant Mistral, clé de l'utilisateur).
+**Ne JAMAIS ouvrir `G:\Cartodex\.env` ni « client secret google auth.json »** :
+ce sont des secrets.
+
+Étapes : (1) coquille commune — FAITE ; (2) extensions, fiche, exemplaires ;
+(3) collection et prix ; (4) classeurs ; (5) PokéAdvisor, favoris partagés, 3D,
+passerelles Pokédex ↔ cartes, reprise d'une sauvegarde Cartodex, synchronisation.
+
+### La coquille (étape 1)
+
+- **Barre du bas** `.barre`, cinq onglets (`ONGLETS_BARRE`) : Accueil, Jeux, Scan (au
+  centre, Poké Ball en relief), Cartes, Profil. **Dans le flux** de la coquille,
+  dernier enfant de `#app` — jamais `position: fixed`, c'est la leçon de l'ancienne
+  barre (voir « Interface »). Toucher l'onglet déjà ouvert remonte en haut de la vue.
+- **`ONGLET_DE`** donne l'onglet de chaque vue ; **`RACINES`** (accueil, jeux, scan,
+  cartes, reglages) n'ont pas de barre de retour et portent elles-mêmes la zone sûre du
+  haut (`.vue.racine`). Les autres vues ont la barre « ‹ Jeux » / « ‹ Cartes », et le
+  glissement depuis le bord gauche (`VUES_RETOUR` = tout ce qui n'est pas racine)
+  ramène à la planche de leur univers.
+- **Planches** `jeux` et `cartes` (`renderPlanche`) : la mécanique des tuiles
+  illustrées de l'ancien accueil, gardée. Jeux : Pokédex (grande, anneau), Boîtes,
+  Équipes, Attaques, **Types** ; Cartes : Extensions (grande), Ma collection, Classeurs,
+  Valeur, PokéAdvisor. Six illustrations neuves (`ART`), au même trait.
+- **Types** a sa page (`renderTypes`) : la table et le calculateur ont quitté la vue
+  Équipes, où on ne les trouvait qu'en faisant défiler l'analyse. Le calculateur s'y
+  ouvre déplié ; le choix de version y est repris.
+- **Accueil = tableau de bord** (`renderAccueil`) : salut par le pseudo et photo du
+  compte (`etat` de compte.js), Living Dex et collection de cartes côte à côte,
+  **Pokémon du jour** (le même toute la journée : numéro du jour brassé par Knuth),
+  raccourcis, et **Récemment** — journal commun des captures et des cartes
+  (`src/recents.js`, `pcbox.recents`, hors sauvegarde ; l'accueil n'affiche que ce qui
+  est encore possédé).
+- **Profil** = l'ancienne page Réglages, titrée « Profil », qui s'ouvre sur le compte.
+- **Pubs** : la bannière se pose AU-DESSUS de la barre (marge = `--barre-h`, fournie
+  par `configurePubs`). `--pub-h` réserve sa place entre la vue et la barre
+  (`.pub-place`) ; `--nav-h` ce qu'elle masque au bas d'un panneau. Pas de bannière
+  sur Boîtes, Scan, Classeurs, PokéAdvisor.
+- **Identité** : `tokens.css` porte Urbanist (police VARIABLE, latin et latin étendu,
+  44 Ko, `public/fonts`, licence OFL jointe ; Vite réécrit son chemin en relatif) et le
+  bleu nuit de Cartodex en thème sombre (`#080b13`, surfaces `#131a2b` / `#1a2336`).
+- **Politique de contenu** : `img-src` s'ouvre à `assets.tcgdex.net` et
+  `images.pokemontcg.io`, `connect-src` à `api.tcgdex.net`. C'est la fin du « zéro
+  requête réseau » pour l'univers Cartes : 20 000 cartes et leurs images ne
+  s'embarquent pas. Le monde des jeux, lui, reste entièrement hors ligne.
+- **`src/cartes/collection.js`** : la collection de cartes (`pcbox.cartes`), au modèle
+  de Cartodex — une entrée par carte, ses EXEMPLAIRES par variante. Elle prévient la
+  synchronisation (`brancheEcriture` → `marqueChange`).
+- **Piège de l'aperçu** : à la première ouverture du Scan, Vite découvre
+  onnxruntime-web, ré-optimise ses dépendances et RECHARGE la page. Un parcours de test
+  qui passe par le Scan finit sur l'accueil : ce n'est pas un bug de navigation.
+
 ## Deux variantes : App Store et « Unydex Dev » (06/10/2026)
 
 Demandé en vue d'une publication avec publicités : « pour le dev, une version de
@@ -1758,7 +1825,10 @@ heuristiques : elles situent un Pokémon, elles ne tranchent pas à la place du 
 - L'export contient `caught`, `caughtShiny`, `boxes` et `order`. Le repli sur les
   anciens exports (tableau nu d'IDs) reste en place.
 
-## Page d'accueil
+## Page d'accueil (AVANT la fusion — voir « Fusion avec Cartodex »)
+
+Depuis le 26/10/2026, ces tuiles forment la planche **Jeux**, et l'accueil est un
+tableau de bord ; la barre du bas est revenue. Ce qui suit reste vrai des tuiles.
 
 Première vue de l'application, **d'après une maquette fournie le 25/09/2026** : une
 planche de tuiles colorées, une par vue. **La barre du bas a été retirée** à cette

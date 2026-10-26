@@ -5,7 +5,37 @@
 
    Les noms historiques (--paper, --panel, --ink, --ball…) sont conservés tels quels :
    ils sont lus dans plus de soixante endroits, et les renommer n'aurait rien apporté.
-   Le thème sombre, plus bas, ne redéfinit QUE les couleurs. */
+   Le thème sombre, plus bas, ne redéfinit QUE les couleurs.
+
+   Depuis la fusion avec Cartodex (26/10/2026), l'appli porte l'identité des deux :
+   le PAPIER d'Unydex en clair, le BLEU NUIT de Cartodex en sombre, et la police
+   Urbanist de Cartodex partout. Un seul jeu de jetons, deux ambiances. */
+
+/* Urbanist — la police de Cartodex, embarquée (public/fonts, licence OFL jointe) :
+   l'appli reste hors ligne, et aucune requête ne part vers Google Fonts. Police
+   VARIABLE : un seul fichier par alphabet couvre toutes les graisses de 100 à 900.
+   Deux découpes, comme Google Fonts les publie : latin, et latin étendu chargé
+   seulement si un caractère l'exige. Le japonais retombe sur la police du système. */
+@font-face {
+  font-family: "Urbanist";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/urbanist-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Urbanist";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/urbanist-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
 
 :root {
   /* ---- Couleurs : fonds et texte ---- */
@@ -53,7 +83,7 @@
   --e-8: 32px;
 
   /* ---- Typographie : l'échelle d'iOS ---- */
-  --font: ui-rounded, "SF Pro Rounded", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font: "Urbanist", ui-rounded, "SF Pro Rounded", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
   --t-grand: 34px;   /* grand titre */
   --t-titre: 22px;   /* titre de section */
   --t-tete: 17px;    /* en-tête de liste, bouton */
@@ -72,11 +102,19 @@
   /* ---- Zones sûres ---- */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
-  /* La barre du bas a été retirée au profit de la page d'accueil : les panneaux, qui
-     lui réservaient sa hauteur en bas de leur contenu, n'ont plus qu'à s'écarter du
-     bord de l'écran. Les deux variables restent, lues par les panneaux. */
+  /* Réserve au bas des panneaux : la zone sûre, plus — quand une bannière de pub est
+     affichée — la bannière et la barre du bas qu'elle surmonte (posée par pubs.js).
+     Un panneau recouvre la barre, pas la bannière native, qui flotte au-dessus. */
   --nav-h: 0px;
   --nav-bas: var(--safe-bottom);
+  /* Barre du bas : sa hauteur HORS zone sûre, et celle de la bannière de pub qui la
+     surmonte (0 sans bannière). */
+  --barre-h: 58px;
+  --pub-h: 0px;
+  /* Bleu nuit de Cartodex, gardé en clair pour ce qui en vient : la carte « Cartes »
+     de l'accueil, les tuiles de l'onglet Cartes. */
+  --nuit: #0c1120;
+  --nuit-2: #1a2336;
 }
 
 /* ---------- Thème sombre ----------
@@ -85,22 +123,28 @@
    Seules les COULEURS changent — rayons, espacements et durées sont communs. */
 :root[data-theme="sombre"] {
   color-scheme: dark;
-  --paper: #14171b;
-  --panel: #1d2127;
-  --panel-2: #232831;
-  --rule: #313843;
-  --rule-soft: #262c34;
-  --ink: #eef1f5;
-  --muted: #97a2b0;
-  --slot: #232831;
+  /* Le BLEU NUIT de Cartodex (fond #080b13, surfaces #131a2b et #1a2336), repris tel
+     quel : c'est l'ambiance que ses utilisateurs connaissent. Les filets, en dur ici
+     parce que le reste de la feuille les lit comme des couleurs pleines, valent le
+     blanc à 7 et 13 % de Cartodex posé sur ces surfaces. */
+  --paper: #080b13;
+  --panel: #131a2b;
+  --panel-2: #1a2336;
+  --rule: #2a3346;
+  --rule-soft: #1d2537;
+  --ink: #f2f5fa;
+  --muted: #8f9bb0;
+  --slot: #1a2336;
   /* Rouge et or éclaircis : les tons clairs manquaient de contraste sur ce fond. */
-  --ball: #f06056;
-  --ball-fonce: #c9483f;
-  --ball-clair: #ff8079;
-  /* Teinte des captures : le même rouge, posé sur du sombre. */
-  --caught-tint: #2b1d1c;
-  --caught-edge: #6d3b36;
-  --shiny: #dcb04a;
+  --ball: #f0524a;
+  --ball-fonce: #c93d36;
+  --ball-clair: #ff7b73;
+  /* Teinte des captures : le même rouge, posé sur le bleu nuit. */
+  --caught-tint: #24151f;
+  --caught-edge: #6b2f36;
+  --shiny: #f2b544;
+  --nuit: #131a2b;
+  --nuit-2: #1a2336;
   /* Les ombres portées ne se voient pas sur du sombre : elles se durcissent. */
   --ombre-1: 0 1px 2px rgb(0 0 0 / 40%);
   --ombre-2: 0 2px 8px rgb(0 0 0 / 45%);

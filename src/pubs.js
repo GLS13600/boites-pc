@@ -13,9 +13,10 @@
 // Share : aucun import, rien dans le bundle du site.
 //
 // Ce que l'utilisateur voit :
-//   - une BANNIÈRE en bas de l'écran, sauf sur les Boîtes — on y glisse les Pokémon
-//     jusqu'au bord, une bannière y gênerait le geste — et sur le Scan, où l'écran
-//     entier est la caméra ;
+//   - une BANNIÈRE posée juste AU-DESSUS de la barre du bas, sauf sur les Boîtes — on
+//     y glisse les Pokémon jusqu'au bord, une bannière y gênerait le geste —, sur le
+//     Scan, où l'écran entier est la caméra, sur les Classeurs, où l'on tourne les
+//     pages, et sur l'assistant, dont le champ de saisie est en bas ;
 //   - un PLEIN ÉCRAN à une pause naturelle — en refermant une fiche, en revenant à
 //     l'accueil —, jamais pendant un geste, au plus une fois toutes les 4 minutes et
 //     jamais dans les 2 premières minutes.
@@ -33,7 +34,12 @@ const IDS = STORE
 
 const CLE = 'pcbox.pubs';
 const ECART_MS = 4 * 60 * 1000;
-const VUES_BANNIERE = new Set(['accueil', 'pokedex', 'attaques', 'combat', 'reglages']);
+const VUES_BANNIERE = new Set(['accueil', 'jeux', 'cartes', 'pokedex', 'attaques', 'combat', 'types',
+  'extensions', 'collection', 'valeur', 'reglages']);
+
+// La marge basse de la bannière : la hauteur de la barre du bas, fournie par main.js.
+let margeBas = () => 0;
+export function configurePubs({ marge }) { if (typeof marge === 'function') margeBas = marge; }
 
 const plugin = () => window.Capacitor?.Plugins?.AdMob;
 
@@ -61,11 +67,16 @@ let dernierPleinEcran = Date.now() - ECART_MS + 2 * 60 * 1000;
 let vueCourante = null;
 let file = Promise.resolve();
 
-// La bannière est posée par-dessus la vue web, au-dessus de la zone sûre : la page ne
-// se décale pas d'elle-même. On réserve sa hauteur par `--nav-h`, que les panneaux
-// lisent déjà et que la coquille de l'appli soustrait de la zone qui défile.
+// La bannière est posée par-dessus la vue web, au-dessus de la barre du bas : la page
+// ne se décale pas d'elle-même. Deux réserves :
+//   --pub-h  sa hauteur, que la coquille garde libre entre la vue et la barre ;
+//   --nav-h  ce qu'elle masque au bas d'un PANNEAU — un panneau recouvre la barre, pas
+//            la bannière native, qui flotte au-dessus des deux.
 function reserve(h) {
-  document.documentElement.style.setProperty('--nav-h', `${Math.max(0, Math.round(h))}px`);
+  const v = Math.max(0, Math.round(h));
+  const racine = document.documentElement.style;
+  racine.setProperty('--pub-h', `${v}px`);
+  racine.setProperty('--nav-h', v ? `${v + Math.round(margeBas())}px` : '0px');
 }
 
 // Consentement européen d'abord (formulaire de Google, s'il est requis), puis la
@@ -116,7 +127,7 @@ function applique() {
       if (!banniereCreee) {
         await A.showBanner({
           adId: IDS.banniere, adSize: 'ADAPTIVE_BANNER', position: 'BOTTOM_CENTER',
-          margin: 0, isTesting: !STORE,
+          margin: Math.round(margeBas()), isTesting: !STORE,
         });
         banniereCreee = true;
       } else {

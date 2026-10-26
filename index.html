@@ -16,7 +16,7 @@
         var t = localStorage.getItem('pcbox.theme') || 'clair';
         var sombre = t === 'sombre' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
         document.documentElement.dataset.theme = sombre ? 'sombre' : 'clair';
-        if (sombre) document.querySelector('meta[name=theme-color]').setAttribute('content', '#14171b');
+        if (sombre) document.querySelector('meta[name=theme-color]').setAttribute('content', '#080b13');
       } catch (e) {}
     </script>
   </head>

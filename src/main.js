@@ -16,9 +16,12 @@ import NATURES from './data/natures.json';
 import formDesc from './data/form-desc.json';
 import elevage from './data/elevage.json';
 import { creeScan } from './scan.js';
-import { majPubs, pauseNaturelle, pubsDisponibles, pubsActivees, interrupteurPubs, activePubs, rafraichitPubs } from './pubs.js';
+import { majPubs, pauseNaturelle, pubsDisponibles, pubsActivees, interrupteurPubs, activePubs, rafraichitPubs, configurePubs } from './pubs.js';
 import { estPremium, surChangement as surAbonnement, FORMULES, souscrire, restaurer, simulation, arreteSimulation } from './abonnement.js';
 import { creeCompteUI } from './compte-ui.js';
+import { etat as etatCompte } from './compte.js';
+import * as cartesColl from './cartes/collection.js';
+import * as recents from './recents.js';
 // La synchronisation ne connaît ni l'état ni les clés de stockage : main.js lui
 // fournit de quoi lire et poser la collection, elle se charge du transport.
 import { brancher as brancheSync, marqueChange } from './sync.js';
@@ -569,6 +572,18 @@ const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 // Icônes utilitaires : une seule grille (24), un seul trait (1,7 px, bouts ronds).
 // Inline plutôt qu'une librairie : l'appli ne charge rien à l'exécution, et il n'en
 // faut qu'une poignée. `aria-hidden` partout — le libellé du bouton porte le sens.
+// Icônes de la barre du bas, au même trait que les autres (`.ico`).
+const ICO_NAV = {
+  accueil: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.4 12 4.8l8 6.6V19a1.2 1.2 0 0 1-1.2 1.2H14.6v-5.4H9.4v5.4H5.2A1.2 1.2 0 0 1 4 19z"/></svg>',
+  jeux: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.6 8.4h8.8a4 4 0 0 1 3.9 4.9l-.7 3a2.1 2.1 0 0 1-3.6.9l-1.6-1.8H9.6L8 17.2a2.1 2.1 0 0 1-3.6-.9l-.7-3a4 4 0 0 1 3.9-4.9z"/><path d="M8.3 11v2.8M6.9 12.4h2.8"/><path d="M15.6 11.4h.01M17.2 13.2h.01"/></svg>',
+  scan: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M3.6 12h5.6M14.8 12h5.6"/><circle cx="12" cy="12" r="2.8"/></svg>',
+  cartes: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.4" y="3.6" width="10.6" height="14.6" rx="2" transform="rotate(9 13.7 10.9)"/><rect x="4.6" y="5.4" width="10.6" height="14.6" rx="2"/></svg>',
+  profil: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.6" r="3.7"/><path d="M4.9 20.2a7.1 7.1 0 0 1 14.2 0"/></svg>',
+  chercher: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.2"/><path d="m15.4 15.4 4.6 4.6"/></svg>',
+  boites: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 9.4h16M9.4 9.4V20M14.6 9.4V20"/></svg>',
+  equipe: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.4" cy="12" r="3.6"/><circle cx="16.6" cy="12" r="3.6"/><path d="M3.8 12h7.2M13 12h7.2"/></svg>',
+};
+
 const ICO = {
   gauche: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
   droite: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
@@ -655,7 +670,7 @@ const compteUI = creeCompteUI({
   t, esc, sprites, spriteKey, imgFallback, CATALOGUE, ICO, ICO_REG,
   // Un rendu ne sert que si la page Réglages est à l'écran : le compte peut changer
   // d'état pendant qu'on est ailleurs, sans qu'il y ait rien à redessiner.
-  rend: () => { if (state.vue === 'reglages') render(); },
+  rend: () => { if (state.vue === 'reglages' || state.vue === 'accueil') render(); },
   panneau: {
     ouvre: ouvreComptePanneau,
     maj: majComptePanneau,
@@ -678,6 +693,9 @@ function render() {
   // La bannière suit la vue : absente des Boîtes et du Scan (voir pubs.js).
   majPubs(state.vue);
   if (state.vue === 'accueil') return renderAccueil();
+  if (state.vue === 'jeux' || state.vue === 'cartes') return renderPlanche(state.vue);
+  if (state.vue === 'types') return renderTypes();
+  if (VUES_CARTES.has(state.vue)) return renderCartesVue(state.vue);
   if (state.vue === 'attaques') return renderAttaques();
   if (state.vue === 'reglages') return renderReglages();
   if (state.vue === 'combat') return renderCombat();
@@ -2086,6 +2104,7 @@ function toggle(id, { annulable = false } = {}) {
   // La case qui vient d'être COCHÉE rebondit une fois. Décocher n'anime rien : on
   // corrige une erreur, ce n'est pas une prise.
   state.pris = prise ? id : null;
+  if (prise) recents.note('pokemon', id, shinyView() ? { shiny: true } : {});
   save();
   render();
 
@@ -2657,7 +2676,8 @@ document.addEventListener('keydown', (e) => {
 // y en a un, ce geste se tait.
 const BORD_RETOUR = 26;   // largeur de la zone d'amorce, en pixels
 const RETOUR_AT = 70;     // distance au-delà de laquelle on revient à l'accueil
-const VUES_RETOUR = new Set(['boites', 'pokedex', 'attaques', 'combat', 'reglages']);
+// Toute vue qui n'est pas la racine d'un onglet : on en revient vers sa planche.
+const VUES_RETOUR = { has: (v) => !RACINES.has(v) };
 const bordRetour = { actif: false, x0: 0, y0: 0, dx: 0, vue: null };
 
 const panneauOuvert = () => !!document.querySelector('.sheet.open');
@@ -2692,7 +2712,7 @@ function fermeRetour(revient) {
 function retourEnArriere() {
   if (state.vue === 'attaques' && state.bs?.mode === 'infoAttaque') { retourMenuAttaques(); return; }
   if (state.vue === 'pokedex' && state.dexGen !== null) { state.dexGen = null; state.dexQ = ''; render(); return; }
-  vaVers('accueil');
+  vaVers(vueDeLOnglet(ongletCourant()));
 }
 
 app.addEventListener('touchstart', (e) => {
@@ -3430,6 +3450,130 @@ const ART = {
       <path d="M62 112h26l5 12H57z" fill="#cdeeea"/>
       <rect x="44" y="124" width="62" height="10" rx="5" fill="#e4fbf8"/>
     </svg>`,
+
+  // ---- Les tuiles venues de la fusion (26/10/2026), au même trait que les autres ----
+
+  // Types : trois pastilles qui se chevauchent — feu, eau, plante — et la flèche
+  // de l'efficacité qui les relie.
+  types: `
+    <svg class="tuile-art" viewBox="0 0 150 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <circle cx="132" cy="16" r="44" fill="#fff" opacity=".18"/>
+      <circle cx="12" cy="140" r="40" fill="#2a0b6b" opacity=".14"/>
+      <circle cx="54" cy="58" r="30" fill="#ff7a59"/>
+      <path d="M54 40c7 9 12 14 12 22a12 12 0 0 1-24 0c0-5 3-9 6-12 1 4 3 6 5 6 0-6 0-11 1-16z" fill="#fff3ea"/>
+      <circle cx="98" cy="58" r="30" fill="#4aa8ff"/>
+      <path d="M98 40c6 9 12 16 12 24a12 12 0 0 1-24 0c0-8 6-15 12-24z" fill="#eaf5ff"/>
+      <circle cx="76" cy="96" r="30" fill="#4fd06e"/>
+      <path d="M64 108c0-14 10-24 26-26-1 15-10 25-24 26l-2 0zm2-1 18-17" fill="#effbf1" stroke="#2c9a48" stroke-width="2" stroke-linecap="round"/>
+    </svg>`,
+
+  // Extensions : un booster et trois cartes en éventail, sur le bleu nuit de Cartodex.
+  extensions: `
+    <svg class="tuile-art" viewBox="0 0 320 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <circle cx="292" cy="20" r="64" fill="#fff" opacity=".07"/>
+      <circle cx="26" cy="138" r="52" fill="#dc2626" opacity=".16"/>
+      <!-- Le booster, scellé, ses deux soudures crantées. -->
+      <g transform="rotate(-8 92 78)">
+        <rect x="52" y="22" width="80" height="112" rx="8" fill="#dc2626"/>
+        <path d="M52 30h80M52 126h80" stroke="#ffb4ad" stroke-width="3" stroke-dasharray="4 4"/>
+        <circle cx="92" cy="72" r="22" fill="#fff"/>
+        <path d="M70 72a22 22 0 0 1 44 0z" fill="#ff5a4a"/>
+        <path d="M70 72h44" stroke="#1a2336" stroke-width="4"/>
+        <circle cx="92" cy="72" r="7" fill="#fff" stroke="#1a2336" stroke-width="4"/>
+      </g>
+      <!-- Trois cartes, la dernière tirée vers soi. -->
+      <g transform="rotate(-14 210 120)">
+        <rect x="168" y="30" width="62" height="88" rx="6" fill="#f4d35e"/>
+        <rect x="174" y="36" width="50" height="38" rx="3" fill="#9fd4ff"/>
+      </g>
+      <g transform="rotate(-2 230 120)">
+        <rect x="196" y="26" width="62" height="88" rx="6" fill="#f4d35e"/>
+        <rect x="202" y="32" width="50" height="38" rx="3" fill="#ffc7b8"/>
+        <rect x="202" y="78" width="40" height="5" rx="2.5" fill="#c79a2a"/>
+        <rect x="202" y="88" width="30" height="5" rx="2.5" fill="#c79a2a"/>
+      </g>
+      <g transform="rotate(12 250 120)">
+        <rect x="226" y="28" width="62" height="88" rx="6" fill="#fff"/>
+        <rect x="232" y="34" width="50" height="38" rx="3" fill="#b9f0c6"/>
+        <circle cx="257" cy="53" r="12" fill="#2fbf5a"/>
+        <rect x="232" y="80" width="40" height="5" rx="2.5" fill="#cfd8e3"/>
+        <rect x="232" y="90" width="28" height="5" rx="2.5" fill="#cfd8e3"/>
+      </g>
+    </svg>`,
+
+  // Ma collection : une pile de cartes, et son compteur d'exemplaires.
+  collection: `
+    <svg class="tuile-art" viewBox="0 0 150 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <circle cx="20" cy="18" r="44" fill="#fff" opacity=".2"/>
+      <circle cx="140" cy="140" r="42" fill="#064e4a" opacity=".16"/>
+      <rect x="44" y="34" width="62" height="86" rx="7" fill="#d9f7f3" transform="rotate(-10 75 77)"/>
+      <rect x="44" y="30" width="62" height="86" rx="7" fill="#eefdfb" transform="rotate(-4 75 73)"/>
+      <rect x="44" y="26" width="62" height="86" rx="7" fill="#fff"/>
+      <rect x="50" y="32" width="50" height="40" rx="4" fill="#ffd36b"/>
+      <circle cx="75" cy="52" r="13" fill="#f39b1f"/>
+      <rect x="50" y="80" width="38" height="5" rx="2.5" fill="#b6c7c5"/>
+      <rect x="50" y="90" width="28" height="5" rx="2.5" fill="#b6c7c5"/>
+      <circle cx="106" cy="30" r="15" fill="#0c8a86" stroke="#fff" stroke-width="3"/>
+      <path d="M100 30h12M106 24v12" stroke="#fff" stroke-width="3.4" stroke-linecap="round"/>
+    </svg>`,
+
+  // Classeurs : un classeur ouvert, ses deux pages de pochettes et ses anneaux.
+  classeurs: `
+    <svg class="tuile-art" viewBox="0 0 150 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <circle cx="134" cy="16" r="44" fill="#fff" opacity=".18"/>
+      <circle cx="12" cy="138" r="40" fill="#6b0c30" opacity=".14"/>
+      <rect x="10" y="26" width="130" height="96" rx="10" fill="#8f1240"/>
+      <rect x="16" y="32" width="58" height="84" rx="5" fill="#fff0f5"/>
+      <rect x="76" y="32" width="58" height="84" rx="5" fill="#fff0f5"/>
+      <g fill="#ffd0e0">
+        <rect x="20" y="36" width="15" height="21" rx="2"/><rect x="38" y="36" width="15" height="21" rx="2"/><rect x="56" y="36" width="15" height="21" rx="2"/>
+        <rect x="20" y="62" width="15" height="21" rx="2"/><rect x="38" y="62" width="15" height="21" rx="2"/><rect x="56" y="62" width="15" height="21" rx="2"/>
+        <rect x="20" y="88" width="15" height="21" rx="2"/><rect x="38" y="88" width="15" height="21" rx="2"/><rect x="56" y="88" width="15" height="21" rx="2"/>
+        <rect x="80" y="36" width="15" height="21" rx="2"/><rect x="98" y="36" width="15" height="21" rx="2"/><rect x="116" y="36" width="15" height="21" rx="2"/>
+        <rect x="80" y="62" width="15" height="21" rx="2"/><rect x="98" y="62" width="15" height="21" rx="2"/><rect x="116" y="62" width="15" height="21" rx="2"/>
+        <rect x="80" y="88" width="15" height="21" rx="2"/><rect x="98" y="88" width="15" height="21" rx="2"/><rect x="116" y="88" width="15" height="21" rx="2"/>
+      </g>
+      <!-- Quelques pochettes occupées : des cartes rangées. -->
+      <rect x="38" y="36" width="15" height="21" rx="2" fill="#f4d35e"/>
+      <rect x="20" y="62" width="15" height="21" rx="2" fill="#7cc7ff"/>
+      <rect x="98" y="62" width="15" height="21" rx="2" fill="#ff8a7a"/>
+      <rect x="116" y="88" width="15" height="21" rx="2" fill="#8de0a2"/>
+      <g fill="#d6d9e0" stroke="#5c0a28" stroke-width="2">
+        <circle cx="75" cy="48" r="4"/><circle cx="75" cy="74" r="4"/><circle cx="75" cy="100" r="4"/>
+      </g>
+    </svg>`,
+
+  // Valeur : la courbe d'un prix qui monte, et la pièce qui dit « euros ».
+  valeur: `
+    <svg class="tuile-art" viewBox="0 0 150 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <circle cx="20" cy="18" r="46" fill="#fff" opacity=".22"/>
+      <circle cx="140" cy="140" r="44" fill="#7a3d00" opacity=".14"/>
+      <rect x="16" y="28" width="118" height="92" rx="12" fill="#fff8e6"/>
+      <path d="M28 104h94" stroke="#f0d9a8" stroke-width="2"/>
+      <path d="M28 98l22-18 18 10 22-26 20 8 12-20" fill="none" stroke="#ef8500" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M28 98l22-18 18 10 22-26 20 8 12-20v58H28z" fill="#ffce3a" opacity=".32"/>
+      <circle cx="112" cy="42" r="17" fill="#ffc21a" stroke="#c46a00" stroke-width="3"/>
+      <path d="M118 35a9 9 0 1 0 0 14M102 40h10M102 45h10" fill="none" stroke="#8a4a00" stroke-width="2.6" stroke-linecap="round"/>
+    </svg>`,
+
+  // PokéAdvisor : deux bulles de conversation et un assistant à tête de Poké Ball.
+  advisor: `
+    <svg class="tuile-art" viewBox="0 0 150 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <circle cx="132" cy="18" r="44" fill="#fff" opacity=".18"/>
+      <circle cx="12" cy="140" r="40" fill="#1c1e7a" opacity=".16"/>
+      <path d="M22 30h70a10 10 0 0 1 10 10v26a10 10 0 0 1-10 10H48l-14 12V76H22a10 10 0 0 1-10-10V40a10 10 0 0 1 10-10z" fill="#eef0ff"/>
+      <rect x="24" y="44" width="56" height="6" rx="3" fill="#a9b1f2"/>
+      <rect x="24" y="56" width="38" height="6" rx="3" fill="#c9cefa"/>
+      <path d="M128 70H70a10 10 0 0 0-10 10v18a10 10 0 0 0 10 10h34l12 10v-10h12a10 10 0 0 0 10-10V80a10 10 0 0 0-10-10z" fill="#ffffff"/>
+      <rect x="72" y="82" width="46" height="6" rx="3" fill="#7b8cff"/>
+      <rect x="72" y="94" width="30" height="6" rx="3" fill="#b4bcff"/>
+      <g transform="translate(118 44)">
+        <circle r="16" fill="#fff" stroke="#22245e" stroke-width="3"/>
+        <path d="M-16 0a16 16 0 0 1 32 0z" fill="#ff5a4a" stroke="#22245e" stroke-width="3"/>
+        <circle r="5" fill="#fff" stroke="#22245e" stroke-width="3"/>
+      </g>
+    </svg>`,
+
 };
 
 // Une carte par vue. `sous()` est appelée au rendu : chaque carte annonce un chiffre
@@ -3437,9 +3581,15 @@ const ART = {
 // scan. C'est ce qui remplace les illustrations : l'accueil informe au lieu de décorer.
 // `nom()` et `sous()` sont appelées AU RENDU : la tuile suit donc la langue sans
 // qu'on ait à reconstruire ce tableau.
-const TUILES = [
+// ---------- Les planches : l'univers Jeux et l'univers Cartes ----------
+//
+// Chaque univers s'ouvre sur une planche de tuiles illustrées — la mécanique de
+// l'ancien accueil, gardée telle quelle parce qu'elle marchait : une carte par
+// destination, son dessin, son nom, et un chiffre VIVANT qui dit où l'on en est.
+// `nom()` et `sous()` sont appelées AU RENDU : les tuiles suivent la langue.
+const TUILES_JEUX = [
   {
-    cle: 'pokedex', vue: 'pokedex', grande: true,
+    cle: 'pokedex', vue: 'pokedex', grande: true, anneau: true,
     nom: () => t('tuilePokedex'),
     sous: () => t('tuilePokedexSous'),
   },
@@ -3462,56 +3612,223 @@ const TUILES = [
     sous: () => t('tuileAttaquesSous', Object.keys(moves).length),
   },
   {
-    cle: 'scan', vue: 'scan',
-    nom: () => t('tuileScan'),
-    sous: () => {
-      const m = localStorage.getItem('pcbox.scan.mode');
-      return t('tuileScanSous', t(m === 'manuel' ? 'modeManuel' : m === 'ia' ? 'modeIA' : 'modeAuto'));
-    },
-  },
-  {
-    // En BANDEAU sur toute la largeur : six tuiles dont une pleine largeur en tête,
-    // c'est cinq demi-tuiles — la dernière restait seule, un trou à sa droite.
-    // Réglages n'est pas une destination qu'on visite souvent ; une bande basse, en
-    // pied de planche, lui va mieux qu'une tuile carrée.
-    cle: 'reglages', vue: 'reglages', bandeau: true,
-    nom: () => t('tuileReglages'),
-    sous: () => t('tuileReglagesSous', (THEMES().find(([v]) => v === state.theme)?.[1] || '').toLowerCase()),
+    cle: 'types', vue: 'types',
+    nom: () => t('tuileTypes'),
+    sous: () => t('tuileTypesSous', jeuCourant().nom),
   },
 ];
 
-function renderAccueil() {
-  // Progression du Pokédex national, sur la collection ACTIVE : c'est le chiffre que
-  // la carte en tête affiche, et l'anneau qui l'accompagne.
+const TUILES_CARTES = [
+  {
+    cle: 'extensions', vue: 'extensions', grande: true,
+    nom: () => t('tuileExtensions'),
+    sous: () => t('tuileExtensionsSous'),
+  },
+  {
+    cle: 'collection', vue: 'collection',
+    nom: () => t('tuileCollection'),
+    sous: () => t('tuileCollectionSous', cartesColl.stats().distinctes),
+  },
+  {
+    cle: 'classeurs', vue: 'classeurs',
+    nom: () => t('tuileClasseurs'),
+    sous: () => t('tuileClasseursSous'),
+  },
+  {
+    cle: 'valeur', vue: 'valeur',
+    nom: () => t('tuileValeur'),
+    sous: () => t('tuileValeurSous', euros(cartesColl.stats().valeur)),
+  },
+  {
+    cle: 'advisor', vue: 'advisor',
+    nom: () => t('tuileAdvisor'),
+    sous: () => t('tuileAdvisorSous'),
+  },
+];
+
+const PLANCHES = { jeux: TUILES_JEUX, cartes: TUILES_CARTES };
+const toutesTuiles = () => [...TUILES_JEUX, ...TUILES_CARTES];
+
+// Les vues de l'univers Cartes (rendues par renderCartesVue).
+const VUES_CARTES = new Set(['extensions', 'collection', 'classeurs', 'valeur', 'advisor']);
+
+// Une somme en euros, au format de la langue : « 214,50 € », « €214.50 ».
+function euros(v) {
+  try {
+    return Number(v || 0).toLocaleString(document.documentElement.lang || 'fr',
+      { style: 'currency', currency: 'EUR' });
+  } catch { return `${Number(v || 0).toFixed(2)} €`; }
+}
+
+// Progression du Pokédex national, sur la collection ACTIVE. Quatre Pokémon sur 1025
+// font 0,4 % : arrondi, l'anneau affichait « 0 % » et restait VIDE. Il montre « <1 »,
+// et son arc suit la valeur exacte — un filet de couleur dès la première capture.
+function progressionNationale() {
   let pris = 0;
   for (let id = 1; id <= 1025; id++) if (isCaught(id)) pris++;
-  const pct = Math.round((100 * pris) / 1025);
-  // Quatre Pokémon sur 1025 font 0,4 % : arrondi, l'anneau affichait « 0 % » et restait
-  // VIDE, comme si rien n'avait été fait. Il montre désormais « <1 », et son arc suit
-  // la valeur exacte — un filet de couleur dès la première capture.
-  const pctExact = (100 * pris) / 1025;
-  const pctTexte = pris > 0 && pct < 1 ? '<1' : String(pct);
+  const exact = (100 * pris) / 1025;
+  const arrondi = Math.round(exact);
+  return { pris, exact, texte: pris > 0 && arrondi < 1 ? '<1' : String(arrondi) };
+}
 
-  const carte = (tu) => `
-    <button class="tuile t-${tu.cle} ${tu.grande ? 'grande' : ''} ${tu.bandeau ? 'bandeau' : ''}" data-tuile="${tu.cle}">
-      ${ART[tu.cle]}
-      ${tu.grande ? `<span class="anneau" style="--p:${pctExact.toFixed(2)}" aria-hidden="true"><i>${pctTexte}<em>%</em></i></span>` : ''}
+function htmlTuile(tu) {
+  const p = tu.anneau ? progressionNationale() : null;
+  return `
+    <button class="tuile t-${tu.cle} ${tu.grande ? 'grande' : ''}" data-tuile="${tu.cle}">
+      ${ART[tu.cle] || ''}
+      ${p ? `<span class="anneau" style="--p:${p.exact.toFixed(2)}" aria-hidden="true"><i>${p.texte}<em>%</em></i></span>` : ''}
       <span class="tuile-txt">
         <b>${esc(tu.nom())}</b>
         <small>${esc(tu.sous())}</small>
       </span>
     </button>`;
+}
+
+function renderPlanche(cle) {
+  poser(
+    entete(t(cle === 'jeux' ? 'navJeux' : 'navCartes'), t(cle === 'jeux' ? 'plancheJeuxSous' : 'plancheCartesSous')),
+    h(`<section class="planche"><div class="tuiles">${PLANCHES[cle].map(htmlTuile).join('')}</div></section>`),
+  );
+}
+
+// ---------- Accueil : le tableau de bord des deux mondes ----------
+//
+// L'accueil n'est plus une planche de tuiles — les univers ont les leurs — mais ce qui
+// répond à « où en suis-je ? » d'un coup d'œil : le Living Dex et la collection de
+// cartes côte à côte, le Pokémon du jour, des raccourcis vers ce qu'on fait le plus, et
+// ce qu'on a ajouté récemment, d'un monde comme de l'autre.
+
+// Le Pokémon du jour : le même toute la journée, un autre le lendemain. Le numéro du
+// jour, brassé par une multiplication de Knuth, saute d'une région à l'autre au lieu
+// de défiler dans l'ordre du Pokédex.
+function pokemonDuJour() {
+  const d = new Date();
+  const jour = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5);
+  return (Math.imul(jour, 2654435761) >>> 0) % 1025 + 1;
+}
+
+function htmlRecents() {
+  const items = recents.derniers(16).filter((r) => (r.type === 'carte'
+    ? cartesColl.possede(r.id)
+    : (r.shiny ? state.caughtShiny : state.caught).has(r.id)));
+  if (!items.length) return `<p class="acc-vide">${t('accRecentsVide')}</p>`;
+  return `<div class="acc-recents">${items.slice(0, 12).map((r) => {
+    if (r.type === 'carte') {
+      const c = cartesColl.carte(r.id);
+      return `<button class="acc-recent carte" data-carte="${esc(r.id)}" title="${esc(c?.n || r.id)}">
+        <img src="${esc(c?.img ? c.img + '/low.webp' : '')}" alt="${esc(c?.n || '')}" loading="lazy" />
+      </button>`;
+    }
+    const k = cleSure(r.id);
+    return `<button class="acc-recent" data-fiche="${k}" title="${esc(monName(k))}">
+      <img src="${sprites.still(spriteKey(k), !!r.shiny)}" alt="${esc(monName(k))}" loading="lazy" ${imgFallback(speciesOf(k), !!r.shiny)} />
+    </button>`;
+  }).join('')}</div>`;
+}
+
+function renderAccueil() {
+  const p = progressionNationale();
+  let shinies = 0;
+  for (let id = 1; id <= 1025; id++) if (state.caughtShiny.has(id)) shinies++;
+  const cs = cartesColl.stats();
+  const jour = pokemonDuJour();
+  const pj = pokedex[jour] || {};
+  const prisJour = isCaught(jour);
+  const pseudo = etatCompte.profil?.pseudo;
+  const av = etatCompte.profil?.avatar;
 
   poser(h(`
-    <section class="accueil">
-      <header class="accueil-tete">
-        <h1>${t('appTitre')}</h1>
-        <p>${t('accueilSous', pris, shinyView())} <span>v${__APP_VERSION__}${__VARIANTE__ === 'perso' && window.Capacitor?.isNativePlatform?.() ? ' dev' : ''}</span></p>
+    <section class="acc">
+      <header class="acc-tete">
+        <div>
+          <p class="acc-salut">${esc(pseudo ? t('accBonjour', pseudo) : t('accBonjourSeul'))}</p>
+          <h1>${t('appTitre')}</h1>
+        </div>
+        <button class="acc-avatar" data-nav-vers="reglages" aria-label="${t('navProfil')}">
+          ${av ? `<img src="${sprites.still(spriteKey(cleSure(av)), !!etatCompte.profil?.avatar_shiny)}" alt="" ${imgFallback(speciesOf(cleSure(av)), false)} />` : ICO_NAV.profil}
+        </button>
       </header>
-      <div class="tuiles">
-        ${TUILES.map(carte).join('')}
+
+      <div class="acc-duo">
+        <button class="acc-carte acc-dex" data-nav-vers="pokedex">
+          <span class="anneau" style="--p:${p.exact.toFixed(2)}" aria-hidden="true"><i>${p.texte}<em>%</em></i></span>
+          <span class="acc-k">${t('accLivingDex')}</span>
+          <span class="acc-v">${p.pris}<small>/1025</small></span>
+          <span class="acc-s">${t('accChromatiques', shinies)}</span>
+        </button>
+        <button class="acc-carte acc-tcg" data-nav-vers="${cs.distinctes ? 'collection' : 'extensions'}">
+          <span class="acc-eventail" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="acc-k">${t('accCartes')}</span>
+          ${cs.distinctes
+            ? `<span class="acc-v">${cs.distinctes}</span><span class="acc-s">${euros(cs.valeur)}</span>`
+            : `<span class="acc-s acc-cta">${t('accCartesVide')}</span>`}
+        </button>
       </div>
+
+      <section class="acc-bloc acc-jour">
+        <h2 class="acc-titre">${t('accPokemonDuJour')}</h2>
+        <div class="acc-jour-corps">
+          <img class="acc-jour-art" src="${sprites.art(jour, false)}" alt="" ${portraitFallback(jour, false)} />
+          <div>
+            <p class="acc-jour-num">${t('numero', String(jour).padStart(4, '0'))}</p>
+            <p class="acc-jour-nom">${esc(pj.name || '')}</p>
+            <div class="types">${(pj.types || []).map((ty) => `<span class="type mini" style="--t:${TYPES[ty]?.[1] || '#888'}">${esc(TYPES[ty]?.[0] || ty)}</span>`).join('')}</div>
+            <span class="acc-etat ${prisJour ? 'pris' : ''}">${prisJour ? t('accCapture') : t('accACapturer')}</span>
+          </div>
+        </div>
+        <div class="acc-actions">
+          <button class="acc-btn" data-fiche="${jour}">${t('accVoirFiche')}</button>
+        </div>
+      </section>
+
+      <section class="acc-bloc">
+        <h2 class="acc-titre">${t('accRaccourcis')}</h2>
+        <div class="acc-raccourcis">
+          <button data-nav-vers="scan"><span class="r-ico r-scan">${ICO_NAV.scan}</span><span>${t('accScanner')}</span></button>
+          <button data-nav-vers="extensions"><span class="r-ico r-cartes">${ICO_NAV.chercher}</span><span>${t('accChercherCarte')}</span></button>
+          <button data-nav-vers="boites"><span class="r-ico r-boites">${ICO_NAV.boites}</span><span>${t('accMesBoites')}</span></button>
+          <button data-nav-vers="combat"><span class="r-ico r-equipe">${ICO_NAV.equipe}</span><span>${t('accMesEquipes')}</span></button>
+        </div>
+      </section>
+
+      <section class="acc-bloc">
+        <h2 class="acc-titre">${t('accRecents')}</h2>
+        ${htmlRecents()}
+      </section>
+
+      <p class="acc-version">v${__APP_VERSION__}${__VARIANTE__ === 'perso' && window.Capacitor?.isNativePlatform?.() ? ' dev' : ''}</p>
     </section>`));
+}
+
+// ---------- Types : la table et le calculateur, sur leur propre page ----------
+//
+// Ils vivaient sous l'équipe, où on ne les trouvait qu'en faisant défiler l'analyse.
+// Une tuile de l'univers Jeux les sort : on vient souvent juste pour « que craint un
+// Acier / Fée ? ». Le calculateur s'ouvre déplié, c'est ce qu'on vient chercher ; la
+// table, plus rare, reste repliée.
+function renderTypes() {
+  const jeu = jeuCourant();
+  poser(
+    entete(t('tuileTypes'), t('typesSous', jeu.nom)),
+    h(`
+      <section class="combat types-page">
+        <button class="jeu-btn" data-act="choix-jeu">
+          <small>${t('versionDuJeu')}</small>
+          <b>${esc(jeu.nom)}</b>
+        </button>
+        ${renderCalcTypes()}
+        ${renderTableTypes()}
+      </section>`),
+  );
+}
+
+// ---------- Univers Cartes : en attendant les vues de l'étape suivante ----------
+function renderCartesVue(vue) {
+  const tu = TUILES_CARTES.find((x) => x.vue === vue);
+  poser(
+    entete(tu ? tu.nom() : ''),
+    h(`<section class="bientot"><p>${t('bientot')}</p></section>`),
+  );
 }
 
 // ---------- Réglages : apparence, et ce qui viendra s'y ajouter ----------
@@ -3533,7 +3850,7 @@ function appliqueTheme() {
   const sombre = state.theme === 'sombre' || (state.theme === 'auto' && !!themeSysteme?.matches);
   document.documentElement.dataset.theme = sombre ? 'sombre' : 'clair';
   // La barre d'état d'iOS et l'onglet du navigateur suivent le thème.
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', sombre ? '#14171b' : '#d6453c');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', sombre ? '#080b13' : '#d6453c');
 }
 themeSysteme?.addEventListener?.('change', () => { if (state.theme === 'auto') appliqueTheme(); });
 appliqueTheme();
@@ -3569,8 +3886,11 @@ function renderReglages() {
   const vueActuelle = app.querySelector('.vue');
   const defileReg = vueActuelle?.querySelector('.reg') ? vueActuelle.scrollTop : 0;
 
-  poser(entete(t('reglages')), h(`
+  poser(entete(t('navProfil')), h(`
     <section class="reg">
+      <!-- Le Profil s'ouvre sur le compte : c'est ce qu'on y vient chercher. -->
+      ${compteUI.htmlCompte()}
+
       ${bloc(0, 'apparence', t('apparence'), t('apparenceAide'),
         rail(THEMES(), state.theme, 'data-theme', t('theme')))}
 
@@ -3602,8 +3922,6 @@ function renderReglages() {
       ${interrupteurPubs() && !estPremium() && (pubsDisponibles() || import.meta.env.DEV) ? bloc(3, 'pubs', t('pubs'),
         pubsDisponibles() ? t('pubsAide') : t('pubsAideWeb'),
         rail([['1', t('pubsAffichees')], ['0', t('pubsCoupees')]], pubsActivees() ? '1' : '0', 'data-pubs', t('pubs'))) : ''}
-
-      ${compteUI.htmlCompte()}
 
       <!-- Apple exige (5.1.1(i)) un lien vers la politique de confidentialité DANS
            l'application, « easily accessible ». Les pages sont produites depuis le
@@ -3643,17 +3961,88 @@ async function poseLangueEtRend(l) {
   render();
 }
 
-// Barre de retour, construite une fois : elle coiffe toutes les vues sauf l'accueil.
+// ---------- Navigation : la barre du bas et ses cinq onglets ----------
+//
+// Depuis la fusion avec Cartodex (26/10/2026), l'appli réunit DEUX univers : les jeux
+// (Pokédex, boîtes, équipes, attaques, types) et les cartes (extensions, collection,
+// classeurs, valeur, assistant). La barre du bas les donne à égalité, avec l'accueil,
+// le scan au centre et le profil.
+//
+// Elle est DANS LE FLUX de la coquille, jamais en position fixe : c'est la leçon de
+// l'ancienne barre, qui ne se posait pas au même endroit selon que la vue défilait ou
+// non. Dernier enfant de #app, elle est toujours au même endroit.
+const ONGLETS_BARRE = [
+  { cle: 'accueil', vue: 'accueil', nom: () => t('navAccueil') },
+  { cle: 'jeux', vue: 'jeux', nom: () => t('navJeux') },
+  { cle: 'scan', vue: 'scan', nom: () => t('navScan') },
+  { cle: 'cartes', vue: 'cartes', nom: () => t('navCartes') },
+  { cle: 'profil', vue: 'reglages', nom: () => t('navProfil') },
+];
+// L'onglet de chaque vue : c'est lui qui s'allume dans la barre, et la planche où
+// ramène le retour.
+const ONGLET_DE = {
+  accueil: 'accueil', jeux: 'jeux', pokedex: 'jeux', boites: 'jeux', combat: 'jeux', attaques: 'jeux', types: 'jeux',
+  scan: 'scan', cartes: 'cartes', extensions: 'cartes', collection: 'cartes', classeurs: 'cartes', valeur: 'cartes',
+  advisor: 'cartes', reglages: 'profil',
+};
+// Les RACINES sont les onglets eux-mêmes : pas de barre de retour, elles sont le point
+// de départ. Les autres vues en ont une, qui ramène à la planche de leur univers.
+const RACINES = new Set(['accueil', 'jeux', 'scan', 'cartes', 'reglages']);
+const ongletCourant = () => ONGLET_DE[state.vue] || 'accueil';
+const vueDeLOnglet = (cle) => ONGLETS_BARRE.find((o) => o.cle === cle)?.vue || 'accueil';
+
+const barre = h(`<nav class="barre"></nav>`);
+function majBarre() {
+  const actif = ongletCourant();
+  barre.setAttribute('aria-label', t('navAria'));
+  barre.innerHTML = ONGLETS_BARRE.map((o) => `
+    <button class="barre-btn ${o.cle === 'scan' ? 'barre-scan' : ''} ${o.cle === actif ? 'on' : ''}"
+            data-nav="${o.cle}" ${o.cle === actif ? 'aria-current="page"' : ''}>
+      <span class="barre-ico">${ICO_NAV[o.cle]}</span>
+      <span class="barre-nom">${esc(o.nom())}</span>
+    </button>`).join('');
+}
+barre.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-nav]');
+  if (!b) return;
+  const vue = vueDeLOnglet(b.dataset.nav);
+  retourHaptique();
+  // L'onglet déjà ouvert, sur sa racine : on remonte en haut, comme sur iOS.
+  if (state.vue === vue) { app.querySelector('.vue')?.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  vaVers(vue);
+});
+
+// La place de la bannière de pub, entre la vue et la barre : 0 sans bannière.
+const placePub = h(`<div class="pub-place" aria-hidden="true"></div>`);
+
+// La bannière de pub se pose AU-DESSUS de la barre : sa marge basse est la hauteur de
+// la barre, hors zone sûre (le greffon s'ancre déjà sur la zone sûre).
+configurePubs({
+  marge: () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--barre-h')) || 58,
+});
+
+// Barre de retour, construite une fois : elle coiffe les vues qui ne sont pas des
+// racines, et ramène à la planche de leur univers.
 const barreRetour = h(`
   <header class="retour">
-    <button data-accueil>${ICO.gauche}<span class="retour-txt">${t('accueil')}</span></button>
+    <button data-retour>${ICO.gauche}<span class="retour-txt"></span></button>
   </header>`);
-barreRetour.addEventListener('click', () => vaVers('accueil'));
+barreRetour.addEventListener('click', () => vaVers(vueDeLOnglet(ongletCourant())));
+
+// Un lien vers une vue, depuis l'accueil (cartes, raccourcis, avatar).
+app.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-nav-vers]');
+  if (b) { vaVers(b.dataset.navVers); return; }
+  const f = e.target.closest('[data-fiche]');
+  if (f) openSheet(asKey(f.dataset.fiche));
+});
 
 function vaVers(vue) {
   if (vue === state.vue) return;
   fermeLesPanneaux();
-  if (vue === 'accueil') pauseNaturelle();
+  // Revenir à une planche ou à l'accueil après une visite est une pause naturelle,
+  // comme refermer une fiche : un plein écran peut y venir (voir pubs.js).
+  if (RACINES.has(vue) && vue !== 'scan' && !RACINES.has(state.vue)) pauseNaturelle();
   state.vue = vue;
   // Entrer dans le Pokédex ramène TOUJOURS à son menu : on vient choisir quel
   // Pokédex regarder, pas reprendre là où l'on s'était arrêté.
@@ -3664,7 +4053,7 @@ function vaVers(vue) {
 app.addEventListener('click', (e) => {
   const b = e.target.closest('[data-tuile]');
   if (b) {
-    const tu = TUILES.find((x) => x.cle === b.dataset.tuile);
+    const tu = toutesTuiles().find((x) => x.cle === b.dataset.tuile);
     if (tu) vaVers(tu.vue);
     return;
   }
@@ -3734,7 +4123,15 @@ function poser(...enfants) {
       tete.classList.toggle('compact', vue.scrollTop > 12);
     }, { passive: true });
   }
-  app.replaceChildren(...(state.vue === 'accueil' ? [vue] : [barreRetour, vue]));
+  // Les racines (les onglets) n'ont pas de barre de retour ; elles portent elles-mêmes
+  // la marge de la zone sûre du haut, que la barre de retour porte pour les autres.
+  const racine = RACINES.has(state.vue);
+  vue.classList.toggle('racine', racine);
+  if (!racine) {
+    barreRetour.querySelector('.retour-txt').textContent = t(ongletCourant() === 'cartes' ? 'navCartes' : 'navJeux');
+  }
+  majBarre();
+  app.replaceChildren(...(racine ? [] : [barreRetour]), vue, placePub, barre);
 }
 
 function renderEquipeSlot(m, i) {
@@ -3800,10 +4197,6 @@ function renderCombat() {
         ${LEARN_VG ? '' : `<p class="combat-charge">${t('chargementAttaques')}</p>`}
 
         <div class="analyse">${renderAnalyse()}</div>
-
-        ${renderTableTypes()}
-
-        ${renderCalcTypes()}
 
         <!-- L'aide ne sert qu'à la première prise en main : dès qu'un Pokémon est
              placé, le geste est compris et le pavé n'est plus que du bruit. -->
@@ -4123,7 +4516,7 @@ function renderTableTypes() {
 // Il suit la génération du jeu choisi, comme la table. Ses commandes agissent SUR LE
 // DOM (`majCalcTypes`) : rendre la vue refermerait le volet et ramènerait en haut.
 const calcTypes = [];
-let calcOuvert = false;
+let calcOuvert = true;
 
 function htmlCorpsCalc() {
   const gen = genDuJeu();
@@ -5678,6 +6071,7 @@ function fermeLesPanneaux() {
 
 app.addEventListener('click', (e) => {
   // La bascule de vue est écoutée sur la barre elle-même, qui vit hors de #app.
+  if (state.vue === 'types' && e.target.closest('[data-act="choix-jeu"]')) { openBattleSheet('version'); return; }
   if (state.vue !== 'combat') return;
 
   if (e.target.closest('[data-act="choix-jeu"]')) { openBattleSheet('version'); return; }
@@ -6106,6 +6500,7 @@ compteUI.branche(app, compteSheet);
 // s'il y a un compte connecté : sans configuration Supabase, `marqueChange()` est un
 // appel vide, et rien ne change pour qui n'a pas de compte.
 brancheSync({ lit: donneesCompletes, pose: appliqueDonnees });
+cartesColl.brancheEcriture(() => marqueChange());
 
 // Mise au point : le contrat de la synchronisation, pour le vérifier dans l'aperçu
 // sans passer par un fichier ni par un serveur. Retiré du build par Vite.

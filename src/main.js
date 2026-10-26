@@ -22,6 +22,7 @@ import { creeCompteUI } from './compte-ui.js';
 import { etat as etatCompte } from './compte.js';
 import * as cartesColl from './cartes/collection.js';
 import * as recents from './recents.js';
+import { creeCartes } from './cartes/vues.js';
 // La synchronisation ne connaît ni l'état ni les clés de stockage : main.js lui
 // fournit de quoi lire et poser la collection, elle se charge du transport.
 import { brancher as brancheSync, marqueChange } from './sync.js';
@@ -597,6 +598,13 @@ const ICO = {
   croix: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>',
   grille: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h5.5v5.5H5zM13.5 5H19v5.5h-5.5zM5 13.5h5.5V19H5zM13.5 13.5H19V19h-5.5z"/></svg>',
   liste: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.5h10M9 12h10M9 17.5h10M5 6.5h.01M5 12h.01M5 17.5h.01"/></svg>',
+  // Depuis la fusion : le chevron des sélecteurs en pilule, et les actions des en-têtes.
+  bas: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg>',
+  calques: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3.5 8.5 12 13l8.5-4.5z"/><path d="M3.5 12.5 12 17l8.5-4.5"/><path d="M3.5 16.5 12 21l8.5-4.5"/></svg>',
+  selection: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M8.2 12.3l2.6 2.6 5-5.4"/></svg>',
+  coeur: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19.6s-7.4-4.4-7.4-9.6A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.4 2.4c0 5.2-7.4 9.6-7.4 9.6z"/></svg>',
+  externe: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 5H19v5.5M19 5l-8 8"/><path d="M17 13.5V18a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 5 18V9a1.5 1.5 0 0 1 1.5-1.5H11"/></svg>',
+  rafraichir: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4.2h-4.2"/></svg>',
 };
 
 // Icônes des blocs de Réglages. La pastille qui les porte prend `--c` en CSS.
@@ -740,7 +748,10 @@ function render() {
   const defileOnglets = app.querySelector('.gens')?.scrollLeft ?? 0;
 
   poser(
-    entete(t('boites'), t('boitesSous', g.name, pris, total)),
+    // Le chromatique et l'ajout montent dans l'en-tête, en icônes, comme les actions des
+    // vues cartes : la barre d'outils du bas ne garde que ce que fait un toucher.
+    tete(t('boites'), `${boutonChromatique()}
+      <button class="tete-btn" data-act="add" title="${t('ajouterPokemon')}" aria-label="${t('ajouterPokemon')}">${ICO.plus}</button>`),
     renderTabs(),
     h(`
       <section class="box ${paperBg ? 'papered' : ''} ${rang ? 'ranger' : ''} ${state.placing !== null ? 'placement' : ''}">
@@ -780,21 +791,12 @@ function render() {
         <!-- Trois rangées empilées, dans l'ordre où l'on s'en sert : l'action, puis
              ce que fait un tap, puis l'affichage et la sauvegarde. -->
         <div class="tools">
-          <button class="btn primaire" data-act="add">
-            ${ICO.plus}<span>${t('ajouterPokemon')}</span>
-          </button>
-
           <!-- Trois états sur un seul rail : on voit d'un coup celui qui est actif. -->
           <div class="segmente" role="group" aria-label="${t('effetDuTap')}">
             ${[['catch', 'modeCapturer'], ['info', 'modeFiche'], ['move', 'modeRanger']].map(([m, cle]) => `
               <button class="${state.mode === m ? 'on' : ''}" data-act="mode-set" data-mode="${m}"
                       aria-pressed="${state.mode === m}">${t(cle)}</button>`).join('')}
           </div>
-
-          <button class="btn bascule ${shinyView() ? 'on' : ''}" data-act="view"
-                  aria-pressed="${shinyView()}" title="${t('basculeChromatique')}">
-            <b>&#10022;</b><span>${shinyView() ? t('vueChromatique') : t('vueNormale')}</span>
-          </button>
         </div>
         ${state.placing !== null ? `<div class="hint placer">
           ${t('aidePlacer', esc(monName(state.placing)))}
@@ -928,7 +930,7 @@ backdrop.addEventListener('click', () => {
   // Le panneau légal peut s'ouvrir PAR-DESSUS l'écran d'abonnement : le voile ne
   // referme alors que lui, pour revenir à l'abonnement.
   if (legalSheet.classList.contains('open') && plusSheet.classList.contains('open')) { fermeLegal(); return; }
-  closeSheet(); closeBoxSheet(); closeAddSheet(); closeBattleSheet(); fermeComptePanneau(); fermeLegal(); fermePlus();
+  closeSheet(); closeBoxSheet(); closeAddSheet(); closeBattleSheet(); fermeComptePanneau(); fermeLegal(); fermePlus(); fermeCarte();
 });
 
 // Stats de base en barres.
@@ -1674,7 +1676,7 @@ function syncBackdrop() {
     sheet.classList.contains('open') || boxSheet.classList.contains('open')
     || addSheet.classList.contains('open') || battleSheet.classList.contains('open')
     || compteSheet.classList.contains('open') || legalSheet.classList.contains('open')
-    || plusSheet.classList.contains('open'));
+    || plusSheet.classList.contains('open') || carteSheet.classList.contains('open'));
 }
 
 // ---------- Panneau « ajouter un Pokémon à un emplacement » ----------
@@ -1735,6 +1737,75 @@ function fermeComptePanneau() {
   compteUI.panneauFerme();
   syncBackdrop();
 }
+
+// ---------------------------------------------------------------- l'univers Cartes
+//
+// Ses vues vivent dans src/cartes/vues.js (extensions, recherche, fiche d'une carte,
+// collection, valeur). main.js leur fournit ce qui est commun — traduction, coquille,
+// en-tête, voile, annulation — et le panneau de la fiche d'une carte, un `.sheet`
+// comme les autres : même voile, même fermeture par glissement, même passage d'une
+// carte à la voisine par glissement horizontal.
+const carteSheet = h(`<aside class="sheet cx-sheet" role="dialog" aria-modal="true"><div class="sheet-grip"></div><div class="sheet-body"></div></aside>`);
+document.body.append(carteSheet);
+const carteBody = carteSheet.querySelector('.sheet-body');
+
+function fermeCarte() {
+  if (!carteSheet.classList.contains('open')) return;
+  carteSheet.classList.remove('open');
+  cartes.fermee();
+  syncBackdrop();
+  // Refermer une fiche est une pause naturelle, pour une carte comme pour un Pokémon.
+  pauseNaturelle();
+}
+
+// Un lien vers l'extérieur (Cardmarket, Vinted, eBay, réglages d'Apple) : le navigateur
+// du système dans l'application, un nouvel onglet sur le web.
+function ouvreLien(url) {
+  const B = window.Capacitor?.Plugins?.Browser;
+  if (B) B.open({ url }).catch(() => {}); else window.open(url, '_blank', 'noopener');
+}
+
+const cartes = creeCartes({
+  t, esc, h, fold, euros, langue,
+  ICO: { ...ICO, chercher: ICO_NAV.chercher, cartes: ICO_NAV.cartes },
+  haptique: () => retourHaptique(),
+  poser, tete,
+  vue: () => state.vue,
+  zone: () => app.querySelector('.vue'),
+  sceau: () => sceauHtml(),
+  art: (cle) => ART[cle] || '',
+  sprite: (n) => sprites.still(n, false),
+  nomPokemon: (n) => pokedex[n]?.name || t('numero', n),
+  // Les noms du Pokédex, dans la langue de l'appli : la recherche d'une carte y retrouve
+  // ses accents, et la suggestion « Vouliez-vous dire … ? » le plus proche.
+  nomsPokemon: () => { const l = []; for (let id = 1; id <= 1025; id++) if (pokedex[id]?.name) l.push(pokedex[id].name); return l; },
+  estCapture: (n) => state.caught.has(n),
+  // La passerelle vers le Pokédex : la fiche de la carte s'efface devant celle du Pokémon.
+  ficheJeu: (n) => { fermeCarte(); openSheet(n); },
+  annonce: (texte, retablir) => proposeAnnulation(texte, retablir),
+  noteRecent: (id) => recents.note('carte', id),
+  ouvreLien,
+  panneau: {
+    corps: carteBody,
+    ouvre(html) {
+      carteBody.innerHTML = html;
+      carteBody.scrollTop = 0;
+      carteSheet.classList.add('open');
+      syncBackdrop();
+    },
+    // Le défilement est rendu : on remplace le contenu d'une fiche ouverte (un exemplaire
+    // ajouté, un choix), repartir en haut serait pénible.
+    maj(html) {
+      const y = carteBody.scrollTop;
+      carteBody.innerHTML = html;
+      carteBody.scrollTop = y;
+    },
+    ferme: () => fermeCarte(),
+    ouvert: () => carteSheet.classList.contains('open'),
+  },
+});
+enableSwipeClose(carteSheet, fermeCarte, { voisin: (d) => cartes.voisin(d), aller: (d) => cartes.aller(d) });
+cartes.branche(app);
 
 // ---------- Documents légaux ----------
 //
@@ -2682,27 +2753,29 @@ const bordRetour = { actif: false, x0: 0, y0: 0, dx: 0, vue: null };
 
 const panneauOuvert = () => !!document.querySelector('.sheet.open');
 
+// La page part avec son en-tête : le titre glisse avec le contenu, comme sur iOS.
+const elementsRetour = () => [bordRetour.vue, bordRetour.haut].filter(Boolean);
 function poseRetour(dx) {
-  if (!bordRetour.vue) return;
-  bordRetour.vue.style.transform = dx ? `translate3d(${dx}px,0,0)` : '';
-  bordRetour.vue.style.opacity = dx ? String(Math.max(0.5, 1 - dx / 520)) : '';
+  for (const el of elementsRetour()) {
+    el.style.transform = dx ? `translate3d(${dx}px,0,0)` : '';
+    el.style.opacity = dx ? String(Math.max(0.5, 1 - dx / 520)) : '';
+  }
 }
 
 function fermeRetour(revient) {
-  const vue = bordRetour.vue;
+  const els = elementsRetour();
   bordRetour.actif = false;
   bordRetour.vue = null;
-  if (!vue) return;
-  vue.style.transition = `transform ${NAV_OUT}ms ease-out, opacity ${NAV_OUT}ms ease-out`;
+  bordRetour.haut = null;
+  if (!els.length) return;
+  for (const el of els) el.style.transition = `transform ${NAV_OUT}ms ease-out, opacity ${NAV_OUT}ms ease-out`;
   if (revient) {
     // On part vers la droite, puis la page précédente se rend par-dessus.
-    vue.style.transform = 'translate3d(100%,0,0)';
-    vue.style.opacity = '0';
+    for (const el of els) { el.style.transform = 'translate3d(100%,0,0)'; el.style.opacity = '0'; }
     setTimeout(retourEnArriere, NAV_OUT);
   } else {
-    vue.style.transform = '';
-    vue.style.opacity = '';
-    setTimeout(() => { vue.style.transition = ''; }, NAV_OUT);
+    for (const el of els) { el.style.transform = ''; el.style.opacity = ''; }
+    setTimeout(() => { for (const el of els) el.style.transition = ''; }, NAV_OUT);
   }
 }
 
@@ -2710,6 +2783,7 @@ function fermeRetour(revient) {
 // liste des attaques, et une grille du Pokédex à son menu — exactement ce que font les
 // boutons « ‹ » de ces deux écrans. Partout ailleurs, on rentre à l'accueil.
 function retourEnArriere() {
+  if (VUES_CARTES.has(state.vue) && cartes.retour()) return;
   if (state.vue === 'attaques' && state.bs?.mode === 'infoAttaque') { retourMenuAttaques(); return; }
   if (state.vue === 'pokedex' && state.dexGen !== null) { state.dexGen = null; state.dexQ = ''; render(); return; }
   vaVers(vueDeLOnglet(ongletCourant()));
@@ -2721,8 +2795,10 @@ app.addEventListener('touchstart', (e) => {
   if (e.touches[0].clientX > BORD_RETOUR) return;
   const vue = app.querySelector('.vue');
   if (!vue) return;
-  Object.assign(bordRetour, { actif: true, x0: e.touches[0].clientX, y0: e.touches[0].clientY, dx: 0, vue });
+  const haut = app.querySelector(':scope > .tete');
+  Object.assign(bordRetour, { actif: true, x0: e.touches[0].clientX, y0: e.touches[0].clientY, dx: 0, vue, haut });
   vue.style.transition = 'none';
+  if (haut) haut.style.transition = 'none';
 }, { passive: true });
 
 app.addEventListener('touchmove', (e) => {
@@ -2995,6 +3071,8 @@ function donneesCompletes() {
     onglets: state.ordreOnglets,
     // Équipes
     equipes: state.equipes,
+    // Cartes — l'héritage de Cartodex : chaque carte et ses exemplaires.
+    cartes: cartesColl.exporte(),
     // Préférences
     jeu: state.jeu,
     view: state.view,
@@ -3084,6 +3162,12 @@ async function appliqueDonnees(data) {
       n++;
     }
     if (n) { saveCombat(); repris.push(['partieEquipes', n]); }
+  }
+
+  // Les cartes : reprises champ par champ (collection.js écarte tout identifiant ou toute
+  // image qui n'a pas la forme attendue, comme `cleAdmise` pour les Pokémon).
+  if (d.cartes && typeof d.cartes === 'object' && !Array.isArray(d.cartes) && cartesColl.remplace(d.cartes)) {
+    repris.push(['partieCartes', Object.values(cartesColl.toutes()).filter((c) => c.ex?.length).length]);
   }
 
   // Préférences : chacune n'est reprise que si elle est valide.
@@ -3809,26 +3893,19 @@ function renderAccueil() {
 function renderTypes() {
   const jeu = jeuCourant();
   poser(
-    entete(t('tuileTypes'), t('typesSous', jeu.nom)),
+    tete(t('tuileTypes')),
     h(`
-      <section class="combat types-page">
-        <button class="jeu-btn" data-act="choix-jeu">
-          <small>${t('versionDuJeu')}</small>
-          <b>${esc(jeu.nom)}</b>
-        </button>
+      <section class="combat types-page" aria-label="${esc(t('typesSous', jeu.nom))}">
+        ${piluleJeu()}
         ${renderCalcTypes()}
         ${renderTableTypes()}
       </section>`),
   );
 }
 
-// ---------- Univers Cartes : en attendant les vues de l'étape suivante ----------
+// ---------- Univers Cartes : rendu confié au module ----------
 function renderCartesVue(vue) {
-  const tu = TUILES_CARTES.find((x) => x.vue === vue);
-  poser(
-    entete(tu ? tu.nom() : ''),
-    h(`<section class="bientot"><p>${t('bientot')}</p></section>`),
-  );
+  cartes.rend(vue);
 }
 
 // ---------- Réglages : apparence, et ce qui viendra s'y ajouter ----------
@@ -3958,6 +4035,8 @@ async function poseLangueEtRend(l) {
   // La vue Scan est un élément unique, construit au chargement : elle ne se refait
   // pas au rendu et doit reposer ses libellés elle-même.
   scan.retraduit();
+  // Les cartes changent de langue avec l'appli : TCGdex en français, ou en anglais.
+  cartes.retraduit();
   render();
 }
 
@@ -4021,20 +4100,24 @@ configurePubs({
   marge: () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--barre-h')) || 58,
 });
 
-// Barre de retour, construite une fois : elle coiffe les vues qui ne sont pas des
-// racines, et ramène à la planche de leur univers.
-const barreRetour = h(`
-  <header class="retour">
-    <button data-retour>${ICO.gauche}<span class="retour-txt"></span></button>
-  </header>`);
-barreRetour.addEventListener('click', () => vaVers(vueDeLOnglet(ongletCourant())));
+// « ← » de l'en-tête : la page d'avant — la liste d'une fiche d'attaque, le menu d'une
+// grille du Pokédex, la liste des extensions d'une extension, sinon la planche de
+// l'univers. Exactement ce que fait le glissement depuis le bord gauche.
+app.addEventListener('click', (e) => {
+  if (!e.target.closest('[data-retour]')) return;
+  retourHaptique();
+  retourEnArriere();
+});
 
 // Un lien vers une vue, depuis l'accueil (cartes, raccourcis, avatar).
 app.addEventListener('click', (e) => {
   const b = e.target.closest('[data-nav-vers]');
   if (b) { vaVers(b.dataset.navVers); return; }
   const f = e.target.closest('[data-fiche]');
-  if (f) openSheet(asKey(f.dataset.fiche));
+  if (f) { openSheet(asKey(f.dataset.fiche)); return; }
+  // Une carte récente de l'accueil.
+  const c = e.target.closest('[data-carte]');
+  if (c) cartes.ouvre(c.dataset.carte, [c.dataset.carte]);
 });
 
 function vaVers(vue) {
@@ -4045,8 +4128,10 @@ function vaVers(vue) {
   if (RACINES.has(vue) && vue !== 'scan' && !RACINES.has(state.vue)) pauseNaturelle();
   state.vue = vue;
   // Entrer dans le Pokédex ramène TOUJOURS à son menu : on vient choisir quel
-  // Pokédex regarder, pas reprendre là où l'on s'était arrêté.
+  // Pokédex regarder, pas reprendre là où l'on s'était arrêté. Même règle pour les
+  // extensions, qui reviennent à leur liste.
   if (vue === 'pokedex') { state.dexGen = null; state.dexQ = ''; }
+  if (VUES_CARTES.has(vue)) cartes.entre(vue);
   render();
 }
 
@@ -4069,8 +4154,7 @@ app.addEventListener('click', (e) => {
   if (e.target.closest('[data-act="plus-gerer"]')) {
     // Les abonnements se gèrent chez Apple, jamais dans l'appli.
     const url = 'https://apps.apple.com/account/subscriptions';
-    const B = window.Capacitor?.Plugins?.Browser;
-    if (B) B.open({ url }).catch(() => {}); else window.open(url, '_blank', 'noopener');
+    ouvreLien(url);
     return;
   }
 
@@ -4099,9 +4183,38 @@ app.addEventListener('click', (e) => {
   }
 });
 
-// Grand titre façon iOS : il coiffe la vue, puis se réduit et s'efface en défilant
-// sous la barre des onglets, qui reste collée en haut. Le rétrécissement est posé par
-// une classe, pas par un calcul à chaque image : le défilement reste fluide.
+// En-tête des SOUS-PAGES, d'après les vues cartes de Cartodex : « ← » pour revenir, le
+// titre de la page, et ses actions en icônes à droite. Les deux univers le portent, à
+// l'identique. Il ne défile pas : `poser()` le sort de la zone qui défile.
+function tete(titre, actions = '') {
+  return h(`
+    <header class="tete">
+      <button class="tete-retour" data-retour aria-label="${t('retour')}">${ICO.gauche}</button>
+      <h1 class="tete-titre">${esc(titre)}</h1>
+      <div class="tete-actions">${actions}</div>
+    </header>`);
+}
+// Le bouton chromatique des en-têtes (Boîtes, Pokédex) : la même bascule que celle
+// d'avant, normal ou chromatique, pour toute la collection affichée.
+const boutonChromatique = () => `
+  <button class="tete-btn or ${shinyView() ? 'on' : ''}" data-act="view" aria-pressed="${shinyView()}"
+          title="${t('basculeChromatique')}" aria-label="${t('basculeChromatique')}"><b>&#10022;</b></button>`;
+// Le grand sélecteur de version, en pilule (Équipes, Types).
+function piluleJeu(compteur = '') {
+  return `
+    <button class="pilule" data-act="choix-jeu">
+      <span class="pilule-txt"><small>${t('versionDuJeu')}</small><b>${esc(jeuCourant().nom)}</b></span>
+      ${compteur}
+      ${ICO.bas}
+    </button>`;
+}
+// Le titre d'une sous-page qui n'a pas posé d'en-tête : le nom de sa tuile.
+const titreDeVue = () => toutesTuiles().find((x) => x.vue === state.vue)?.nom()
+  || t(ongletCourant() === 'cartes' ? 'navCartes' : 'navJeux');
+
+// Grand titre façon iOS, sur les RACINES (planches, Profil) : il coiffe la vue, puis se
+// réduit en défilant. Le rétrécissement est posé par une classe, pas par un calcul à
+// chaque image : le défilement reste fluide.
 function entete(titre, sous) {
   return h(`
     <header class="entete">
@@ -4111,8 +4224,10 @@ function entete(titre, sous) {
 }
 
 // Coquille d'application : le contenu de chaque vue défile DANS une zone dédiée
-// (`.vue`), coiffée hors accueil par la barre de retour, qui ne défile pas.
+// (`.vue`), coiffée hors des racines par l'en-tête de la page, qui ne défile pas.
+// Rend la zone, pour qui veut y rétablir une position de lecture.
 function poser(...enfants) {
+  const enTete = enfants[0] instanceof Element && enfants[0].classList.contains('tete') ? enfants.shift() : null;
   const vue = document.createElement('div');
   vue.className = 'vue';
   vue.append(...enfants);
@@ -4127,11 +4242,12 @@ function poser(...enfants) {
   // la marge de la zone sûre du haut, que la barre de retour porte pour les autres.
   const racine = RACINES.has(state.vue);
   vue.classList.toggle('racine', racine);
-  if (!racine) {
-    barreRetour.querySelector('.retour-txt').textContent = t(ongletCourant() === 'cartes' ? 'navCartes' : 'navJeux');
-  }
+  const haut = racine ? null : (enTete || tete(titreDeVue()));
+  // Un filet sous l'en-tête dès que le contenu passe dessous, comme les barres d'iOS.
+  if (haut) vue.addEventListener('scroll', () => haut.classList.toggle('defile', vue.scrollTop > 2), { passive: true });
   majBarre();
-  app.replaceChildren(...(racine ? [] : [barreRetour]), vue, placePub, barre);
+  app.replaceChildren(...(haut ? [haut] : []), vue, placePub, barre);
+  return vue;
 }
 
 function renderEquipeSlot(m, i) {
@@ -4168,15 +4284,11 @@ function renderCombat() {
   const pleines = equipe().filter(Boolean).length;
 
   poser(
-    entete(t('equipes'), t('equipesSous', pleines, jeu.nom)),
+    tete(t('equipes')),
     h(`
       <section class="combat">
         <div class="combat-head">
-          <button class="jeu-btn" data-act="choix-jeu">
-            <small>${t('versionDuJeu')}</small>
-            <b>${esc(jeu.nom)}</b>
-          </button>
-          <div class="combat-compte"><b>${pleines}</b>/6</div>
+          ${piluleJeu(`<span class="pilule-cpt" aria-label="${esc(t('equipesSous', pleines, jeu.nom))}"><b>${pleines}</b>/6</span>`)}
         </div>
 
         ${equipeAutorisee() ? '' : `
@@ -4679,7 +4791,7 @@ function renderAttaques() {
   if (!['attaques', 'infoAttaque'].includes(state.bs?.mode)) {
     state.bs = { mode: 'attaques', slot: null, emplacement: null, q: '' };
   }
-  poser(corpsAtq);
+  poser(tete(titreAttaques()), corpsAtq);
   renderBattleSheet();
   // Les movesets par jeu sont chargés à la demande : la page se refait à leur arrivée.
   if (!LEARN_VG) chargeVG().then(() => { if (state.vue === 'attaques') renderBattleSheet(); });
@@ -4763,9 +4875,20 @@ function openBattleSheet(mode, slot = null, emplacement = null) {
   syncBackdrop();
 }
 
+// Le titre de la page des attaques : la liste, ou le nom de l'attaque ouverte.
+function titreAttaques() {
+  if (state.bs?.mode !== 'infoAttaque') return t('attaques');
+  return attaqueEnGen(state.bs.slot, filtreAttaques.gen ?? genDuJeu())?.n || t('attaques');
+}
+
 function renderBattleSheet(gardeFocus) {
   const bs = state.bs;
   if (!bs) return;
+  // Dans la page des attaques, l'en-tête suit : la liste, puis l'attaque ouverte.
+  if (state.vue === 'attaques') {
+    const titre = app.querySelector(':scope > .tete .tete-titre');
+    if (titre) titre.textContent = titreAttaques();
+  }
   const corps = corpsCombat();
   corps.innerHTML =
     bs.mode === 'version' ? htmlVersions()
@@ -5601,7 +5724,9 @@ function htmlMenuAttaques() {
   const f = filtreAttaques;
   f.gen ??= genDuJeu();
   f.q = state.bs.q || '';
-  const tete = `<h2 class="bs-title">${t('attaques')}</h2>${ongletsGenAttaques(f.gen)}`;
+  // Dans la page, le titre est dans l'en-tête ; dans un panneau, il ouvre la liste.
+  const enPage = state.vue === 'attaques';
+  const tete = `${enPage ? '' : `<h2 class="bs-title">${t('attaques')}</h2>`}${ongletsGenAttaques(f.gen)}`;
   // Le seul chargement asynchrone de l'appli (les movesets par jeu, 5,7 Mo) : on
   // montre la forme de la liste plutôt qu'une phrase, la page ne saute pas à l'arrivée.
   if (!LEARN_VG) {
@@ -5628,20 +5753,20 @@ function htmlMenuAttaques() {
   return `
     ${tete}
     <p class="paper-note">${t('noteMenuAttaques', toutes.length, f.gen, esc(nomsJeux))}</p>
-    <label class="bs-field">
-      <span>${t('rechercher')}</span>
-      <input class="bs-name bs-q" type="text" value="${esc(f.q)}" placeholder="${t('placeholderAttaque')}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+    <label class="champ">
+      ${ICO_NAV.chercher}
+      <input class="bs-name bs-q" type="search" value="${esc(f.q)}" placeholder="${t('placeholderAttaque')}" aria-label="${t('rechercher')}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" />
     </label>
-    <div class="atq-filtres">
-      <select data-atqfiltre="type" aria-label="${t('type')}">
+    <div class="puces atq-puces">
+      <select class="puce-select ${f.type ? 'actif' : ''}" data-atqfiltre="type" aria-label="${t('type')}">
         ${option('', t('type'), f.type)}
         ${typesDeGen(f.gen).map((ty) => option(ty, esc(TYPES[ty]?.[0] || ty), f.type)).join('')}
       </select>
-      <select data-atqfiltre="cat" aria-label="${t('categorie')}">
+      <select class="puce-select ${f.cat ? 'actif' : ''}" data-atqfiltre="cat" aria-label="${t('categorie')}">
         ${option('', t('categorie'), f.cat)}
         ${Object.entries(CLASSES).map(([k, [n]]) => option(k, esc(n), f.cat)).join('')}
       </select>
-      <select data-atqfiltre="tri" aria-label="${t('trierNom')}">
+      <select class="puce-select ${f.tri && f.tri !== 'nom' ? 'actif' : ''}" data-atqfiltre="tri" aria-label="${t('trierNom')}">
         ${option('nom', t('trierNom'), f.tri)}
         ${option('puissance', t('puissance'), f.tri)}
         ${option('precision', t('precision'), f.tri)}
@@ -5684,7 +5809,9 @@ function htmlInfoAttaque() {
   const gen = filtreAttaques.gen ?? genDuJeu();
   const v = attaqueEnGen(id, gen);
   if (!v) return `<p class="none">${t('attaqueInconnue')}</p>`;
-  const retour = `<button class="atq-retour" data-act="atq-retour">${t('toutesLesAttaques')}</button>`;
+  // Dans la page, le retour à la liste est la flèche de l'en-tête ; le titre y est aussi.
+  const enPage = state.vue === 'attaques';
+  const retour = enPage ? '' : `<button class="atq-retour" data-act="atq-retour">${t('toutesLesAttaques')}</button>`;
   if (!LEARN_VG) return `${retour}<p class="paper-note">${t('chargementAttaques')}</p>`;
   const { index, jeux } = indexAttaques(gen);
   const parCle = index.get(id) || new Map();
@@ -5730,7 +5857,7 @@ function htmlInfoAttaque() {
   return `
     ${retour}
     ${ongletsGenAttaques(gen)}
-    <h2 class="bs-title atq-titre">${esc(v.n)}</h2>
+    ${enPage ? '' : `<h2 class="bs-title atq-titre">${esc(v.n)}</h2>`}
     <div class="atq-types-ligne">
       <span class="type" style="--t:${tc}">${tn}</span>
       <span class="mcls" style="--c:${cc}">${cn}</span>
@@ -6067,6 +6194,7 @@ function fermeLesPanneaux() {
   fermeComptePanneau();
   fermeLegal();
   fermePlus();
+  fermeCarte();
 }
 
 app.addEventListener('click', (e) => {
@@ -6139,28 +6267,33 @@ const SCEAU = (() => {
   }
   return `polygon(${pts.join(', ')})`;
 })();
+// Le sceau posé au bout d'une ligne d'avancement complète — région du Pokédex comme
+// extension de cartes.
+const sceauHtml = () => `<span class="avance-sceau" style="clip-path:${SCEAU}" aria-hidden="true"><svg
+  viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9"/></svg></span>`;
 
+// Une ligne d'avancement, le même composant que la liste des extensions de cartes :
+// les starters en guise de logo, le nom, le compteur, la barre et le sceau.
+const startersDex = (n, sh = shinyView()) => STARTERS_DEX[n].map((id) =>
+  `<img src="${sprites.art(id, sh)}" alt="" loading="lazy" ${imgFallback(id, sh)} />`).join('');
 function carteDex(n) {
   const g = plageDex(n);
   const { pris, total } = progresDex(n);
   const fini = pris === total;
-  const sh = shinyView();
   return `
-    <button class="dexc" data-dexgen="${n}"
+    <button class="avance ${fini ? 'complet' : ''}" data-dexgen="${n}"
             aria-label="${esc(t('boitesSous', g.name, pris, total))}${fini ? ', ' + t('dexComplet') : ''}">
-      <span class="dexc-txt">
-        <span class="dexc-haut">
-          <span class="dexc-nom">${esc(g.name)}</span>
-          <span class="dexc-cpt"><b>${pris}</b>/${total.toLocaleString(langue())}</span>
+      <span class="avance-art starters" aria-hidden="true">${startersDex(n)}</span>
+      <span class="avance-txt">
+        <span class="avance-haut">
+          <b class="avance-nom">${esc(g.name)}</b>
+          <span class="avance-cpt"><b>${pris}</b>/${total.toLocaleString(langue())}</span>
         </span>
-        <span class="dexc-bas">
-          <span class="dexc-bar"><i style="width:${(100 * pris) / total}%"></i></span>
-          ${fini ? `<span class="dexc-ok" style="clip-path:${SCEAU}" aria-hidden="true"><svg
-            viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9"/></svg></span>` : ''}
+        <span class="avance-bas">
+          <span class="avance-barre"><i style="width:${(100 * pris) / total}%"></i></span>
+          ${fini ? sceauHtml() : ''}
         </span>
       </span>
-      <span class="dexc-img" aria-hidden="true">${STARTERS_DEX[n].map((id) =>
-        `<img src="${sprites.art(id, sh)}" alt="" loading="lazy" ${imgFallback(id, sh)} />`).join('')}</span>
     </button>`;
 }
 
@@ -6172,18 +6305,24 @@ function renderMenuDex() {
   const ids = especesDex();
   const tout = progresDex(0);
   poser(
-    entete(t('pokedex'), t('pokedexSous', tout.pris, tout.total)),
+    tete(t('pokedex'), boutonChromatique()),
     h(`
-    <section class="dexm">
-      <input class="dexm-rech" type="search" data-dexq placeholder="${t('chercherPokemon')}"
-             value="${esc(state.dexQ)}" aria-label="${t('chercherPokemon')}"
-             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+    <section class="dexm" aria-label="${esc(t('pokedexSous', tout.pris, tout.total))}">
+      ${champDex(t('chercherPokemon'))}
       <p class="dex-res" ${q ? '' : 'hidden'}>${q ? texteRes(ids.length) : ''}</p>
       <div class="dex-grid ${state.dexListe ? 'liste' : ''}" ${q ? '' : 'hidden'}>${ids.map(caseDex).join('')}</div>
-      <div class="dex-cartes" ${q ? 'hidden' : ''}>${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(carteDex).join('')}</div>
+      <div class="dex-cartes avances" ${q ? 'hidden' : ''}>${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(carteDex).join('')}</div>
     </section>`)
   );
 }
+
+// Le champ de recherche commun aux deux univers.
+const champDex = (place) => `
+  <label class="champ">
+    ${ICO_NAV.chercher}
+    <input type="search" data-dexq placeholder="${esc(place)}" value="${esc(state.dexQ)}" aria-label="${t('chercherPokemon')}"
+           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" />
+  </label>`;
 
 const caseDex = (id) => {
   const p = pokedex[id] || {};
@@ -6264,16 +6403,16 @@ const STAT_CLES = ['pv', 'att', 'def', 'atts', 'defs', 'vit'];
 function htmlSelectsDex() {
   const option = (v, lib, courant) => `<option value="${v}" ${v === courant ? 'selected' : ''}>${esc(lib)}</option>`;
   return `
-    <div class="atq-filtres dex-selects avec-vues">
+    <div class="puces dex-selects">
       <div class="dex-vues" role="group" aria-label="${t('dexAffichage')}">
         <button data-dexvue="grille" class="${state.dexListe ? '' : 'on'}" aria-pressed="${!state.dexListe}" aria-label="${t('dexVueGrille')}">${ICO.grille}</button>
         <button data-dexvue="liste" class="${state.dexListe ? 'on' : ''}" aria-pressed="${state.dexListe}" aria-label="${t('dexVueListe')}">${ICO.liste}</button>
       </div>
-      <select data-dexsel="type" aria-label="${t('type')}">
+      <select class="puce-select ${state.dexType ? 'actif' : ''}" data-dexsel="type" aria-label="${t('type')}">
         ${option('', t('tousLesTypes'), state.dexType)}
         ${typechart.types.map((ty) => option(ty, TYPES[ty]?.[0] || ty, state.dexType)).join('')}
       </select>
-      <select data-dexsel="tri" aria-label="${t('trierNumero')}">
+      <select class="puce-select ${state.dexTri !== 'num' ? 'actif' : ''}" data-dexsel="tri" aria-label="${t('trierNumero')}">
         ${option('num', t('trierNumero'), state.dexTri)}
         ${option('nom', t('trierNom'), state.dexTri)}
         ${option('total', t('trierTotal'), state.dexTri)}
@@ -6359,25 +6498,24 @@ function renderPokedex() {
   const ids = especesDex();
   const cases = ids.map(caseDex).join('');
 
+  const pc = total ? (100 * pris) / total : 0;
   poser(
+    // La flèche de l'en-tête ramène au menu des Pokédex (retourEnArriere).
+    tete(g.name, boutonChromatique()),
     h(`
       <section class="dex">
-        <div class="dex-head">
-          <button class="dex-retour" data-dex-retour aria-label="${t('retourMenuDex')}">${ICO.gauche}</button>
-          <div class="dex-titre">
-            <b>${esc(g.name)}</b>
-            <small>${t('numero', g.from)} – ${g.to}</small>
-          </div>
-          <div class="dex-compte"><b>${pris}</b>/${total}</div>
+        <!-- Le bandeau d'avancement : celui d'une extension de cartes, à l'identique. -->
+        <div class="bandeau">
+          <span class="bandeau-art starters" aria-hidden="true">${startersDex(n)}</span>
+          <span class="bandeau-chiffres">
+            <span class="bandeau-compte"><b>${pris}</b> / ${total}<small> · ${Math.round(pc)} %</small></span>
+            <span class="bandeau-note">${t('numero', g.from)} – ${g.to}</span>
+          </span>
+          <span class="bandeau-barre"><i style="width:${pc}%"></i></span>
+          <p class="bandeau-note">${n ? t('surTotal', prisTout) : t('toutesGenerations')}${shinyView() ? ' · ' + t('pokedexChromatique') : ''}</p>
         </div>
-        <div class="bar dex-bar"><span style="width:${total ? (100 * pris) / total : 0}%"></span></div>
-        <p class="dex-tout">${n ? t('surTotal', prisTout) : t('toutesGenerations')}${shinyView() ? ' · ' + t('pokedexChromatique') : ''}</p>
 
-        <div class="dex-rech">
-          <input type="search" data-dexq placeholder="${t('chercherNomNumero')}"
-                 value="${esc(state.dexQ)}" aria-label="${t('chercherPokemon')}"
-                 autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-        </div>
+        ${champDex(t('chercherNomNumero'))}
         ${htmlSelectsDex()}
         ${htmlFiltreDex()}
         <p class="dex-res" ${state.dexQ.trim() ? '' : 'hidden'}>${state.dexQ.trim() ? texteRes(ids.length) : ''}</p>

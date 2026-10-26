@@ -359,7 +359,7 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
 
   function htmlPanneauFusion() {
     const { infos } = ui.fusion ?? { infos: { local: {}, serveur: {} } };
-    const resume = (c) => t('syncResume', c.captures ?? 0, c.equipes ?? 0);
+    const resume = (c) => t('syncResume', c.captures ?? 0, c.equipes ?? 0, c.cartes ?? 0);
     return `
       <h2 class="bs-title">${t('syncTitre')}</h2>
       <p class="reg-aide">${esc(t('syncTexte', dateCourte(infos.quand), infos.appareil || ''))}</p>

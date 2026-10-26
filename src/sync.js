@@ -167,7 +167,9 @@ async function prend(donnees) {
 
 const rempli = (d) => !!(d?.caught?.length || d?.caughtShiny?.length
   || Object.keys(d?.boxes ?? {}).length || Object.keys(d?.order ?? {}).length
-  || Object.values(d?.equipes ?? {}).some((e) => e?.some?.(Boolean)));
+  || Object.values(d?.equipes ?? {}).some((e) => e?.some?.(Boolean))
+  // Depuis la fusion avec Cartodex, une collection de cartes seule est une collection.
+  || Object.values(d?.cartes ?? {}).some((c) => c?.ex?.length || c?.fav));
 
 // De quoi présenter un choix compréhensible : « 342 capturés, 2 équipes » parle,
 // « modifié le 12/03 » tout seul ne dit pas ce qu'on risque de perdre.
@@ -175,6 +177,7 @@ function compte(d) {
   return {
     captures: (d?.caught?.length ?? 0) + (d?.caughtShiny?.length ?? 0),
     equipes: Object.values(d?.equipes ?? {}).filter((e) => e?.some?.(Boolean)).length,
+    cartes: Object.values(d?.cartes ?? {}).filter((c) => c?.ex?.length).length,
   };
 }
 

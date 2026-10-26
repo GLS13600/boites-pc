@@ -51,7 +51,6 @@ img { display: block; }
 .box-arrow .ico, .dot-btn .ico { width: 18px; height: 18px; }
 /* Les boutons qui n'ont qu'une icône la centrent. */
 .box-arrow, .dot-btn, .dex-retour, .eq-io button { display: grid; place-items: center; }
-.retour button { display: inline-flex; align-items: center; gap: 2px; }
 
 /* ---------- Grand titre : l'en-tête des vues Boîtes et Pokédex ----------
    Il ne colle pas en haut : il défile et se réduit, puis la barre des onglets — elle,
@@ -769,29 +768,13 @@ img { display: block; }
   .reg-rail::before { transition: none; }
 }
 
-/* ---------- Barre de retour : présente dans toutes les vues sauf l'accueil ---------- */
-
-.retour {
-  position: relative;
-  z-index: 12;
-  flex: 0 0 auto;
-  padding: calc(6px + var(--safe-top)) 8px 4px;
-  background: var(--paper);
-}
-.retour button {
-  padding: 6px 12px 6px 8px;
-  border-radius: 999px;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--muted);
-}
-.retour button:active { background: var(--rule-soft); color: var(--ink); }
-/* Les vues qui portent déjà leur propre marge haute n'ont plus à réserver la zone
-   sûre : c'est la barre de retour qui la porte désormais. */
-.retour ~ .vue .gens,
-.retour ~ .vue .dex,
-.retour ~ .vue .dexm,
-.retour ~ .vue .combat { padding-top: 0; margin-top: 8px; }
+/* Les vues qui portaient leur propre marge haute n'ont plus à réserver la zone sûre :
+   c'est l'en-tête des sous-pages (.tete) qui la porte, comme la barre de retour qu'il
+   a remplacée. */
+.tete ~ .vue .gens,
+.tete ~ .vue .dex,
+.tete ~ .vue .dexm,
+.tete ~ .vue .combat { padding-top: 0; margin-top: 4px; }
 
 /* Le corps ne défile plus : c'est .vue qui s'en charge, et la barre est dans le flux. */
 
@@ -1578,94 +1561,12 @@ img { display: block; }
   background: var(--paper);
   color: var(--ink);
 }
-/* Même champ que celui de la grille : pilule blanche, filet beige. */
-.dexm-rech {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  margin: 0 0 10px;
-  padding: 9px 14px;
-  border: 1px solid var(--rule);
-  border-radius: 999px;
-  background: var(--panel);
-  color: var(--ink);
-  font: inherit;
-  font-size: 16px; /* en dessous, iOS zoome tout seul à la saisie */
-  -webkit-appearance: none;
-  appearance: none;
-}
 .dexm .dex-res { color: var(--muted); }
 .dex-cartes { display: grid; gap: 8px; }
 /* `hidden` ne l'emporte pas sur un `display: grid` : on le rend explicite. */
 .dex-grid[hidden], .dex-cartes[hidden] { display: none; }
-/* Cartes compactes, 68 px de haut contre 90 dans la première version. */
-.dexc {
-  position: relative;
-  display: flex;
-  width: 100%;
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid var(--rule);
-  border-radius: 16px;
-  background: var(--panel);
-  color: var(--ink);
-  text-align: left;
-  font: inherit;
-}
-.dexc:active { background: var(--slot); }
-.dexc-txt {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 0 11px 14px;
-}
-.dexc-haut { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.dexc-nom { font-size: 19px; font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
-.dexc-cpt { font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.dexc-cpt b { font-size: 14px; font-weight: 700; color: var(--ink); }
-.dexc-bas { display: flex; align-items: center; gap: 6px; height: 16px; }
-/* Même barre que celle de la grille du Pokédex. */
-.dexc-bar { flex: 1 1 auto; height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; }
-.dexc-bar i { display: block; height: 100%; border-radius: 3px; background: var(--ball); }
-.dexc-ok {
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  width: 16px;
-  height: 16px;
-  background: var(--ball);
-}
-.dexc-ok svg { width: 11px; height: 11px; fill: none; stroke: #fff; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
-.dexc-img {
-  flex: 0 0 38%;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding-right: 4px;
-}
-/* Les starters mordent sur le bas de la carte, rognés par son `overflow`. */
-.dexc-img img { width: 46px; height: 46px; object-fit: contain; margin-left: -12px; transform: translateY(5px); }
-.dexc-img img:first-child { margin-left: 0; }
-
 .dex-tout { margin: 6px 0 12px; font-size: 11.5px; color: var(--muted); }
 
-/* Recherche du Pokédex. `font-size: 16px` est OBLIGATOIRE : en dessous, iOS zoome
-   tout seul à la saisie et ne revient pas en arrière — même piège que `.bs-name`. */
-.dex-rech { margin: 0 0 10px; }
-.dex-rech input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 9px 14px;
-  border: 1px solid var(--rule);
-  border-radius: 999px;
-  background: var(--panel);
-  color: var(--ink);
-  font: inherit;
-  font-size: 16px;
-}
 .dex-res { margin: -4px 0 10px; font-size: 11.5px; color: var(--muted); }
 
 /* Filtre Tous / Manquants / Capturés : le rail des Réglages, curseur glissant compris,
@@ -1892,7 +1793,10 @@ img { display: block; }
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--d-moyen) ease;
-  z-index: 10;
+  /* Au-dessus de la barre du bas (15) : un panneau la recouvre, comme les feuilles
+     d'iOS recouvrent la barre d'onglets. Seule la bannière de pub, native, flotte
+     encore au-dessus — d'où la réserve --nav-h au bas des panneaux. */
+  z-index: 20;
 }
 .backdrop.open { opacity: 1; pointer-events: auto; }
 
@@ -1909,7 +1813,7 @@ img { display: block; }
   transform: translateY(100%);
   /* Ressort léger à l'ouverture, comme les feuilles d'iOS. */
   transition: transform var(--d-long) var(--c-ressort);
-  z-index: 11;
+  z-index: 21;
   display: flex;
   flex-direction: column;
   padding-bottom: var(--safe-bottom);
@@ -3662,3 +3566,674 @@ img {
   .barre-btn, .acc-carte { transition: none; }
 }
 
+/* =====================================================================
+   Langage commun des deux univers (26/10/2026)
+   D'après les vues « cartes » de Cartodex — demandé : « base-toi sur le design des
+   vues cartes pour l'appliquer au système pour les jeux ». Les mêmes composants servent
+   les vues Jeux et les vues Cartes, sans variante d'un univers à l'autre :
+   - .tete     en-tête des sous-pages : ← retour, titre, actions en icônes ;
+   - .pilule   grand sélecteur (série d'extensions, version du jeu) ;
+   - .bandeau  bandeau d'avancement (région du Pokédex, extension, collection) ;
+   - .avance   ligne d'avancement (régions du Pokédex, extensions d'une série) ;
+   - .puces    rangée de puces et de listes déroulantes (filtres, tris) ;
+   - .champ    champ de recherche ;
+   et un signal : la Poké Ball dessinée (.marque) veut dire « à moi », pour un Pokémon
+   comme pour une carte.
+   ===================================================================== */
+
+/* ---- En-tête des sous-pages ----
+   Hors de la zone qui défile (poser() le place avant .vue) : il ne bouge pas, et un
+   filet apparaît dessous dès que le contenu passe sous lui. */
+.tete {
+  position: relative;
+  z-index: 12;
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--e-1);
+  min-height: calc(52px + var(--safe-top));
+  padding: calc(4px + var(--safe-top)) var(--e-4) 4px var(--e-1);
+  background: var(--paper);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--d-moyen) ease;
+}
+.tete.defile { border-bottom-color: var(--rule); }
+.tete-retour { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--ink); }
+.tete-retour .ico { width: 24px; height: 24px; stroke-width: 2.1; }
+.tete-retour:active { background: var(--rule-soft); }
+.tete-titre {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tete-actions { display: flex; align-items: center; gap: var(--e-2); }
+.tete-actions:empty { display: none; }
+.tete-btn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-sm);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  box-shadow: var(--ombre-1);
+  transition: transform var(--d-court) var(--c-ressort), background var(--d-court) ease,
+              color var(--d-court) ease, border-color var(--d-court) ease;
+}
+.tete-btn .ico { width: 20px; height: 20px; }
+.tete-btn b { font-size: 17px; line-height: 1; }
+.tete-btn:active { transform: scale(0.92); }
+.tete-btn.on { background: var(--caught-tint); border-color: var(--caught-edge); color: var(--ball); }
+/* Le chromatique garde son or, comme partout dans l'appli. */
+.tete-btn.or { color: var(--muted); }
+.tete-btn.or.on { background: color-mix(in srgb, var(--shiny) 14%, var(--panel)); border-color: var(--shiny); color: var(--shiny); }
+
+/* ---- Grand sélecteur en pilule ----
+   Le menu déroulant des séries de Cartodex : on voit d'un coup ce qui est choisi, et
+   qu'on peut en changer. */
+.pilule {
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  width: 100%;
+  min-height: 60px;
+  padding: var(--e-2) var(--e-4);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  box-shadow: var(--ombre-1);
+  color: var(--ink);
+  text-align: left;
+  transition: transform var(--d-court) var(--c-ressort);
+}
+.pilule:active { transform: scale(0.985); }
+.pilule-img { flex: 0 0 auto; width: auto; height: 32px; max-width: 92px; object-fit: contain; }
+.pilule-txt { flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; }
+.pilule-txt small { font-size: var(--t-mini); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.pilule-txt b { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pilule-cpt { flex: 0 0 auto; font-size: var(--t-petit); color: var(--muted); font-variant-numeric: tabular-nums; }
+.pilule-cpt b { font-size: 20px; font-weight: 800; color: var(--ink); }
+.pilule > .ico { flex: 0 0 auto; color: var(--muted); transition: transform var(--d-moyen) var(--c-entree); }
+.pilule.ouverte > .ico { transform: rotate(180deg); }
+.combat-head .pilule { flex: 1 1 auto; }
+.types-page .pilule { margin-bottom: var(--e-3); }
+
+/* ---- Bandeau d'avancement ----
+   L'en-tête d'une extension dans Cartodex : l'image à gauche (logo, starters, éventail
+   de cartes), les chiffres à droite, la barre dessous. */
+.bandeau {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--e-2) var(--e-4);
+  padding: var(--e-4);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  border: 1px solid var(--rule-soft);
+  box-shadow: var(--ombre-1);
+}
+/* Le bleu nuit de Cartodex, en sombre : pilule et bandeau en sont les surfaces. */
+:root[data-theme="sombre"] .pilule,
+:root[data-theme="sombre"] .bandeau {
+  background: radial-gradient(420px 140px at 16% -40%, rgb(56 130 246 / 16%), transparent 70%),
+              linear-gradient(160deg, #17223b, #0f1828);
+  border-color: rgb(120 150 220 / 22%);
+}
+.bandeau-art { display: flex; align-items: flex-end; min-width: 0; height: 56px; }
+.bandeau-art img { max-width: 136px; max-height: 56px; object-fit: contain; filter: drop-shadow(0 2px 5px rgb(0 0 0 / 22%)); }
+.bandeau-art img.symbole { max-height: 40px; }
+.bandeau-art.starters img { width: 52px; height: 52px; margin-left: -14px; filter: none; }
+.bandeau-art.starters img:first-child { margin-left: 0; }
+.bandeau-art.eventail { position: relative; width: 96px; }
+.bandeau-art.eventail img {
+  position: absolute; bottom: 0; width: 40px; height: auto; aspect-ratio: 5 / 7; object-fit: cover;
+  border-radius: 4px; box-shadow: var(--ombre-2); transform-origin: 50% 100%;
+}
+.bandeau-art.eventail img:nth-child(1) { left: 0; transform: rotate(-12deg); }
+.bandeau-art.eventail img:nth-child(2) { left: 27px; z-index: 1; }
+.bandeau-art.eventail img:nth-child(3) { left: 54px; transform: rotate(12deg); }
+.bandeau-chiffres { display: grid; justify-items: end; gap: 5px; min-width: 0; text-align: right; }
+.bandeau-chiffres.gauche { justify-items: start; text-align: left; }
+.bandeau-chiffres small { font-size: var(--t-mini); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+/* La valeur : une pastille dorée, la couleur de ce qui est rare dans l'appli. Le texte
+   est l'or assombri d'encre, pour tenir le contraste sur sa teinte claire. */
+.bandeau-valeur {
+  padding: 3px 12px;
+  border-radius: var(--r-rond);
+  background: color-mix(in srgb, var(--shiny) 15%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--shiny) 45%, transparent);
+  color: color-mix(in srgb, var(--shiny) 68%, var(--ink));
+  font-size: var(--t-petit);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+:root[data-theme="sombre"] .bandeau-valeur { color: var(--shiny); }
+.bandeau-compte { font-size: var(--t-corps); color: var(--muted); font-variant-numeric: tabular-nums; }
+.bandeau-compte b { font-size: 22px; font-weight: 800; color: var(--ink); }
+.bandeau-compte small { font-size: var(--t-petit); font-weight: 700; letter-spacing: 0; text-transform: none; }
+.bandeau-barre { grid-column: 1 / -1; height: 8px; border-radius: var(--r-rond); background: var(--rule-soft); overflow: hidden; }
+.bandeau-barre i { display: block; height: 100%; border-radius: inherit; background: var(--ball); transition: width 450ms var(--c-entree); }
+.bandeau-note { grid-column: 1 / -1; margin: 0; font-size: var(--t-mini); font-weight: 600; color: var(--muted); }
+.bandeau-chiffres .bandeau-note { grid-column: auto; }
+.dex .bandeau { margin-bottom: var(--e-3); }
+
+/* ---- Lignes d'avancement ----
+   Une région du Pokédex et une extension de cartes s'y lisent de la même façon : une
+   image, un nom, un compteur, une barre, et le sceau quand c'est complet. */
+.avances { display: grid; gap: var(--e-2); }
+.avance {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  width: 100%;
+  min-height: 68px;
+  padding: var(--e-2) var(--e-4) var(--e-2) var(--e-3);
+  overflow: hidden;
+  border-radius: var(--r-md);
+  background: var(--panel);
+  border: 1px solid var(--rule-soft);
+  box-shadow: var(--ombre-1);
+  color: var(--ink);
+  text-align: left;
+  transition: transform var(--d-court) var(--c-ressort), background var(--d-court) ease;
+}
+.avance:active { transform: scale(0.985); background: var(--panel-2); }
+.avance.complet { border-color: var(--caught-edge); }
+.avance-art { flex: 0 0 84px; display: flex; align-items: center; justify-content: center; height: 48px; }
+.avance-art img { max-width: 84px; max-height: 44px; object-fit: contain; }
+.avance-art img.symbole { max-height: 30px; }
+/* Les starters mordent sur le bas de la ligne, rognés par son `overflow`. */
+.avance-art.starters { flex-basis: 100px; justify-content: flex-start; align-self: flex-end; height: 50px; margin-bottom: -12px; }
+.avance-art.starters img { width: 44px; height: 44px; margin-left: -16px; }
+.avance-art.starters img:first-child { margin-left: 0; }
+.avance-sigle { font-size: var(--t-mini); font-weight: 800; letter-spacing: 0.04em; color: var(--muted); }
+.avance-txt { flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.avance-haut { display: flex; align-items: baseline; justify-content: space-between; gap: var(--e-2); min-width: 0; }
+.avance-nom { min-width: 0; font-size: 17px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.avance-cpt { flex: 0 0 auto; font-size: var(--t-mini); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.avance-cpt b { font-size: 14px; font-weight: 800; color: var(--ink); }
+.avance-bas { display: flex; align-items: center; gap: 6px; height: 16px; }
+.avance-barre { flex: 1 1 auto; height: 6px; border-radius: var(--r-rond); background: var(--rule-soft); overflow: hidden; }
+.avance-barre i { display: block; height: 100%; border-radius: inherit; background: var(--ball); }
+.avance-sceau { flex: 0 0 auto; display: grid; place-items: center; width: 16px; height: 16px; background: var(--ball); }
+.avance-sceau svg { width: 11px; height: 11px; fill: none; stroke: #fff; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---- Puces : filtres et tris, en une rangée qui défile de côté ---- */
+.puces {
+  display: flex;
+  gap: var(--e-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 calc(-1 * var(--e-4));
+  padding: 2px var(--e-4) 4px;
+}
+.puces::-webkit-scrollbar { display: none; }
+.dex .puces, .atq-page .puces { margin-bottom: var(--e-2); }
+.puce,
+.puce-select {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 var(--e-4);
+  border-radius: var(--r-sm);
+  background-color: var(--panel);
+  border: 1px solid var(--rule);
+  box-shadow: var(--ombre-1);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: transform var(--d-court) var(--c-ressort), background-color var(--d-court) ease,
+              border-color var(--d-court) ease, color var(--d-court) ease;
+}
+.puce .ico { width: 18px; height: 18px; }
+.puce:active { transform: scale(0.95); }
+.puce.on { background-color: var(--caught-tint); border-color: var(--caught-edge); color: var(--ball); }
+.puce:disabled { opacity: 0.5; }
+.puce.large { width: 100%; height: 46px; justify-content: center; }
+/* Une liste déroulante habillée en puce : apparence native retirée, chevron dessiné.
+   16 px : en dessous, iOS zoome tout seul à l'ouverture. */
+.puce-select {
+  -webkit-appearance: none;
+  appearance: none;
+  max-width: 64vw;
+  padding-right: 32px;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c8592' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 13px;
+}
+/* Deux ou trois listes se partagent la largeur plutôt que de déborder : elles
+   rétrécissent, et la rangée ne défile que s'il en faut vraiment davantage. */
+.puces > .puce-select { flex: 1 1 auto; min-width: 0; }
+/* Un filtre qui s'écarte de son défaut se voit : le rouge de l'appli. */
+.puce-select.actif { border-color: var(--ball); color: var(--ball); }
+/* La bascule grille / liste du Pokédex, en puce double. */
+.puces .dex-vues { flex: 0 0 auto; height: 40px; box-shadow: var(--ombre-1); }
+.puces .dex-vues button { min-height: 38px; }
+/* Les listes des panneaux (réglages de la cible des dégâts) prennent le même habit. */
+.atq-filtres select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 28px;
+  font-weight: 700;
+  box-shadow: var(--ombre-1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c8592' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 12px;
+}
+
+/* ---- Champ de recherche ---- */
+.champ { position: relative; display: block; }
+.champ .ico { position: absolute; left: 13px; top: 50%; width: 19px; height: 19px; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.champ input {
+  display: block;
+  width: 100%;
+  height: 46px;
+  margin: 0;
+  padding: 0 14px 0 40px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--rule);
+  background: var(--panel);
+  box-shadow: var(--ombre-1);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px; /* en dessous, iOS zoome tout seul à la saisie */
+  -webkit-appearance: none;
+  appearance: none;
+}
+.champ input::placeholder { color: var(--muted); }
+.champ input:focus { outline: none; border-color: var(--ball); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ball) 18%, transparent); }
+.dexm .champ, .dex .champ { margin-bottom: var(--e-3); }
+.atq-page .champ { margin-bottom: var(--e-2); }
+
+/* ---- La Poké Ball dessinée : « à moi » ----
+   Celle des cases de boîte, reprise partout où l'on possède : Pokédex, cartes. */
+.marque {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: linear-gradient(to bottom, var(--ball) 47%, #1e2227 47% 53%, #fff 53%);
+  box-shadow: 0 0 0 1.2px #1e2227;
+}
+.dx-ok {
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(to bottom, var(--ball) 47%, var(--ink) 47% 53%, var(--panel) 53%);
+  box-shadow: 0 0 0 1.2px var(--ink);
+}
+/* Le Pokédex prend la tuile des cartes : même rayon, même ombre. */
+.dx { border-radius: var(--r-sm); box-shadow: var(--ombre-1); transition: transform var(--d-court) var(--c-ressort); }
+.dx:active { transform: scale(0.95); }
+.dex-grid { gap: var(--e-2); }
+
+/* =====================================================================
+   Les vues Cartes
+   ===================================================================== */
+.cx-page { display: grid; gap: var(--e-3); padding: var(--e-2) var(--e-4) var(--e-6); }
+/* `hidden` ne l'emporte pas sur un `display: grid` : on le rend explicite. */
+.cx-page [hidden] { display: none !important; }
+.cx-parcours, .cx-resultats { display: grid; gap: var(--e-3); }
+.cx-page .dex-res { margin: 0; }
+.cx-note { margin: 0; font-size: var(--t-mini); line-height: 1.45; color: var(--muted); }
+.cx-titre { margin: var(--e-2) 0 0; font-size: var(--t-petit); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+
+/* ---- Les séries, dépliées sous la pilule ---- */
+.cx-series {
+  display: grid;
+  gap: 2px;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding: var(--e-1);
+  border-radius: var(--r-md);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  box-shadow: var(--ombre-2);
+  animation: cx-deplie var(--d-moyen) var(--c-entree);
+}
+@keyframes cx-deplie { from { opacity: 0; transform: translateY(-4px); } }
+.cx-serie {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--e-3);
+  min-height: 48px;
+  padding: var(--e-1) var(--e-3);
+  border-radius: var(--r-sm);
+  text-align: left;
+  color: var(--ink);
+}
+.cx-serie:active { background: var(--panel-2); }
+.cx-serie.on { background: var(--caught-tint); color: var(--ball); }
+.cx-serie-logo { display: flex; align-items: center; justify-content: center; height: 34px; }
+.cx-serie-logo img { max-width: 72px; max-height: 32px; object-fit: contain; }
+.cx-serie b { font-size: var(--t-corps); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.groupe-cpt {
+  flex: 0 0 auto;
+  padding: 2px 9px;
+  border-radius: var(--r-rond);
+  background: var(--caught-tint);
+  border: 1px solid var(--caught-edge);
+  color: var(--ball);
+  font-size: var(--t-mini);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.groupe-tete { display: flex; align-items: center; gap: var(--e-3); margin-top: var(--e-2); }
+.groupe-nom { flex: 1 1 auto; min-width: 0; font-size: 17px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- La grille des cartes ----
+   Trois par ligne, comme la grille du Pokédex. Possédée en couleur, manquante en gris :
+   le signal du Living Dex, tel quel. Le prix dans une bulle blanche, la possession dans
+   une pastille à Poké Ball — les bulles de Cartodex. */
+.cx-grille { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--e-3) var(--e-2); }
+.cx-v {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  text-align: left;
+  color: var(--ink);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 190px;
+  transition: transform var(--d-court) var(--c-ressort);
+}
+.cx-v:active { transform: scale(0.95); }
+.cx-v-img {
+  position: relative;
+  display: block;
+  aspect-ratio: 5 / 7;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--slot);
+  box-shadow: var(--ombre-2);
+  transition: box-shadow var(--d-court) ease;
+}
+.cx-v-img img { width: 100%; height: 100%; object-fit: cover; transition: filter var(--d-moyen) ease, opacity var(--d-moyen) ease; }
+.cx-v.manque .cx-v-img img { filter: grayscale(1); opacity: 0.55; }
+.cx-v-prix,
+.cx-v-pos {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: var(--r-rond);
+  background: rgb(255 255 255 / 94%);
+  color: #10141c;
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 30%);
+}
+.cx-v-prix { left: 4px; bottom: 4px; padding: 2px 7px; }
+.cx-v-pos { right: 4px; top: 4px; padding: 3px; }
+.cx-v-pos:has(span) { padding-right: 6px; }
+.cx-v-pos .marque { width: 11px; height: 11px; }
+.cx-v-var {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgb(16 20 28 / 80%);
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.cx-v-var.v-normal { background: rgb(5 150 105 / 92%); }
+.cx-v-var.v-reverse { background: rgb(37 99 235 / 92%); }
+.cx-v-var.v-holo { background: rgb(124 58 237 / 92%); }
+.cx-v-var.v-premiere { background: rgb(180 83 9 / 92%); }
+.cx-v-var.v-reverse_pokeball { background: rgb(220 38 38 / 92%); }
+.cx-v-var.v-reverse_masterball { background: rgb(109 40 217 / 92%); }
+.cx-v-legende { display: flex; justify-content: space-between; gap: 4px; min-width: 0; font-size: 11px; line-height: 1.2; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cx-v-nom { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 700; }
+.cx-v-num { flex: 0 0 auto; }
+/* Sélection multiple : un rond à cocher sur chaque carte, rouge une fois choisie. */
+.cx-v-coche {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: rgb(0 0 0 / 28%);
+  color: #fff;
+  transform: translate(-50%, -50%);
+  transition: background var(--d-court) ease, transform var(--d-court) var(--c-ressort);
+}
+.cx-v-coche .ico { width: 20px; height: 20px; stroke-width: 2.6; opacity: 0; }
+.cx-v.choisie .cx-v-coche { background: var(--ball); border-color: var(--ball); transform: translate(-50%, -50%) scale(1.08); }
+.cx-v.choisie .cx-v-coche .ico { opacity: 1; }
+.cx-v.choisie .cx-v-img { box-shadow: 0 0 0 3px var(--ball), var(--ombre-2); }
+
+/* Squelettes : la forme de ce qui arrive, qui respire. */
+.cx-v.squelette .cx-v-img,
+.cx-v.squelette .cx-v-legende i,
+.avance.squelette .avance-art,
+.avance.squelette .avance-txt i { background: var(--rule-soft); animation: cx-respire 1.2s ease-in-out infinite alternate; }
+.cx-v.squelette .cx-v-legende i { display: block; width: 70%; height: 10px; border-radius: 5px; }
+.avance.squelette .avance-art { border-radius: var(--r-xs); }
+.avance.squelette .avance-txt i { display: block; height: 12px; border-radius: 6px; }
+.avance.squelette .avance-txt i:last-child { width: 60%; }
+@keyframes cx-respire { from { opacity: 0.5; } to { opacity: 1; } }
+
+/* États vides et erreurs. */
+.cx-vide {
+  display: grid;
+  justify-items: center;
+  gap: var(--e-3);
+  padding: var(--e-6) var(--e-4);
+  border: 1px dashed var(--rule);
+  border-radius: var(--r-lg);
+  text-align: center;
+  font-size: var(--t-petit);
+  color: var(--muted);
+}
+.cx-vide p { margin: 0; line-height: 1.45; }
+.cx-suggestion { justify-self: start; color: var(--ball); }
+
+/* La barre de la sélection multiple, collée au bas de la zone qui défile. */
+.lot {
+  position: sticky;
+  bottom: var(--e-3);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  padding: var(--e-2) var(--e-2) var(--e-2) var(--e-4);
+  border-radius: var(--r-lg);
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--ombre-3);
+}
+.lot b { flex: 1 1 auto; min-width: 0; font-size: var(--t-petit); }
+.lot button {
+  flex: 0 0 auto;
+  height: 38px;
+  padding: 0 var(--e-3);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--paper) 16%, transparent);
+  color: inherit;
+  font-size: var(--t-petit);
+  font-weight: 800;
+}
+.lot button.primaire { background: var(--ball); color: #fff; }
+.lot button:disabled { opacity: 0.45; }
+
+/* ---- La fiche d'une carte ---- */
+.cx-fiche-haut { position: relative; display: grid; justify-items: center; padding: var(--e-2) 0 var(--e-4); }
+.cx-fiche-img {
+  --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%;
+  position: relative;
+  width: min(62vw, 250px);
+  aspect-ratio: 5 / 7;
+  perspective: 900px;
+}
+.cx-fiche-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  box-shadow: 0 18px 38px rgb(0 0 0 / 32%), 0 2px 6px rgb(0 0 0 / 20%);
+  transform: rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 420ms var(--c-entree);
+}
+.cx-fiche-img.incline img { transition: transform 60ms linear; }
+.cx-reflet {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  pointer-events: none;
+  background: radial-gradient(circle at var(--mx) var(--my), rgb(255 255 255 / 40%), transparent 55%);
+  mix-blend-mode: soft-light;
+  opacity: 0;
+  transform: rotateX(var(--rx)) rotateY(var(--ry));
+  transition: opacity 300ms ease;
+}
+.cx-fiche-img.incline .cx-reflet { opacity: 1; }
+.cx-fav {
+  position: absolute;
+  top: var(--e-2);
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  color: var(--muted);
+  box-shadow: var(--ombre-1);
+}
+.cx-fav .ico { width: 21px; height: 21px; }
+.cx-fav.on { color: #e0306f; border-color: #f2a6c2; background: color-mix(in srgb, #e0306f 10%, var(--panel)); }
+.cx-fav.on .ico { fill: currentColor; }
+.cx-rar,
+.cx-pv {
+  padding: 5px 11px;
+  border-radius: var(--r-rond);
+  font-size: var(--t-petit);
+  font-weight: 800;
+  border: 1px solid var(--rule);
+  background: var(--panel-2);
+  color: var(--ink);
+}
+.cx-pv { color: var(--ball); background: var(--caught-tint); border-color: var(--caught-edge); }
+.cx-rar.r-peu_commune { color: #0f766e; border-color: #99d6cf; background: #e9f7f5; }
+.cx-rar.r-rare { color: #1d4ed8; border-color: #b4c8f7; background: #eef3ff; }
+.cx-rar.r-ultra_rare { color: #6d28d9; border-color: #cdb8f6; background: #f4efff; }
+.cx-rar.r-ar { color: #0e7490; border-color: #a5dbe6; background: #ecf8fb; }
+.cx-rar.r-alternative,
+.cx-rar.r-autre { color: #8a5a00; border-color: #e7c66d; background: linear-gradient(135deg, #fff6d6, #ffe6f0); }
+:root[data-theme="sombre"] .cx-rar:not(.r-commune) { background: var(--panel-2); color: var(--ink); }
+
+.cx-ex { display: grid; overflow: hidden; border-radius: var(--r-md); border: 1px solid var(--rule-soft); }
+.cx-ex-ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-3);
+  min-height: 52px;
+  padding: var(--e-2) var(--e-3);
+  background: var(--panel);
+}
+.cx-ex-ligne + .cx-ex-ligne { border-top: 1px solid var(--rule-soft); }
+.cx-ex-txt { display: grid; }
+.cx-ex-txt b { font-size: var(--t-corps); }
+.cx-ex-txt small { font-size: var(--t-petit); color: var(--muted); }
+.cx-pas { display: inline-flex; align-items: center; gap: var(--e-2); }
+.cx-pas button { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--panel-2); border: 1px solid var(--rule); color: var(--ink); }
+.cx-pas button:active { transform: scale(0.9); }
+.cx-pas .ico { width: 16px; height: 16px; stroke-width: 2.2; }
+.cx-pas b { min-width: 20px; text-align: center; font-variant-numeric: tabular-nums; }
+
+.cx-ajout { display: grid; gap: var(--e-3); margin-top: var(--e-3); padding: var(--e-3); border-radius: var(--r-md); background: var(--panel-2); border: 1px solid var(--rule-soft); }
+.cx-choix { display: grid; gap: 6px; }
+.cx-choix-lib { font-size: var(--t-mini); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.cx-choix-puces { display: flex; flex-wrap: wrap; gap: 6px; }
+.cx-choix .puce { height: 34px; padding: 0 var(--e-3); font-size: var(--t-petit); box-shadow: none; }
+.cx-ajout .catch-btn { display: flex; align-items: center; justify-content: center; gap: var(--e-2); margin: 0; }
+.cx-ajout .catch-btn .ico { width: 20px; height: 20px; stroke-width: 2.2; }
+
+.cx-prix {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--e-2);
+  padding: var(--e-3) var(--e-4);
+  border-radius: var(--r-md);
+  background: var(--panel-2);
+  border: 1px solid var(--rule-soft);
+}
+.cx-prix-ref small { display: block; font-size: var(--t-mini); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.cx-prix-ref b { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.cx-prix-grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px var(--e-5); margin: 0; padding-top: var(--e-2); border-top: 1px solid var(--rule-soft); }
+.cx-prix-grille div { display: flex; justify-content: space-between; gap: 6px; font-size: var(--t-petit); white-space: nowrap; }
+.cx-prix-grille dt { color: var(--muted); }
+.cx-prix-grille dd { margin: 0; font-weight: 800; font-variant-numeric: tabular-nums; }
+.cx-prix-rev { grid-column: 1 / -1; margin: 0; font-size: var(--t-petit); color: var(--muted); }
+.cx-sheet .cx-note { margin-top: var(--e-2); }
+.cx-liens { display: flex; flex-wrap: wrap; gap: var(--e-2); margin-top: var(--e-3); }
+.cx-liens .puce { height: 36px; font-size: var(--t-petit); }
+
+.cx-dex { margin-top: var(--e-1); }
+.reg-ligne.cx-dex-ligne { grid-template-columns: 44px minmax(0, 1fr) auto; }
+.cx-dex-ligne img { width: 44px; height: 44px; object-fit: contain; image-rendering: pixelated; }
+.cx-dex-ligne img.gris { filter: grayscale(1); opacity: 0.7; }
+.cx-dex-ligne > .ico { color: var(--muted); }
+
+/* ---- Valeur ---- */
+.bandeau.cx-valeur { grid-template-columns: minmax(0, 1fr); }
+.cx-valeur-total { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.cx-courbe-zone { display: grid; gap: var(--e-1); }
+.cx-courbe { display: block; width: 100%; height: 64px; }
+.cx-courbe-aire { fill: color-mix(in srgb, var(--ball) 14%, transparent); }
+.cx-courbe-trait { fill: none; stroke: var(--ball); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.cx-top { padding: 0 var(--e-3); border-radius: var(--r-md); background: var(--panel); border: 1px solid var(--rule-soft); box-shadow: var(--ombre-1); }
+.reg-ligne.cx-ligne { grid-template-columns: 40px minmax(0, 1fr) auto; }
+.cx-mini { width: 40px; height: auto; aspect-ratio: 5 / 7; object-fit: cover; border-radius: 4px; box-shadow: var(--ombre-1); }
+.cx-ligne b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cx-ligne-prix { display: grid; justify-items: end; font-weight: 800; font-variant-numeric: tabular-nums; }
+.cx-ligne-prix small { margin: 0; font-weight: 600; font-size: var(--t-mini); color: var(--muted); }
+
+/* ---- À venir (classeurs, assistant) : la tuile de la planche, en grand ---- */
+.cx-bientot {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r-lg);
+  background: linear-gradient(152deg, var(--t-haut, #34497e), var(--t-bas, #0c1120));
+  box-shadow: var(--ombre-2);
+}
+.cx-bientot.t-classeurs { --t-haut: #ff6fa8; --t-bas: #c2185b; }
+.cx-bientot.t-advisor { --t-haut: #7b8cff; --t-bas: #3b3fc4; }
+.cx-bientot-txt { margin: 0; text-align: center; color: var(--muted); font-size: var(--t-corps); line-height: 1.45; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tete, .tete-btn, .pilule, .avance, .puce, .puce-select, .cx-v, .cx-v-img img, .cx-fiche-img img,
+  .bandeau-barre i { transition: none; }
+  .cx-series, .cx-v.squelette .cx-v-img, .avance.squelette .avance-art { animation: none; }
+}

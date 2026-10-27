@@ -109,28 +109,35 @@ def reflet(rnd, img):
     return Image.fromarray(np.clip(arr + k[..., None] * rnd.uniform(60, 200), 0, 255).astype(np.uint8))
 
 
-def vue_photo(rnd, chemin, fonds):
+def vue_photo(rnd, chemin, fonds, dur=False):
     """La carte telle que la caméra la cadre : le carré autour de la carte détectée,
-    avec ce qui l'entoure."""
+    avec ce qui l'entoure. `dur` : plus difficile que tout ce que l'apprentissage a vu —
+    carte plus petite dans le cadre, perspective franche, reflets et doigts fréquents,
+    carte lointaine (résolution perdue) — pour mesurer la RÉSISTANCE, pas pour apprendre."""
     with Image.open(chemin) as im:
         carte = im.convert('RGB')
     if rnd.random() < 0.3:
         carte = D.reflet_holo(rnd, carte)
     w, h = carte.size
     S = TAILLE + 64
-    f = S * rnd.uniform(0.74, 0.97) / h
+    f = S * (rnd.uniform(0.5, 0.97) if dur else rnd.uniform(0.74, 0.97)) / h
     carte = carte.resize((max(1, int(w * f)), max(1, int(h * f))), Image.BICUBIC)
     cx = carte.width / 2 + rnd.uniform(-0.05, 0.05) * S
     cy = carte.height / 2 + rnd.uniform(-0.05, 0.05) * S
     zone = D.recadre_tourne(rnd, carte, cx, cy, S, angle_carte(rnd), fonds)
-    if rnd.random() < 0.7:
+    if dur:
+        zone = D.perspective(rnd, zone, rnd.uniform(0.06, 0.18))
+    elif rnd.random() < 0.7:
         zone = D.perspective(rnd, zone, rnd.uniform(0.02, 0.12))
-    if rnd.random() < 0.3:
+    if rnd.random() < (0.6 if dur else 0.3):
         zone = reflet(rnd, zone)
-    if rnd.random() < 0.25:
+    if rnd.random() < (0.5 if dur else 0.25):
         zone = doigt(rnd, zone)
     if rnd.random() < 0.1:
         zone = D.trame_ecran(rnd, zone)
+    if dur and rnd.random() < 0.5:
+        p = rnd.randint(96, 160)
+        zone = zone.resize((p, p), Image.BILINEAR).resize((S, S), Image.BILINEAR)
     zone = D.prise_de_vue(rnd, zone)
     # Recadrage léger : la boîte du détecteur n'est jamais exacte.
     m = int(S * rnd.uniform(0, 0.08))
@@ -209,7 +216,7 @@ class References(Dataset):
 
 
 @torch.no_grad()
-def empreintes_refs(modele, cartes, dev, ouvriers=4):
+def empreintes_refs(modele, cartes, dev, ouvriers=2):
     """L'empreinte de chaque carte propre, images lues en parallèle."""
     sortie = []
     for x in DataLoader(References(cartes), batch_size=256, num_workers=ouvriers):
@@ -229,11 +236,65 @@ def empreintes(modele, images, dev, lot=256):
 
 
 # ---------------------------------------------------------------- mesure
-def jeu_eval(cartes, fonds, n, graine):
+def jeu_eval(cartes, fonds, n, graine, dur=False):
     rnd = random.Random(graine)
     choix = [cartes[rnd.randrange(len(cartes))] for _ in range(n)]
-    return [vue_photo(random.Random(graine + 17 * k), c['chemin'], fonds) for k, c in enumerate(choix)], \
+    return [vue_photo(random.Random(graine + 17 * k), c['chemin'], fonds, dur=dur) for k, c in enumerate(choix)], \
         torch.tensor([c['classe'] for c in choix])
+
+
+_vignettes = {}
+
+
+def vignette(chemin):
+    """La carte réduite en 32×44, en couleur : de quoi dire si deux images sont la même."""
+    if chemin not in _vignettes:
+        with Image.open(chemin) as im:
+            _vignettes[chemin] = np.asarray(im.convert('RGB').resize((32, 44), Image.BILINEAR), np.float32) / 255
+    return _vignettes[chemin]
+
+
+# Écart moyen par pixel sous lequel deux cartes ont la MÊME image (réédition, promo
+# reprise d'une extension, Énergie réimprimée). Calé le 28/10/2026 : Dracaufeu du Set de
+# Base (fr) et du Base Set 2 (en) à 0,073 ; deux cartes différentes, jamais sous 0,13.
+MEME_IMAGE = 0.10
+
+
+def meme_image(cl_a, cl_b, par_classe):
+    return min(float(np.abs(vignette(a['chemin']) - vignette(b['chemin'])).mean())
+               for a in par_classe[cl_a] for b in par_classe[cl_b]) < MEME_IMAGE
+
+
+@torch.no_grad()
+def analyse(modele, cartes, eval_imgs, eval_y, dev, index):
+    """La mesure complète : bonne carte exacte, bonne IMAGE (une réédition identique n'est
+    pas une erreur du modèle mais un choix à proposer), cinq premières, et le tableau des
+    réponses « sûres » selon l'écart avec la deuxième carte différente."""
+    par_classe = {}
+    for c in cartes:
+        par_classe.setdefault(c['classe'], []).append(c)
+    labels = torch.tensor([c['classe'] for c in cartes])
+    q = empreintes(modele, eval_imgs, dev)
+    top = (q @ index.t()).topk(32, dim=1)
+    pred = labels[top.indices]
+    p1 = pred[:, 0]
+    exact = p1 == eval_y
+    image = exact.clone()
+    for i in torch.nonzero(~exact).flatten().tolist():
+        image[i] = meme_image(int(eval_y[i]), int(p1[i]), par_classe)
+    autre = torch.where(pred != p1[:, None], top.values, torch.full_like(top.values, -1)).max(1).values
+    ecart = top.values[:, 0] - autre
+    res = {'n': len(eval_y), 'top1_exact': round(exact.float().mean().item(), 4),
+           'top1_image': round(image.float().mean().item(), 4),
+           'top5': round((pred[:, :5] == eval_y[:, None]).any(1).float().mean().item(), 4)}
+    for seuil in (0.02, 0.04, 0.06, 0.08, 0.1, 0.15):
+        g = ecart >= seuil
+        res[f'sur@{seuil}'] = {'couverture': round(g.float().mean().item(), 3),
+                               'exact': round(exact[g].float().mean().item() if g.any() else 0, 4),
+                               'image': round(image[g].float().mean().item() if g.any() else 0, 4)}
+    erreurs = [(i, int(eval_y[i]), int(p1[i]), round(float(top.values[i, 0]), 3), round(float(ecart[i]), 3))
+               for i in torch.nonzero(~image).flatten().tolist()]
+    return res, erreurs, par_classe
 
 
 @torch.no_grad()
@@ -295,10 +356,24 @@ def entraine(args):
     echauffe = min(800, pas_total // 10)
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda k: (k + 1) / echauffe if k < echauffe
                                               else 0.5 * (1 + math.cos(math.pi * (k - echauffe) / max(1, pas_total - echauffe))))
-    journal, meilleur = [], -1
-    depart, _ = mesure(modele, cartes, eval_imgs, eval_y, dev)
-    print(json.dumps(dict(depart, epoque=0)), flush=True)
-    for ep in range(args.epoques):
+    journal, meilleur, debut = [], -1, 0
+    # REPRISE : l'état complet est sauvegardé à chaque époque (dernier.pt). Un arrêt — PC
+    # éteint, session fermée, plantage — ne coûte que l'époque en cours : relancer la même
+    # commande repart de là, au même point du calendrier du taux d'apprentissage.
+    etat_f = sortie / 'dernier.pt'
+    if etat_f.exists():
+        st = torch.load(etat_f, map_location='cpu')
+        modele.load_state_dict(st['modele'])
+        with torch.no_grad():
+            echelle.copy_(st['echelle'].to(dev))
+        opt.load_state_dict(st['opt'])
+        sched.load_state_dict(st['sched'])
+        journal, meilleur, debut = st['journal'], st['meilleur'], st['epoque']
+        print(f"reprise après l'époque {debut} (meilleur top1 {meilleur})", flush=True)
+    else:
+        depart, _ = mesure(modele, cartes, eval_imgs, eval_y, dev)
+        print(json.dumps(dict(depart, epoque=0)), flush=True)
+    for ep in range(debut, args.epoques):
         ds.epoque = ep
         t0, cumul, n = time.time(), 0.0, 0
         for photo, propre, y in charge:
@@ -317,6 +392,9 @@ def entraine(args):
             opt.step()
             sched.step()
             cumul, n = cumul + perte.item(), n + 1
+            if n % 100 == 0:
+                print(json.dumps({'pas': n, 'sur': n_epoque // args.lot, 'perte': round(cumul / n, 3),
+                                  'paires_s': round(n * args.lot / (time.time() - t0))}), flush=True)
         res, _ = mesure(modele, cartes, eval_imgs, eval_y, dev)
         res.update(epoque=ep + 1, perte=round(cumul / max(1, n), 4), duree=round(time.time() - t0))
         journal.append(res)
@@ -325,6 +403,11 @@ def entraine(args):
         if res['top1'] > meilleur:
             meilleur = res['top1']
             torch.save(modele.state_dict(), sortie / 'meilleur.pt')
+        # Écrit à côté puis renommé : un arrêt pendant l'écriture ne laisse pas un état illisible.
+        torch.save({'modele': modele.state_dict(), 'echelle': echelle.detach().cpu(), 'opt': opt.state_dict(),
+                    'sched': sched.state_dict(), 'journal': journal, 'meilleur': meilleur, 'epoque': ep + 1},
+                   sortie / 'dernier.tmp')
+        (sortie / 'dernier.tmp').replace(etat_f)
     print(f'meilleur top1 : {meilleur}', flush=True)
 
 
@@ -335,13 +418,37 @@ def charge_modele(run, dev):
     return m.to(dev).eval()
 
 
+def planche_erreurs(erreurs, eval_imgs, par_classe, sortie, n=24):
+    """Une ligne par erreur : la photo, la carte proposée, la bonne carte."""
+    erreurs = erreurs[:n]
+    if not erreurs:
+        return
+    T = 160
+    img = Image.new('RGB', (T * 3, T * len(erreurs)), (24, 24, 24))
+    for k, (i, vrai, faux, _, _) in enumerate(erreurs):
+        img.paste(eval_imgs[i].resize((T, T)), (0, k * T))
+        for col, cl in ((1, faux), (2, vrai)):
+            img.paste(reference(par_classe[cl][0]['chemin']).resize((T, T)), (col * T, k * T))
+    img.save(sortie, quality=85)
+
+
 def evalue(args):
-    racine = Path(args.donnees)
+    racine, run = Path(args.donnees), Path(args.run)
     dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    cartes, _ = charge_catalogue(racine)
-    eval_imgs, eval_y = jeu_eval(cartes, fonds_de(racine), args.n_eval, graine=99)
-    res, _ = mesure(charge_modele(args.run, dev), cartes, eval_imgs, eval_y, dev)
-    print(json.dumps(res, indent=1))
+    cartes, ids = charge_catalogue(racine)
+    fonds = fonds_de(racine)
+    m = charge_modele(run, dev)
+    index = empreintes_refs(m, cartes, dev)
+    rapport = {}
+    for nom, n, graine, dur in (('normal', args.n_eval, 99, False), ('resistance', args.n_eval // 2, 77, True)):
+        imgs, y = jeu_eval(cartes, fonds, n, graine, dur=dur)
+        res, erreurs, par_classe = analyse(m, cartes, imgs, y, dev, index)
+        rapport[nom] = res
+        rapport[f'erreurs_{nom}'] = [{'vrai': ids[v], 'propose': ids[f], 'sim': s, 'ecart': e}
+                                     for _, v, f, s, e in erreurs[:60]]
+        planche_erreurs(erreurs, imgs, par_classe, run / f'erreurs-{nom}.jpg')
+        print(nom, json.dumps(res, indent=1), flush=True)
+    (run / 'evaluation.json').write_text(json.dumps(rapport, indent=1, ensure_ascii=False))
 
 
 def exporte(args):

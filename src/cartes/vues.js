@@ -303,6 +303,10 @@ export function creeCartes(ctx) {
     const nom = b.nom ? t(b.nom) : (tete?.name || b.id);
     const n = b.series.reduce((k, sid) => k + (parSerie.get(sid) || 0), 0);
     const nbSets = b.series.every((sid) => detailsSerie.has(sid)) ? b.series.reduce((k, sid) => k + (detailsSerie.get(sid).sets?.length || 0), 0) : 0;
+    // Un bloc sans logo (POP, Kits, McDonald's…) prend celui de sa plus récente extension
+    // qui en a un : il faut donc ses extensions, même replié.
+    if (!tete?.logo) for (const sid of b.series) if (!detailsSerie.has(sid)) charge(`serie:${sid}`, () => api.serie(sid), (d) => detailsSerie.set(sid, d));
+    const logoBloc = tete?.logo || (b.series.every((sid) => detailsSerie.has(sid)) ? setsDuBloc(b).find((x) => x.logo)?.logo : '') || '';
     let contenu = '';
     if (ouvert) {
       for (const sid of b.series) if (!detailsSerie.has(sid)) charge(`serie:${sid}`, () => api.serie(sid), (d) => detailsSerie.set(sid, d));
@@ -315,7 +319,7 @@ export function creeCartes(ctx) {
       <section class="cx-bloc ${ouvert ? 'ouvert' : ''}">
         <button class="pilule ${ouvert ? 'ouverte' : ''}" data-cx-bloc="${esc(b.id)}" aria-expanded="${ouvert}"
                 aria-label="${esc(nom)}${n ? ', ' + esc(t('cxPossedeeN', n)) : ''}">
-          <span class="pilule-logo">${tete?.logo ? `<img class="pilule-img" src="${esc(api.logo(tete.logo))}" alt="" loading="lazy" />` : ''}</span>
+          <span class="pilule-logo">${logoBloc ? `<img class="pilule-img" src="${esc(api.logo(logoBloc))}" alt="" loading="lazy" />` : ''}</span>
           <span class="pilule-txt"><small>${t('cxBloc')}${nbSets ? ` · ${t('cxNbExtensions', nbSets)}` : ''}</small><b>${esc(nom)}</b></span>
           ${n ? `<span class="pilule-cpt"><b>${n}</b></span>` : ''}
           ${ICO.bas}

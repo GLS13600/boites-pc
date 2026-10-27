@@ -167,6 +167,15 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
     teinte de rouge avec un liseré à gauche. Ses EXTENSIONS sont rangées dedans, sur le
     fond gris en retrait, plus basses (56 px), reliées par un rail à pastilles (pleine
     quand l'extension est complète).
+  - **Logos manquants de TCGdex, repris de Pokécardex** (demandé) : 81 extensions et 5
+    séries n'avaient aucun logo (promos, POP, kits, McDonald's, énergies, galeries…).
+    `npm run fetch-logos-cartes` télécharge UNE fois les 62 que Pokécardex possède
+    (`TABLE` : id TCGdex → code Pokécardex), les réduit en WebP 300 px
+    (`public/logos-cartes/`, 840 Ko) et écrit `src/data/logos-cartes.json`. `api.js`
+    complète le champ `logo` des extensions qui n'en ont pas (`completeLogo`) ; un bloc
+    sans logo prend celui de sa plus récente extension. Logos officiels de The Pokémon
+    Company, comme ceux de TCGdex — pas de chargement depuis leurs serveurs. Seul
+    Pocket reste sans logo (absent de Pokécardex).
   Entrer dans la vue ramène à la liste (`cartes.entre`).
   - **Seul l'ORDRE vient de Pokécardex**, relevé à la main sur leur page des séries. Ni
     leurs images ni leurs fiches ne sont reprises : demandé, et refusé — leur base est
@@ -761,6 +770,8 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `scripts/fetch-moves-gen.mjs` | Complète moves.json : toutes les attaques des 21 jeux, génération d'apparition, valeurs par génération |
 | `src/data/elevage.json` | Capture et élevage des 1025 espèces, **généré**, 95 Ko |
 | `scripts/fetch-elevage.mjs` | Le produit (`npm run fetch-elevage`) |
+| `scripts/fetch-logos-cartes.mjs` | Logos d'extension absents de TCGdex, repris de Pokécardex (`npm run fetch-logos-cartes`) |
+| `public/logos-cartes/` | Ces 62 logos en WebP, **générés**, 840 Ko |
 
 ## Données
 

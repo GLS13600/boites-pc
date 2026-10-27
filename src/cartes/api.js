@@ -10,6 +10,8 @@
 // par une file de quatre requêtes à la fois — TCGdex est un service gratuit, on y va
 // poliment.
 
+import logosLocaux from '../data/logos-cartes.json';
+
 // La langue des DONNÉES suit celle de l'appli : français en français, anglais sinon —
 // TCGdex japonais décrit d'autres extensions, sous d'autres identifiants, et la
 // collection ne se retrouverait plus. Les identifiants des cartes internationales sont
@@ -96,13 +98,23 @@ export async function dejaConnu(chemin) {
 }
 export const connuEnMemoire = (chemin) => memoire.get(cleDe(chemin))?.v ?? null;
 
+// ---------------------------------------------------------------- logos manquants
+// TCGdex n'a pas le logo de 81 extensions (promos, POP, kits, McDonald's…) : 62 sont
+// embarqués dans public/logos-cartes/, repris de Pokécardex (scripts/fetch-logos-cartes.mjs).
+// Le chemin est relatif, sans « / » initial, et `logo()` y ajoute « .webp ».
+const LOGOS_LOCAUX = new Set(logosLocaux);
+function completeLogo(x) {
+  if (x && !x.logo && LOGOS_LOCAUX.has(x.id)) x.logo = `logos-cartes/${x.id}`;
+  return x;
+}
+
 // ---------------------------------------------------------------- l'API
 export const series = () => lis('/series', 7 * JOUR);
 // Toutes les extensions, dans l'ordre de sortie : leurs noms pour les résultats d'une
 // recherche, et l'ordre pour montrer les cartes récentes d'abord.
-export const toutesExtensions = () => lis('/sets', 7 * JOUR);
-export const serie = (id) => lis(`/series/${encodeURIComponent(id)}`, 7 * JOUR);
-export const extension = (id) => lis(`/sets/${encodeURIComponent(id)}`, 3 * JOUR);
+export const toutesExtensions = () => lis('/sets', 7 * JOUR).then((l) => { if (Array.isArray(l)) l.forEach(completeLogo); return l; });
+export const serie = (id) => lis(`/series/${encodeURIComponent(id)}`, 7 * JOUR).then((d) => { d?.sets?.forEach(completeLogo); return d; });
+export const extension = (id) => lis(`/sets/${encodeURIComponent(id)}`, 3 * JOUR).then(completeLogo);
 // Le détail d'une carte : rareté, variantes, Pokémon représentés, prix. Le prix bouge
 // chaque jour, le reste jamais : `pourPrix` raccourcit la durée de garde à un jour.
 export const carte = (id, { pourPrix = false } = {}) =>

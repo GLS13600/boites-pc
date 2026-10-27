@@ -169,11 +169,13 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
     quand l'extension est complète).
   - **Logos manquants de TCGdex, repris de Pokécardex** (demandé) : 81 extensions et 5
     séries n'avaient aucun logo (promos, POP, kits, McDonald's, énergies, galeries…).
-    `npm run fetch-logos-cartes` télécharge UNE fois les 62 que Pokécardex possède
+    `npm run fetch-logos-cartes` télécharge UNE fois les logos que Pokécardex possède
     (`TABLE` : id TCGdex → code Pokécardex), les réduit en WebP 300 px
     (`public/logos-cartes/`, 840 Ko) et écrit `src/data/logos-cartes.json`. `api.js`
     complète le champ `logo` des extensions qui n'en ont pas (`completeLogo`) ; un bloc
-    sans logo prend celui de sa plus récente extension. Logos officiels de The Pokémon
+    sans logo prend celui de sa plus récente extension. **Un logo embarqué PRIME** sur celui de
+    TCGdex : Nuit Noire (`me05`) y est annoncée avec un logo dont le fichier français répond
+    404 — elle prend celui de Pokécardex (PBL). 63 logos. Logos officiels de The Pokémon
     Company, comme ceux de TCGdex — pas de chargement depuis leurs serveurs. Seul
     Pocket reste sans logo (absent de Pokécardex).
   Entrer dans la vue ramène à la liste (`cartes.entre`).
@@ -272,7 +274,10 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   liste arrive (`majCartesPokemon`) et suit la collection : ajouter la carte depuis sa
   fiche la passe en couleur aussitôt. Glisser dans la fiche d'une carte parcourt toutes
   les cartes du Pokémon. « Chercher les cartes de … » ouvre toujours les extensions sur la
-  recherche. Vérifié sur Lianaja : 9 cartes, 9 images. Toucher une carte ouvre sa fiche PAR-DESSUS celle du
+  recherche. Vérifié sur Lianaja : 9 cartes, 9 images.
+  **Menu déroulant** (demandé) : un `<details>` replié par défaut, qui ne demande la liste
+  qu'à l'ouverture ; ouvert ou fermé, c'est retenu d'une fiche à l'autre
+  (`pcbox.sescartes`). `toggle` ne remontant pas, il est écouté en capture sur le document. Toucher une carte ouvre sa fiche PAR-DESSUS celle du
   Pokémon ; le voile ne referme alors que la carte (même règle que le document légal
   par-dessus l'abonnement). En miroir, « Dans le Pokédex » de la fiche d'une carte.
 - **Résultats d'une recherche** : nom de l'extension en légende et les plus RÉCENTES

@@ -1167,9 +1167,8 @@ function openSheet(id) {
 // Depuis le 28/10/2026 : TOUTES les cartes du Pokémon (vues.js, `sesCartes`), plus
 // seulement celles de la collection — possédées en couleur, les autres en gris.
 function htmlSesCartes(espece, nom) {
-  return `
-    ${cartes.sesCartes(espece)}
-    <button class="back-btn ses-cartes-btn" data-chercher-cartes="${esc(nom)}">${ICO_NAV.chercher}<span>${t('chercherSesCartes', esc(nom))}</span></button>`;
+  return cartes.sesCartes(espece,
+    `<button class="back-btn ses-cartes-btn" data-chercher-cartes="${esc(nom)}">${ICO_NAV.chercher}<span>${t('chercherSesCartes', esc(nom))}</span></button>`);
 }
 
 // Famille d'évolution : une ligne par membre, indentée selon la profondeur, ce qui

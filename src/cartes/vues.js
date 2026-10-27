@@ -2033,16 +2033,39 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     const n = l.filter((c) => coll.exemplaires(c.id) > 0).length;
     return ` <small>${n} / ${l.length}</small>`;
   };
-  // Le bloc de la fiche ; il se remplit tout seul quand la liste arrive.
-  function sesCartes(num) {
-    chargeCartesPokemon(num);
+  // Le bloc de la fiche, en MENU DÉROULANT (demandé) : replié, il ne coûte rien — la
+  // liste n'est demandée qu'à l'ouverture. Ouvert ou fermé, c'est retenu d'une fiche à
+  // l'autre (`pcbox.sescartes`). `suite` : ce que main.js y range sous la grille.
+  const SES_CARTES_KEY = 'pcbox.sescartes';
+  const sesCartesOuvert = () => lit(SES_CARTES_KEY) === '1';
+  function sesCartes(num, suite = '') {
+    const ouvert = sesCartesOuvert();
+    if (ouvert) chargeCartesPokemon(num);
     return `
-      <h3 data-cartes-pokemon-titre="${num}">${t('sesCartes')}${comptePokemon(num)}</h3>
-      <div data-cartes-pokemon="${num}">${grilleCartesPokemon(num)}</div>`;
+      <details class="ses-cartes-volet" data-ses-cartes-volet="${num}" ${ouvert ? 'open' : ''}>
+        <summary>
+          <span data-cartes-pokemon-titre="${num}">${t('sesCartes')}${comptePokemon(num)}</span>
+          ${ICO.bas}
+        </summary>
+        <div data-cartes-pokemon="${num}">${ouvert ? grilleCartesPokemon(num) : ''}</div>
+        ${suite}
+      </details>`;
   }
+  // `toggle` ne remonte pas : écouté en capture sur le document, une fois.
+  document.addEventListener('toggle', (e) => {
+    const v = e.target;
+    if (!v.matches?.('[data-ses-cartes-volet]')) return;
+    try { localStorage.setItem(SES_CARTES_KEY, v.open ? '1' : '0'); } catch { /* préférence perdue */ }
+    if (v.open) {
+      const num = Number(v.dataset.sesCartesVolet);
+      chargeCartesPokemon(num);
+      v.querySelector('[data-cartes-pokemon]').innerHTML = grilleCartesPokemon(num);
+    }
+  }, true);
   function majCartesPokemon() {
     for (const el of document.querySelectorAll('[data-cartes-pokemon]')) {
       const num = Number(el.dataset.cartesPokemon);
+      if (el.closest('details') && !el.closest('details').open) continue;
       el.innerHTML = grilleCartesPokemon(num);
       const titre = document.querySelector(`[data-cartes-pokemon-titre="${num}"]`);
       if (titre) titre.innerHTML = `${t('sesCartes')}${comptePokemon(num)}`;

@@ -3549,6 +3549,34 @@ img {
 .acc-recents::-webkit-scrollbar { display: none; }
 /* Toutes les cartes d'un Pokémon, dans sa fiche : la grille des extensions. */
 .ses-cartes-grille { margin-bottom: var(--e-3); }
+/* « Ses cartes » : un volet qui se déplie, au gabarit d'une ligne de réglage. */
+.ses-cartes-volet {
+  margin: var(--e-4) 0 var(--e-2);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  box-shadow: var(--ombre-1);
+  overflow: hidden;
+}
+.ses-cartes-volet > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-3);
+  min-height: 52px;
+  padding: 0 var(--e-4);
+  list-style: none;
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 800;
+}
+.ses-cartes-volet > summary::-webkit-details-marker { display: none; }
+.ses-cartes-volet > summary small { margin-left: 4px; font-weight: 700; color: var(--muted); }
+.ses-cartes-volet > summary .ico { flex: 0 0 auto; color: var(--muted); transition: transform var(--d-moyen) var(--c-entree); }
+.ses-cartes-volet[open] > summary { border-bottom: 1px solid var(--rule-soft); }
+.ses-cartes-volet[open] > summary .ico { transform: rotate(180deg); }
+.ses-cartes-volet > [data-cartes-pokemon] { padding: var(--e-3) var(--e-3) 0; }
+.ses-cartes-volet > .ses-cartes-btn { margin: 0 var(--e-3) var(--e-3); width: calc(100% - 2 * var(--e-3)); }
 .acc-recent {
   flex: 0 0 auto; display: grid; place-items: center;
   width: 64px; height: 64px; border-radius: var(--r-sm); background: var(--slot); border: 1px solid var(--rule-soft);

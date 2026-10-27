@@ -34,6 +34,8 @@ const TABLE = {
   dpp: 'PRDP', hgssp: 'PRHS', bwp: 'PRBW', xyp: 'PRXY', smp: 'PRSM', svp: 'SVP', mep: 'MEP',
   // Énergies
   sve: 'SVE', mee: 'MEE',
+  // Annoncés par TCGdex mais absents en français (le fichier répond 404)
+  me05: 'PBL',
   // McDonald's (2021 et 2022 : Pokécardex n'a que l'édition américaine)
   '2011bw': 'MC1', '2012bw': 'MC2', '2013bw': 'MC3', '2014xy': 'MC4', '2015xy': 'MC5',
   '2016xy': 'MC6', '2017sm': 'MC7', '2018sm-fr': 'MC8', '2019sm-fr': 'MC9',

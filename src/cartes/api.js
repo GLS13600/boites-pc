@@ -103,8 +103,10 @@ export const connuEnMemoire = (chemin) => memoire.get(cleDe(chemin))?.v ?? null;
 // embarqués dans public/logos-cartes/, repris de Pokécardex (scripts/fetch-logos-cartes.mjs).
 // Le chemin est relatif, sans « / » initial, et `logo()` y ajoute « .webp ».
 const LOGOS_LOCAUX = new Set(logosLocaux);
+// Un logo embarqué PRIME : TCGdex annonce parfois un logo dont le fichier français
+// n'existe pas (Nuit Noire, me05 : 404).
 function completeLogo(x) {
-  if (x && !x.logo && LOGOS_LOCAUX.has(x.id)) x.logo = `logos-cartes/${x.id}`;
+  if (x && LOGOS_LOCAUX.has(x.id)) x.logo = `logos-cartes/${x.id}`;
   return x;
 }
 

@@ -89,7 +89,7 @@ export function creeCartes(ctx) {
     fiche: null,                // { id, liste } : la carte ouverte et sa liste
     ficheEchec: null,           // carte dont le détail n'a pas pu être lu
     ajout: { v: null, l: 'FR', e: 'neuf' },
-    colQ: '', colTri: 'recent', colFiltre: 'toutes', colRarete: '', colType: '',
+    colQ: '', colTri: 'extension', colFiltre: 'toutes', colRarete: '', colType: '',
     majPrix: null,              // { fait, total } pendant l'actualisation des prix
     cls: null,                  // classeur ouvert (son livre), ou null (la liste)
     clsPage: 0,                 // page affichée du classeur
@@ -291,10 +291,11 @@ export function creeCartes(ctx) {
   }
   // Les extensions d'un bloc, comme Pokécardex : de la plus récente à la plus ancienne
   // (rang de sortie de la liste des 202 extensions), puis les Énergies, puis les Promos.
+  // 0 : extension, 1 : Énergies, 2 : Promos — l'ordre de Pokécardex dans un bloc.
+  const genreSet = (id, nom) => (/promo/i.test(nom || '') || /^[a-z]+p$/.test(id) ? 2 : /[ée]nergie|energy/i.test(nom || '') ? 1 : 0);
   function setsDuBloc(b) {
     const sets = b.series.flatMap((sid) => detailsSerie.get(sid)?.sets || []);
-    const genre = (x) => (/promo/i.test(x.name) || /^[a-z]+p$/.test(x.id) ? 2 : /[ée]nergie|energy/i.test(x.name) ? 1 : 0);
-    return sets.map((x, i) => ({ x, g: genre(x), r: toutesExt?.get(x.id)?.rang ?? i }))
+    return sets.map((x, i) => ({ x, g: genreSet(x.id, x.name), r: toutesExt?.get(x.id)?.rang ?? i }))
       .sort((a, b) => a.g - b.g || b.r - a.r).map((e) => e.x);
   }
   function htmlBloc(b, possedees, parSerie) {
@@ -703,10 +704,10 @@ export function creeCartes(ctx) {
     // Le tri vit dans l'en-tête, en icône — comme dans Cartodex — : une liste native
     // posée invisible sur le bouton ouvre le sélecteur du système au toucher.
     const tri = `
-      <label class="tete-btn tete-select ${etat.colTri !== 'recent' ? 'on' : ''}" title="${t('cxTri')}">
+      <label class="tete-btn tete-select ${etat.colTri !== 'extension' ? 'on' : ''}" title="${t('cxTri')}">
         ${ICO.trier}
         <select data-cx-coltri aria-label="${t('cxTri')}">
-          ${option('recent', t('colTriRecent'), etat.colTri)}${option('extension', t('colTriExtension'), etat.colTri)}
+          ${option('extension', t('colTriExtension'), etat.colTri)}${option('recent', t('colTriRecent'), etat.colTri)}
           ${option('nom', t('cxTriNom'), etat.colTri)}${option('valeur', t('colTriValeur'), etat.colTri)}
         </select>
       </label>`;
@@ -760,6 +761,8 @@ export function creeCartes(ctx) {
       </select>`;
   }
   function htmlCollection() {
+    if (!listeSeries) charge('series', api.series, (l) => { listeSeries = Array.isArray(l) ? l : []; });
+    if (!toutesExt) charge('toutesExt', chargeToutesExt, () => {});
     const q = fold(etat.colQ.trim());
     let l = Object.entries(coll.toutes()).filter(([, c]) => (etat.colFiltre === 'favoris' ? c.fav : c.ex?.length));
     if (q) l = l.filter(([id, c]) => fold(c.n || '').includes(q) || fold(c.setN || '').includes(q) || id.toLowerCase().includes(q));
@@ -769,21 +772,53 @@ export function creeCartes(ctx) {
     const dernier = (c) => c.ex?.[c.ex.length - 1]?.d || '';
     if (etat.colTri === 'nom') l.sort(([, a], [, b]) => (a.n || '').localeCompare(b.n || '', lg));
     else if (etat.colTri === 'valeur') l.sort(([a, ca], [b, cb]) => (prixUnitaire(b) || 0) * (cb.ex?.length || 0) - (prixUnitaire(a) || 0) * (ca.ex?.length || 0));
-    else if (etat.colTri === 'extension') l.sort(([a, ca], [b, cb]) => (ca.set || '').localeCompare(cb.set || '') || String(ca.num || '').localeCompare(String(cb.num || ''), undefined, { numeric: true }));
+    else if (etat.colTri === 'extension') {
+      // Comme Pokécardex : bloc (ordre de BLOCS), puis extensions de la plus récente à la
+      // plus ancienne, Énergies et Promos en fin de bloc, puis le numéro de la carte.
+      const cle = new Map();
+      for (const [id, c] of l) {
+        const set = c.set || setDe(id);
+        const serie = c.serie || serieDuSet(set);
+        const bi = BLOCS.findIndex((b) => b.series.includes(serie));
+        cle.set(id, { set, bi: bi < 0 ? BLOCS.length : bi, g: genreSet(set, c.setN || nomSetConnu(set)), r: toutesExt?.get(set)?.rang ?? -1 });
+      }
+      l.sort(([a, ca], [b, cb]) => {
+        const x = cle.get(a), y = cle.get(b);
+        return x.bi - y.bi || x.g - y.g || y.r - x.r || x.set.localeCompare(y.set)
+          || String(ca.num || '').localeCompare(String(cb.num || ''), undefined, { numeric: true });
+      });
+      etat.colBlocs = cle;
+    }
     else l.sort(([, a], [, b]) => (dernier(a) < dernier(b) ? 1 : dernier(a) > dernier(b) ? -1 : 0));
     etat.liste = l.map(([id]) => id);
     if (!l.length) return `<p class="dex-vide">${q || etat.colRarete || etat.colType ? t('colAucuneTrouvee') : t('colAucunFavori')}</p>`;
     const tuile = ([id, c]) => vignette({ id, num: c.num || '', nom: c.n || id, img: c.img, d: detail(id) });
     if (etat.colTri !== 'extension') return `<div class="cx-grille">${l.map(tuile).join('')}</div>`;
-    // Groupée par extension : un en-tête par extension, avec ce qu'on en possède.
+    // Groupée comme Pokécardex : un en-tête par BLOC, puis un par extension.
     const groupes = new Map();
     for (const e of l) { const k = e[1].set || setDe(e[0]); if (!groupes.has(k)) groupes.set(k, []); groupes.get(k).push(e); }
-    return [...groupes].map(([sid, cartes]) => `
-      <div class="groupe-tete">
-        <b class="groupe-nom">${esc(cartes[0][1].setN || nomSetConnu(sid) || sid)}</b>
-        <span class="groupe-cpt">${cartes.length}</span>
+    const parBloc = new Map();
+    for (const [sid, cartes] of groupes) {
+      const bi = etat.colBlocs?.get(cartes[0][0])?.bi ?? BLOCS.length;
+      if (!parBloc.has(bi)) parBloc.set(bi, []);
+      parBloc.get(bi).push([sid, cartes]);
+    }
+    const nomBloc = (bi) => {
+      const b = BLOCS[bi];
+      if (!b) return t('cxBlocMisc');
+      return b.nom ? t(b.nom) : (listeSeries?.find((x) => x.id === b.series[0])?.name || b.id);
+    };
+    return [...parBloc].map(([bi, sets]) => `
+      <div class="groupe-bloc">
+        <b>${esc(nomBloc(bi))}</b>
+        <span>${t('cxNbExtensions', sets.length)} · ${t('cxNbCartes', sets.reduce((k, [, c]) => k + c.length, 0))}</span>
       </div>
-      <div class="cx-grille">${cartes.map(tuile).join('')}</div>`).join('');
+      ${sets.map(([sid, cartes]) => `
+        <div class="groupe-tete">
+          <b class="groupe-nom">${esc(cartes[0][1].setN || nomSetConnu(sid) || sid)}</b>
+          <span class="groupe-cpt">${cartes.length}</span>
+        </div>
+        <div class="cx-grille">${cartes.map(tuile).join('')}</div>`).join('')}`).join('');
   }
   function majCollection() {
     const zone = document.querySelector('[data-cx-col]');
@@ -2021,7 +2056,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       const el = e.target;
       if (el.matches('[data-cx-rarete]')) { etat.rarete = el.value; el.classList.toggle('actif', !!el.value); majGrille(); }
       else if (el.matches('[data-cx-tri]')) { etat.tri = el.value; el.classList.toggle('actif', el.value !== 'num'); majGrille(); }
-      else if (el.matches('[data-cx-coltri]')) { etat.colTri = el.value; el.closest('.tete-select')?.classList.toggle('on', el.value !== 'recent'); majCollection(); }
+      else if (el.matches('[data-cx-coltri]')) { etat.colTri = el.value; el.closest('.tete-select')?.classList.toggle('on', el.value !== 'extension'); majCollection(); }
       else if (el.matches('[data-cx-colrarete]')) { etat.colRarete = el.value; el.classList.toggle('actif', !!el.value); majCollection(); }
       else if (el.matches('[data-cx-coltype]')) { etat.colType = el.value; el.classList.toggle('actif', !!el.value); majCollection(); }
     });

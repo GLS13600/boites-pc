@@ -210,8 +210,16 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   Ouvrir la fiche relève le prix du jour ; une carte possédée le recopie
   (`notePrix`, qui n'écrit que si le prix a changé ou date de plus d'un jour).
 - **Ma collection** : bandeau (éventail des trois plus chères, valeur, nombre), recherche,
-  tri (ajout récent, extension — groupée sous des en-têtes —, nom, valeur), Toutes /
-  Favoris.
+  tri (extension, ajout récent, nom, valeur), Toutes / Favoris.
+  - **Le tri par défaut est celui de Pokécardex** (28/10/2026, à la demande) : un
+    bandeau par BLOC (`.groupe-bloc`, ordre de `BLOCS`, « 2 extensions · 2 cartes »),
+    puis ses extensions de la plus récente à la plus ancienne, Énergies puis Promos en
+    fin de bloc (`genreSet`, partagé avec la vue Extensions), puis le numéro.
+  - Demandé aussi : récupérer TOUTES les images de cartes de Pokécardex. **Refusé** —
+    leurs scans sont leur travail, des milliers d'illustrations de The Pokémon Company,
+    et aspirer leur catalogue chargerait leur serveur. Mesuré le 28/10/2026 : 1 640
+    cartes de TCGdex n'ont d'image ni en français ni en anglais (coffres étincelants,
+    galeries, kits, McDonald's, promos, Pocket).
 - **Valeur** : total, courbe jour par jour (`pcbox.cartes.valeurs`, une valeur par jour,
   hors sauvegarde), « Actualiser les prix » des cartes possédées, cartes les plus chères.
 - **Classeurs** et **PokéAdvisor** : pages d'attente, illustration de la tuile en grand.

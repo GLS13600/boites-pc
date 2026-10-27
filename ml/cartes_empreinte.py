@@ -294,7 +294,35 @@ def analyse(modele, cartes, eval_imgs, eval_y, dev, index):
                                'image': round(image[g].float().mean().item() if g.any() else 0, 4)}
     erreurs = [(i, int(eval_y[i]), int(p1[i]), round(float(top.values[i, 0]), 3), round(float(ecart[i]), 3))
                for i in torch.nonzero(~image).flatten().tolist()]
+    res['_brut'] = (top.values[:, 0], ecart, image)
     return res, erreurs, par_classe
+
+
+@torch.no_grad()
+def negatifs(modele, index, labels, racine, fonds, n, dev):
+    """Ce qui N'EST PAS une carte : un Pokémon seul (artwork officiel, parfois rendu comme
+    une figurine), un objet du quotidien (COCO), une scène vide. Rend, pour chaque image,
+    la ressemblance avec la carte la plus proche et l'écart avec la suivante — c'est ce
+    qui fixera le seuil où l'appli dit « c'est une carte »."""
+    arts = sorted((D.RACINE_APPLI / 'public/sprites/other/official-artwork').glob('*.webp'))
+    objets, _ = D.charge_coco(racine, 'test')
+    sortie = {}
+    for nom in ('pokemon', 'objets', 'rien'):
+        imgs = []
+        for k in range(n):
+            rnd = random.Random(31 * k + len(nom))
+            if nom == 'pokemon':
+                imgs.append(D.scene_reference(rnd, {'chemin': str(rnd.choice(arts)), 'source': 'artwork'}, fonds))
+            elif nom == 'objets' and objets:
+                imgs.append(D.scene_objet(rnd, rnd.choice(objets), fonds))
+            else:
+                imgs.append(D.scene_rien(rnd, fonds))
+        q = empreintes(modele, imgs, dev)
+        top = (q @ index.t()).topk(32, dim=1)
+        pred = labels[top.indices]
+        autre = torch.where(pred != pred[:, :1], top.values, torch.full_like(top.values, -1)).max(1).values
+        sortie[nom] = (top.values[:, 0], top.values[:, 0] - autre)
+    return sortie
 
 
 @torch.no_grad()
@@ -439,15 +467,41 @@ def evalue(args):
     fonds = fonds_de(racine)
     m = charge_modele(run, dev)
     index = empreintes_refs(m, cartes, dev)
-    rapport = {}
+    rapport, brut = {}, {}
     for nom, n, graine, dur in (('normal', args.n_eval, 99, False), ('resistance', args.n_eval // 2, 77, True)):
         imgs, y = jeu_eval(cartes, fonds, n, graine, dur=dur)
         res, erreurs, par_classe = analyse(m, cartes, imgs, y, dev, index)
+        brut[nom] = res.pop('_brut')
         rapport[nom] = res
         rapport[f'erreurs_{nom}'] = [{'vrai': ids[v], 'propose': ids[f], 'sim': s, 'ecart': e}
                                      for _, v, f, s, e in erreurs[:60]]
         planche_erreurs(erreurs, imgs, par_classe, run / f'erreurs-{nom}.jpg')
         print(nom, json.dumps(res, indent=1), flush=True)
+
+    # Carte ou pas carte ? Règle : « c'est une carte » si la plus proche ressemble à au moins
+    # S ET devance la suivante d'au moins E. Pour chaque couple, ce qu'on garde des vraies
+    # cartes (et leur justesse) contre ce qu'on accepterait à tort parmi les non-cartes.
+    labels = torch.tensor([c['classe'] for c in cartes])
+    neg = negatifs(m, index, labels, racine, fonds, args.n_eval // 3, dev)
+    regles = []
+    for S in (0.4, 0.5, 0.6, 0.7, 0.8):
+        for E in (0.0, 0.02, 0.04, 0.06, 0.1):
+            r = {'S': S, 'E': E}
+            for nom in ('normal', 'resistance'):
+                sim, ec, juste = brut[nom]
+                g = (sim >= S) & (ec >= E)
+                r[nom] = {'gardees': round(g.float().mean().item(), 3),
+                          'justes': round(juste[g].float().mean().item() if g.any() else 0, 4)}
+            for nom, (sim, ec) in neg.items():
+                r[f'faux_{nom}'] = round(((sim >= S) & (ec >= E)).float().mean().item(), 4)
+            regles.append(r)
+    rapport['carte_ou_pas'] = regles
+    rapport['negatifs_sim_max'] = {k: round(float(v[0].max()), 3) for k, v in neg.items()}
+    print('carte ou pas (S, E) : gardées/justes normal · résistance | acceptées à tort Pokémon/objets/rien')
+    for r in regles:
+        print(f"  S {r['S']:.1f} E {r['E']:.2f} : {r['normal']['gardees']*100:5.1f} %/{r['normal']['justes']*100:6.2f} % · "
+              f"{r['resistance']['gardees']*100:5.1f} %/{r['resistance']['justes']*100:6.2f} % | "
+              f"{r['faux_pokemon']*100:5.2f} / {r['faux_objets']*100:5.2f} / {r['faux_rien']*100:5.2f} %", flush=True)
     (run / 'evaluation.json').write_text(json.dumps(rapport, indent=1, ensure_ascii=False))
 
 

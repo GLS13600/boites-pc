@@ -14,6 +14,7 @@
 import * as api from './api.js';
 import * as coll from './collection.js';
 import * as prix from './prix.js';
+import * as cls from './classeurs.js';
 import { categorie, variantes, CATEGORIES, LANGUES_CARTE, ETATS, VARIANTES, cleEtat, distance } from './regles.js';
 
 const SERIE_KEY = 'pcbox.cartes.serie';
@@ -70,6 +71,12 @@ export function creeCartes(ctx) {
     ajout: { v: null, l: 'FR', e: 'neuf' },
     colQ: '', colTri: 'recent', colFiltre: 'toutes', colRarete: '', colType: '',
     majPrix: null,              // { fait, total } pendant l'actualisation des prix
+    cls: null,                  // classeur ouvert (son livre), ou null (la liste)
+    clsPage: 0,                 // page affichée du classeur
+    clsSel: null,               // Set des pochettes choisies en sélection
+    clsDeplace: false,          // la sélection attend sa pochette d'arrivée
+    clsAjout: null,             // le sélecteur d'ajout, ouvert sur une pochette
+    clsEdition: null,           // la création ou les réglages d'un classeur
   };
 
   // Ce qu'on a lu de TCGdex pendant la session. api.js garde le reste sur disque.
@@ -167,7 +174,7 @@ export function creeCartes(ctx) {
     const zone = ctx.zone();
     // On retient la position de la page qu'on QUITTE — si c'est bien une page de cartes.
     if (zone && pageAffichee && zone.querySelector('.cx-page')) positions.set(pageAffichee, zone.scrollTop);
-    const cle = `${vue}:${etat.set || ''}:${etat.q ? 'q' : ''}`;
+    const cle = `${vue}:${etat.set || etat.cls || ''}:${etat.q ? 'q' : ''}`;
     // Le champ qu'on est en train d'utiliser garde le focus à travers le rendu.
     const actif = document.activeElement;
     const focus = actif?.matches?.('[data-cx-q], [data-cx-colq]')
@@ -175,6 +182,7 @@ export function creeCartes(ctx) {
     const els = vue === 'extensions' ? (etat.set ? vueSet() : vueExtensions())
       : vue === 'collection' ? vueCollection()
       : vue === 'valeur' ? vueValeur()
+      : vue === 'classeurs' ? (etat.cls ? vueLivre() : vueClasseurs())
       : vueBientot(vue);
     const z = ctx.poser(...els);
     const y = positions.get(cle) || 0;
@@ -207,10 +215,10 @@ export function creeCartes(ctx) {
   // Une vignette : une carte, ou une variante d'une carte en mode master set. Le même
   // signal que la grille du Living Dex : possédée en couleur, manquante en gris, et la
   // Poké Ball dessinée de la boîte pour dire « elle est à moi ».
-  function vignette(x, { avecSet = false } = {}) {
+  function vignette(x, { avecSet = false, choix = null } = {}) {
     const n = x.va ? coll.exemplairesVariante(x.id, x.va) : coll.exemplaires(x.id);
     const cle = x.va ? `${x.id}|${x.va}` : x.id;
-    const choisie = !!etat.selection?.has(cle);
+    const choisie = choix ? choix.has(x.id) : !!etat.selection?.has(cle);
     const p = prixDe(x.d, x.va) ?? (n ? coll.carte(x.id)?.prix?.t : null) ?? null;
     const legende = avecSet ? (nomSetConnu(setDe(x.id)) || setDe(x.id)) : x.nom;
     return `
@@ -222,7 +230,7 @@ export function creeCartes(ctx) {
           ${p != null ? `<span class="cx-v-prix">${euros(p)}</span>` : ''}
           ${n ? `<span class="cx-v-pos"><i class="marque" aria-hidden="true"></i>${n > 1 ? `<span>×${n}</span>` : ''}</span>` : ''}
           ${x.va ? `<span class="cx-v-var v-${esc(x.va)}">${esc(nomVariante(x.va))}</span>` : ''}
-          ${etat.selection ? `<span class="cx-v-coche" aria-hidden="true">${ICO.coche}</span>` : ''}
+          ${choix || etat.selection ? `<span class="cx-v-coche" aria-hidden="true">${ICO.coche}</span>` : ''}
         </span>
         <span class="cx-v-legende"><span class="cx-v-nom">${esc(legende)}</span><span class="cx-v-num">${esc(x.num)}</span></span>
       </button>`;
@@ -345,7 +353,8 @@ export function creeCartes(ctx) {
   function chargeToutesExt() {
     if (toutesExt) return Promise.resolve();
     return api.toutesExtensions().then((l) => {
-      toutesExt = new Map((Array.isArray(l) ? l : []).map((x, rang) => [x.id, { nom: x.name, rang }]));
+      toutesExt = new Map((Array.isArray(l) ? l : []).map((x, rang) => [x.id,
+        { nom: x.name, rang, logo: x.logo || '', total: x.cardCount?.total || 0 }]));
     }).catch(() => {});
   }
 
@@ -859,6 +868,479 @@ export function creeCartes(ctx) {
     setTimeout(() => lanceMajPrix({ discret: true }), 0);
   }
 
+  // ---------------------------------------------------------------- classeurs
+  //
+  // Les classeurs de Cartodex : des pages de pochettes qu'on feuillette. La page
+  // courante au centre, ses voisines qui dépassent de chaque côté ; glisser tourne la
+  // page, qui bascule légèrement en 3D. Les pochettes suivent la règle de toute l'appli :
+  // carte possédée en couleur, manquante en gris, place libre en pointillés.
+  const pagesDe = (c) => Math.max(10, Math.ceil(c.cartes.length / c.poches) + 1);
+  const possedeCle = (k) => {
+    const v = cls.varianteDe(k);
+    return v ? coll.possedeVariante(cls.idDe(k), v) : coll.possede(cls.idDe(k));
+  };
+  const exemplairesCle = (k) => {
+    const v = cls.varianteDe(k);
+    return v ? coll.exemplairesVariante(cls.idDe(k), v) : coll.exemplaires(cls.idDe(k));
+  };
+  const LETTRE_VAR = { normal: 'N', holo: 'H', reverse: 'R', premiere: '1', reverse_pokeball: 'PB', reverse_masterball: 'MB' };
+  const reduit = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const logoSet = (id) => extensions.get(id)?.logo || toutesExt?.get(id)?.logo || '';
+
+  // La valeur d'un classeur, comme dans Cartodex : ce que valent les cartes qu'on y a,
+  // et ce que vaudrait le classeur complet. Le prix d'une pochette est celui de sa
+  // variante quand on le connaît, sinon celui de la carte, sinon le relevé fait à la
+  // préparation du classeur.
+  function valeurClasseur(c) {
+    let complete = 0, possede = 0, pleines = 0, possedees = 0;
+    for (const p of c.cartes) {
+      const cles = cls.clesPoche(p);
+      if (!cles.length) continue;
+      pleines++;
+      const id = cls.idDe(cles[0]);
+      const v = cls.varianteDe(cles[0]);
+      const pr = (v ? prixDe(detail(id), v) : null) ?? prixUnitaire(id) ?? c.prix?.[id] ?? null;
+      const a = cles.some(possedeCle);
+      if (a) possedees++;
+      if (pr != null) { complete += pr; if (a) possede += pr; }
+    }
+    return { complete, possede, pleines, possedees };
+  }
+
+  // La liste des extensions sert aux logos des couvertures : lue une fois par session.
+  let essaiExt = false;
+  function veilleLogos() {
+    if (toutesExt || essaiExt) return;
+    essaiExt = true;
+    chargeToutesExt().then(() => { if (ctx.vue() === 'classeurs' && !etat.cls && toutesExt) rend('classeurs'); });
+  }
+
+  function couverture(c) {
+    const v = valeurClasseur(c);
+    const logo = c.logo ? logoSet(c.logo) : '';
+    const pc = v.pleines ? (100 * v.possedees) / v.pleines : 0;
+    return `
+      <button class="cl-couv c-${esc(c.couleur)}" data-cl="${esc(c.id)}"
+              aria-label="${esc(c.nom)}, ${esc(t('clContenu', v.possedees, v.pleines))}">
+        <span class="cl-anneaux" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="cl-couv-art">${logo ? `<img src="${esc(api.logo(logo))}" alt="" loading="lazy" />`
+          : `<b aria-hidden="true">${esc((c.nom || '?').slice(0, 1).toUpperCase())}</b>`}</span>
+        <span class="cl-couv-txt">
+          <b>${esc(c.nom)}</b>
+          <small>${t('clContenu', v.possedees, v.pleines)}</small>
+          <span class="cl-couv-barre"><i style="width:${pc}%"></i></span>
+          ${v.possede > 0 ? `<span class="cl-couv-valeur">${euros(v.possede)}</span>` : ''}
+        </span>
+      </button>`;
+  }
+
+  function vueClasseurs() {
+    veilleLogos();
+    const liste = cls.tous();
+    const actions = `<button class="tete-btn" data-cl-nouveau title="${t('clNouveau')}" aria-label="${t('clNouveau')}">${ICO.plus}</button>`;
+    if (!liste.length) {
+      return [ctx.tete(t('tuileClasseurs'), actions), h(`
+        <section class="cx-page">
+          <div class="cx-bientot t-classeurs">${ctx.art('classeurs')}</div>
+          <p class="cx-bientot-txt">${t('clVide')}</p>
+          <button class="catch-btn" data-cl-nouveau>${t('clCreer')}</button>
+        </section>`)];
+    }
+    return [ctx.tete(t('tuileClasseurs'), actions), h(`
+      <section class="cx-page">
+        <div class="cl-liste">${liste.map(couverture).join('')}</div>
+        <p class="cx-note">${t('clAide')}</p>
+      </section>`)];
+  }
+
+  // Les cartes d'une page dont on ne sait encore rien (ajoutées depuis une recherche,
+  // classeur venu d'un autre appareil) : leur détail est demandé, la page se refait.
+  const aCharger = new Set();
+  let minuterieLivre = null;
+  function chargePoches() {
+    const ids = [...aCharger];
+    aCharger.clear();
+    for (const id of ids) {
+      api.carteEnFile(id).then(() => {
+        clearTimeout(minuterieLivre);
+        minuterieLivre = setTimeout(majLivre, 250);
+      }).catch(() => {});
+    }
+  }
+
+  function poche(c, i) {
+    const cles = cls.clesPoche(c.cartes[i]);
+    const sel = !!etat.clsSel?.has(i);
+    if (!cles.length) {
+      return `<button class="cl-poche vide ${sel ? 'choisie' : ''}" data-cl-poche="${i}"
+                      aria-label="${t('clPocheVide')}">${etat.clsSel ? '' : ICO.plus}</button>`;
+    }
+    const cle = cles[0];
+    const id = cls.idDe(cle);
+    const v = cls.varianteDe(cle);
+    const info = infoCarte(id);
+    if (!info.img && !detail(id)) aCharger.add(id);
+    const a = cles.some(possedeCle);
+    const n = cles.length === 1 ? exemplairesCle(cle) : 0;
+    return `
+      <button class="cl-poche pleine ${a ? '' : 'manque'} ${sel ? 'choisie' : ''}" data-cl-poche="${i}"
+              aria-label="${esc(info.nom)} ${esc(info.num)}${v ? ', ' + esc(nomVariante(v)) : ''}${a ? '' : ', ' + esc(t('cxManquantes'))}">
+        <img src="${esc(api.image(info.img, 'low'))}" alt="" loading="lazy" decoding="async" />
+        ${v ? `<span class="cl-var v-${esc(v)}">${LETTRE_VAR[v] || esc(v.slice(0, 2).toUpperCase())}</span>` : ''}
+        ${cles.length > 1 ? `<span class="cl-qte">▦ ${cles.length}</span>` : n > 1 ? `<span class="cl-qte">×${n}</span>` : ''}
+        ${etat.clsSel ? `<span class="cx-v-coche" aria-hidden="true">${ICO.coche}</span>` : ''}
+      </button>`;
+  }
+
+  function feuille(c, page, sorte) {
+    let html = '';
+    for (let k = 0; k < c.poches; k++) html += poche(c, page * c.poches + k);
+    return `
+      <div class="cl-feuille ${sorte}" ${sorte === 'cour' ? '' : 'aria-hidden="true"'}>
+        <span class="cl-trous" aria-hidden="true"><i></i><i></i><i></i></span>
+        <div class="cl-grille g${c.poches}">${html}</div>
+      </div>`;
+  }
+
+  function htmlLivre(c) {
+    const pages = pagesDe(c);
+    const p = etat.clsPage;
+    return `
+      <div class="cl-livre c-${esc(c.couleur)}" data-cl-livre>
+        <div class="cl-piste">
+          ${p > 0 ? feuille(c, p - 1, 'prec') : ''}
+          ${feuille(c, p, 'cour')}
+          ${p < pages - 1 ? feuille(c, p + 1, 'suiv') : ''}
+        </div>
+      </div>
+      <div class="cl-nav">
+        <button class="tete-btn" data-cl-tourne="-1" ${p === 0 ? 'disabled' : ''} aria-label="${t('clPagePrec')}">${ICO.gauche}</button>
+        <span class="cl-nav-txt" aria-live="polite">${t('clPage', p + 1, pages)}</span>
+        <button class="tete-btn" data-cl-tourne="1" ${p >= pages - 1 ? 'disabled' : ''} aria-label="${t('clPageSuiv')}">${ICO.droite}</button>
+      </div>`;
+  }
+
+  function bandeauClasseur(c) {
+    const v = valeurClasseur(c);
+    const logo = c.logo ? logoSet(c.logo) : '';
+    const pc = v.pleines ? (100 * v.possedees) / v.pleines : 0;
+    return `
+      <div class="bandeau">
+        <span class="bandeau-art">${logo ? `<img src="${esc(api.logo(logo))}" alt="" />` : `<span class="cl-mini c-${esc(c.couleur)}"></span>`}</span>
+        <span class="bandeau-chiffres">
+          ${v.possede > 0 ? `<span class="bandeau-valeur">${euros(v.possede)}</span>` : ''}
+          <span class="bandeau-compte"><b>${v.possedees}</b> / ${v.pleines}<small> · ${pourcent(pc)}</small></span>
+        </span>
+        <span class="bandeau-barre"><i style="width:${pc}%"></i></span>
+        <p class="bandeau-note">${v.complete > 0 ? `${t('clComplet', euros(v.complete))} · ` : ''}${t('clPochesPage', c.poches)}</p>
+      </div>`;
+  }
+
+  function barreLotClasseur() {
+    const n = etat.clsSel?.size || 0;
+    if (etat.clsDeplace) {
+      return `<div class="lot" role="status"><b>${t('clDeplaceAide', n)}</b><button data-cl-lot="annule">${t('annuler')}</button></div>`;
+    }
+    return `
+      <div class="lot" role="toolbar" aria-label="${t('cxSelection')}">
+        <b data-cl-lot-n>${t('cxSelectionN', n)}</b>
+        <button data-cl-lot="deplace" ${n ? '' : 'disabled'}>${t('clDeplacer')}</button>
+        <button class="primaire" data-cl-lot="retire" ${n ? '' : 'disabled'}>${t('cxRetirerSel')}</button>
+      </div>`;
+  }
+
+  function vueLivre() {
+    const c = cls.classeur(etat.cls);
+    if (!c) { etat.cls = null; return vueClasseurs(); }
+    // Un classeur préparé depuis une extension en connaît les images : on la relit.
+    if (c.set && !extensions.has(c.set)) charge(`set:${c.set}`, () => api.extension(c.set), (d) => extensions.set(c.set, d));
+    if (!toutesExt) veilleLogos();
+    etat.clsPage = Math.min(Math.max(0, etat.clsPage), pagesDe(c) - 1);
+    const actions = `
+      <button class="tete-btn ${etat.clsSel ? 'on' : ''}" data-cl-selection aria-pressed="${!!etat.clsSel}"
+              title="${t('cxSelection')}" aria-label="${t('cxSelection')}">${ICO.selection}</button>
+      <button class="tete-btn" data-cl-reglages title="${t('clReglages')}" aria-label="${t('clReglages')}">${ICO.reglages}</button>`;
+    const els = [ctx.tete(c.nom, actions), h(`
+      <section class="cx-page cl-vue">
+        ${bandeauClasseur(c)}
+        ${htmlLivre(c)}
+        ${etat.clsSel ? barreLotClasseur() : ''}
+      </section>`)];
+    setTimeout(chargePoches, 0);
+    return els;
+  }
+
+  // Refait le livre EN PLACE (page tournée, détail arrivé) : le défilement ne bouge pas,
+  // et un geste en cours n'est jamais interrompu.
+  let livreTouche = false;
+  function majLivre() {
+    const c = cls.classeur(etat.cls);
+    const livre = document.querySelector('[data-cl-livre]');
+    if (!c || !livre || livreTouche) return;
+    const neuf = h(`<div>${htmlLivre(c)}</div>`);
+    const [nLivre, nNav] = [...neuf.children];
+    livre.replaceWith(nLivre);
+    document.querySelector('.cl-nav')?.replaceWith(nNav);
+    const b = document.querySelector('.cl-vue .bandeau');
+    if (b) b.outerHTML = bandeauClasseur(c);
+    chargePoches();
+  }
+
+  // ---- Tourner la page ----
+  // La piste porte les trois feuilles ; le doigt la fait glisser, et la feuille courante
+  // bascule un peu, comme une page qu'on soulève. Au-delà de 60 px, la page tourne.
+  const pisteEl = () => document.querySelector('.cl-piste');
+  function poseLivre(dx) {
+    const piste = pisteEl();
+    if (!piste) return;
+    const w = piste.getBoundingClientRect().width || 340;
+    piste.style.transform = `translateX(${dx}px)`;
+    const cour = piste.querySelector('.cl-feuille.cour');
+    if (cour) cour.style.transform = `rotateY(${(-dx / w) * 16}deg)`;
+  }
+  function remetLivre() {
+    const piste = pisteEl();
+    if (!piste) return;
+    const cour = piste.querySelector('.cl-feuille.cour');
+    for (const el of [piste, cour]) {
+      if (!el) continue;
+      el.style.transition = reduit() ? 'none' : 'transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1)';
+      el.style.transform = '';
+    }
+  }
+  function tourne(dir) {
+    const c = cls.classeur(etat.cls);
+    if (!c) return;
+    const cible = etat.clsPage + dir;
+    const piste = pisteEl();
+    if (cible < 0 || cible >= pagesDe(c) || !piste) { remetLivre(); return; }
+    ctx.haptique();
+    if (reduit()) { etat.clsPage = cible; majLivre(); return; }
+    const cour = piste.querySelector('.cl-feuille.cour');
+    const pas = (cour?.getBoundingClientRect().width || 300) + 12;
+    const courbe = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
+    piste.style.transition = `transform 260ms ${courbe}`;
+    piste.style.transform = `translateX(${-dir * pas}px)`;
+    if (cour) {
+      cour.style.transition = `transform 260ms ${courbe}, opacity 260ms ease`;
+      cour.style.transform = `rotateY(${dir * 18}deg) scale(0.94)`;
+      cour.style.opacity = '0.55';
+    }
+    const venant = piste.querySelector(dir > 0 ? '.cl-feuille.suiv' : '.cl-feuille.prec');
+    if (venant) {
+      venant.style.transition = `transform 260ms ${courbe}, opacity 260ms ease, filter 260ms ease`;
+      venant.style.transform = `translateX(${dir > 0 ? 'calc(100% + 12px)' : 'calc(-100% - 12px)'}) scale(1)`;
+      venant.style.opacity = '1';
+      venant.style.filter = 'none';
+    }
+    setTimeout(() => { etat.clsPage = cible; majLivre(); }, 270);
+  }
+
+  // ---- Ranger des cartes : le sélecteur ----
+  function ouvreAjout(depuis) {
+    etat.clsAjout = { depuis, choix: new Set(), source: 'collection', q: '', res: null };
+    ctx.panneau2.ouvre(htmlAjout());
+  }
+  function grilleAjout() {
+    const a = etat.clsAjout;
+    const q = fold(a.q.trim());
+    let l;
+    if (a.source === 'collection') {
+      l = Object.entries(coll.toutes()).filter(([, c]) => c.ex?.length)
+        .filter(([id, c]) => !q || fold(c.n || '').includes(q) || fold(c.setN || '').includes(q) || id.toLowerCase().includes(q))
+        .sort(([a1, c1], [a2, c2]) => (c1.set || '').localeCompare(c2.set || '') || String(c1.num || '').localeCompare(String(c2.num || ''), undefined, { numeric: true }))
+        .map(([id, c]) => ({ id, nom: c.n || id, num: c.num || '', img: c.img, d: detail(id) }));
+      if (!l.length) return `<p class="dex-vide">${q ? t('colAucuneTrouvee') : t('colVide')}</p>`;
+    } else {
+      if (a.q.trim().length < 2) return `<p class="dex-res">${t('cxRechercheCourte')}</p>`;
+      if (!a.res) return squeletteGrille(6);
+      l = a.res.map((c) => ({ id: c.id, nom: c.name, num: c.localId, img: c.image, d: detail(c.id) }));
+      if (!l.length) return `<p class="dex-vide">${t('cxAucuneCarte')}</p>`;
+    }
+    return `<div class="cx-grille">${l.map((x) => vignette(x, { avecSet: a.source !== 'collection', choix: a.choix })).join('')}</div>`;
+  }
+  function htmlAjout() {
+    const a = etat.clsAjout;
+    return `
+      <h2 class="bs-title">${t('clAjouterTitre')}</h2>
+      ${rail([['collection', t('clSourceCollection'), coll.stats().distinctes], ['recherche', t('clSourceRecherche'), '']],
+        a.source, 'data-cl-source', t('clAjouterTitre'))}
+      ${champ('data-cl-q', a.q, a.source === 'collection' ? t('colChercher') : t('cxChercher'))}
+      <div class="cl-choix" data-cl-choix>${grilleAjout()}</div>
+      <div class="lot cl-lot-ajout">
+        <b data-cl-choix-n>${t('cxSelectionN', a.choix.size)}</b>
+        <button class="primaire" data-cl-ajoute ${a.choix.size ? '' : 'disabled'}>${t('cxAjouterSel')}</button>
+      </div>`;
+  }
+  function majAjout() {
+    const zone = ctx.panneau2.corps.querySelector('[data-cl-choix]');
+    if (zone) zone.innerHTML = grilleAjout();
+    const n = ctx.panneau2.corps.querySelector('[data-cl-choix-n]');
+    if (n) n.textContent = t('cxSelectionN', etat.clsAjout.choix.size);
+    const b = ctx.panneau2.corps.querySelector('[data-cl-ajoute]');
+    if (b) b.disabled = !etat.clsAjout.choix.size;
+  }
+  let minuterieAjout = null, numAjout = 0;
+  function chercheAjout() {
+    const a = etat.clsAjout;
+    clearTimeout(minuterieAjout);
+    const q = a.q.trim();
+    if (a.source !== 'recherche' || q.length < 2) { a.res = null; majAjout(); return; }
+    a.res = null;
+    majAjout();
+    const mon = ++numAjout;
+    minuterieAjout = setTimeout(async () => {
+      try {
+        const [res] = await Promise.all([api.cherche(requete(q)), chargeToutesExt()]);
+        if (mon !== numAjout || !etat.clsAjout) return;
+        const rang = (id) => toutesExt?.get(setDe(id))?.rang ?? -1;
+        etat.clsAjout.res = (Array.isArray(res) ? res : []).slice().sort((x, y) => rang(y.id) - rang(x.id));
+        chercheImages(etat.clsAjout.res);
+      } catch { if (etat.clsAjout) etat.clsAjout.res = []; }
+      majAjout();
+    }, 350);
+  }
+
+  // ---- Créer un classeur, ou en changer les réglages ----
+  function ouvreEdition(id) {
+    const c = id ? cls.classeur(id) : null;
+    etat.clsEdition = c
+      ? { id: c.id, nom: c.nom, poches: c.poches, couleur: c.couleur }
+      : { nom: '', poches: 9, couleur: 'nuit', contenu: 'vide', set: '', mise: 'simple', qSet: '', prepa: null, erreur: '' };
+    if (!c) chargeToutesExt().then(majEdition);
+    ctx.panneau2.ouvre(htmlEdition());
+  }
+  function htmlSetsChoix(e) {
+    if (!toutesExt) return squeletteSets(3);
+    const q = fold(e.qSet.trim());
+    let l = [...toutesExt.entries()].map(([id, x]) => ({ id, ...x })).sort((a, b) => b.rang - a.rang);
+    if (q) l = l.filter((x) => fold(x.nom).includes(q) || x.id.toLowerCase().includes(q));
+    const choisi = e.set ? [...toutesExt.entries()].map(([id, x]) => ({ id, ...x })).find((x) => x.id === e.set) : null;
+    l = l.slice(0, q ? 40 : 8);
+    if (choisi && !l.some((x) => x.id === choisi.id)) l.unshift(choisi);
+    if (!l.length) return `<p class="dex-vide">${t('clAucuneExtension')}</p>`;
+    return l.map((x) => `
+      <button class="avance cl-set ${x.id === e.set ? 'complet' : ''}" data-cl-set="${esc(x.id)}" aria-pressed="${x.id === e.set}">
+        <span class="avance-art logo">${x.logo ? `<img src="${esc(api.logo(x.logo))}" alt="" loading="lazy" />`
+          : `<span class="avance-sigle">${esc(x.id.toUpperCase())}</span>`}</span>
+        <span class="avance-txt">
+          <span class="avance-haut"><b class="avance-nom">${esc(x.nom)}</b>${x.total ? `<span class="avance-cpt">${t('cxResultats', x.total)}</span>` : ''}</span>
+        </span>
+        ${x.id === e.set ? `<span class="cl-coche" aria-hidden="true">${ICO.coche}</span>` : ''}
+      </button>`).join('');
+  }
+  function htmlEdition() {
+    const e = etat.clsEdition;
+    const creation = !e.id;
+    return `
+      <h2 class="bs-title">${creation ? t('clNouveau') : t('clReglages')}</h2>
+      <label class="bs-field"><span>${t('clNom')}</span>
+        <input class="bs-name" data-cl-nom value="${esc(e.nom)}" placeholder="${esc(t('clNomPlace'))}" maxlength="60"
+               autocomplete="off" autocorrect="off" spellcheck="false" />
+      </label>
+      <div class="cx-choix">
+        <span class="cx-choix-lib">${t('clPoches')}</span>
+        <div class="cx-choix-puces">${cls.POCHES.map((n) => `
+          <button class="puce ${e.poches === n ? 'on' : ''}" data-cl-poches="${n}" aria-pressed="${e.poches === n}">${t('clPochesN', n)}</button>`).join('')}</div>
+      </div>
+      <div class="cx-choix">
+        <span class="cx-choix-lib">${t('clCouleur')}</span>
+        <div class="cx-choix-puces">${cls.COULEURS.map((k) => `
+          <button class="cl-teinte c-${k} ${e.couleur === k ? 'on' : ''}" data-cl-couleur="${k}"
+                  aria-pressed="${e.couleur === k}" aria-label="${t(`clCouleur_${k}`)}" title="${t(`clCouleur_${k}`)}"></button>`).join('')}</div>
+      </div>
+      ${creation ? `
+        <div class="cx-choix">
+          <span class="cx-choix-lib">${t('clContenuLib')}</span>
+          <div class="cx-choix-puces">
+            <button class="puce ${e.contenu === 'vide' ? 'on' : ''}" data-cl-contenu="vide" aria-pressed="${e.contenu === 'vide'}">${t('clContenuVide')}</button>
+            <button class="puce ${e.contenu === 'set' ? 'on' : ''}" data-cl-contenu="set" aria-pressed="${e.contenu === 'set'}">${t('clContenuSet')}</button>
+          </div>
+        </div>
+        ${e.contenu === 'set' ? `
+          ${champ('data-cl-qset', e.qSet, t('clChercherExtension'))}
+          <div class="avances cl-sets" data-cl-sets>${htmlSetsChoix(e)}</div>
+          <div class="cx-choix">
+            <span class="cx-choix-lib">${t('clDisposition')}</span>
+            <div class="cx-choix-puces">
+              <button class="puce ${e.mise === 'simple' ? 'on' : ''}" data-cl-mise="simple" aria-pressed="${e.mise === 'simple'}">${t('clMiseSimple')}</button>
+              <button class="puce ${e.mise === 'master' ? 'on' : ''}" data-cl-mise="master" aria-pressed="${e.mise === 'master'}">${t('clMiseMaster')}</button>
+            </div>
+          </div>
+          <p class="cx-note">${e.mise === 'master' ? t('clMiseMasterAide') : t('clMiseSimpleAide')}</p>` : ''}`
+      : `
+        <div class="reg-lignes cl-actions">
+          <button class="reg-ligne" data-cl-monte>${ICO.gauche}<span><b>${t('clMonter')}</b><small>${t('clMonterSous')}</small></span></button>
+          <button class="reg-ligne danger" data-cl-supprime>${ICO.croix}<span><b>${t('clSupprimer')}</b><small>${t('clSupprimerSous')}</small></span></button>
+        </div>`}
+      ${e.erreur ? `<p class="sd-erreur">${esc(e.erreur)}</p>` : ''}
+      <button class="catch-btn" data-cl-valide ${e.prepa ? 'disabled' : ''}>${e.prepa
+        ? t('clPreparation', e.prepa.fait, e.prepa.total) : creation ? t('clCreer') : t('clEnregistrer')}</button>`;
+  }
+  function majEdition() {
+    if (!etat.clsEdition || !ctx.panneau2.ouvert()) return;
+    const nom = ctx.panneau2.corps.querySelector('[data-cl-nom]');
+    if (nom) etat.clsEdition.nom = nom.value;
+    ctx.panneau2.maj(htmlEdition());
+  }
+  async function valideEdition() {
+    const e = etat.clsEdition;
+    if (!e || e.prepa) return;
+    const nom = (ctx.panneau2.corps.querySelector('[data-cl-nom]')?.value ?? e.nom).trim();
+    if (e.id) {
+      cls.modifie(e.id, { nom, poches: e.poches, couleur: e.couleur });
+      etat.clsEdition = null;
+      ctx.panneau2.ferme();
+      rend('classeurs');
+      return;
+    }
+    if (e.contenu === 'set' && !e.set) { e.nom = nom; e.erreur = t('clChoisirExtension'); majEdition(); return; }
+    let cartes = [];
+    const prixCartes = {};
+    if (e.contenu === 'set') {
+      e.nom = nom;
+      e.erreur = '';
+      try {
+        const s = extensions.get(e.set) || await api.extension(e.set);
+        extensions.set(e.set, s);
+        const ids = (s.cards || []).map((x) => x.id);
+        // Le détail de chaque carte donne ses variantes (master set) et son prix (la
+        // valeur « complète » du classeur) ; gardé trente jours, il ne coûte qu'une fois.
+        e.prepa = { fait: 0, total: ids.length };
+        majEdition();
+        const fin = () => {
+          e.prepa.fait++;
+          const b = ctx.panneau2.corps.querySelector('[data-cl-valide]');
+          if (b) b.textContent = t('clPreparation', e.prepa.fait, e.prepa.total);
+        };
+        const details = await Promise.all(ids.map((id) => api.carteEnFile(id).then((d) => { fin(); return d; }, () => { fin(); return null; })));
+        ids.forEach((id, k) => {
+          const d = details[k];
+          const p = prixDe(d);
+          if (p) prixCartes[id] = Math.round(p * 100) / 100;
+          if (e.mise === 'master') for (const v of variantes(d || { id }, s.id, s.name)) cartes.push(`${id}|${v}`);
+          else cartes.push(id);
+        });
+        chercheImages(s.cards || []);
+      } catch {
+        e.prepa = null;
+        e.erreur = t('clErreurPrepa');
+        majEdition();
+        return;
+      }
+    }
+    const c = cls.cree({
+      nom: nom || (e.set ? nomSetConnu(e.set) : '') || t('clNomDefaut'),
+      poches: e.poches, couleur: e.couleur, logo: e.contenu === 'set' ? e.set : '', set: e.contenu === 'set' ? e.set : '',
+      mise: e.contenu === 'set' ? e.mise : '', cartes, prix: prixCartes,
+    });
+    etat.clsEdition = null;
+    ctx.panneau2.ferme();
+    Object.assign(etat, { cls: c.id, clsPage: 0, clsSel: null, clsDeplace: false });
+    ctx.haptique();
+    rend('classeurs');
+  }
+
   // ---------------------------------------------------------------- à venir
   const A_VENIR = { classeurs: ['tuileClasseurs', 'bientotClasseurs'], advisor: ['tuileAdvisor', 'bientotAdvisor'] };
   function vueBientot(vue) {
@@ -871,10 +1353,10 @@ export function creeCartes(ctx) {
   }
 
   // ---------------------------------------------------------------- fiche d'une carte
-  function ouvre(id, liste) {
+  function ouvre(id, liste, { variante = null } = {}) {
     etat.fiche = { id, liste: liste && liste.length ? liste : [id] };
     etat.ficheEchec = null;
-    etat.ajout.v = null;
+    etat.ajout.v = variante;
     panneau.ouvre(htmlFiche(id));
     // Le détail du jour : le prix bouge, et une carte possédée relève le sien.
     api.carte(id, { pourPrix: true }).then((d) => {
@@ -1176,6 +1658,70 @@ export function creeCartes(ctx) {
       if (!vueCartes()) return;
       const q = (sel) => e.target.closest(sel);
       let x;
+      // ---- classeurs ----
+      if (q('[data-cl-nouveau]')) { ouvreEdition(null); return; }
+      if ((x = q('[data-cl]'))) {
+        Object.assign(etat, { cls: x.dataset.cl, clsPage: 0, clsSel: null, clsDeplace: false });
+        ctx.haptique();
+        rend('classeurs');
+        return;
+      }
+      if (q('[data-cl-reglages]')) { ouvreEdition(etat.cls); return; }
+      if (q('[data-cl-selection]')) {
+        etat.clsSel = etat.clsSel ? null : new Set();
+        etat.clsDeplace = false;
+        ctx.haptique();
+        rend('classeurs');
+        return;
+      }
+      if ((x = q('[data-cl-tourne]'))) { tourne(Number(x.dataset.clTourne)); return; }
+      if ((x = q('[data-cl-lot]'))) {
+        const c = cls.classeur(etat.cls);
+        const a = x.dataset.clLot;
+        if (!c) return;
+        if (a === 'annule') { etat.clsDeplace = false; rend('classeurs'); return; }
+        if (a === 'deplace') { if (etat.clsSel?.size) { etat.clsDeplace = true; rend('classeurs'); } return; }
+        if (a === 'retire' && etat.clsSel?.size) {
+          const avant = c.cartes.slice();
+          const n = etat.clsSel.size;
+          cls.vide(c.id, [...etat.clsSel]);
+          etat.clsSel = null;
+          ctx.haptique();
+          rend('classeurs');
+          ctx.annonce(t('clRetires', n), () => cls.remetCartes(c.id, avant));
+        }
+        return;
+      }
+      if ((x = q('[data-cl-poche]'))) {
+        const c = cls.classeur(etat.cls);
+        if (!c) return;
+        const i = Number(x.dataset.clPoche);
+        // La sélection attend sa pochette d'arrivée : elle s'y range.
+        if (etat.clsDeplace) {
+          cls.deplacePoches(c.id, [...etat.clsSel], i);
+          Object.assign(etat, { clsSel: null, clsDeplace: false });
+          ctx.haptique();
+          rend('classeurs');
+          return;
+        }
+        if (etat.clsSel) {
+          if (c.cartes[i] == null) return;
+          if (etat.clsSel.has(i)) etat.clsSel.delete(i); else etat.clsSel.add(i);
+          x.classList.toggle('choisie', etat.clsSel.has(i));
+          ctx.haptique();
+          const b = document.querySelector('[data-cl-lot-n]');
+          if (b) b.textContent = t('cxSelectionN', etat.clsSel.size);
+          document.querySelectorAll('[data-cl-lot="deplace"], [data-cl-lot="retire"]').forEach((y) => { y.disabled = !etat.clsSel.size; });
+          return;
+        }
+        const cles = cls.clesPoche(c.cartes[i]);
+        if (!cles.length) { ouvreAjout(i); return; }
+        // Glisser dans la fiche parcourt le classeur ; une pochette groupée, ses cartes.
+        const liste = cles.length > 1 ? cles.map(cls.idDe)
+          : c.cartes.flatMap((p) => cls.clesPoche(p).slice(0, 1).map(cls.idDe));
+        ouvre(cls.idDe(cles[0]), [...new Set(liste)], { variante: cls.varianteDe(cles[0]) });
+        return;
+      }
       if (q('[data-cx-series]')) { etat.seriesOuvert = !etat.seriesOuvert; ctx.haptique(); rend(ctx.vue()); return; }
       if ((x = q('[data-cx-serie]'))) {
         etat.serie = x.dataset.cxSerie;
@@ -1230,6 +1776,127 @@ export function creeCartes(ctx) {
       if (q('[data-cx-majprix]')) { lanceMajPrix(); }
     });
 
+    // ---- Tourner les pages du doigt ----
+    // Le geste se décide au premier mouvement, comme partout : horizontal, il tourne la
+    // page ; vertical, la vue défile. Depuis le bord gauche, il appartient au retour.
+    let lx0 = 0, ly0 = 0, ldx = 0, laxe = null;
+    app.addEventListener('touchstart', (e) => {
+      if (!e.target.closest('[data-cl-livre]') || e.touches.length !== 1 || e.touches[0].clientX <= 26) return;
+      livreTouche = true;
+      laxe = null;
+      ldx = 0;
+      lx0 = e.touches[0].clientX;
+      ly0 = e.touches[0].clientY;
+      const piste = pisteEl();
+      if (piste) {
+        piste.style.transition = 'none';
+        const cour = piste.querySelector('.cl-feuille.cour');
+        if (cour) cour.style.transition = 'none';
+      }
+    }, { passive: true });
+    app.addEventListener('touchmove', (e) => {
+      if (!livreTouche) return;
+      const mx = e.touches[0].clientX - lx0, my = e.touches[0].clientY - ly0;
+      if (!laxe) {
+        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+        laxe = Math.abs(mx) > Math.abs(my) ? 'x' : 'y';
+        if (laxe === 'y') { livreTouche = false; return; }
+      }
+      e.preventDefault();
+      const c = cls.classeur(etat.cls);
+      // Au bout du classeur, la page résiste : elle ne suit qu'au tiers.
+      const bout = !c || (mx > 0 && etat.clsPage === 0) || (mx < 0 && etat.clsPage >= pagesDe(c) - 1);
+      ldx = bout ? mx / 3 : mx;
+      poseLivre(ldx);
+    }, { passive: false });
+    const finLivre = () => {
+      if (!livreTouche) return;
+      livreTouche = false;
+      if (laxe !== 'x') return;
+      if (Math.abs(ldx) > 60) tourne(ldx < 0 ? 1 : -1); else remetLivre();
+    };
+    app.addEventListener('touchend', finLivre, { passive: true });
+    app.addEventListener('touchcancel', finLivre, { passive: true });
+
+    // ---- Le second panneau : créer un classeur, le régler, y ranger des cartes ----
+    const corps2 = ctx.panneau2.corps;
+    const majAjoutBarre = () => {
+      const n = corps2.querySelector('[data-cl-choix-n]');
+      if (n) n.textContent = t('cxSelectionN', etat.clsAjout.choix.size);
+      const b = corps2.querySelector('[data-cl-ajoute]');
+      if (b) b.disabled = !etat.clsAjout.choix.size;
+    };
+    corps2.addEventListener('click', (e) => {
+      const q = (sel) => e.target.closest(sel);
+      let x;
+      const ed = etat.clsEdition;
+      if (ed) {
+        if ((x = q('[data-cl-poches]'))) { ed.poches = Number(x.dataset.clPoches); majEdition(); return; }
+        if ((x = q('[data-cl-couleur]'))) { ed.couleur = x.dataset.clCouleur; ctx.haptique(); majEdition(); return; }
+        if ((x = q('[data-cl-contenu]'))) { ed.contenu = x.dataset.clContenu; ed.erreur = ''; majEdition(); return; }
+        if ((x = q('[data-cl-mise]'))) { ed.mise = x.dataset.clMise; majEdition(); return; }
+        if ((x = q('[data-cl-set]'))) { ed.set = x.dataset.clSet; ed.erreur = ''; ctx.haptique(); majEdition(); return; }
+        if (q('[data-cl-valide]')) { valideEdition(); return; }
+        if (q('[data-cl-monte]')) { cls.deplace(ed.id, -1); ctx.haptique(); return; }
+        if (q('[data-cl-supprime]')) {
+          const c = cls.classeur(ed.id);
+          if (!c) return;
+          const index = cls.tous().indexOf(c);
+          cls.supprime(c.id);
+          etat.clsEdition = null;
+          ctx.panneau2.ferme();
+          Object.assign(etat, { cls: null, clsSel: null, clsDeplace: false });
+          rend('classeurs');
+          ctx.annonce(t('clSupprime', c.nom), () => cls.restaure(c, index));
+          return;
+        }
+      }
+      const a = etat.clsAjout;
+      if (a) {
+        if ((x = q('[data-cl-source]'))) {
+          a.source = x.dataset.clSource;
+          a.res = null;
+          ctx.panneau2.maj(htmlAjout());
+          chercheAjout();
+          return;
+        }
+        if ((x = q('[data-cx-carte]'))) {
+          const id = x.dataset.cxCarte;
+          if (a.choix.has(id)) a.choix.delete(id); else a.choix.add(id);
+          x.classList.toggle('choisie', a.choix.has(id));
+          ctx.haptique();
+          majAjoutBarre();
+          return;
+        }
+        if (q('[data-cl-ajoute]')) {
+          const c = cls.classeur(etat.cls);
+          if (!c || !a.choix.size) return;
+          cls.range(c.id, a.depuis, [...a.choix]);
+          etat.clsAjout = null;
+          ctx.panneau2.ferme();
+          ctx.haptique();
+          rend('classeurs');
+        }
+      }
+    });
+    corps2.addEventListener('input', (e) => {
+      if (e.target.matches('[data-cl-qset]') && etat.clsEdition) {
+        etat.clsEdition.qSet = e.target.value;
+        const z = corps2.querySelector('[data-cl-sets]');
+        if (z) z.innerHTML = htmlSetsChoix(etat.clsEdition);
+      } else if (e.target.matches('[data-cl-nom]') && etat.clsEdition) {
+        etat.clsEdition.nom = e.target.value;
+      } else if (e.target.matches('[data-cl-q]') && etat.clsAjout) {
+        etat.clsAjout.q = e.target.value;
+        if (etat.clsAjout.source === 'collection') majAjout(); else chercheAjout();
+      }
+    });
+    // Un classeur change (ici, sur un autre appareil, par un import) : la vue suit.
+    cls.surChangement(() => {
+      if (ctx.vue() !== 'classeurs' || livreTouche) return;
+      rend('classeurs');
+    });
+
     const corps = panneau.corps;
     corps.addEventListener('pointermove', incline);
     corps.addEventListener('pointerleave', redresse, true);
@@ -1258,6 +1925,7 @@ export function creeCartes(ctx) {
       // Pendant l'actualisation des prix, chaque relevé écrit : on redessine à la fin.
       if (!vueCartes() || etat.majPrix) return;
       const v = ctx.vue();
+      if (v === 'classeurs') { if (etat.cls) majLivre(); else if (!livreTouche) rend(v); return; }
       if (v === 'extensions' && etat.set && document.querySelector('[data-cx-grille]')) majGrille();
       else if (v === 'extensions' && etat.q) majResultats();
       else if (v === 'collection' && document.querySelector('[data-cx-col]')) majCollection();
@@ -1274,6 +1942,11 @@ export function creeCartes(ctx) {
     // On revient d'une extension à la liste, d'une recherche au parcours. Rend vrai si
     // le retour a été traité ici.
     retour() {
+      if (ctx.vue() === 'classeurs' && etat.cls) {
+        Object.assign(etat, { cls: null, clsSel: null, clsDeplace: false });
+        rend('classeurs');
+        return true;
+      }
       if (ctx.vue() !== 'extensions') return false;
       if (etat.set) { quitteSet(); rend('extensions'); return true; }
       if (etat.q) { etat.q = ''; etat.res = null; etat.suggestion = null; numRecherche++; rend('extensions'); return true; }
@@ -1282,6 +1955,7 @@ export function creeCartes(ctx) {
     // Entrer dans les Extensions depuis ailleurs ramène à la liste, comme le menu du
     // Pokédex : on vient choisir une extension, pas reprendre une grille au milieu.
     entre(vue) {
+      if (vue === 'classeurs') Object.assign(etat, { cls: null, clsSel: null, clsDeplace: false });
       if (vue !== 'extensions') return;
       if (etat.set) quitteSet();
       etat.q = ''; etat.res = null; etat.suggestion = null; etat.seriesOuvert = false;
@@ -1289,6 +1963,8 @@ export function creeCartes(ctx) {
       pageAffichee = null;
     },
     fermee() { etat.fiche = null; },
+    // Le second panneau s'est refermé (voile, glissement, retour) : on oublie son état.
+    panneau2Ferme() { etat.clsEdition = null; etat.clsAjout = null; },
     // Lance une recherche dans les extensions (depuis la fiche d'un Pokémon).
     cherche(nom) {
       etat.q = nom;

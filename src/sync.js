@@ -169,7 +169,8 @@ const rempli = (d) => !!(d?.caught?.length || d?.caughtShiny?.length
   || Object.keys(d?.boxes ?? {}).length || Object.keys(d?.order ?? {}).length
   || Object.values(d?.equipes ?? {}).some((e) => e?.some?.(Boolean))
   // Depuis la fusion avec Cartodex, une collection de cartes seule est une collection.
-  || Object.values(d?.cartes ?? {}).some((c) => c?.ex?.length || c?.fav));
+  || Object.values(d?.cartes ?? {}).some((c) => c?.ex?.length || c?.fav)
+  || (Array.isArray(d?.classeurs) && d.classeurs.length > 0));
 
 // De quoi présenter un choix compréhensible : « 342 capturés, 2 équipes » parle,
 // « modifié le 12/03 » tout seul ne dit pas ce qu'on risque de perdre.

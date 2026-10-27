@@ -41,7 +41,7 @@ ce sont des secrets.
 Étapes : (1) coquille commune — FAITE ; (2) extensions, fiche, exemplaires, et le
 langage commun appliqué aux vues Jeux — FAITE, avec une première collection et une
 page Valeur ; (3) suivi des prix d'une carte, filtres de la collection, « Ses
-cartes » dans la fiche du Pokédex — FAITE ; (4) classeurs ; (5) PokéAdvisor,
+cartes » dans la fiche du Pokédex — FAITE ; (4) classeurs — FAITE ; (5) PokéAdvisor,
 favoris partagés, 3D, reprise d'une sauvegarde Cartodex.
 
 ### La coquille (étape 1)
@@ -243,6 +243,54 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   dans l'AUTRE langue (`carteEnFile(id, { autre: true })`, gardé trente jours) et prend
   son image ; sans image dans aucune langue (quelques promos, McDonald's 2024), le dos
   de carte dessiné.
+
+### Les classeurs (étape 4)
+
+- **`src/cartes/classeurs.js`** : les classeurs (`pcbox.classeurs`, un tableau dans
+  l'ordre de la liste), dans la sauvegarde (`classeurs`) et la synchronisation. Un
+  classeur ne POSSÈDE rien : il range des emplacements, et la collection dit ce qu'on a.
+  - Une pochette vaut `null` (libre), `'idCarte'`, `'idCarte|variante'` ou une liste
+    de clés (pochette groupée, montrée par sa première carte et un « ▦ n »). Le
+    séparateur est `|`, comme les clés de la sélection multiple ; Cartodex écrivait `:`.
+  - **`range(id, depuis, clés)`** : chaque carte prend la première pochette LIBRE à
+    partir de celle qu'on a touchée — on ne décale jamais les pages pour glisser une
+    carte, comme dans un vrai classeur. `deplacePoches` suit la même règle, `vide`
+    libère sans rien tasser. `restaure` et `remetCartes` servent les « Annuler ».
+  - À l'import, `assainit()` reprend chaque classeur champ par champ (identifiants de
+    carte et d'extension, variante, nombre de pochettes, teinte).
+- **La liste** : des couvertures deux par deux, à la teinte du classeur (six, `.c-*`),
+  anneaux sur la tranche, logo de l'extension ou initiale, « 6 / 207 cartes », barre et
+  valeur possédée. Le logo vient de la liste des extensions (`/sets`, lue une fois).
+- **Le livre** (`vueLivre`) : bandeau (valeur possédée, compte, « Complet : 1 855 € »),
+  puis la page courante au centre (82 %), ses voisines qui dépassent de chaque côté,
+  assombries — la disposition de Cartodex sur iPhone. Pages SOMBRES dans les deux
+  thèmes, perforées sur la gauche : c'est un décor, comme l'écran d'équipe.
+  - **Tourner la page** : la piste suit le doigt, la feuille bascule en 3D (`rotateY`,
+    perspective sur le livre) ; au-delà de 60 px elle tourne, en deçà elle revient. Au
+    bout du classeur elle ne suit qu'au tiers. Boutons ‹ › sous le livre. Le geste se
+    décide au premier mouvement (vertical = la vue défile) et laisse les 26 premiers
+    pixels au retour par le bord.
+  - **Le livre se refait EN PLACE** (`majLivre`) — page tournée, détail arrivé — et
+    jamais pendant un geste (`livreTouche`). Les cartes dont on ne sait rien (venues
+    d'une recherche, d'un autre appareil) demandent leur détail ; la page suit.
+  - Au moins 10 pages, et toujours une de plus que le contenu : on feuillette des pages
+    libres comme dans un vrai classeur (Cartodex en imposait 60).
+  - **Pochette libre** → le sélecteur d'ajout ; **pochette pleine** → la fiche de la
+    carte, qu'on parcourt dans l'ordre du classeur, la variante de la pochette
+    présélectionnée pour l'ajout (`ouvre(id, liste, { variante })`).
+  - **Sélection** (icône coche) : Déplacer — la barre demande la pochette d'arrivée —
+    ou Retirer, avec « Annuler ».
+- **Créer / régler** (second panneau de l'univers Cartes, `outilSheet`) : nom, 4, 9 ou
+  12 pochettes par page (2×2, 3×3, 4×3), teinte, et à la création le contenu — vide,
+  ou **d'une extension**, cherchée parmi les 202, en « une pochette par carte » ou en
+  **master set** (une par variante : 362 pochettes pour « 151 »). La préparation lit le
+  détail de chaque carte (variantes, prix de la valeur « complète »), gardé trente jours.
+  Réglages : renommer, changer de format ou de teinte, avancer dans la liste, supprimer
+  (« Annuler » le remet à sa place).
+- **Ranger des cartes** : le sélecteur part de la pochette touchée, sur Ma collection ou
+  sur toutes les cartes (recherche TCGdex, accents rendus, plus récentes d'abord) ;
+  toucher choisit, « Ajouter » range dans l'ordre des choix.
+- Pas de bannière de pub sur les classeurs : on y glisse d'une page à l'autre.
 
 ## Deux variantes : App Store et « Unydex Dev » (06/10/2026)
 
@@ -535,6 +583,7 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `src/cartes/vues.js` | Les vues Cartes : extensions, recherche, fiche, collection, valeur |
 | `src/cartes/api.js` | TCGdex : lecture, cache IndexedDB, file de quatre requêtes |
 | `src/cartes/collection.js` | La collection de cartes et ses exemplaires (`pcbox.cartes`) |
+| `src/cartes/classeurs.js` | Les classeurs et leurs pochettes (`pcbox.classeurs`) |
 | `src/cartes/prix.js` | Historique du prix de chaque carte suivie (`pcbox.cartes.prix`) |
 | `src/cartes/regles.js` | Raretés, variantes, états, distance d'édition (règles de Cartodex) |
 | `src/data/i18n/en.json` | Surcouche anglaise, **générée**, 1,7 Mo |

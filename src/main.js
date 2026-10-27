@@ -21,6 +21,7 @@ import { estPremium, surChangement as surAbonnement, FORMULES, souscrire, restau
 import { creeCompteUI } from './compte-ui.js';
 import { etat as etatCompte } from './compte.js';
 import * as cartesColl from './cartes/collection.js';
+import * as classeursColl from './cartes/classeurs.js';
 import * as recents from './recents.js';
 import { creeCartes } from './cartes/vues.js';
 // La synchronisation ne connaît ni l'état ni les clés de stockage : main.js lui
@@ -606,6 +607,7 @@ const ICO = {
   externe: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 5H19v5.5M19 5l-8 8"/><path d="M17 13.5V18a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 5 18V9a1.5 1.5 0 0 1 1.5-1.5H11"/></svg>',
   rafraichir: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4.2h-4.2"/></svg>',
   trier: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4.5v15M8 4.5 4.8 7.7M8 4.5l3.2 3.2M16 19.5v-15M16 19.5l-3.2-3.2M16 19.5l3.2-3.2"/></svg>',
+  reglages: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h9.5M18 7h1.5M4.5 17h3M11.5 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="9.5" cy="17" r="2.2"/></svg>',
 };
 
 // Icônes des blocs de Réglages. La pastille qui les porte prend `--c` en CSS.
@@ -934,7 +936,7 @@ backdrop.addEventListener('click', () => {
   // De même, une carte ouverte depuis « Ses cartes » recouvre la fiche du Pokémon : le
   // voile ne referme qu'elle, et l'on retrouve le Pokémon.
   if (carteSheet.classList.contains('open') && sheet.classList.contains('open')) { fermeCarte(); return; }
-  closeSheet(); closeBoxSheet(); closeAddSheet(); closeBattleSheet(); fermeComptePanneau(); fermeLegal(); fermePlus(); fermeCarte();
+  closeSheet(); closeBoxSheet(); closeAddSheet(); closeBattleSheet(); fermeComptePanneau(); fermeLegal(); fermePlus(); fermeCarte(); fermeOutil();
 });
 
 // Stats de base en barres.
@@ -1698,7 +1700,8 @@ function syncBackdrop() {
     sheet.classList.contains('open') || boxSheet.classList.contains('open')
     || addSheet.classList.contains('open') || battleSheet.classList.contains('open')
     || compteSheet.classList.contains('open') || legalSheet.classList.contains('open')
-    || plusSheet.classList.contains('open') || carteSheet.classList.contains('open'));
+    || plusSheet.classList.contains('open') || carteSheet.classList.contains('open')
+    || outilSheet.classList.contains('open'));
 }
 
 // ---------- Panneau « ajouter un Pokémon à un emplacement » ----------
@@ -1771,6 +1774,18 @@ const carteSheet = h(`<aside class="sheet cx-sheet" role="dialog" aria-modal="tr
 document.body.append(carteSheet);
 const carteBody = carteSheet.querySelector('.sheet-body');
 
+// Le second panneau de l'univers Cartes : créer ou régler un classeur, y ranger des
+// cartes. Distinct de celui de la fiche, qui peut s'ouvrir depuis le classeur.
+const outilSheet = h(`<aside class="sheet" role="dialog" aria-modal="true"><div class="sheet-grip"></div><div class="sheet-body"></div></aside>`);
+document.body.append(outilSheet);
+const outilBody = outilSheet.querySelector('.sheet-body');
+function fermeOutil() {
+  if (!outilSheet.classList.contains('open')) return;
+  outilSheet.classList.remove('open');
+  cartes.panneau2Ferme();
+  syncBackdrop();
+}
+
 function fermeCarte() {
   if (!carteSheet.classList.contains('open')) return;
   carteSheet.classList.remove('open');
@@ -1825,7 +1840,24 @@ const cartes = creeCartes({
     ferme: () => fermeCarte(),
     ouvert: () => carteSheet.classList.contains('open'),
   },
+  panneau2: {
+    corps: outilBody,
+    ouvre(html) {
+      outilBody.innerHTML = html;
+      outilBody.scrollTop = 0;
+      outilSheet.classList.add('open');
+      syncBackdrop();
+    },
+    maj(html) {
+      const y = outilBody.scrollTop;
+      outilBody.innerHTML = html;
+      outilBody.scrollTop = y;
+    },
+    ferme: () => fermeOutil(),
+    ouvert: () => outilSheet.classList.contains('open'),
+  },
 });
+enableSwipeClose(outilSheet, fermeOutil);
 enableSwipeClose(carteSheet, fermeCarte, { voisin: (d) => cartes.voisin(d), aller: (d) => cartes.aller(d) });
 cartes.branche(app);
 
@@ -3107,8 +3139,9 @@ function donneesCompletes() {
     onglets: state.ordreOnglets,
     // Équipes
     equipes: state.equipes,
-    // Cartes — l'héritage de Cartodex : chaque carte et ses exemplaires.
+    // Cartes — l'héritage de Cartodex : chaque carte et ses exemplaires, et les classeurs.
     cartes: cartesColl.exporte(),
+    classeurs: classeursColl.exporte(),
     // Préférences
     jeu: state.jeu,
     view: state.view,
@@ -3204,6 +3237,10 @@ async function appliqueDonnees(data) {
   // image qui n'a pas la forme attendue, comme `cleAdmise` pour les Pokémon).
   if (d.cartes && typeof d.cartes === 'object' && !Array.isArray(d.cartes) && cartesColl.remplace(d.cartes)) {
     repris.push(['partieCartes', Object.values(cartesColl.toutes()).filter((c) => c.ex?.length).length]);
+  }
+  // Les classeurs, repris de même (classeurs.js écarte ce qui n'a pas la bonne forme).
+  if (Array.isArray(d.classeurs) && classeursColl.remplace(d.classeurs) && classeursColl.tous().length) {
+    repris.push(['partieClasseurs', classeursColl.tous().length]);
   }
 
   // Préférences : chacune n'est reprise que si elle est valide.
@@ -3752,7 +3789,7 @@ const TUILES_CARTES = [
   {
     cle: 'classeurs', vue: 'classeurs',
     nom: () => t('tuileClasseurs'),
-    sous: () => t('tuileClasseursSous'),
+    sous: () => t('tuileClasseursSous', classeursColl.tous().length),
   },
   {
     cle: 'valeur', vue: 'valeur',
@@ -6231,6 +6268,7 @@ function fermeLesPanneaux() {
   fermeLegal();
   fermePlus();
   fermeCarte();
+  fermeOutil();
 }
 
 app.addEventListener('click', (e) => {
@@ -6675,6 +6713,7 @@ compteUI.branche(app, compteSheet);
 // appel vide, et rien ne change pour qui n'a pas de compte.
 brancheSync({ lit: donneesCompletes, pose: appliqueDonnees });
 cartesColl.brancheEcriture(() => marqueChange());
+classeursColl.brancheEcriture(() => marqueChange());
 
 // Mise au point : le contrat de la synchronisation, pour le vérifier dans l'aperçu
 // sans passer par un fichier ni par un serveur. Retiré du build par Vite.

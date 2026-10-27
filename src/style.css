@@ -3547,6 +3547,8 @@ img {
 
 .acc-recents { display: flex; gap: var(--e-2); overflow-x: auto; margin: 0 calc(-1 * var(--e-4)); padding: 2px var(--e-4) 4px; scrollbar-width: none; }
 .acc-recents::-webkit-scrollbar { display: none; }
+/* Toutes les cartes d'un Pokémon, dans sa fiche : la grille des extensions. */
+.ses-cartes-grille { margin-bottom: var(--e-3); }
 .acc-recent {
   flex: 0 0 auto; display: grid; place-items: center;
   width: 64px; height: 64px; border-radius: var(--r-sm); background: var(--slot); border: 1px solid var(--rule-soft);

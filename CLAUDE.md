@@ -263,9 +263,16 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   que ce que la collection contient. Le **tri** est monté dans l'en-tête, en icône : une
   liste native posée invisible sur le bouton (`.tete-select`) ouvre le sélecteur du
   système, comme l'icône de tri de Cartodex.
-- **« Ses cartes »** dans la fiche d'un Pokémon (`htmlSesCartes`) : les cartes de la
-  collection qui le représentent (`dex`), et « Chercher les cartes de … », qui ouvre les
-  extensions sur la recherche. Toucher une carte ouvre sa fiche PAR-DESSUS celle du
+- **« Ses cartes »** dans la fiche d'un Pokémon (`htmlSesCartes` → `cartes.sesCartes`) :
+  depuis le 28/10/2026 (à la demande), **TOUTES** ses cartes, plus seulement celles de
+  la collection — TCGdex `/cards?dexId=eq:N` (`api.parPokedex`, gardé sept jours ; une
+  carte à plusieurs Pokémon compte pour chacun), de la plus récente à la plus ancienne,
+  dans la grille des extensions : possédée en couleur avec sa Poké Ball, manquante en
+  gris, extension en légende, titre « Ses cartes 1 / 9 ». Le bloc se remplit quand la
+  liste arrive (`majCartesPokemon`) et suit la collection : ajouter la carte depuis sa
+  fiche la passe en couleur aussitôt. Glisser dans la fiche d'une carte parcourt toutes
+  les cartes du Pokémon. « Chercher les cartes de … » ouvre toujours les extensions sur la
+  recherche. Vérifié sur Lianaja : 9 cartes, 9 images. Toucher une carte ouvre sa fiche PAR-DESSUS celle du
   Pokémon ; le voile ne referme alors que la carte (même règle que le document légal
   par-dessus l'abonnement). En miroir, « Dans le Pokédex » de la fiche d'une carte.
 - **Résultats d'une recherche** : nom de l'extension en légende et les plus RÉCENTES

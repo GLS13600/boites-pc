@@ -2003,6 +2003,52 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     for (const p of ['--rx', '--ry']) el.style.setProperty(p, '0deg');
   }
 
+  // ---------------------------------------------------------------- les cartes d'un Pokémon
+  // Dans la fiche du Pokédex, TOUTES les cartes du Pokémon (TCGdex, `dexId` : une carte
+  // à plusieurs Pokémon compte pour chacun), de la plus récente à la plus ancienne. La
+  // règle du Living Dex : possédée en couleur avec sa Poké Ball, manquante en gris.
+  const cartesPokemon = new Map();   // numéro → liste de cartes brutes, triée
+  function chargeCartesPokemon(num) {
+    if (cartesPokemon.has(num) || enCours.has(`pkm:${num}`)) return;
+    enCours.add(`pkm:${num}`);
+    Promise.all([api.parPokedex(num), chargeToutesExt().catch(() => {})])
+      .then(([l]) => {
+        const rang = (id) => toutesExt?.get(setDe(id))?.rang ?? -1;
+        cartesPokemon.set(num, (Array.isArray(l) ? l : []).slice()
+          .sort((a, b) => rang(b.id) - rang(a.id) || String(a.localId).localeCompare(String(b.localId), undefined, { numeric: true })));
+      })
+      .catch(() => echecs.add(`pkm:${num}`))
+      .finally(() => { enCours.delete(`pkm:${num}`); majCartesPokemon(); });
+  }
+  function grilleCartesPokemon(num) {
+    const l = cartesPokemon.get(num);
+    if (!l) return echecs.has(`pkm:${num}`) ? erreurBloc(`pkm:${num}`) : squeletteGrille(6);
+    if (!l.length) return `<p class="none">${t('sesCartesAucune')}</p>`;
+    return `<div class="cx-grille ses-cartes-grille">${l.map((c) => vignette(
+      { id: c.id, num: c.localId, nom: c.name, img: c.image, d: detail(c.id) }, { avecSet: true })).join('')}</div>`;
+  }
+  const comptePokemon = (num) => {
+    const l = cartesPokemon.get(num);
+    if (!l) return '';
+    const n = l.filter((c) => coll.exemplaires(c.id) > 0).length;
+    return ` <small>${n} / ${l.length}</small>`;
+  };
+  // Le bloc de la fiche ; il se remplit tout seul quand la liste arrive.
+  function sesCartes(num) {
+    chargeCartesPokemon(num);
+    return `
+      <h3 data-cartes-pokemon-titre="${num}">${t('sesCartes')}${comptePokemon(num)}</h3>
+      <div data-cartes-pokemon="${num}">${grilleCartesPokemon(num)}</div>`;
+  }
+  function majCartesPokemon() {
+    for (const el of document.querySelectorAll('[data-cartes-pokemon]')) {
+      const num = Number(el.dataset.cartesPokemon);
+      el.innerHTML = grilleCartesPokemon(num);
+      const titre = document.querySelector(`[data-cartes-pokemon-titre="${num}"]`);
+      if (titre) titre.innerHTML = `${t('sesCartes')}${comptePokemon(num)}`;
+    }
+  }
+
   // ---------------------------------------------------------------- navigation de la fiche
   function voisin(dir) {
     const f = etat.fiche;
@@ -2382,6 +2428,9 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
 
     // La collection a changé (fiche, lot, import, compte) : ce qui est affiché suit.
     coll.surChangement(() => {
+      // La fiche d'un Pokémon montre ses cartes : une carte ajoutée depuis la fiche de
+      // la carte (ouverte par-dessus) y passe aussitôt en couleur.
+      majCartesPokemon();
       // Pendant l'actualisation des prix, chaque relevé écrit : on redessine à la fin.
       if (!vueCartes() || etat.majPrix) return;
       const v = ctx.vue();
@@ -2396,6 +2445,9 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
   return {
     rend,
     branche,
+    sesCartes,
+    listeCartesPokemon: (num) => (cartesPokemon.get(Number(num)) || []).map((c) => c.id),
+    reessaieCartesPokemon(num) { echecs.delete(`pkm:${num}`); chargeCartesPokemon(Number(num)); majCartesPokemon(); },
     ouvre,
     voisin,
     aller,

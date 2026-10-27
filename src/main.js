@@ -1164,15 +1164,11 @@ function openSheet(id) {
 // en miroir du « Dans le Pokédex » de la fiche d'une carte. Toucher une carte ouvre sa
 // fiche PAR-DESSUS celle du Pokémon ; le bouton cherche toutes ses cartes dans les
 // extensions. Une carte sait quels Pokémon elle représente (`dex`, relevé chez TCGdex).
+// Depuis le 28/10/2026 : TOUTES les cartes du Pokémon (vues.js, `sesCartes`), plus
+// seulement celles de la collection — possédées en couleur, les autres en gris.
 function htmlSesCartes(espece, nom) {
-  const siennes = Object.entries(cartesColl.toutes()).filter(([, c]) => c.ex?.length && c.dex?.includes(espece));
-  const ids = siennes.map(([id]) => id).join(',');
   return `
-    <h3>${t('sesCartes')}${siennes.length ? ` <small>${siennes.length}</small>` : ''}</h3>
-    ${siennes.length ? `<div class="acc-recents ses-cartes">${siennes.slice(0, 24).map(([id, c]) => `
-      <button class="acc-recent carte" data-carte="${esc(id)}" data-carte-liste="${esc(ids)}" title="${esc(c.n || id)}">
-        <img src="${esc(c.img ? c.img + '/low.webp' : '')}" alt="${esc(c.n || '')}" loading="lazy" />
-      </button>`).join('')}</div>` : `<p class="none">${t('sesCartesAucune')}</p>`}
+    ${cartes.sesCartes(espece)}
     <button class="back-btn ses-cartes-btn" data-chercher-cartes="${esc(nom)}">${ICO_NAV.chercher}<span>${t('chercherSesCartes', esc(nom))}</span></button>`;
 }
 
@@ -2768,6 +2764,16 @@ sheet.addEventListener('click', (e) => {
     cartes.ouvre(carte.dataset.carte, (carte.dataset.carteListe || carte.dataset.carte).split(','));
     return;
   }
+  // Une vignette de « Ses cartes » : sa fiche, qu'on parcourt dans toutes ses cartes.
+  const vig = e.target.closest('[data-cx-carte]');
+  const zone = vig?.closest('[data-cartes-pokemon]');
+  if (vig && zone) {
+    const liste = cartes.listeCartesPokemon(zone.dataset.cartesPokemon);
+    cartes.ouvre(vig.dataset.cxCarte, liste.length ? liste : [vig.dataset.cxCarte]);
+    return;
+  }
+  const reessaie = e.target.closest('[data-cx-reessaie^="pkm:"]');
+  if (reessaie) { cartes.reessaieCartesPokemon(reessaie.dataset.cxReessaie.slice(4)); return; }
   // … ou l'on part chercher toutes ses cartes dans les extensions.
   const chercher = e.target.closest('[data-chercher-cartes]');
   if (chercher) {

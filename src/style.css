@@ -3665,12 +3665,76 @@ img {
 .pilule.ouverte > .ico { transform: rotate(180deg); }
 .combat-head .pilule { flex: 1 1 auto; }
 .types-page .pilule { margin-bottom: var(--e-3); }
-/* Les blocs de la vue Extensions : une pilule par bloc, ses extensions dessous. */
+/* Les blocs de la vue Extensions — deux niveaux qui doivent se lire d'un coup d'œil.
+   Le BLOC est une couverture : grande carte, logo et titre plus grands, liseré rouge et
+   teinte quand il est déplié. Ses EXTENSIONS sont rangées DEDANS, sur un fond gris en
+   retrait, reliées par un rail : des lignes plus basses et plus discrètes. */
 .cx-blocs { display: grid; gap: var(--e-3); }
-.cx-bloc { display: grid; gap: var(--e-2); }
-.cx-bloc .pilule-logo { flex: 0 0 72px; display: flex; align-items: center; justify-content: center; height: 32px; }
-.cx-bloc .pilule-img { max-width: 72px; }
-.cx-bloc .avances { animation: cx-bloc-ouvre var(--d-moyen) var(--c-entree); }
+.cx-bloc {
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  box-shadow: var(--ombre-2);
+}
+.cx-bloc > .pilule {
+  position: relative;
+  min-height: 76px;
+  padding: var(--e-3) var(--e-4);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.cx-bloc > .pilule .pilule-txt b { font-size: 22px; }
+.cx-bloc > .pilule .pilule-txt small { letter-spacing: 0.08em; }
+.cx-bloc .pilule-logo { flex: 0 0 96px; display: flex; align-items: center; justify-content: center; height: 46px; }
+.cx-bloc .pilule-img { max-width: 96px; max-height: 46px; height: auto; object-fit: contain; }
+.cx-bloc.ouvert > .pilule {
+  background: color-mix(in srgb, var(--ball) 7%, var(--panel));
+  border-bottom: 1px solid var(--rule);
+}
+.cx-bloc.ouvert > .pilule::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--ball);
+}
+.cx-bloc.ouvert > .pilule .pilule-txt small { color: var(--ball-texte); }
+
+/* Les extensions du bloc : en retrait, sur le rail. */
+.cx-bloc .avances {
+  position: relative;
+  gap: 6px;
+  padding: var(--e-3) var(--e-3) var(--e-3) 26px;
+  background: var(--panel-2);
+  animation: cx-bloc-ouvre var(--d-moyen) var(--c-entree);
+}
+.cx-bloc .avances::before {
+  content: "";
+  position: absolute;
+  left: 12px; top: var(--e-4); bottom: var(--e-4);
+  width: 2px;
+  border-radius: 1px;
+  background: var(--rule);
+}
+.cx-bloc .avance { min-height: 56px; padding: 6px var(--e-3) 6px var(--e-2); box-shadow: none; }
+.cx-bloc .avance::before {
+  content: "";
+  position: absolute;
+  left: -16px; top: 50%;
+  width: 8px; height: 8px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 2px solid var(--rule);
+}
+.cx-bloc .avance.complet::before { border-color: var(--ball); background: var(--ball); }
+.cx-bloc .avance { overflow: visible; }
+.cx-bloc .avance-art { flex-basis: 68px; height: 38px; }
+.cx-bloc .avance-art img { max-width: 68px; max-height: 34px; }
+.cx-bloc .avance-nom { font-size: var(--t-corps); }
 @keyframes cx-bloc-ouvre { from { opacity: 0; transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .cx-bloc .avances { animation: none; } }
 

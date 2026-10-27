@@ -162,6 +162,11 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   de la plus récente à la plus ancienne (rang de sortie de `/sets`), puis les Énergies,
   puis les Promos — l'ordre exact de Pokécardex, vérifié sur Écarlate et Violet. Blocs
   dépliés retenus (`pcbox.cartes.blocs`), le plus récent ouvert au premier lancement.
+  - **Deux niveaux qui se distinguent** (demandé) : le BLOC est une couverture — grande
+    carte, logo de 96 px, titre en 22 px, « Bloc · 18 extensions » ; déplié, il se
+    teinte de rouge avec un liseré à gauche. Ses EXTENSIONS sont rangées dedans, sur le
+    fond gris en retrait, plus basses (56 px), reliées par un rail à pastilles (pleine
+    quand l'extension est complète).
   Entrer dans la vue ramène à la liste (`cartes.entre`).
   - **Seul l'ORDRE vient de Pokécardex**, relevé à la main sur leur page des séries. Ni
     leurs images ni leurs fiches ne sont reprises : demandé, et refusé — leur base est

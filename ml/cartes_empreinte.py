@@ -62,7 +62,8 @@ def fonds_de(racine):
 # ---------------------------------------------------------------- les vues
 def reference(carte):
     """La carte propre, telle qu'on l'indexe : centrée, droite, sur un fond neutre."""
-    img = Image.open(carte).convert('RGB')
+    with Image.open(carte) as im:  # refermé : 36 000 fichiers ouverts épuisent Windows
+        img = im.convert('RGB')
     w, h = img.size
     f = TAILLE * 0.94 / h
     img = img.resize((max(1, int(w * f)), int(h * f)), Image.BICUBIC)
@@ -111,7 +112,8 @@ def reflet(rnd, img):
 def vue_photo(rnd, chemin, fonds):
     """La carte telle que la caméra la cadre : le carré autour de la carte détectée,
     avec ce qui l'entoure."""
-    carte = Image.open(chemin).convert('RGB')
+    with Image.open(chemin) as im:
+        carte = im.convert('RGB')
     if rnd.random() < 0.3:
         carte = D.reflet_holo(rnd, carte)
     w, h = carte.size
@@ -145,6 +147,9 @@ class Vues(Dataset):
     def __init__(self, cartes, fonds, n, graine):
         self.cartes, self.fonds, self.n, self.graine = cartes, fonds, n, graine
         self.epoque = 0
+        self.par_classe = {}
+        for c in cartes:
+            self.par_classe.setdefault(c['classe'], []).append(c)
 
     def __len__(self):
         return self.n
@@ -152,9 +157,12 @@ class Vues(Dataset):
     def __getitem__(self, i):
         rnd = random.Random(self.graine * 1_000_003 + self.epoque * 7919 + i)
         c = self.cartes[rnd.randrange(len(self.cartes))]
-        # Une vue sur huit est la carte propre : l'index est fait de cartes propres.
-        img = reference(c['chemin']) if rnd.random() < 0.125 else vue_photo(rnd, c['chemin'], self.fonds)
-        return tenseur(img), c['classe']
+        # Une PAIRE : la carte photographiée, et la carte propre telle qu'on l'indexe. Une
+        # fois sur deux, la carte propre est celle de l'AUTRE langue : une carte française
+        # doit retrouver aussi son double anglais, l'index porte les deux.
+        autre = self.par_classe.get(c['classe'], [c])
+        propre = rnd.choice(autre) if rnd.random() < 0.5 else c
+        return tenseur(vue_photo(rnd, c['chemin'], self.fonds)), tenseur(reference(propre['chemin'])), c['classe']
 
 
 # ---------------------------------------------------------------- le réseau
@@ -175,8 +183,10 @@ class ArcFace(nn.Module):
         self.w = nn.Parameter(torch.randn(n_classes, DIM) * 0.01)
         self.s, self.m = s, m
 
+    # En pleine précision, hors autocast : l'angle et la marge sont trop fins pour bf16.
+    @torch.autocast('cuda', enabled=False)
     def forward(self, e, y):
-        cos = e @ F.normalize(self.w, dim=-1).t()
+        cos = e.float() @ F.normalize(self.w.float(), dim=-1).t()
         theta = torch.acos(cos.clamp(-1 + 1e-6, 1 - 1e-6))
         cible = torch.cos(theta.gather(1, y[:, None]) + self.m)
         logits = cos.scatter(1, y[:, None], cible)
@@ -185,6 +195,27 @@ class ArcFace(nn.Module):
 
 def prepare(x, dev):
     return x.to(dev, non_blocking=True).float().div_(255).contiguous(memory_format=torch.channels_last)
+
+
+class References(Dataset):
+    def __init__(self, cartes):
+        self.cartes = cartes
+
+    def __len__(self):
+        return len(self.cartes)
+
+    def __getitem__(self, i):
+        return tenseur(reference(self.cartes[i]['chemin']))
+
+
+@torch.no_grad()
+def empreintes_refs(modele, cartes, dev, ouvriers=4):
+    """L'empreinte de chaque carte propre, images lues en parallèle."""
+    sortie = []
+    for x in DataLoader(References(cartes), batch_size=256, num_workers=ouvriers):
+        with torch.autocast('cuda', torch.bfloat16, enabled=dev.type == 'cuda'):
+            sortie.append(modele(prepare(x, dev)).float().cpu())
+    return F.normalize(torch.cat(sortie), dim=-1)
 
 
 @torch.no_grad()
@@ -211,7 +242,7 @@ def mesure(modele, cartes, eval_imgs, eval_y, dev, index=None):
     sûres (similarité et écart avec la deuxième carte différente)."""
     modele.eval()
     if index is None:
-        index = empreintes(modele, [reference(c['chemin']) for c in cartes], dev)
+        index = empreintes_refs(modele, cartes, dev)
     labels = torch.tensor([c['classe'] for c in cartes])
     q = empreintes(modele, eval_imgs, dev)
     sim = q @ index.t()
@@ -251,22 +282,36 @@ def entraine(args):
     modele = Empreinte()
     modele.corps = reparameterize_model(modele.corps)
     modele = modele.to(dev).to(memory_format=torch.channels_last)
-    arc = ArcFace(len(ids)).to(dev)
+    # Apprentissage PAR PAIRES (comme CLIP) : chaque photo du lot doit retrouver SA carte
+    # propre parmi toutes celles du lot, et inversement. ArcFace, essayé d'abord, s'est
+    # effondré (toutes les empreintes au même point, 0 % dès la première époque) : près de
+    # 20 000 classes vues chacune quelques fois seulement.
+    echelle = torch.nn.Parameter(torch.tensor(math.log(1 / 0.05), device=dev))
     opt = torch.optim.AdamW([
         {'params': modele.corps.parameters(), 'lr': args.lr},
-        {'params': list(modele.proj.parameters()) + list(arc.parameters()), 'lr': args.lr * 10},
+        {'params': list(modele.proj.parameters()) + [echelle], 'lr': args.lr * 10},
     ], weight_decay=0.05)
     pas_total = args.epoques * (n_epoque // args.lot)
     echauffe = min(800, pas_total // 10)
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda k: (k + 1) / echauffe if k < echauffe
                                               else 0.5 * (1 + math.cos(math.pi * (k - echauffe) / max(1, pas_total - echauffe))))
     journal, meilleur = [], -1
+    depart, _ = mesure(modele, cartes, eval_imgs, eval_y, dev)
+    print(json.dumps(dict(depart, epoque=0)), flush=True)
     for ep in range(args.epoques):
         ds.epoque = ep
         t0, cumul, n = time.time(), 0.0, 0
-        for x, y in charge:
+        for photo, propre, y in charge:
             with torch.autocast('cuda', torch.bfloat16):
-                perte = arc(modele(prepare(x, dev)).float(), y.to(dev))
+                e = modele(prepare(torch.cat([photo, propre]), dev)).float()
+            ep_, er = e[:len(photo)], e[len(photo):]
+            logits = ep_ @ er.t() * echelle.exp().clamp(max=100)
+            # Deux vues d'une même carte dans le lot ne sont pas des négatifs.
+            y = y.to(dev)
+            meme = (y[:, None] == y[None, :]) & ~torch.eye(len(y), dtype=torch.bool, device=dev)
+            logits = logits.masked_fill(meme, -1e4)
+            cible = torch.arange(len(y), device=dev)
+            perte = (F.cross_entropy(logits, cible) + F.cross_entropy(logits.t(), cible)) / 2
             opt.zero_grad(set_to_none=True)
             perte.backward()
             opt.step()
@@ -306,7 +351,7 @@ def exporte(args):
     dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     m = charge_modele(run, dev)
     cartes, _ = charge_catalogue(racine)
-    index = empreintes(m, [reference(c['chemin']) for c in cartes], dev)
+    index = empreintes_refs(m, cartes, dev)
     q = torch.clamp((index * 127).round(), -127, 127).to(torch.int8).numpy()
     (run / 'index.bin').write_bytes(q.tobytes())
     (run / 'index.json').write_text(json.dumps({'dim': DIM, 'echelle': 1 / 127,

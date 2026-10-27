@@ -6586,11 +6586,13 @@ const scan = creeScan({
   // qui garde main.js seul maître de l'ordre de chargement des traductions.
   t,
   ouvrirFiche: (key) => openSheet(key),
+  // Une carte scannée ouvre sa fiche ; ses rééditions à l'image identique s'y parcourent.
+  ouvrirCarte: (id, liste) => cartes.ouvre(id, liste?.length ? liste : [id]),
   // Le nom affiché sur un Pokémon suivi : celui de l'ESPÈCE, plus court et plus parlant
   // qu'un nom de forme (« Forme d'Alola ») sur un cadre.
   nomDe: (key) => pokedex[speciesOf(key)]?.name ?? String(key),
-  // Sous la fiche, le suivi se met en pause.
-  estMasque: () => sheet.classList.contains('open'),
+  // Sous une fiche — d'un Pokémon ou d'une carte —, le suivi se met en pause.
+  estMasque: () => sheet.classList.contains('open') || carteSheet.classList.contains('open'),
 });
 
 function renderScan() {

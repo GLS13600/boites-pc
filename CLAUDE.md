@@ -792,6 +792,11 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `scripts/fetch-elevage.mjs` | Le produit (`npm run fetch-elevage`) |
 | `scripts/fetch-logos-cartes.mjs` | Logos d'extension absents de TCGdex, repris de Pokécardex (`npm run fetch-logos-cartes`) |
 | `public/logos-cartes/` | Ces 62 logos en WebP, **générés**, 840 Ko |
+| `public/scan-cartes/` | Empreintes du scan des cartes : `empreinte.onnx` (46 Mo), `index.bin` (36 772 × 256, int8, 9 Mo), `index.json` — **générés** |
+| `ml/cartes_empreinte.py` | Apprentissage, bilan et export de l'empreinte des cartes (données dans `A:\Jeu-scan`) |
+| `ml/fetch-catalogue.mjs` | Images des cartes de TCGdex (fr + en, sans Pocket) pour l'apprentissage |
+| `ml/suivi_cartes.py` | Tableau de bord en console de l'apprentissage |
+| `ml/cartes_doublons.py` | Groupes de rééditions par pHash (trop large : le bilan compare des vignettes de couleur) |
 
 ## Données
 
@@ -1581,6 +1586,71 @@ API** — exigence explicite.
     build et les deux workflows n'en voient rien.
 - En développement, `window.__scanImage(url)` analyse une image quelconque, sans
   caméra. Retiré du build.
+
+### Scan des CARTES : l'empreinte visuelle (28/10/2026)
+
+Demandé : « le scan doit aussi reconnaître les cartes, et faire la différence entre une
+carte et un Pokémon seul ; un cadre bleu entoure la carte, le toucher ouvre sa fiche ; un
+modèle ultra fiable ». Google Lens n'a pas d'API publique, et Google Cloud Vision a été
+écarté par l'utilisateur : **tout tourne sur le téléphone**, au principe de Lens.
+
+- **Le principe** : un réseau (MobileCLIP2-S0, comme le scan des Pokémon) transforme
+  l'image d'une carte en une EMPREINTE de 256 nombres. Celle des 36 772 images du
+  catalogue (TCGdex, français ET anglais, Pocket exclu — numérique) est calculée une fois
+  sur le PC et embarquée (`public/scan-cartes/index.bin`, int8, ~9 Mo, et `index.json` :
+  identifiants et noms). Au scan, l'empreinte de la carte vue est comparée à toutes
+  (`cherche` dans scan-worker.js, ~20 ms) : la plus proche est la carte.
+- **Apprentissage** (`ml/cartes_empreinte.py`, données dans `A:\Jeu-scan`) : PAR PAIRES,
+  comme CLIP — chaque carte « photographiée » (de travers, en perspective, reflet,
+  doigt, flou, fond quelconque, parfois à l'écran) doit retrouver sa carte propre parmi
+  celles du lot, une fois sur deux dans l'AUTRE langue. ArcFace, essayé d'abord, s'est
+  effondré (toutes les empreintes au même point : 0 %) — près de 20 000 classes vues
+  chacune quelques fois.
+  - Réglé pour la RTX 5060 Ti 16 Go : **128 paires par lot** (13,5 Go mesurés par
+    `sonde_memoire.py` ; à 160, Windows DÉBORDE en silence dans la RAM du PC, tout
+    ralentit et la RAM sature). 8 lecteurs d'images, 2 pour la mesure de chaque époque.
+  - Lancé par `A:\Jeu-scan\lance-cartes-cache.vbs` (ouvert depuis l'Explorateur : sans
+    fenêtre et SANS lien avec Claude — une tâche lancée depuis la conversation meurt avec
+    la session), état complet sauvegardé à chaque époque (`dernier.pt`) et reprise
+    automatique. Tableau de bord : `A:\Jeu-scan\suivi-cartes.cmd`. Bilan :
+    `evalue-cartes-cache.vbs`.
+  - Mesuré (3 000 photos simulées contre les 36 772 images) — époque : bonne carte en
+    1er · réponses sûres · justesse des sûres : départ 26,6 % ; 1 : 95,3 % · 81,8 % ·
+    99,96 % ; 4 : 97,4 % · 92,3 % · 99,93 % ; 8 : **97,6 % · 92,9 % · 100 %**. Plateau
+    dès l'époque 4 ; arrêté après la 9 (97,6 %), à la demande. Modèle retenu : époque 8.
+- **Les rééditions** : 1 123 groupes de cartes à l'image identique sous des identifiants
+  différents (Set de Base et Base Set 2, promos reprises, Énergies réimprimées). Aucune
+  empreinte ne les départage : le scan garde les cartes à moins de `CARTE_JUMELLES` de la
+  première, et la fiche s'ouvre sur la plus proche, ses jumelles à portée de glissement.
+  Le bilan les compte à part (« même image », écart de couleur moyen < 0,10 — calé sur
+  Dracaufeu Set de Base / Base Set 2 à 0,073, deux cartes différentes jamais sous 0,13).
+- **Carte ou Pokémon seul** : une carte si la plus proche ressemble à `CARTE_SIM` au
+  moins ET devance de `CARTE_ECART` la première d'une autre image. Mesuré (`evaluation.json`), à 0,8 et 0,02 : 99,0 % des photos
+  normales gardées, justes à 100 % ; 78,5 % des photos DIFFICILES (carte petite, forte
+  perspective, basse définition), justes à 99,92 % ; acceptés à tort : 0,1 % des Pokémon
+  seuls (artworks), 0 % des objets, 0 % des scènes vides. À 0,7, 4,4 % des Pokémon seuls
+  passaient pour des cartes. Sous le seuil, l'image va au classifieur des Pokémon.
+  - Bilan du modèle retenu, sans seuil — bonne carte en 1er · même image · dans les 5 :
+    photos normales (3 000) 97,1 · 99,8 · 99,8 % ; difficiles (1 500) 94,8 · 98,0 · 98,9 %.
+  - Vérifié dans l'aperçu : Dracaufeu-ex de « 151 » à 0,986 (suivante 0,712), Dracaufeu
+    du Set de Base à 0,986 ; l'artwork de Pikachu plafonne à 0,67 → Pokémon.
+- **Dans le Scan** (scan.js) :
+  - Mode Auto : le détecteur pose sa boîte sur l'ILLUSTRATION d'une carte (il a été
+    entraîné ainsi). `carteAutour` en déduit le rectangle de la carte entière (fenêtre
+    d'illustration 8–92 % × 10–55 % de la carte, format 63 × 88) ; ce rectangle, cadré
+    comme à l'apprentissage (carte à 86 % du cadre, deux cadrages), est comparé au
+    catalogue AVANT le classifieur des Pokémon. Reconnue, la piste devient une `carte` :
+    cadre BLEU sur la carte entière, nom de la carte, toucher → sa fiche (`ouvrirCarte`,
+    fournie par main.js). Revérifiée toutes les 3 s, effacée après deux doutes.
+  - Bouton Poké Ball : le cadre manuel est d'abord comparé aux cartes, puis aux Pokémon.
+  - Limite : une carte tournée de côté ou « full art » ne tombe pas dans la géométrie
+    déduite en mode Auto ; elle se reconnaît au bouton, en la cadrant.
+  - Le modèle et l'index (~55 Mo) se chargent en arrière-plan à l'ouverture du scan
+    (`prepareCartes`) : le scan des Pokémon n'attend pas. Le service worker ne les
+    précharge pas (il ne précharge que `assets/`).
+  - Sous la fiche d'une carte, le suivi se met en pause, comme sous celle d'un Pokémon.
+  - Développement : `window.__scanCarte(url)` rend les cartes les plus proches d'une
+    image. Retiré du build.
 
 ## Boîte de combat
 

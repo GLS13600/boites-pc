@@ -2758,6 +2758,14 @@ img {
 .scan-piste { animation: scan-apparait 220ms ease-out; }
 @keyframes scan-apparait { from { opacity: 0; transform: scale(1.15); } }
 .scan-piste.reconnu i { border-color: #6fe6ff; filter: drop-shadow(0 0 5px rgba(111, 230, 255, 0.8)); }
+/* Une CARTE reconnue : cadre bleu franc sur la carte entière, coins moins arrondis (une
+   carte a des coins de 3 mm), et un voile léger qui dit « ceci se touche ». */
+.scan-piste.carte { border-radius: 10px; background: rgba(59, 130, 246, 0.12); box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.55); }
+.scan-piste.carte i { border-color: #3b82f6; filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.9)); }
+.scan-piste.carte i:nth-child(1) { border-top-left-radius: 10px; }
+.scan-piste.carte i:nth-child(2) { border-top-right-radius: 10px; }
+.scan-piste.carte i:nth-child(3) { border-bottom-right-radius: 10px; }
+.scan-piste.carte i:nth-child(4) { border-bottom-left-radius: 10px; }
 /* Mode IA : cadre « en analyse », discret, en attendant la reconnaissance ; et plus de
    transition CSS, les positions arrivant à chaque image d'affichage (elle ferait traîner). */
 .scan-piste.analyse i { border-color: rgba(255, 255, 255, 0.7); border-width: 2px; }
@@ -2780,6 +2788,7 @@ img {
   white-space: nowrap;
 }
 .scan-piste b:empty { display: none; }
+.scan-piste.carte b { background: #2563eb; box-shadow: 0 0 0 1.5px rgba(147, 197, 253, 0.8); }
 .scan-piste.nom-bas b { bottom: auto; top: 100%; margin: 8px 0 0; }
 @media (prefers-reduced-motion: reduce) {
   .scan-piste { transition: none; }

@@ -51,6 +51,26 @@ async function traite(data) {
       const sortie = new Float32Array(logits.data);
       self.postMessage({ type: 'resultat', id: data.id, logits: sortie, n: data.n, ms: performance.now() - t0 },
         [sortie.buffer]);
+    } else if (data.type === 'charge-cartes') {
+      // Scan des cartes : le réseau de l'EMPREINTE VISUELLE (ml/cartes_empreinte.py) et
+      // l'index des cartes du catalogue — une empreinte de 256 nombres par image, en
+      // octets signés (int8, échelle 1/127), et la liste des identifiants et des noms.
+      const t0 = performance.now();
+      if (!sessions.cartes) {
+        const [s, bin, meta] = await Promise.all([
+          ouvre(data.modele),
+          fetch(data.index).then((r) => { if (!r.ok) throw new Error(`index ${r.status}`); return r.arrayBuffer(); }),
+          fetch(data.meta).then((r) => { if (!r.ok) throw new Error(`liste ${r.status}`); return r.json(); }),
+        ]);
+        index = { vecteurs: new Int8Array(bin), dim: meta.dim, ids: meta.cartes, noms: meta.noms };
+        sessions.cartes = s;
+      }
+      self.postMessage({ type: 'resultat', id: data.id, ms: performance.now() - t0, n: index.ids.length });
+    } else if (data.type === 'carte') {
+      const t0 = performance.now();
+      const entree = new ort.Tensor('float32', data.pixels, [data.n, 3, data.taille, data.taille]);
+      const { empreinte } = await sessions.cartes.run({ image: entree });
+      self.postMessage({ type: 'resultat', id: data.id, cartes: cherche(empreinte.data, data.n), ms: performance.now() - t0 });
     } else if (data.type === 'detecte') {
       const t0 = performance.now();
       const entree = new ort.Tensor('float32', data.pixels, [1, 3, data.hauteur, data.largeur]);
@@ -64,4 +84,41 @@ async function traite(data) {
   } catch (e) {
     self.postMessage({ type: 'erreur', id: data.id, message: String(e?.message ?? e) });
   }
+}
+
+// ------------------------------------------------------------ recherche dans l'index
+let index = null;
+
+// Les cartes les plus proches de l'image : moyenne des empreintes des cadrages,
+// renormalisée, puis ressemblance (cosinus) avec chaque carte de l'index. Une carte a
+// souvent DEUX images (française et anglaise) : on garde la meilleure par identifiant.
+// ~9,4 millions de multiplications pour 36 772 cartes : une vingtaine de millisecondes.
+function cherche(e, n) {
+  const { vecteurs: V, dim: D, ids, noms } = index;
+  const q = new Float32Array(D);
+  for (let k = 0; k < n; k++) for (let j = 0; j < D; j++) q[j] += e[k * D + j];
+  let norme = 0;
+  for (let j = 0; j < D; j++) norme += q[j] * q[j];
+  norme = Math.sqrt(norme) || 1;
+  for (let j = 0; j < D; j++) q[j] /= norme * 127;
+  // Les 24 meilleures entrées, tenues dans un petit tableau trié.
+  const K = 24, meilleurs = [];
+  for (let i = 0, base = 0; i < ids.length; i++, base += D) {
+    let s = 0;
+    for (let j = 0; j < D; j++) s += q[j] * V[base + j];
+    if (meilleurs.length < K || s > meilleurs[meilleurs.length - 1].s) {
+      let p = meilleurs.length;
+      while (p > 0 && meilleurs[p - 1].s < s) p--;
+      meilleurs.splice(p, 0, { i, s });
+      if (meilleurs.length > K) meilleurs.pop();
+    }
+  }
+  const vus = new Set(), sortie = [];
+  for (const { i, s } of meilleurs) {
+    if (vus.has(ids[i])) continue;
+    vus.add(ids[i]);
+    sortie.push({ id: ids[i], nom: noms?.[i] ?? '', sim: Math.round(s * 1000) / 1000 });
+    if (sortie.length >= 8) break;
+  }
+  return sortie;
 }

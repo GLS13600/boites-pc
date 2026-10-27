@@ -304,7 +304,11 @@ def negatifs(modele, index, labels, racine, fonds, n, dev):
     une figurine), un objet du quotidien (COCO), une scène vide. Rend, pour chaque image,
     la ressemblance avec la carte la plus proche et l'écart avec la suivante — c'est ce
     qui fixera le seuil où l'appli dit « c'est une carte »."""
-    arts = sorted((D.RACINE_APPLI / 'public/sprites/other/official-artwork').glob('*.webp'))
+    # Les artworks vivent dans le dépôt de l'appli, pas à côté d'une copie des scripts.
+    for appli in (D.RACINE_APPLI, Path('A:/Code/Pokedex')):
+        arts = sorted((appli / 'public/sprites/other/official-artwork').glob('*.webp'))
+        if arts:
+            break
     objets, _ = D.charge_coco(racine, 'test')
     sortie = {}
     for nom in ('pokemon', 'objets', 'rien'):
@@ -515,8 +519,11 @@ def exporte(args):
     index = empreintes_refs(m, cartes, dev)
     q = torch.clamp((index * 127).round(), -127, 127).to(torch.int8).numpy()
     (run / 'index.bin').write_bytes(q.tobytes())
+    # Les NOMS aussi : le cadre du scan affiche le nom de la carte aussitôt, sans réseau.
     (run / 'index.json').write_text(json.dumps({'dim': DIM, 'echelle': 1 / 127,
-                                                'cartes': [c['id'] for c in cartes]}))
+                                                'cartes': [c['id'] for c in cartes],
+                                                'noms': [c['nom'] for c in cartes]}, ensure_ascii=False),
+                                    encoding='utf8')
     m_cpu = m.float().cpu()
     x = torch.zeros(1, 3, TAILLE, TAILLE)
     torch.onnx.export(m_cpu, x, run / 'empreinte.onnx', input_names=['image'], output_names=['empreinte'],

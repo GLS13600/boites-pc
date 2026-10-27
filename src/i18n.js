@@ -624,7 +624,8 @@ const TEXTES = {
     // -- Scan
     scannerPokemon: 'Scanner un Pokémon',
     scanner: 'Scanner',
-    aideCadre: "Touchez l'image pour placer le cadre sur le Pokémon",
+    aideCadre: "Touchez l'image pour placer le cadre sur un Pokémon ou une carte",
+    aideToucherCarte: 'Touchez la carte pour ouvrir sa fiche',
     aideToucherPokemon: 'Touchez un Pokémon pour ouvrir sa fiche',
     pasDeCamera: 'Aucune caméra disponible sur cet appareil.',
     cameraHttps: 'La caméra demande une connexion sécurisée (https).',
@@ -1267,7 +1268,8 @@ const TEXTES = {
 
     scannerPokemon: 'Scan a Pokémon',
     scanner: 'Scan',
-    aideCadre: 'Tap the image to put the frame on the Pokémon',
+    aideCadre: 'Tap the image to put the frame on a Pokémon or a card',
+    aideToucherCarte: 'Tap the card to open it',
     aideToucherPokemon: 'Tap a Pokémon to open its page',
     pasDeCamera: 'No camera available on this device.',
     cameraHttps: 'The camera needs a secure connection (https).',
@@ -1903,7 +1905,8 @@ const TEXTES = {
 
     scannerPokemon: 'ポケモンを スキャン',
     scanner: 'スキャン',
-    aideCadre: '画面を タップして ポケモンに 枠を 合わせてください',
+    aideCadre: '画面を タップして ポケモンか カードに 枠を 合わせてください',
+    aideToucherCarte: 'カードを タップすると くわしく 見られます',
     aideToucherPokemon: 'ポケモンを タップすると ずかんが 開きます',
     pasDeCamera: 'この端末には カメラが ありません。',
     cameraHttps: 'カメラには 安全な接続（https）が 必要です。',

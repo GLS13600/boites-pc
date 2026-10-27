@@ -50,6 +50,29 @@ const MANQUES_MAX = 4;
 // même endroit. Une piste refusée aussi, un Pokémon mal vu au début pouvant se préciser.
 const REVERIFIE_MS = 3000;
 
+// ---- Scan des CARTES : l'empreinte visuelle (ml/cartes_empreinte.py) ----
+// La carte vue par la caméra est comparée aux 36 772 images du catalogue (scan-worker.js,
+// `cherche`). C'est une carte si la plus proche lui ressemble à CARTE_SIM au moins ET
+// devance d'au moins CARTE_ECART la première carte d'une autre image. Seuils fixés sur
+// le bilan du 28/10/2026 (ml/cartes_empreinte.py evalue) : à 0,8, 99,0 % des cartes
+// photographiées sont reconnues (justes à 100 %), et 1 Pokémon seul sur 1 000, 0 objet,
+// 0 scène vide passent pour une carte. À 0,6, 21,6 % des Pokémon seuls passaient : un
+// artwork ressemble naturellement aux cartes de CE Pokémon.
+const CARTE_SIM = 0.8, CARTE_ECART = 0.02;
+// Une RÉÉDITION a la même image sous un autre identifiant (Set de Base et Base Set 2,
+// promo reprise d'une extension) : aucune empreinte ne les départage. Les cartes à moins
+// de CARTE_JUMELLES de la première sont gardées ensemble, et la fiche se parcourt de
+// l'une à l'autre par glissement.
+const CARTE_JUMELLES = 0.02;
+// La fenêtre d'illustration d'une carte standard, en fraction de la carte : c'est là que
+// le détecteur a appris à poser sa boîte (ml/donnees.py, FENETRE). On en déduit le
+// rectangle de la carte entière, au format 63 × 88 mm.
+const FENETRE = { x0: 0.08, y0: 0.10, x1: 0.92, y1: 0.55 };
+const RATIO_CARTE = 63 / 88;
+// Part du cadrage occupée par la hauteur de la carte : celle de l'apprentissage (74–97 %).
+const CARTE_DANS_CADRE = 0.86;
+const ECHELLES_CARTE = [1, 0.9];
+
 // Mode de détection, choisi par le bouton du coin bas-gauche et mémorisé :
 //   'auto'   — suivi en temps réel, chaque Pokémon trouvé reçoit son cadre ;
 //   'manuel' — le fonctionnement d'avant le suivi : on place le cadre, on appuie ;
@@ -117,7 +140,7 @@ const html = (s) => {
   return t.content.firstElementChild;
 };
 
-export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque = () => false }) {
+export function creeScan({ t, ouvrirFiche, ouvrirCarte = () => {}, nomDe = (k) => String(k), estMasque = () => false }) {
   const el = html(`
     <section class="scan" aria-label="${t('scannerPokemon')}">
       <video class="scan-video" playsinline muted autoplay></video>
@@ -214,6 +237,38 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
     .then(() => demande({ type: 'charge-ia', url: new URL('scan-ia/classifieur.onnx', document.baseURI).href }))
     .catch((e) => { pretIA = null; throw e; }));
   const detecte = (pixels) => demande({ type: 'detecte', pixels, largeur: DET_L, hauteur: DET_H }, [pixels.buffer]);
+
+  // Le réseau des cartes et son index (~55 Mo), chargés en arrière-plan à l'ouverture du
+  // scan : le scan des Pokémon n'attend pas. Tant qu'ils ne sont pas là, tout ce qui est
+  // vu passe par le classifieur des Pokémon, comme avant.
+  let pretCartes = null, cartesPretes = false;
+  const url = (chemin) => new URL(chemin, document.baseURI).href;
+  const prepareCartes = () => (pretCartes ??= (pret ?? prepareModele())
+    .then(() => demande({ type: 'charge-cartes', modele: url('scan-cartes/empreinte.onnx'),
+      index: url('scan-cartes/index.bin'), meta: url('scan-cartes/index.json') }))
+    .then(() => { cartesPretes = true; })
+    .catch((e) => { pretCartes = null; console.warn('scan des cartes', e?.message ?? e); }));
+
+  // Une carte, ou null. Les jumelles (même image, autre identifiant) l'accompagnent.
+  async function reconnaisCarte(pixels) {
+    const r = await demande({ type: 'carte', pixels, n: pixels.length / (3 * TAILLE * TAILLE), taille: TAILLE },
+      [pixels.buffer]);
+    const [premiere] = r.cartes;
+    if (!premiere || premiere.sim < CARTE_SIM) return null;
+    const jumelles = r.cartes.filter((c) => premiere.sim - c.sim <= CARTE_JUMELLES);
+    const autre = r.cartes.find((c) => premiere.sim - c.sim > CARTE_JUMELLES);
+    if (autre && premiere.sim - autre.sim < CARTE_ECART) return null;
+    return { id: premiere.id, nom: premiere.nom, liste: jumelles.map((c) => c.id), sim: premiere.sim };
+  }
+
+  // Le rectangle de la carte entière, déduit de la boîte du détecteur posée sur son
+  // illustration. Une carte tournée de côté ou « full art » n'y entre pas : elle reste
+  // reconnaissable au bouton, en la cadrant.
+  function carteAutour(p) {
+    const H = (p.h / (FENETRE.y1 - FENETRE.y0) + p.w / (FENETRE.x1 - FENETRE.x0) / RATIO_CARTE) / 2;
+    const W = H * RATIO_CARTE;
+    return { x: p.x + p.w / 2 - W / 2, y: p.y - FENETRE.y0 * H, w: W, h: H };
+  }
 
   // Moyenne des probabilités sur les cadrages, puis somme par groupe : une espèce et
   // ses formes se partagent la ressemblance, et c'est l'espèce qu'on juge d'abord.
@@ -365,6 +420,7 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
     if (entree) animeOuverture();
     majZone();
     prepareModele().catch(() => {});
+    prepareCartes();
     // `flux` déjà là : on revient d'un rendu, qui a reparenté l'élément vidéo.
     if (flux) { joueEtVeille(); demarreApercu(); suis(); ia.demarre(); return; }
     // Chaque rendu rappelle demarre() : sans ce verrou, un rendu survenu pendant la
@@ -482,9 +538,14 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
     doigts.delete(e.pointerId);
     if (!pince && !bouge && e.type === 'pointerup') {
       const r = el.getBoundingClientRect();
-      // Toucher un Pokémon suivi et reconnu ouvre sa fiche.
+      // Toucher un Pokémon suivi et reconnu ouvre sa fiche ; une carte, la sienne.
       const p = pisteSous(e.clientX - r.left, e.clientY - r.top);
-      if (p) { doigts.delete(e.pointerId); ouvrirFiche(p.key); return; }
+      if (p) {
+        doigts.delete(e.pointerId);
+        if (p.etat === 'carte') ouvrirCarte(p.carte, p.liste);
+        else ouvrirFiche(p.key);
+        return;
+      }
       zone.cx = (e.clientX - r.left) / r.width;
       zone.cy = (e.clientY - r.top) / r.height;
       majZone();
@@ -651,6 +712,25 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
     const p = neuves.find((q) => q.essais === 0 || maintenant - q.verifieA > 500)
       ?? pistes.find((q) => q.etat !== 'nouvelle' && maintenant - q.verifieA > REVERIFIE_MS);
     if (!p) return;
+    // Une carte d'abord : le rectangle de la carte, déduit de son illustration, est
+    // comparé au catalogue. Sinon, c'est un Pokémon seul — écran, figurine, dessin.
+    if (cartesPretes) {
+      const c = carteAutour(p);
+      const ccx = (c.x + c.w / 2 - g.ox) / g.e, ccy = (c.y + c.h / 2 - g.oy) / g.e;
+      const carte = await enSerie(() => reconnaisCarte(pixelsDe(video, ccx, ccy, c.h / CARTE_DANS_CADRE / g.e, ECHELLES_CARTE)));
+      if (!pistes.includes(p)) return;
+      if (carte) {
+        p.verifieA = performance.now();
+        Object.assign(p, { etat: 'carte', carte: carte.id, liste: carte.liste, key: null, nom: carte.nom, essais: 0, doutes: 0 });
+        return;
+      }
+      // Une carte qui n'est plus reconnue : deux doutes d'affilée pour l'effacer.
+      if (p.etat === 'carte') {
+        p.verifieA = performance.now();
+        if (++p.doutes >= 2) Object.assign(p, { etat: 'refusee', carte: null, nom: '' });
+        return;
+      }
+    }
     const cote = Math.max(p.w, p.h) * 1.15;
     const cx = (p.x + p.w / 2 - g.ox) / g.e, cy = (p.y + p.h / 2 - g.oy) / g.e;
     const r = await enSerie(() => reconnais(pixelsDe(video, cx, cy, cote / g.e, [1])));
@@ -673,7 +753,7 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
     // encadrait n'importe quel objet le temps que le classifieur se prononce.
     // Mode IA : aussi les cadres « en analyse » (Pokémon nettement détecté, pas encore
     // reconnu). Le mode Auto ne produit jamais cet état.
-    const visibles = pistes.filter((p) => p.etat === 'reconnu' || p.etat === 'analyse');
+    const visibles = pistes.filter((p) => p.etat === 'reconnu' || p.etat === 'analyse' || p.etat === 'carte');
     const vus = new Set();
     for (const p of visibles) {
       let n = pistesEl.querySelector(`[data-piste="${p.id}"]`);
@@ -684,16 +764,20 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
       vus.add(n);
       n.classList.toggle('reconnu', p.etat === 'reconnu');
       n.classList.toggle('analyse', p.etat === 'analyse');
+      n.classList.toggle('carte', p.etat === 'carte');
+      // Une carte est encadrée ENTIÈRE, pas seulement son illustration.
+      const b = p.etat === 'carte' ? carteAutour(p) : p;
       // Près du haut de l'écran, le nom passerait sous le bandeau d'aide ou sous la
       // coque : il se met alors SOUS le cadre.
-      n.classList.toggle('nom-bas', p.y - ecran.offsetTop < 64);
-      n.querySelector('b').textContent = p.etat === 'reconnu' ? p.nom : '';
-      Object.assign(n.style, { left: `${p.x}px`, top: `${p.y}px`, width: `${p.w}px`, height: `${p.h}px` });
+      n.classList.toggle('nom-bas', b.y - ecran.offsetTop < 64);
+      n.querySelector('b').textContent = p.etat === 'reconnu' || p.etat === 'carte' ? p.nom : '';
+      Object.assign(n.style, { left: `${b.x}px`, top: `${b.y}px`, width: `${b.w}px`, height: `${b.h}px` });
     }
     for (const n of [...pistesEl.children]) if (!vus.has(n)) n.remove();
     zoneEl.hidden = visibles.length > 0 || !zone.px;
-    aide.textContent = mode !== 'manuel' && visibles.some((p) => p.etat === 'reconnu')
-      ? t('aideToucherPokemon')
+    aide.textContent = mode === 'manuel' ? t('aideCadre')
+      : visibles.some((p) => p.etat === 'carte') ? t('aideToucherCarte')
+      : visibles.some((p) => p.etat === 'reconnu') ? t('aideToucherPokemon')
       : t('aideCadre');
   }
 
@@ -704,7 +788,8 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
   }
 
   function pisteSous(x, y) {
-    return pistes.filter((p) => p.etat === 'reconnu' && x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + p.h)
+    const sous = (b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+    return pistes.filter((p) => (p.etat === 'reconnu' && sous(p)) || (p.etat === 'carte' && sous(carteAutour(p))))
       .sort((a, b) => a.w * a.h - b.w * b.h)[0] ?? null;
   }
 
@@ -746,9 +831,11 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
     if (occupe) return;
     // Des Pokémon sont suivis et reconnus : le bouton ouvre la fiche du plus grand à
     // l'écran, celui qu'on vise manifestement. Sinon, analyse du cadre comme avant.
-    const vus = mode !== 'manuel' ? pistes.filter((p) => p.etat === 'reconnu') : [];
+    const vus = mode !== 'manuel' ? pistes.filter((p) => p.etat === 'reconnu' || p.etat === 'carte') : [];
     if (vus.length) {
-      ouvrirFiche(vus.reduce((a, b) => (a.w * a.h >= b.w * b.h ? a : b)).key);
+      const p = vus.reduce((a, b) => (a.w * a.h >= b.w * b.h ? a : b));
+      if (p.etat === 'carte') ouvrirCarte(p.carte, p.liste);
+      else ouvrirFiche(p.key);
       return;
     }
     if (!flux || video.readyState < 2) { montreToast(t('cameraPasPrete')); return; }
@@ -756,6 +843,17 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
     el.classList.add('analyse');
     try {
       const z = zoneDansVideo();
+      // Une carte dans le cadre ? On la cadre comme à l'apprentissage : sa hauteur
+      // occupe le cadre.
+      if (cartesPretes) {
+        const carte = await enSerie(() => reconnaisCarte(pixelsDe(video, z.cx, z.cy, z.cote, ECHELLES_CARTE)));
+        if (carte) {
+          zoneEl.classList.add('ok');
+          setTimeout(() => zoneEl.classList.remove('ok'), 500);
+          ouvrirCarte(carte.id, carte.liste);
+          return;
+        }
+      }
       const r = await enSerie(() => reconnais(pixelsDe(video, z.cx, z.cy, z.cote)));
       if (r.trouve !== null) {
         zoneEl.classList.add('ok');
@@ -786,6 +884,19 @@ export function creeScan({ t, ouvrirFiche, nomDe = (k) => String(k), estMasque =
       await img.decode();
       const cote = Math.min(img.naturalWidth, img.naturalHeight);
       return reconnais(pixelsDe(img, img.naturalWidth / 2, img.naturalHeight / 2, cote));
+    };
+    // Une image de carte, cadrée comme au scan (la hauteur de la carte à 86 % du cadre).
+    window.__scanCarte = async (url) => {
+      await prepareCartes();
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = url;
+      await img.decode();
+      const cote = Math.max(img.naturalWidth, img.naturalHeight) / CARTE_DANS_CADRE;
+      const px = () => pixelsDe(img, img.naturalWidth / 2, img.naturalHeight / 2, cote, ECHELLES_CARTE);
+      const r = await demande({ type: 'carte', pixels: px(), n: ECHELLES_CARTE.length, taille: TAILLE });
+      // La décision du scan (seuils, rééditions) : une carte, ou null → Pokémon.
+      return { proches: r.cartes, decision: await reconnaisCarte(px()) };
     };
   }
 

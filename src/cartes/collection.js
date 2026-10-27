@@ -11,6 +11,7 @@
 //     set, setN, serie : extension et série,
 //     num:  numéro dans l'extension (« 025 »),
 //     rar:  rareté, telle que TCGdex l'écrit,
+//     typ:  types d'énergie de la carte (filtre de la collection),
 //     dex:  numéros du Pokédex national représentés (passerelle vers la fiche),
 //     ex:   [{ v: variante, l: langue, e: état, d: date d'ajout AAAA-MM-JJ }],
 //     fav:  favori,
@@ -79,7 +80,7 @@ const aujourdhui = () => new Date().toISOString().slice(0, 10);
 export function ajoute(fiche, variante = 'normal', { langue = 'FR', etat = 'neuf' } = {}) {
   const id = fiche.id;
   const c = cartes[id] || (cartes[id] = { ex: [], fav: false });
-  for (const k of ['n', 'img', 'set', 'setN', 'serie', 'num', 'rar', 'dex']) {
+  for (const k of ['n', 'img', 'set', 'setN', 'serie', 'num', 'rar', 'typ', 'dex']) {
     if (fiche[k] != null) c[k] = fiche[k];
   }
   c.ex.push({ v: variante, l: langue, e: etat, d: aujourdhui() });
@@ -134,7 +135,7 @@ export function complete(id, fiche) {
   const c = cartes[id];
   if (!c) return;
   let change = false;
-  for (const k of ['n', 'img', 'set', 'setN', 'serie', 'num', 'rar', 'dex']) {
+  for (const k of ['n', 'img', 'set', 'setN', 'serie', 'num', 'rar', 'typ', 'dex']) {
     if (fiche[k] != null && JSON.stringify(c[k]) !== JSON.stringify(fiche[k])) { c[k] = fiche[k]; change = true; }
   }
   if (change) ecrire();
@@ -201,6 +202,7 @@ export function assainit(v) {
     if (typeof c.set === 'string' && ID.test(c.set)) e.set = c.set;
     if (typeof c.img === 'string' && IMAGE.test(c.img)) e.img = c.img;
     if (Array.isArray(c.dex)) e.dex = c.dex.filter((n) => Number.isInteger(n) && n > 0 && n <= 1025).slice(0, 4);
+    if (Array.isArray(c.typ)) e.typ = c.typ.filter((x) => typeof x === 'string' && x.length <= 24).slice(0, 3);
     if (c.prix && c.prix.t > 0 && c.prix.t < 1e6) e.prix = { t: Math.round(c.prix.t * 100) / 100, maj: texte(c.prix.maj, 40) || new Date().toISOString() };
     sortie[id] = e;
   }

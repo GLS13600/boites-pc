@@ -605,6 +605,7 @@ const ICO = {
   coeur: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19.6s-7.4-4.4-7.4-9.6A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.4 2.4c0 5.2-7.4 9.6-7.4 9.6z"/></svg>',
   externe: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 5H19v5.5M19 5l-8 8"/><path d="M17 13.5V18a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 5 18V9a1.5 1.5 0 0 1 1.5-1.5H11"/></svg>',
   rafraichir: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4.2h-4.2"/></svg>',
+  trier: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4.5v15M8 4.5 4.8 7.7M8 4.5l3.2 3.2M16 19.5v-15M16 19.5l-3.2-3.2M16 19.5l3.2-3.2"/></svg>',
 };
 
 // Icônes des blocs de Réglages. La pastille qui les porte prend `--c` en CSS.
@@ -930,6 +931,9 @@ backdrop.addEventListener('click', () => {
   // Le panneau légal peut s'ouvrir PAR-DESSUS l'écran d'abonnement : le voile ne
   // referme alors que lui, pour revenir à l'abonnement.
   if (legalSheet.classList.contains('open') && plusSheet.classList.contains('open')) { fermeLegal(); return; }
+  // De même, une carte ouverte depuis « Ses cartes » recouvre la fiche du Pokémon : le
+  // voile ne referme qu'elle, et l'on retrouve le Pokémon.
+  if (carteSheet.classList.contains('open') && sheet.classList.contains('open')) { fermeCarte(); return; }
   closeSheet(); closeBoxSheet(); closeAddSheet(); closeBattleSheet(); fermeComptePanneau(); fermeLegal(); fermePlus(); fermeCarte();
 });
 
@@ -1121,6 +1125,8 @@ function openSheet(id) {
       ${p.flavor ? `<div class="fact wide"><dt>${t('description')}</dt><dd>${p.flavor}</dd></div>` : ''}
     </dl>
 
+    ${htmlSesCartes(base, p.name || t('numero', base))}
+
     <h3>${t('statsDeBase')}</h3>
     ${renderStatsBase(id)}
 
@@ -1147,6 +1153,22 @@ function openSheet(id) {
   sheetBody.scrollTop = keepScroll;
   sheet.classList.add('open');
   syncBackdrop();
+}
+
+// Les cartes de ce Pokémon dans la collection — la passerelle des jeux vers les cartes,
+// en miroir du « Dans le Pokédex » de la fiche d'une carte. Toucher une carte ouvre sa
+// fiche PAR-DESSUS celle du Pokémon ; le bouton cherche toutes ses cartes dans les
+// extensions. Une carte sait quels Pokémon elle représente (`dex`, relevé chez TCGdex).
+function htmlSesCartes(espece, nom) {
+  const siennes = Object.entries(cartesColl.toutes()).filter(([, c]) => c.ex?.length && c.dex?.includes(espece));
+  const ids = siennes.map(([id]) => id).join(',');
+  return `
+    <h3>${t('sesCartes')}${siennes.length ? ` <small>${siennes.length}</small>` : ''}</h3>
+    ${siennes.length ? `<div class="acc-recents ses-cartes">${siennes.slice(0, 24).map(([id, c]) => `
+      <button class="acc-recent carte" data-carte="${esc(id)}" data-carte-liste="${esc(ids)}" title="${esc(c.n || id)}">
+        <img src="${esc(c.img ? c.img + '/low.webp' : '')}" alt="${esc(c.n || '')}" loading="lazy" />
+      </button>`).join('')}</div>` : `<p class="none">${t('sesCartesAucune')}</p>`}
+    <button class="back-btn ses-cartes-btn" data-chercher-cartes="${esc(nom)}">${ICO_NAV.chercher}<span>${t('chercherSesCartes', esc(nom))}</span></button>`;
 }
 
 // Famille d'évolution : une ligne par membre, indentée selon la profondeur, ce qui
@@ -2687,6 +2709,20 @@ app.addEventListener('contextmenu', (e) => {
 });
 
 sheet.addEventListener('click', (e) => {
+  // « Ses cartes » : la fiche d'une carte s'ouvre par-dessus celle du Pokémon.
+  const carte = e.target.closest('[data-carte]');
+  if (carte) {
+    cartes.ouvre(carte.dataset.carte, (carte.dataset.carteListe || carte.dataset.carte).split(','));
+    return;
+  }
+  // … ou l'on part chercher toutes ses cartes dans les extensions.
+  const chercher = e.target.closest('[data-chercher-cartes]');
+  if (chercher) {
+    closeSheet();
+    vaVers('extensions');
+    cartes.cherche(chercher.dataset.chercherCartes);
+    return;
+  }
   const act = e.target.closest('[data-act]')?.dataset.act;
   if (act === 'toggle') { toggle(state.open); openSheet(state.open); }
   if (act === 'shiny') { state.shiny = !state.shiny; openSheet(state.open); }

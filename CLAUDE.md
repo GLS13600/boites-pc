@@ -40,9 +40,9 @@ ce sont des secrets.
 
 Étapes : (1) coquille commune — FAITE ; (2) extensions, fiche, exemplaires, et le
 langage commun appliqué aux vues Jeux — FAITE, avec une première collection et une
-page Valeur ; (3) suivi des prix d'une carte ; (4) classeurs ; (5) PokéAdvisor,
-favoris partagés, 3D, « Ses cartes » dans la fiche du Pokédex, reprise d'une
-sauvegarde Cartodex.
+page Valeur ; (3) suivi des prix d'une carte, filtres de la collection, « Ses
+cartes » dans la fiche du Pokédex — FAITE ; (4) classeurs ; (5) PokéAdvisor,
+favoris partagés, 3D, reprise d'une sauvegarde Cartodex.
 
 ### La coquille (étape 1)
 
@@ -203,6 +203,46 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   capture sur le document).
 - **Piège de test** : le bandeau « Annuler » s'efface au bout de 5 s. Un test qui clique
   « Annuler » dans un second appel arrive trop tard et croit l'annulation cassée.
+
+### Le suivi des prix, et les passerelles (étape 3)
+
+- **`src/cartes/prix.js`** : l'historique du prix de chaque carte suivie
+  (`pcbox.cartes.prix`, hors sauvegarde — donnée de marché). Un point par JOUR au
+  plus : la TENDANCE Cardmarket du jour (`prixDuJour`), là où la valeur de la
+  collection garde la moyenne sur 30 jours, plus stable. Six mois, 120 points.
+  - **Amorçage** : Cardmarket donne d'emblée ses moyennes sur 30, 7 et 1 jour. Cartodex
+    les posait à J−30 et J−7 ; une moyenne décrit le MILIEU de sa période, d'où J−15,
+    J−4 et J−1 ici. Ces points sont ESTIMÉS (`e`), dessinés creux, et le dit une note ;
+    les relevés réels les remplacent jour après jour.
+  - Une carte jamais suivie montre quand même la courbe de ses moyennes
+    (`prix.estimation`), sans rien enregistrer.
+  - Relevé à l'ouverture de la fiche d'une carte possédée, à l'ajout, et à chaque
+    actualisation des prix.
+- **La courbe** (`courbePrix` dans vues.js) : le trait de la courbe de la collection,
+  avec repères — le plus haut et le plus bas en euros, la première et la dernière date —
+  et la variation sur la période (« −13 % · sur 15 j », verte à la hausse, rouge à la
+  baisse). SVG à l'échelle de sa largeur, sans déformer le texte.
+- **Actualisation d'elle-même** (`rafraichitSiVieux`) : en entrant dans Ma collection ou
+  Valeur, les prix de plus de 20 h sont relevés sans rien demander, au plus une fois
+  toutes les six heures — et aussi les cartes dont on ignore encore les types.
+- **Ma collection** filtre par **rareté** et par **énergie** (les types de la carte,
+  désormais recopiés : `typ`, liste vide pour un Dresseur ou une Énergie), et ne propose
+  que ce que la collection contient. Le **tri** est monté dans l'en-tête, en icône : une
+  liste native posée invisible sur le bouton (`.tete-select`) ouvre le sélecteur du
+  système, comme l'icône de tri de Cartodex.
+- **« Ses cartes »** dans la fiche d'un Pokémon (`htmlSesCartes`) : les cartes de la
+  collection qui le représentent (`dex`), et « Chercher les cartes de … », qui ouvre les
+  extensions sur la recherche. Toucher une carte ouvre sa fiche PAR-DESSUS celle du
+  Pokémon ; le voile ne referme alors que la carte (même règle que le document légal
+  par-dessus l'abonnement). En miroir, « Dans le Pokédex » de la fiche d'une carte.
+- **Résultats d'une recherche** : nom de l'extension en légende et les plus RÉCENTES
+  d'abord, d'après la liste des 202 extensions de TCGdex (`/sets`, dans l'ordre de
+  sortie, lue une fois et gardée sept jours).
+- **Image manquante** : TCGdex n'a pas l'image française de certaines cartes
+  (Détective Pikachu…) mais en a l'anglaise. Une carte sans image demande son détail
+  dans l'AUTRE langue (`carteEnFile(id, { autre: true })`, gardé trente jours) et prend
+  son image ; sans image dans aucune langue (quelques promos, McDonald's 2024), le dos
+  de carte dessiné.
 
 ## Deux variantes : App Store et « Unydex Dev » (06/10/2026)
 
@@ -495,6 +535,7 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `src/cartes/vues.js` | Les vues Cartes : extensions, recherche, fiche, collection, valeur |
 | `src/cartes/api.js` | TCGdex : lecture, cache IndexedDB, file de quatre requêtes |
 | `src/cartes/collection.js` | La collection de cartes et ses exemplaires (`pcbox.cartes`) |
+| `src/cartes/prix.js` | Historique du prix de chaque carte suivie (`pcbox.cartes.prix`) |
 | `src/cartes/regles.js` | Raretés, variantes, états, distance d'édition (règles de Cartodex) |
 | `src/data/i18n/en.json` | Surcouche anglaise, **générée**, 1,7 Mo |
 | `src/data/i18n/ja.json` | Surcouche japonaise, **générée**, 1,9 Mo |

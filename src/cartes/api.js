@@ -17,9 +17,11 @@
 let LANGUE = 'fr';
 export function poseLangue(l) { LANGUE = l === 'fr' ? 'fr' : 'en'; }
 export const langueDonnees = () => LANGUE;
-const base = () => `https://api.tcgdex.net/v2/${LANGUE}`;
+// L'autre langue des données : celle où chercher l'image d'une carte qui n'en a pas.
+const autreLangue = () => (LANGUE === 'fr' ? 'en' : 'fr');
+const base = (lg = LANGUE) => `https://api.tcgdex.net/v2/${lg}`;
 // La clé de cache porte la langue : un nom français ne doit pas ressortir en anglais.
-const cleDe = (chemin) => `${LANGUE}${chemin}`;
+const cleDe = (chemin, lg = LANGUE) => `${lg}${chemin}`;
 const JOUR = 864e5;
 
 // ---------------------------------------------------------------- cache IndexedDB
@@ -59,8 +61,8 @@ const enVol = new Map();     // cle -> promesse
 
 // Lit un chemin de l'API, en le gardant. `age` : au-delà, on retente le réseau (mais
 // on rend l'ancienne copie s'il ne répond pas).
-async function lis(chemin, age) {
-  const cle = cleDe(chemin);
+async function lis(chemin, age, lg = LANGUE) {
+  const cle = cleDe(chemin, lg);
   const frais = (e) => e && Date.now() - e.t < age;
   const m = memoire.get(cle);
   if (frais(m)) return m.v;
@@ -69,7 +71,7 @@ async function lis(chemin, age) {
     const disque = m || await litCache(cle);
     if (frais(disque)) { memoire.set(cle, disque); return disque.v; }
     try {
-      const r = await fetch(base() + chemin);
+      const r = await fetch(base(lg) + chemin);
       if (!r.ok) throw new Error(String(r.status));
       const v = await r.json();
       const e = { t: Date.now(), v };
@@ -96,6 +98,9 @@ export const connuEnMemoire = (chemin) => memoire.get(cleDe(chemin))?.v ?? null;
 
 // ---------------------------------------------------------------- l'API
 export const series = () => lis('/series', 7 * JOUR);
+// Toutes les extensions, dans l'ordre de sortie : leurs noms pour les résultats d'une
+// recherche, et l'ordre pour montrer les cartes récentes d'abord.
+export const toutesExtensions = () => lis('/sets', 7 * JOUR);
 export const serie = (id) => lis(`/series/${encodeURIComponent(id)}`, 7 * JOUR);
 export const extension = (id) => lis(`/sets/${encodeURIComponent(id)}`, 3 * JOUR);
 // Le détail d'une carte : rareté, variantes, Pokémon représentés, prix. Le prix bouge
@@ -112,17 +117,20 @@ const file = [];
 let actives = 0;
 function suivant() {
   while (actives < 4 && file.length) {
-    const { id, pourPrix, ok, ko } = file.shift();
+    const { id, pourPrix, autre, ok, ko } = file.shift();
     actives++;
-    carte(id, { pourPrix }).then(ok, ko).finally(() => { actives--; suivant(); });
+    (autre ? lis(cheminCarte(id), 30 * JOUR, autreLangue()) : carte(id, { pourPrix }))
+      .then(ok, ko).finally(() => { actives--; suivant(); });
   }
 }
 // `pourPrix` : le relevé du jour est voulu (actualisation des prix) — un détail déjà en
 // mémoire mais vieux de plus d'un jour repasse alors par le réseau.
-export function carteEnFile(id, { pourPrix = false } = {}) {
-  const connu = connuEnMemoire(cheminCarte(id));
+// `autre` : le détail dans l'AUTRE langue des données. TCGdex n'a pas encore l'image
+// française de certaines cartes (Détective Pikachu…) mais en a l'anglaise.
+export function carteEnFile(id, { pourPrix = false, autre = false } = {}) {
+  const connu = autre ? memoire.get(cleDe(cheminCarte(id), autreLangue()))?.v : connuEnMemoire(cheminCarte(id));
   if (connu && !pourPrix) return Promise.resolve(connu);
-  return new Promise((ok, ko) => { file.push({ id, pourPrix, ok, ko }); suivant(); });
+  return new Promise((ok, ko) => { file.push({ id, pourPrix, autre, ok, ko }); suivant(); });
 }
 // Abandonner ce qui attend encore (on a quitté l'extension).
 export function videFile() { file.length = 0; }

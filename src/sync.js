@@ -25,6 +25,12 @@
 // compréhensible.
 
 import { sb, etat, configure, surChangement } from './compte.js';
+import { lisCartodex } from './cartes/cartodex.js';
+
+// La table d'Unydex dans le projet Supabase de Cartodex, repris pour l'appli fusionnée :
+// `public.collections` y est déjà prise par les sauvegardes de Cartodex (voir la
+// migration 20261028000000_projet_cartodex.sql).
+const TABLE = 'collections_unydex';
 
 const CLE_ENVOYE = 'pcbox.sync.envoye';   // ce qu'on a réussi à envoyer, pour ne pas renvoyer l'identique
 const CLE_DATE = 'pcbox.sync.date';       // quand le dernier envoi a réussi
@@ -88,7 +94,7 @@ async function envoie() {
   enCours = true;
   previens();
   try {
-    const { error } = await c.from('collections').upsert({
+    const { error } = await c.from(TABLE).upsert({
       id: etat.user.id,
       donnees,
       modifie_le: new Date().toISOString(),
@@ -129,11 +135,16 @@ export async function aLaConnexion(demande) {
   if (!c) return;
 
   const { data, error } = await c
-    .from('collections')
+    .from(TABLE)
     .select('donnees, modifie_le, appareil')
     .eq('id', etat.user.id)
     .maybeSingle();
   if (error) { console.warn('sync', error.message); return; }
+
+  // Premier passage de ce compte dans Unydex : s'il vient de Cartodex, sa sauvegarde
+  // REJOINT la collection de l'appareil (même chemin que l'import d'un fichier), puis
+  // tout part dans la table d'Unydex. Une seule fois : ensuite la ligne d'Unydex existe.
+  if (!data) await repriseCartodex(c);
 
   const distant = rempli(data?.donnees) ? data : null;
   const local = litEtat();
@@ -152,6 +163,19 @@ export async function aLaConnexion(demande) {
   else if (choix === 'local') await envoie();
   // 'rien' : on ne touche à rien. Le prochain changement local repartira, et la
   // question se reposera à la prochaine connexion.
+}
+
+// La sauvegarde de Cartodex (`collections.data`, lue seulement, jamais écrite), fondue
+// dans la collection locale. Un échec ne bloque rien : le compte repart sans elle.
+async function repriseCartodex(c) {
+  try {
+    const { data, error } = await c.from('collections').select('data').eq('user_id', etat.user.id).maybeSingle();
+    if (error || !data?.data || !lisCartodex(data.data)) return;
+    await poseEtat(data.data);
+  } catch (e) {
+    // « vide » : rien de nouveau à reprendre, la collection l'avait déjà.
+    if (e?.message !== 'vide') console.warn('reprise Cartodex', e?.message ?? e);
+  }
 }
 
 // On applique, PUIS on relit l'état réel pour marquer ce qui est « déjà envoyé ».

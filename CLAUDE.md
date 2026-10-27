@@ -368,8 +368,7 @@ dresseurs l'ont en favori.
   rien à Supabase pour qui n'a pas de compte. Un nombre, jamais une identité.
 - Relevé une fois par carte et par cinq minutes ; un changement de compte vide ce qui a
   été relevé (on excluait un autre compte). Zéro ne s'affiche pas.
-- **La migration reste à exécuter dans Supabase.** D'ici là, la fonction manque et aucun
-  nombre ne s'affiche — rien ne casse.
+- Appliqué sur le projet de Cartodex le 28/10/2026 (voir plus bas).
 - Vérifié avec un client simulé : aucun appel sans compte ; « 3 » puis « 4 » au
   toucher, « 3 » au second ; réouverture sans nouvel appel ; nouvel appel pour un
   autre compte.
@@ -381,6 +380,30 @@ images), ni de PokéAdvisor, qui envoie questions et résumé à Mistral AI avec
 l'utilisateur. Le compteur des favoris, lui, est un agrégat de collections déjà
 hébergées. Le dossier `legal/` (politique fr / en, registre, étiquette App Privacy) doit
 suivre, comme pour les publicités.
+
+### Le projet Supabase de Cartodex, repris (28/10/2026)
+
+Unydex utilise désormais le projet Supabase de **Cartodex** (`surhoceznpqkpgllitnp`,
+eu-west-1), et non plus son ancien projet (`qujwmitwjlemzkhrvvsd`, abandonné). Installé
+par le connecteur Supabase, migration `20261028000000_projet_cartodex.sql` — **elle
+remplace les trois précédentes, à ne PAS rejouer sur ce projet**.
+
+- **`public.collections` appartient à Cartodex** (`user_id`, `data`, `updated_at`) : même
+  nom que l'ancienne table d'Unydex, autres colonnes. Unydex range sa progression dans
+  **`collections_unydex`** (`TABLE` dans sync.js) et ne fait que LIRE celle de Cartodex.
+- **Reprise automatique** : au premier passage d'un compte dans Unydex (pas encore de
+  ligne `collections_unydex`), sa sauvegarde Cartodex rejoint la collection de
+  l'appareil par `appliqueDonnees` — donc `lisCartodex`, comme un fichier —, puis tout
+  est envoyé.
+- **Profils** : les 4 comptes créés par Cartodex en ont reçu un (pseudo tiré de
+  `pseudo`, puis `first_name`, puis l'e-mail, via `pseudo_pour`). Le déclencheur
+  `au_nouveau_compte` les crée désormais pour tout nouveau compte, des deux applis.
+- **Favoris** : `favoris_carte` compte aussi `card_favorites` de Cartodex, pour les
+  comptes qui n'ont pas encore de collection Unydex (après, c'est elle qui fait foi).
+- Toutes les clés étrangères sont en cascade : « Supprimer mon compte » efface aussi la
+  sauvegarde Cartodex et ses favoris. `delete_user()` de Cartodex reste en place.
+- Vérifié : appli reliée au projet, aucune lecture anonyme de `collections_unydex` ni de
+  `profils`, `favoris_carte` refusé sans compte, `pseudo_disponible` répond.
 
 ## Deux variantes : App Store et « Unydex Dev » (06/10/2026)
 
@@ -679,7 +702,7 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `src/cartes/advisor.js` | PokéAdvisor : conversation Mistral, réglages, mémoire (`pcbox.advisor.*`) |
 | `src/cartes/cartodex.js` | Lecture d'une sauvegarde Cartodex (`lisCartodex`) |
 | `src/cartes/favoris.js` | Compteur partagé des favoris (`favoris_carte`, comptes connectés) |
-| `supabase/migrations/20261027000000_favoris_partages.sql` | La fonction de ce compteur — **à exécuter dans Supabase** |
+| `supabase/migrations/20261028000000_projet_cartodex.sql` | Schéma d'Unydex dans le projet de Cartodex — **appliqué** ; remplace les trois précédentes |
 | `src/data/i18n/en.json` | Surcouche anglaise, **générée**, 1,7 Mo |
 | `src/data/i18n/ja.json` | Surcouche japonaise, **générée**, 1,9 Mo |
 | `scripts/fetch-i18n.mjs` | Produit ces deux surcouches (`npm run fetch-i18n`) |

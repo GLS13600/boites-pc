@@ -19,10 +19,22 @@ import * as advisor from './advisor.js';
 import * as favoris from './favoris.js';
 import { categorie, variantes, CATEGORIES, LANGUES_CARTE, ETATS, VARIANTES, cleEtat, distance } from './regles.js';
 
-const SERIE_KEY = 'pcbox.cartes.serie';
-// Séries qu'on n'ouvre pas d'office : « Autre » (produits divers) et Pokémon Pocket,
-// dont les cartes sont numériques.
-const SECONDAIRES = new Set(['misc', 'tcgp']);
+const BLOCS_KEY = 'pcbox.cartes.blocs';
+// Les blocs, dans l'ordre de Pokécardex : du plus récent au plus ancien, puis les
+// ensembles hors blocs. Un bloc regroupe une ou plusieurs séries de TCGdex — Base, Neo
+// et e-cards forment « Wizards », comme chez Pokécardex. Pokémon Pocket, numérique et
+// absent de Pokécardex, ferme la liste. Une série inconnue d'ici (un bloc à venir) se
+// place en tête : ce sera la plus récente.
+const BLOCS = [
+  { id: 'me', series: ['me'] }, { id: 'sv', series: ['sv'] }, { id: 'swsh', series: ['swsh'] },
+  { id: 'sm', series: ['sm'] }, { id: 'xy', series: ['xy'] }, { id: 'bw', series: ['bw'] },
+  { id: 'col', series: ['col'] }, { id: 'hgss', series: ['hgss'] }, { id: 'pl', series: ['pl'] },
+  { id: 'dp', series: ['dp'] }, { id: 'ex', series: ['ex'] },
+  { id: 'wizards', series: ['ecard', 'neo', 'base'], nom: 'cxBlocWizards' },
+  { id: 'pop', series: ['pop'], nom: 'cxBlocPop' }, { id: 'tk', series: ['tk'] },
+  { id: 'mc', series: ['mc'] }, { id: 'misc', series: ['misc'], nom: 'cxBlocMisc' },
+  { id: 'tcgp', series: ['tcgp'] },
+];
 // Les onze énergies du JCC, nommées en français ou en anglais selon la langue des données.
 const TYPES_JCC = {
   Feu: '#e4572e', Fire: '#e4572e', Eau: '#2f8fdc', Water: '#2f8fdc', Plante: '#45a349', Grass: '#45a349',
@@ -51,6 +63,13 @@ export function prixDe(d, variante) {
 // L'extension d'une carte se lit dans son identifiant : « sv03.5-006 » → « sv03.5 ».
 const setDe = (id) => String(id).slice(0, Math.max(0, String(id).lastIndexOf('-'))) || String(id);
 const lit = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+function blocsGardes() {
+  try {
+    const v = JSON.parse(lit(BLOCS_KEY));
+    if (Array.isArray(v)) return new Set(v.filter((x) => typeof x === 'string' && /^[a-z0-9.-]{1,24}$/.test(x)));
+  } catch { /* illisible : défaut */ }
+  return new Set([BLOCS[0].id]);
+}
 
 export function creeCartes(ctx) {
   const { t, esc, h, fold, euros, ICO, panneau } = ctx;
@@ -58,8 +77,7 @@ export function creeCartes(ctx) {
 
   // ---------------------------------------------------------------- état (de session)
   const etat = {
-    serie: lit(SERIE_KEY),      // série affichée dans la liste des extensions
-    seriesOuvert: false,        // le sélecteur de série est déplié
+    blocs: blocsGardes(),       // blocs dépliés dans la liste des extensions
     set: null,                  // extension ouverte (sa grille), ou null
     q: '',                      // recherche d'une carte, toutes extensions confondues
     res: null,                  // ses résultats, ou null tant qu'elle n'a pas abouti
@@ -110,12 +128,6 @@ export function creeCartes(ctx) {
       .finally(() => { enCours.delete(cle); if (vueCartes()) rend(ctx.vue()); });
   }
 
-  function serieChoisie() {
-    if (!listeSeries) return etat.serie;
-    if (etat.serie && listeSeries.some((s) => s.id === etat.serie)) return etat.serie;
-    // Par défaut, la série la plus récente : la liste de TCGdex est chronologique.
-    return [...listeSeries].reverse().find((s) => !SECONDAIRES.has(s.id))?.id ?? listeSeries[0]?.id ?? null;
-  }
   // Le nom d'une extension, si on l'a déjà croisée dans une série chargée.
   function nomSetConnu(id) {
     if (extensions.has(id)) return extensions.get(id).name;
@@ -269,23 +281,59 @@ export function creeCartes(ctx) {
   }
 
   // ---------------------------------------------------------------- Extensions
+  // Les blocs à montrer : ceux dont TCGdex connaît au moins une série, et en tête les
+  // séries qu'aucun bloc ne connaît encore.
+  function blocsAffiches() {
+    const connues = new Set(listeSeries.map((s) => s.id));
+    const rangees = new Set(BLOCS.flatMap((b) => b.series));
+    const neuves = [...listeSeries].reverse().filter((s) => !rangees.has(s.id)).map((s) => ({ id: s.id, series: [s.id] }));
+    return [...neuves, ...BLOCS.map((b) => ({ ...b, series: b.series.filter((x) => connues.has(x)) })).filter((b) => b.series.length)];
+  }
+  // Les extensions d'un bloc, comme Pokécardex : de la plus récente à la plus ancienne
+  // (rang de sortie de la liste des 202 extensions), puis les Énergies, puis les Promos.
+  function setsDuBloc(b) {
+    const sets = b.series.flatMap((sid) => detailsSerie.get(sid)?.sets || []);
+    const genre = (x) => (/promo/i.test(x.name) || /^[a-z]+p$/.test(x.id) ? 2 : /[ée]nergie|energy/i.test(x.name) ? 1 : 0);
+    return sets.map((x, i) => ({ x, g: genre(x), r: toutesExt?.get(x.id)?.rang ?? i }))
+      .sort((a, b) => a.g - b.g || b.r - a.r).map((e) => e.x);
+  }
+  function htmlBloc(b, possedees, parSerie) {
+    const ouvert = etat.blocs.has(b.id);
+    const tete = listeSeries.find((x) => x.id === b.series[0]);
+    const nom = b.nom ? t(b.nom) : (tete?.name || b.id);
+    const n = b.series.reduce((k, sid) => k + (parSerie.get(sid) || 0), 0);
+    let contenu = '';
+    if (ouvert) {
+      for (const sid of b.series) if (!detailsSerie.has(sid)) charge(`serie:${sid}`, () => api.serie(sid), (d) => detailsSerie.set(sid, d));
+      const rate = b.series.find((sid) => echecs.has(`serie:${sid}`));
+      contenu = rate ? erreurBloc(`serie:${rate}`)
+        : !b.series.every((sid) => detailsSerie.has(sid)) ? squeletteSets(3)
+        : `<div class="avances">${setsDuBloc(b).map((x) => ligneSet(x, possedees.get(x.id) || 0)).join('')}</div>`;
+    }
+    return `
+      <section class="cx-bloc ${ouvert ? 'ouvert' : ''}">
+        <button class="pilule ${ouvert ? 'ouverte' : ''}" data-cx-bloc="${esc(b.id)}" aria-expanded="${ouvert}"
+                aria-label="${esc(nom)}${n ? ', ' + esc(t('cxPossedeeN', n)) : ''}">
+          <span class="pilule-logo">${tete?.logo ? `<img class="pilule-img" src="${esc(api.logo(tete.logo))}" alt="" loading="lazy" />` : ''}</span>
+          <span class="pilule-txt"><small>${t('cxBloc')}</small><b>${esc(nom)}</b></span>
+          ${n ? `<span class="pilule-cpt"><b>${n}</b></span>` : ''}
+          ${ICO.bas}
+        </button>
+        ${contenu}
+      </section>`;
+  }
+
   function vueExtensions() {
     if (!listeSeries) charge('series', api.series, (l) => { listeSeries = Array.isArray(l) ? l : []; });
-    const sid = serieChoisie();
-    const det = sid ? detailsSerie.get(sid) : null;
-    if (sid && !det) charge(`serie:${sid}`, () => api.serie(sid), (d) => detailsSerie.set(sid, d));
-    const s = listeSeries?.find((x) => x.id === sid);
+    // Le rang de sortie de chaque extension, pour l'ordre DANS un bloc.
+    if (!toutesExt) charge('toutesExt', chargeToutesExt, () => {});
     const possedees = parSet();
+    const parSerie = new Map();
+    for (const c of Object.values(coll.toutes())) if (c.ex?.length && c.serie) parSerie.set(c.serie, (parSerie.get(c.serie) || 0) + 1);
 
-    let corps;
-    if (!listeSeries) corps = echecs.has('series') ? erreurBloc('series') : squeletteSets();
-    else if (!det) corps = echecs.has(`serie:${sid}`) ? erreurBloc(`serie:${sid}`) : squeletteSets();
-    else {
-      // Les extensions les plus récentes d'abord.
-      const sets = [...(det.sets || [])].reverse();
-      corps = `<div class="avances">${sets.map((x) => ligneSet(x, possedees.get(x.id) || 0)).join('')}</div>
+    const corps = !listeSeries ? (echecs.has('series') ? erreurBloc('series') : squeletteSets())
+      : `<div class="cx-blocs">${blocsAffiches().map((b) => htmlBloc(b, possedees, parSerie)).join('')}</div>
         <p class="cx-note">${t('cxSourceTcgdex')}</p>`;
-    }
 
     return [
       ctx.tete(t('tuileExtensions')),
@@ -293,34 +341,12 @@ export function creeCartes(ctx) {
         ${champ('data-cx-q', etat.q, t('cxChercher'))}
         <div class="cx-resultats" ${etat.q ? '' : 'hidden'}>${htmlResultats()}</div>
         <div class="cx-parcours" ${etat.q ? 'hidden' : ''}>
-          <button class="pilule ${etat.seriesOuvert ? 'ouverte' : ''}" data-cx-series aria-expanded="${etat.seriesOuvert}">
-            ${s?.logo ? `<img class="pilule-img" src="${esc(api.logo(s.logo))}" alt="" />` : ''}
-            <span class="pilule-txt"><small>${t('cxSerie')}</small><b>${esc(s?.name || t('cxChargement'))}</b></span>
-            ${ICO.bas}
-          </button>
-          ${etat.seriesOuvert && listeSeries ? listeDesSeries(sid) : ''}
           ${corps}
         </div>
       </section>`),
     ];
   }
 
-  function listeDesSeries(sid) {
-    const parSerie = new Map();
-    for (const c of Object.values(coll.toutes())) if (c.ex?.length && c.serie) parSerie.set(c.serie, (parSerie.get(c.serie) || 0) + 1);
-    return `
-      <div class="cx-series" role="listbox" aria-label="${t('cxSerie')}">
-        ${[...listeSeries].reverse().map((s) => {
-          const n = parSerie.get(s.id) || 0;
-          return `
-            <button class="cx-serie ${s.id === sid ? 'on' : ''}" role="option" aria-selected="${s.id === sid}" data-cx-serie="${esc(s.id)}">
-              <span class="cx-serie-logo">${s.logo ? `<img src="${esc(api.logo(s.logo))}" alt="" loading="lazy" />` : ''}</span>
-              <b>${esc(s.name)}</b>
-              ${n ? `<span class="groupe-cpt">${n}</span>` : ''}
-            </button>`;
-        }).join('')}
-      </div>`;
-  }
 
   // ---------------------------------------------------------------- recherche
   // TCGdex cherche une partie du nom, sans casse, mais AVEC les accents : « salameche »
@@ -2077,11 +2103,11 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
         ouvre(cls.idDe(cles[0]), [...new Set(liste)], { variante: cls.varianteDe(cles[0]) });
         return;
       }
-      if (q('[data-cx-series]')) { etat.seriesOuvert = !etat.seriesOuvert; ctx.haptique(); rend(ctx.vue()); return; }
-      if ((x = q('[data-cx-serie]'))) {
-        etat.serie = x.dataset.cxSerie;
-        etat.seriesOuvert = false;
-        try { localStorage.setItem(SERIE_KEY, etat.serie); } catch { /* préférence perdue, sans gravité */ }
+      if ((x = q('[data-cx-bloc]'))) {
+        const id = x.dataset.cxBloc;
+        if (etat.blocs.has(id)) etat.blocs.delete(id); else etat.blocs.add(id);
+        try { localStorage.setItem(BLOCS_KEY, JSON.stringify([...etat.blocs])); } catch { /* préférence perdue, sans gravité */ }
+        ctx.haptique();
         rend('extensions');
         return;
       }
@@ -2352,7 +2378,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       if (vue === 'classeurs') Object.assign(etat, { cls: null, clsSel: null, clsDeplace: false });
       if (vue !== 'extensions') return;
       if (etat.set) quitteSet();
-      etat.q = ''; etat.res = null; etat.suggestion = null; etat.seriesOuvert = false;
+      etat.q = ''; etat.res = null; etat.suggestion = null;
       positions.clear();
       pageAffichee = null;
     },

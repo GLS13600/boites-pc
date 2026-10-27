@@ -3665,6 +3665,14 @@ img {
 .pilule.ouverte > .ico { transform: rotate(180deg); }
 .combat-head .pilule { flex: 1 1 auto; }
 .types-page .pilule { margin-bottom: var(--e-3); }
+/* Les blocs de la vue Extensions : une pilule par bloc, ses extensions dessous. */
+.cx-blocs { display: grid; gap: var(--e-3); }
+.cx-bloc { display: grid; gap: var(--e-2); }
+.cx-bloc .pilule-logo { flex: 0 0 72px; display: flex; align-items: center; justify-content: center; height: 32px; }
+.cx-bloc .pilule-img { max-width: 72px; }
+.cx-bloc .avances { animation: cx-bloc-ouvre var(--d-moyen) var(--c-entree); }
+@keyframes cx-bloc-ouvre { from { opacity: 0; transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .cx-bloc .avances { animation: none; } }
 
 /* ---- Bandeau d'avancement ----
    L'en-tête d'une extension dans Cartodex : l'image à gauche (logo, starters, éventail
@@ -3898,35 +3906,6 @@ img {
 .cx-titre { margin: var(--e-2) 0 0; font-size: var(--t-petit); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 
 /* ---- Les séries, dépliées sous la pilule ---- */
-.cx-series {
-  display: grid;
-  gap: 2px;
-  max-height: 52vh;
-  overflow-y: auto;
-  padding: var(--e-1);
-  border-radius: var(--r-md);
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  box-shadow: var(--ombre-2);
-  animation: cx-deplie var(--d-moyen) var(--c-entree);
-}
-@keyframes cx-deplie { from { opacity: 0; transform: translateY(-4px); } }
-.cx-serie {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--e-3);
-  min-height: 48px;
-  padding: var(--e-1) var(--e-3);
-  border-radius: var(--r-sm);
-  text-align: left;
-  color: var(--ink);
-}
-.cx-serie:active { background: var(--panel-2); }
-.cx-serie.on { background: var(--caught-tint); color: var(--ball-texte); }
-.cx-serie-logo { display: flex; align-items: center; justify-content: center; height: 34px; }
-.cx-serie-logo img { max-width: 72px; max-height: 32px; object-fit: contain; }
-.cx-serie b { font-size: var(--t-corps); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .groupe-cpt {
   flex: 0 0 auto;
   padding: 2px 9px;
@@ -4242,7 +4221,7 @@ img {
 @media (prefers-reduced-motion: reduce) {
   .tete, .tete-btn, .pilule, .avance, .puce, .puce-select, .cx-v, .cx-v-img img, .cx-fiche-img img,
   .bandeau-barre i { transition: none; }
-  .cx-series, .cx-v.squelette .cx-v-img, .avance.squelette .avance-art { animation: none; }
+  .cx-v.squelette .cx-v-img, .avance.squelette .avance-art { animation: none; }
 }
 
 /* ---- Cibles tactiles : 44 px au doigt, quel que soit le dessin ----

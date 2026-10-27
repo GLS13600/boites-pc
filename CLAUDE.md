@@ -154,10 +154,20 @@ Tout vit dans **`src/cartes/vues.js`** (`creeCartes(ctx)`), sur le modèle de sc
 compte-ui.js : main.js fournit traduction, `poser`, `tete`, annulation, le panneau de la
 fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pokédex.
 
-- **Extensions** : la série dans une pilule qui se déplie (`pcbox.cartes.serie`, la plus
-  récente par défaut hors « Autre » et Pocket), puis ses extensions, des plus récentes
-  aux plus anciennes, en lignes d'avancement. Entrer dans la vue ramène à la liste, comme
-  le menu du Pokédex (`cartes.entre`).
+- **Extensions** (refait le 28/10/2026, à la demande) : un **bloc dépliant par série**,
+  dans l'**ordre de Pokécardex** (`BLOCS` dans vues.js) — Méga-Évolution, Écarlate et
+  Violet … EX, puis Wizards (Base + Neo + e-cards de TCGdex réunis, comme chez eux),
+  Ligue Pokémon, Kits, McDonald's, Promos et divers, Pocket en dernier. Une série que
+  `BLOCS` ignore (bloc à venir) se place en tête. Déplier un bloc montre ses extensions
+  de la plus récente à la plus ancienne (rang de sortie de `/sets`), puis les Énergies,
+  puis les Promos — l'ordre exact de Pokécardex, vérifié sur Écarlate et Violet. Blocs
+  dépliés retenus (`pcbox.cartes.blocs`), le plus récent ouvert au premier lancement.
+  Entrer dans la vue ramène à la liste (`cartes.entre`).
+  - **Seul l'ORDRE vient de Pokécardex**, relevé à la main sur leur page des séries. Ni
+    leurs images ni leurs fiches ne sont reprises : demandé, et refusé — leur base est
+    leur travail, les scans appartiennent à The Pokémon Company. Les données restent
+    celles de TCGdex, qui n'a pas toutes les extensions de Pokécardex (Skyridge, Gym,
+    Legendary Collection n'existent pas en français chez TCGdex, ni Règne Delta).
 - **Une extension** : bandeau, rareté (les 7 catégories de Cartodex, avec leur nombre),
   tri (numéro, nom, prix, rareté), rail Toutes / Manquantes / Possédées — le composant
   du filtre du Pokédex —, grille de trois avec bulle de prix et pastille « Poké Ball ×n ».

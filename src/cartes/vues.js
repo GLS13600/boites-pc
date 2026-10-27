@@ -15,6 +15,8 @@ import * as api from './api.js';
 import * as coll from './collection.js';
 import * as prix from './prix.js';
 import * as cls from './classeurs.js';
+import * as advisor from './advisor.js';
+import * as favoris from './favoris.js';
 import { categorie, variantes, CATEGORIES, LANGUES_CARTE, ETATS, VARIANTES, cleEtat, distance } from './regles.js';
 
 const SERIE_KEY = 'pcbox.cartes.serie';
@@ -183,7 +185,7 @@ export function creeCartes(ctx) {
       : vue === 'collection' ? vueCollection()
       : vue === 'valeur' ? vueValeur()
       : vue === 'classeurs' ? (etat.cls ? vueLivre() : vueClasseurs())
-      : vueBientot(vue);
+      : vueAdvisor();
     const z = ctx.poser(...els);
     const y = positions.get(cle) || 0;
     if (z && y) z.scrollTop = y;
@@ -1341,23 +1343,293 @@ export function creeCartes(ctx) {
     rend('classeurs');
   }
 
-  // ---------------------------------------------------------------- à venir
-  const A_VENIR = { classeurs: ['tuileClasseurs', 'bientotClasseurs'], advisor: ['tuileAdvisor', 'bientotAdvisor'] };
-  function vueBientot(vue) {
-    const [titre, texte] = A_VENIR[vue] || ['navCartes', 'bientot'];
-    return [ctx.tete(t(titre)), h(`
-      <section class="cx-page">
-        <div class="cx-bientot t-${esc(vue)}">${ctx.art(vue)}</div>
-        <p class="cx-bientot-txt">${t(texte)}</p>
+  // ---------------------------------------------------------------- PokéAdvisor
+  //
+  // La page de l'assistant : sa conversation, et ce qu'il faut pour commencer — la clé
+  // Mistral de l'utilisateur, comme dans Cartodex. Le moteur vit dans advisor.js ; les
+  // OUTILS sont définis ici, ce sont les gestes de l'appli qu'on lui confie. Toute
+  // modification de la collection passe par l'« Annuler » habituel.
+  const STARTERS_AVATAR = [1, 4, 7, 152, 155, 158, 252, 255, 258, 387, 390, 393, 495, 498, 501,
+    650, 653, 656, 722, 725, 728, 810, 813, 816, 906, 909, 912, 25];
+  const advUI = { enCours: false, controle: null, outil: '', reglages: false };
+  const VUES_OUVRABLES = ['accueil', 'pokedex', 'boites', 'combat', 'attaques', 'types', 'extensions', 'collection', 'classeurs', 'valeur'];
+  // Le texte de l'assistant : échappé, puis le gras et les retours à la ligne seulement.
+  const texteRiche = (s) => esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+
+  function contexteAdvisor() {
+    const st = coll.stats();
+    const top = Object.entries(coll.toutes()).filter(([, c]) => c.ex?.length)
+      .map(([id, c]) => ({ id, c, u: prixUnitaire(id) }))
+      .sort((a, b) => (b.u || 0) - (a.u || 0)).slice(0, 15)
+      .map(({ id, c, u }) => `${id} ${c.n || ''} ×${c.ex.length}${u ? ` ${u} €` : ''}`).join(' | ');
+    const ld = ctx.livingDex(0);
+    const lesClasseurs = cls.tous().map((c) => `${c.id} « ${c.nom} » (${c.cartes.filter(Boolean).length} cartes)`).join(' | ') || 'aucun';
+    const mem = Object.entries(advisor.memoire()).map(([k, v]) => `[${k} : ${v}]`).join(' ');
+    const langue = { fr: 'français', en: 'anglais', ja: 'japonais' }[ctx.langue()] || 'français';
+    return `Tu es PokéAdvisor, l'assistant de l'application Unydex : un Living Dex (Pokédex, boîtes PC, équipes de combat) et une collection de cartes Pokémon (JCC) avec leurs prix Cardmarket. Réponds en ${langue}, avec un ton direct et chaleureux, sans titres ni tableaux ; deux ou trois phrases suffisent le plus souvent.
+Tu AGIS par tes outils plutôt que d'expliquer comment faire : cherche une carte avant d'en donner le prix, ajoute ou retire une carte quand on te le demande, ouvre la vue utile. Ne devine jamais l'identifiant d'une carte : utilise chercher_carte. Si plusieurs cartes correspondent, demande laquelle.
+Living Dex : ${ld.pris} / ${ld.total} espèces capturées.
+Collection de cartes : ${st.distinctes} cartes, ${st.exemplaires} exemplaires, valeur ${st.valeur} €. Les plus chères : ${top || 'aucune'}.
+Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
+  }
+
+  function ouvrePour(cible, valeur) {
+    if (cible === 'carte') { ouvre(valeur, [valeur]); return 'Fiche de la carte ouverte.'; }
+    if (cible === 'extension') {
+      ctx.va('extensions');
+      Object.assign(etat, { set: valeur, filtre: 'toutes', rarete: '', tri: 'num', selection: null });
+      const s = extensions.get(valeur);
+      if (s) chargeDetails(s);
+      rend('extensions');
+      return 'Extension ouverte.';
+    }
+    if (cible === 'pokemon') {
+      const n = Number(valeur) || ctx.numeroDe(valeur);
+      if (!n) return 'Pokémon inconnu.';
+      ctx.ficheJeu(n);
+      return 'Fiche du Pokémon ouverte.';
+    }
+    if (cible === 'vue' && VUES_OUVRABLES.includes(valeur)) { ctx.va(valeur); return 'Vue ouverte.'; }
+    return 'Cible inconnue.';
+  }
+
+  function outilsAdvisor() {
+    const id = (x) => String(x || '').trim();
+    return [
+      { nom: 'chercher_carte', description: 'Cherche des cartes Pokémon par nom, toutes extensions. Rend leurs identifiants TCGdex, extension et numéro, les plus récentes d’abord.',
+        parametres: { type: 'object', properties: { nom: { type: 'string', description: 'Nom du Pokémon ou de la carte' } }, required: ['nom'] },
+        executer: async ({ nom }) => {
+          const [res] = await Promise.all([api.cherche(requete(id(nom))), chargeToutesExt()]);
+          const rang = (x) => toutesExt?.get(setDe(x))?.rang ?? -1;
+          const l = (Array.isArray(res) ? res : []).slice().sort((a, b) => rang(b.id) - rang(a.id)).slice(0, 20);
+          if (!l.length) { const p = proche(id(nom)); return p ? `Aucune carte. Nom proche : ${p}.` : 'Aucune carte.'; }
+          return l.map((c) => `${c.id} | ${c.name} | ${nomSetConnu(setDe(c.id)) || setDe(c.id)} | n° ${c.localId}${coll.possede(c.id) ? ' | possédée' : ''}`).join('\n');
+        } },
+      { nom: 'prix_carte', description: 'Prix Cardmarket actuels d’une carte : référence (moyenne sur 30 jours), tendance, moyennes 7 et 30 jours, plus bas, reverse.',
+        parametres: { type: 'object', properties: { id: { type: 'string', description: 'Identifiant TCGdex, par exemple sv03.5-006' } }, required: ['id'] },
+        executer: async ({ id: x }) => {
+          const d = await api.carte(id(x), { pourPrix: true });
+          const cm = d?.pricing?.cardmarket;
+          if (!cm) return `${d?.name || x} : pas de prix connu.`;
+          const rev = prixDe(d, 'reverse');
+          return `${d.name} (${d.set?.name} ${d.localId}) : référence ${prixDe(d) ?? '—'} €, tendance ${cm.trend ?? '—'} €, moyenne 7 j ${cm.avg7 ?? '—'} €, moyenne 30 j ${cm.avg30 ?? '—'} €, plus bas ${cm.low ?? '—'} €${rev && rev !== prixDe(d) ? `, reverse ${rev} €` : ''}.`;
+        } },
+      { nom: 'extensions_recentes', description: 'Les extensions les plus récentes, avec leur identifiant et leur nombre de cartes.',
+        parametres: { type: 'object', properties: {} },
+        executer: async () => {
+          await chargeToutesExt();
+          return [...(toutesExt || new Map()).entries()].sort((a, b) => b[1].rang - a[1].rang).slice(0, 25)
+            .map(([x, e]) => `${x} | ${e.nom} | ${e.total} cartes`).join('\n') || 'Liste indisponible.';
+        } },
+      { nom: 'ma_collection', description: 'Les cartes possédées, filtrées par un mot (nom, extension) si besoin.',
+        parametres: { type: 'object', properties: { recherche: { type: 'string' } } },
+        executer: ({ recherche }) => {
+          const q = fold(id(recherche));
+          const l = Object.entries(coll.toutes()).filter(([, c]) => c.ex?.length)
+            .filter(([x, c]) => !q || fold(c.n || '').includes(q) || fold(c.setN || '').includes(q) || x.includes(q));
+          if (!l.length) return 'Aucune carte possédée ne correspond.';
+          return l.slice(0, 40).map(([x, c]) => `${x} | ${c.n} | ${c.setN || ''} | ×${c.ex.length}${prixUnitaire(x) ? ` | ${prixUnitaire(x)} €` : ''}`).join('\n');
+        } },
+      { nom: 'ajouter_carte', description: 'Ajoute un exemplaire d’une carte à la collection.',
+        parametres: { type: 'object', properties: {
+          id: { type: 'string', description: 'Identifiant TCGdex' },
+          variante: { type: 'string', enum: VARIANTES, description: 'La première variante de la carte par défaut' },
+          langue: { type: 'string', enum: LANGUES_CARTE },
+          etat: { type: 'string', enum: ETATS } }, required: ['id'] },
+        executer: async ({ id: x, variante, langue, etat: e }) => {
+          const k = id(x);
+          const d = await api.carte(k).catch(() => null);
+          if (!d) return `Carte ${k} introuvable.`;
+          const vars = variantes(d, d.set?.id, d.set?.name);
+          const v = vars.includes(variante) ? variante : vars[0];
+          const avant = JSON.parse(JSON.stringify(coll.toutes()));
+          coll.ajoute(ficheDe(k, d), v, { langue: LANGUES_CARTE.includes(langue) ? langue : 'FR', etat: ETATS.includes(e) ? e : 'neuf' });
+          const p = prixDe(d);
+          if (p) coll.notePrix(k, p);
+          prix.notePoint(k, d?.pricing?.cardmarket);
+          ctx.noteRecent(k);
+          ctx.annonce(t('advAjoute', d.name), () => coll.remplace(avant));
+          return `Ajouté : ${d.name} (${d.set?.name} ${d.localId}), variante ${v}. Exemplaires : ${coll.exemplaires(k)}.`;
+        } },
+      { nom: 'retirer_carte', description: 'Retire un exemplaire d’une carte de la collection.',
+        parametres: { type: 'object', properties: { id: { type: 'string' }, variante: { type: 'string', enum: VARIANTES } }, required: ['id'] },
+        executer: ({ id: x, variante }) => {
+          const k = id(x);
+          const c = coll.carte(k);
+          if (!c?.ex?.length) return `La carte ${k} n’est pas dans la collection.`;
+          const avant = JSON.parse(JSON.stringify(coll.toutes()));
+          coll.retire(k, VARIANTES.includes(variante) ? variante : null);
+          ctx.annonce(t('advRetire', c.n || k), () => coll.remplace(avant));
+          return `Retiré : un exemplaire de ${c.n || k}. Il en reste ${coll.exemplaires(k)}.`;
+        } },
+      { nom: 'living_dex', description: 'Avancement du Living Dex : national (0) ou d’une région (1 Kanto, 2 Johto, 3 Hoenn, 4 Sinnoh, 5 Unys, 6 Kalos, 7 Alola, 8 Galar, 9 Paldea), et les espèces qui manquent.',
+        parametres: { type: 'object', properties: { region: { type: 'integer', minimum: 0, maximum: 9 } } },
+        executer: ({ region }) => {
+          const r = ctx.livingDex(Number.isInteger(region) ? region : 0);
+          return `${r.nom} : ${r.pris} / ${r.total}. Manquants (${r.manquants.length}) : ${r.manquants.slice(0, 60).join(', ')}${r.manquants.length > 60 ? '…' : ''}`;
+        } },
+      { nom: 'classeurs', description: 'Les classeurs de cartes, leur contenu et leur valeur.',
+        parametres: { type: 'object', properties: {} },
+        executer: () => cls.tous().map((c) => {
+          const v = valeurClasseur(c);
+          return `${c.id} | ${c.nom} | ${v.possedees} / ${v.pleines} cartes | ${Math.round(v.possede)} € possédés sur ${Math.round(v.complete)} € au complet`;
+        }).join('\n') || 'Aucun classeur.' },
+      { nom: 'ouvrir', description: 'Ouvre une vue de l’application, la fiche d’une carte, une extension ou la fiche d’un Pokémon.',
+        parametres: { type: 'object', properties: {
+          cible: { type: 'string', enum: ['vue', 'carte', 'extension', 'pokemon'] },
+          valeur: { type: 'string', description: `vue : ${VUES_OUVRABLES.join(', ')} ; carte ou extension : identifiant TCGdex ; pokemon : numéro ou nom` } },
+          required: ['cible', 'valeur'] },
+        executer: ({ cible, valeur }) => ouvrePour(cible, id(valeur)) },
+      { nom: 'memoriser', description: 'Retient une information pour les prochaines conversations : objectif, budget, préférence.',
+        parametres: { type: 'object', properties: { cle: { type: 'string' }, valeur: { type: 'string' } }, required: ['cle', 'valeur'] },
+        executer: ({ cle: k, valeur }) => { advisor.retiens(k, valeur); return 'Retenu.'; } },
+      { nom: 'oublier', description: 'Oublie une information retenue.',
+        parametres: { type: 'object', properties: { cle: { type: 'string' } }, required: ['cle'] },
+        executer: ({ cle: k }) => { advisor.oublie(k); return 'Oublié.'; } },
+    ];
+  }
+
+  function htmlMessages() {
+    const fil = advisor.historique();
+    const av = esc(ctx.sprite(advisor.avatar()));
+    if (!fil.length && !advUI.enCours) {
+      return `
+        <div class="adv-accueil">
+          <img class="adv-avatar grand" src="${av}" alt="" />
+          <p>${t('advBienvenue')}</p>
+          <div class="adv-idees">${['advIdee1', 'advIdee2', 'advIdee3', 'advIdee4'].map((k) => `
+            <button class="puce" data-adv-idee="${esc(t(k))}">${esc(t(k))}</button>`).join('')}</div>
+        </div>`;
+    }
+    return fil.map((m) => (m.r === 'u'
+      ? `<div class="adv-msg moi"><p>${texteRiche(m.t)}</p></div>`
+      : m.r === 'e'
+        ? `<div class="adv-msg erreur"><p>${esc(m.t)}</p></div>`
+        : `<div class="adv-msg lui"><img class="adv-avatar" src="${av}" alt="" /><p>${texteRiche(m.t)}</p></div>`)).join('')
+      + (advUI.enCours ? `
+        <div class="adv-msg lui attente"><img class="adv-avatar" src="${av}" alt="" />
+          <p><span class="adv-points" aria-label="${t('advReflechit')}"><i></i><i></i><i></i></span>
+          ${advUI.outil ? `<small>${esc(t(`advOutil_${advUI.outil}`))}</small>` : ''}</p>
+        </div>` : '');
+  }
+
+  function vueAdvisor() {
+    const actions = `<button class="tete-btn" data-adv-reglages title="${t('advReglages')}" aria-label="${t('advReglages')}">${ICO.reglages}</button>`;
+    if (!advisor.cle()) {
+      return [ctx.tete(t('tuileAdvisor'), actions), h(`
+        <section class="cx-page adv-cle">
+          <div class="cx-bientot t-advisor">${ctx.art('advisor')}</div>
+          <h2 class="cx-titre">${t('advCommencer')}</h2>
+          <p class="adv-texte">${t('advCleAide')}</p>
+          <label class="champ">${ICO.cle}
+            <input type="password" data-adv-cle placeholder="${esc(t('advClePlace'))}" aria-label="${esc(t('advClePlace'))}"
+                   autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+          </label>
+          <button class="catch-btn" data-adv-cle-ok>${t('advCleEnregistrer')}</button>
+          <button class="puce large" data-cx-lien="https://console.mistral.ai/api-keys">${ICO.externe}<span>${t('advCleObtenir')}</span></button>
+          <p class="cx-note">${t('advConfidentialite')}</p>
+        </section>`)];
+    }
+    return [ctx.tete(t('tuileAdvisor'), actions), h(`
+      <section class="cx-page adv">
+        <div class="adv-fil" data-adv-fil aria-live="polite">${htmlMessages()}</div>
+        <form class="adv-saisie" data-adv-form>
+          <input type="text" data-adv-q placeholder="${esc(t('advPlace'))}" aria-label="${esc(t('advPlace'))}"
+                 autocomplete="off" enterkeyhint="send" ${advUI.enCours ? 'disabled' : ''} />
+          ${advUI.enCours
+            ? `<button type="button" class="adv-envoi stop" data-adv-stop aria-label="${t('advStop')}">${ICO.croix}</button>`
+            : `<button type="submit" class="adv-envoi" aria-label="${t('advEnvoyer')}">${ICO.envoi}</button>`}
+        </form>
       </section>`)];
+  }
+
+  const defileBas = () => { const z = ctx.zone(); if (z) z.scrollTop = z.scrollHeight; };
+  function majFil() {
+    const fil = document.querySelector('[data-adv-fil]');
+    if (!fil) return;
+    fil.innerHTML = htmlMessages();
+    defileBas();
+  }
+
+  // Une erreur de l'assistant, dite simplement — jamais un message technique seul.
+  const MESSAGES_ERREUR = { cle: 'advErrCle', 'cle-refusee': 'advErrRefusee', limite: 'advErrLimite', reseau: 'advErrReseau', vide: 'advErrVide' };
+  async function envoie(texte) {
+    const q = String(texte || '').trim();
+    if (!q || advUI.enCours) return;
+    advUI.enCours = true;
+    advUI.outil = '';
+    advUI.controle = new AbortController();
+    rend('advisor');
+    try {
+      // `demande` inscrit la question dans l'historique AVANT sa première attente : le
+      // fil redessiné juste après la montre tout de suite, avec les points d'attente.
+      const promesse = advisor.demande(q, {
+        outils: outilsAdvisor(),
+        systeme: contexteAdvisor(),
+        signal: advUI.controle.signal,
+        surOutil: (nom) => { advUI.outil = nom; if (ctx.vue() === 'advisor') majFil(); },
+      });
+      if (ctx.vue() === 'advisor') majFil();
+      await promesse;
+    } catch (e) {
+      const code = e?.code || 'api';
+      if (code === 'annule') advisor.noteErreur(t('advAnnule'));
+      else advisor.noteErreur(MESSAGES_ERREUR[code] ? t(MESSAGES_ERREUR[code]) : t('advErrApi', e?.message || ''));
+    }
+    advUI.enCours = false;
+    advUI.controle = null;
+    advUI.outil = '';
+    if (ctx.vue() === 'advisor') {
+      rend('advisor');
+      defileBas();
+      document.querySelector('[data-adv-q]')?.focus({ preventScroll: true });
+    }
+  }
+
+  function htmlReglagesAdvisor() {
+    const mem = Object.entries(advisor.memoire());
+    const actifs = new Set(advisor.styles());
+    return `
+      <h2 class="bs-title">${t('advReglages')}</h2>
+      <div class="cx-choix">
+        <span class="cx-choix-lib">${t('advModele')}</span>
+        <div class="cx-choix-puces">${advisor.MODELES.map(([k, lib]) => `
+          <button class="puce ${advisor.modele() === k ? 'on' : ''}" data-adv-modele="${k}" aria-pressed="${advisor.modele() === k}">${esc(lib)}</button>`).join('')}</div>
+      </div>
+      <div class="cx-choix">
+        <span class="cx-choix-lib">${t('advStyle')}</span>
+        <div class="cx-choix-puces">${Object.keys(advisor.STYLES).map((k) => `
+          <button class="puce ${actifs.has(k) ? 'on' : ''}" data-adv-style="${k}" aria-pressed="${actifs.has(k)}">${t(`advStyle_${k}`)}</button>`).join('')}</div>
+      </div>
+      <div class="cx-choix">
+        <span class="cx-choix-lib">${t('advAvatar')}</span>
+        <div class="adv-avatars">${STARTERS_AVATAR.map((n) => `
+          <button class="${advisor.avatar() === n ? 'on' : ''}" data-adv-avatar="${n}" aria-pressed="${advisor.avatar() === n}"
+                  aria-label="${esc(ctx.nomPokemon(n))}"><img src="${esc(ctx.sprite(n))}" alt="" loading="lazy" /></button>`).join('')}</div>
+      </div>
+      <div class="cx-choix">
+        <span class="cx-choix-lib">${t('advSouvenirs')}</span>
+        ${mem.length ? `<div class="adv-souvenirs">${mem.map(([k, v]) => `
+          <div class="adv-souvenir"><span><b>${esc(k)}</b> · ${esc(v)}</span>
+            <button data-adv-oublie="${esc(k)}" aria-label="${t('advOublier')}">${ICO.croix}</button></div>`).join('')}</div>`
+          : `<p class="cx-note">${t('advAucunSouvenir')}</p>`}
+      </div>
+      <div class="reg-lignes cl-actions">
+        <button class="reg-ligne" data-adv-efface>${ICO.rafraichir}<span><b>${t('advEffacer')}</b><small>${t('advEffacerSous')}</small></span></button>
+        ${advisor.cle() ? `<button class="reg-ligne danger" data-adv-cle-retire>${ICO.croix}<span><b>${t('advRetirerCle')}</b><small>${t('advRetirerCleSous')}</small></span></button>` : ''}
+      </div>
+      <p class="cx-note">${t('advConfidentialite')}</p>`;
   }
 
   // ---------------------------------------------------------------- fiche d'une carte
   function ouvre(id, liste, { variante = null } = {}) {
     etat.fiche = { id, liste: liste && liste.length ? liste : [id] };
     etat.ficheEchec = null;
+    gyro.base = null; // chaque carte repart de la position du moment
     etat.ajout.v = variante;
     panneau.ouvre(htmlFiche(id));
+    if (gyro.accorde && gyroPossible()) ecouteGyro();
+    releveFavoris(id);
     // Le détail du jour : le prix bouge, et une carte possédée relève le sien.
     api.carte(id, { pourPrix: true }).then((d) => {
       if (coll.carte(id)) {
@@ -1519,8 +1791,8 @@ export function creeCartes(ctx) {
           <img src="${esc(api.image(i.img, 'high'))}" alt="${esc(i.nom)}" />
           <span class="cx-reflet" aria-hidden="true"></span>
         </div>
-        <button class="cx-fav ${c?.fav ? 'on' : ''}" data-cx-fav aria-pressed="${!!c?.fav}"
-                aria-label="${c?.fav ? t('cxRetirerFavori') : t('cxAjouterFavori')}">${ICO.coeur}</button>
+        ${gyroPossible() && !gyro.accorde && !gyro.refuse ? `<p class="cx-gyro-aide">${t('cxGyroAide')}</p>` : ''}
+        ${boutonFavori(id, c)}
       </div>
       <h2 class="sheet-name">${esc(i.nom)}<small>${esc(i.num)}${i.total ? '/' + i.total : ''}</small></h2>
       <p class="sheet-genus">${esc(i.setNom)}${d?.illustrator ? ' · ' + esc(d.illustrator) : ''}</p>
@@ -1558,6 +1830,25 @@ export function creeCartes(ctx) {
   function apresChangement(id) {
     if (panneau.ouvert() && etat.fiche?.id === id) panneau.maj(htmlFiche(id));
   }
+
+  // Le cœur, et à côté le nombre de dresseurs qui ont la carte en favori — avec un
+  // compte seulement (voir favoris.js). Les autres comptes viennent du serveur, le sien
+  // de la collection locale : le nombre suit le toucher sans attendre la synchronisation.
+  // Zéro ne s'affiche pas : un cœur seul dit la même chose, sans la mine triste.
+  function boutonFavori(id, c = coll.carte(id)) {
+    const autres = favoris.connu(id);
+    const n = autres == null ? 0 : autres + (c?.fav ? 1 : 0);
+    const libelle = c?.fav ? t('cxRetirerFavori') : t('cxAjouterFavori');
+    return `
+        <button class="cx-fav ${c?.fav ? 'on' : ''} ${n ? 'avec-nb' : ''}" data-cx-fav aria-pressed="${!!c?.fav}"
+                aria-label="${n ? `${libelle} · ${t('cxFavorisPartages', n)}` : libelle}">${ICO.coeur}${n ? `<span>${n}</span>` : ''}</button>`;
+  }
+  function releveFavoris(id) {
+    favoris.releve(id).then((n) => {
+      if (n == null || etat.fiche?.id !== id || !panneau.ouvert()) return;
+      panneau.corps.querySelector('[data-cx-fav]')?.replaceWith(h(boutonFavori(id)));
+    });
+  }
   function ajouteDepuisFiche(id, v, l, e) {
     const d = detail(id);
     coll.ajoute(ficheDe(id, d), v, { langue: l, etat: e });
@@ -1576,7 +1867,57 @@ export function creeCartes(ctx) {
     ctx.annonce(t('cxRetireUn', fiche.n), () => { coll.ajoute(fiche, v, { langue: l, etat: e }); apresChangement(id); });
   }
 
-  // Inclinaison de la carte sous la souris — le gyroscope viendra avec l'étape 5.
+  // ---- Inclinaison au gyroscope ----
+  // Sur téléphone, la carte suit l'inclinaison de l'appareil, comme une vraie carte
+  // qu'on fait miroiter. iOS ne délivre l'orientation qu'après une permission demandée
+  // DANS un geste : le premier toucher sur la carte la demande. La position de départ
+  // est relevée à la première mesure — on tient le téléphone comme on veut. Mouvement
+  // réduit : rien de tout cela.
+  // Une fois la permission ACCORDÉE, chaque fiche ouverte ensuite miroite d'elle-même :
+  // redemander un toucher par carte serait une corvée. L'écoute est tout de même coupée
+  // à la fermeture — rien ne s'incline hors de la fiche, la batterie n'a pas à payer.
+  const gyro = { actif: false, accorde: false, refuse: false, base: null };
+  const tactile = () => !!window.matchMedia?.('(pointer: coarse)').matches;
+  const gyroPossible = () => typeof window.DeviceOrientationEvent !== 'undefined' && tactile() && !reduit();
+  function surOrientation(e) {
+    const el = panneau.corps.querySelector('[data-cx-incline]');
+    if (!el || !panneau.ouvert() || e.beta == null || e.gamma == null) return;
+    if (!gyro.base) gyro.base = { b: e.beta, g: e.gamma };
+    const borne = (v) => Math.max(-14, Math.min(14, v));
+    const rx = borne((e.beta - gyro.base.b) * 0.6);
+    const ry = borne((e.gamma - gyro.base.g) * 0.6);
+    el.style.setProperty('--rx', `${(-rx).toFixed(2)}deg`);
+    el.style.setProperty('--ry', `${ry.toFixed(2)}deg`);
+    el.style.setProperty('--mx', `${(50 + ry * 3).toFixed(1)}%`);
+    el.style.setProperty('--my', `${(50 + rx * 3).toFixed(1)}%`);
+    el.classList.add('incline', 'gyro');
+  }
+  async function activeGyro() {
+    if (gyro.actif || gyro.refuse || !gyroPossible()) return;
+    try {
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const r = await DeviceOrientationEvent.requestPermission();
+        if (r !== 'granted') { gyro.refuse = true; return; }
+      }
+      gyro.accorde = true;
+      ecouteGyro();
+      panneau.corps.querySelector('.cx-gyro-aide')?.remove();
+    } catch { gyro.refuse = true; }
+  }
+  function ecouteGyro() {
+    if (gyro.actif) return;
+    gyro.actif = true;
+    gyro.base = null;
+    window.addEventListener('deviceorientation', surOrientation);
+  }
+  function coupeGyro() {
+    if (!gyro.actif) return;
+    window.removeEventListener('deviceorientation', surOrientation);
+    gyro.actif = false;
+    gyro.base = null;
+  }
+
+  // Inclinaison de la carte sous la souris, sur un ordinateur.
   function incline(e) {
     const el = e.target.closest?.('[data-cx-incline]');
     if (!el || e.pointerType !== 'mouse') return;
@@ -1658,6 +1999,20 @@ export function creeCartes(ctx) {
       if (!vueCartes()) return;
       const q = (sel) => e.target.closest(sel);
       let x;
+      // ---- PokéAdvisor ----
+      if (q('[data-adv-reglages]')) { advUI.reglages = true; ctx.panneau2.ouvre(htmlReglagesAdvisor()); return; }
+      if (q('[data-adv-cle-ok]')) {
+        const champ = document.querySelector('[data-adv-cle]');
+        const v = champ?.value.trim();
+        if (!v) { champ?.focus(); return; }
+        advisor.poseCle(v);
+        ctx.haptique();
+        rend('advisor');
+        return;
+      }
+      if ((x = q('[data-adv-idee]'))) { envoie(x.dataset.advIdee); return; }
+      if (q('[data-adv-stop]')) { advUI.controle?.abort(); return; }
+      if ((x = q('[data-cx-lien]'))) { ctx.ouvreLien(x.dataset.cxLien); return; }
       // ---- classeurs ----
       if (q('[data-cl-nouveau]')) { ouvreEdition(null); return; }
       if ((x = q('[data-cl]'))) {
@@ -1776,6 +2131,17 @@ export function creeCartes(ctx) {
       if (q('[data-cx-majprix]')) { lanceMajPrix(); }
     });
 
+    // La question tapée à l'assistant part à l'envoi du formulaire (bouton ou Entrée).
+    app.addEventListener('submit', (e) => {
+      const f = e.target.closest('[data-adv-form]');
+      if (!f) return;
+      e.preventDefault();
+      const champ = f.querySelector('[data-adv-q]');
+      const v = champ?.value || '';
+      if (champ) champ.value = '';
+      envoie(v);
+    });
+
     // ---- Tourner les pages du doigt ----
     // Le geste se décide au premier mouvement, comme partout : horizontal, il tourne la
     // page ; vertical, la vue défile. Depuis le bord gauche, il appartient au retour.
@@ -1851,6 +2217,33 @@ export function creeCartes(ctx) {
           return;
         }
       }
+      if (advUI.reglages) {
+        const redessine = () => ctx.panneau2.maj(htmlReglagesAdvisor());
+        if ((x = q('[data-adv-modele]'))) { advisor.poseModele(x.dataset.advModele); ctx.haptique(); redessine(); return; }
+        if ((x = q('[data-adv-style]'))) { advisor.basculeStyle(x.dataset.advStyle); ctx.haptique(); redessine(); return; }
+        if ((x = q('[data-adv-avatar]'))) {
+          advisor.poseAvatar(Number(x.dataset.advAvatar));
+          ctx.haptique();
+          redessine();
+          if (ctx.vue() === 'advisor') majFil();
+          return;
+        }
+        if ((x = q('[data-adv-oublie]'))) { advisor.oublie(x.dataset.advOublie); redessine(); return; }
+        if (q('[data-adv-efface]')) {
+          const avant = advisor.historique();
+          advisor.efface();
+          ctx.panneau2.ferme();
+          if (ctx.vue() === 'advisor') rend('advisor');
+          if (avant.length) ctx.annonce(t('advEfface'), () => { advisor.remetHistorique(avant); if (ctx.vue() === 'advisor') rend('advisor'); });
+          return;
+        }
+        if (q('[data-adv-cle-retire]')) {
+          advisor.poseCle('');
+          ctx.panneau2.ferme();
+          if (ctx.vue() === 'advisor') rend('advisor');
+          return;
+        }
+      }
       const a = etat.clsAjout;
       if (a) {
         if ((x = q('[data-cl-source]'))) {
@@ -1906,6 +2299,7 @@ export function creeCartes(ctx) {
       if (!f) return;
       const q = (sel) => e.target.closest(sel);
       let x;
+      if (q('[data-cx-incline]')) { activeGyro(); return; }
       if ((x = q('[data-cx-choix]'))) {
         etat.ajout[x.dataset.cxChoix] = x.dataset.val;
         ctx.haptique();
@@ -1962,9 +2356,9 @@ export function creeCartes(ctx) {
       positions.clear();
       pageAffichee = null;
     },
-    fermee() { etat.fiche = null; },
+    fermee() { etat.fiche = null; coupeGyro(); },
     // Le second panneau s'est refermé (voile, glissement, retour) : on oublie son état.
-    panneau2Ferme() { etat.clsEdition = null; etat.clsAjout = null; },
+    panneau2Ferme() { etat.clsEdition = null; etat.clsAjout = null; advUI.reglages = false; },
     // Lance une recherche dans les extensions (depuis la fiche d'un Pokémon).
     cherche(nom) {
       etat.q = nom;

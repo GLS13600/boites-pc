@@ -42,7 +42,7 @@ ce sont des secrets.
 langage commun appliqué aux vues Jeux — FAITE, avec une première collection et une
 page Valeur ; (3) suivi des prix d'une carte, filtres de la collection, « Ses
 cartes » dans la fiche du Pokédex — FAITE ; (4) classeurs — FAITE ; (5) PokéAdvisor,
-favoris partagés, 3D, reprise d'une sauvegarde Cartodex.
+favoris partagés, 3D, reprise d'une sauvegarde Cartodex — FAITE.
 
 ### La coquille (étape 1)
 
@@ -175,8 +175,9 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   retrouvant dans un nom du Pokédex ; sans résultat, `proche()` propose le nom le plus
   proche à la distance d'édition (« dracofeu » → « Vouliez-vous dire Dracaufeu ? »).
   Le dictionnaire de 2 Mo de Cartodex n'est pas repris : les noms de l'appli suffisent.
-- **Fiche d'une carte** : grande image (inclinaison à la souris ; le gyroscope viendra
-  à l'étape 5), favori, rareté et types colorés, **exemplaires** groupés par variante,
+- **Fiche d'une carte** : grande image (inclinaison à la souris, au gyroscope sur
+  téléphone — voir l'étape 5), favori et son compteur partagé, rareté et types colorés,
+  **exemplaires** groupés par variante,
   langue et état avec − / + (un retrait propose « Annuler »), formulaire d'ajout en
   puces, prix Cardmarket (référence = moyenne 30 j, à défaut 7 j, tendance, moyenne,
   plus bas — l'ordre de Cartodex), liens Cardmarket, Vinted et eBay (domaines .fr en
@@ -291,6 +292,95 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   sur toutes les cartes (recherche TCGdex, accents rendus, plus récentes d'abord) ;
   toucher choisit, « Ajouter » range dans l'ordre des choix.
 - Pas de bannière de pub sur les classeurs : on y glisse d'une page à l'autre.
+
+### PokéAdvisor, reprise de Cartodex, 3D et favoris partagés (étape 5)
+
+**PokéAdvisor** : `src/cartes/advisor.js` tient la conversation ; le contexte et les
+outils viennent de vues.js, qui seul connaît les deux univers.
+
+- **Mistral, avec la clé de l'UTILISATEUR** (gratuite pour un usage personnel), comme
+  dans Cartodex. La clé reste sur l'appareil (`pcbox.advisor.cle`) : ni sauvegarde, ni
+  synchronisation. `connect-src` s'ouvre à `https://api.mistral.ai`, seule origine qui
+  la reçoit.
+- **Ce qui part chez Mistral** : la question, les douze derniers messages, et un
+  résumé — Living Dex (pris / total), nombre de cartes, valeur, les quinze plus chères,
+  les classeurs, les souvenirs. L'écran le dit AVANT qu'on entre sa clé
+  (`advConfidentialite`).
+- **Il agit** par onze outils : `chercher_carte`, `prix_carte`, `extensions_recentes`,
+  `ma_collection`, `ajouter_carte`, `retirer_carte`, `living_dex`, `classeurs`,
+  `ouvrir`, `memoriser`, `oublier`. Six tours d'outils au plus par question. Un ajout ou
+  un retrait par l'assistant s'annonce au bandeau, avec « Annuler ».
+- **Réglages** (second panneau de l'univers Cartes) : modèle (Small, Medium, Large),
+  styles de Cartodex à cocher (Pote, Analyste, Ultra bref, Coach, Curieux), avatar parmi
+  les starters en sprite LOCAL — Cartodex chargeait des GIF distants, que la politique
+  de contenu refuserait —, souvenirs (30 au plus, qu'il tient lui-même), effacer la
+  conversation (« Annuler »), retirer la clé.
+- Erreurs dites en clair : clé absente ou refusée (401), limite (429), réseau, réponse
+  vide, interruption (le bouton d'envoi devient « Arrêter »). Conversation gardée sur
+  l'appareil (60 messages, `pcbox.advisor.historique`), hors sauvegarde.
+- Pas de bannière de pub : c'est une messagerie, la saisie est en bas.
+- Vérifié avec un `fetch` simulé : un tour d'outils (`living_dex`, `ajouter_carte` et
+  son bandeau) puis la réponse ; réglages ; la sauvegarde ne contient ni clé ni
+  conversation.
+
+**Reprise d'une sauvegarde Cartodex** (`src/cartes/cartodex.js`, `lisCartodex`), par le
+bouton « Importer » du Profil, sans rien de plus à chercher :
+
+- trois écritures reconnues : le paquet de son compte (`{ cards, classeurs, … }`), les
+  clés de son stockage (`myFrenchPokeCollection`, `myPokeClasseurs`), la collection
+  seule. Un fichier d'Unydex n'a jamais d'`exemplars` : aucune confusion possible ;
+- traduite dans le modèle d'ici : variantes (`pokeball` → `reverse_pokeball`,
+  `firstedition` → `premiere`…), quantité dépliée en exemplaires, date `jj/mm/aaaa` en
+  ISO, URL d'image sans son suffixe de qualité ; pochettes `id:variante` → `id|variante`,
+  16 pochettes ramenées à 12, mises en page `fullset` / `masterset` /
+  `masterset_complet` → `simple` / `groupe` / `master` ;
+- **elle REJOINT, elle n'écrase pas** : une carte déjà là garde ses exemplaires
+  (`fusionne`), un classeur déjà là reste tel quel (`ajouteTous`). Tout repasse par les
+  `assainit`, comme n'importe quel fichier.
+- Vérifié avec un fichier fabriqué : carte existante intacte, variante, quantité, état
+  et date traduits, identifiant piégé refusé, classeur converti.
+
+**Effet 3D au gyroscope** : sur téléphone, la carte de la fiche suit l'inclinaison,
+comme une vraie carte qu'on fait miroiter. Souris sur ordinateur : inchangé.
+
+- iOS ne livre l'orientation qu'après `DeviceOrientationEvent.requestPermission()`,
+  demandée DANS un geste : le premier toucher sur la carte la demande, et une ligne
+  d'aide sous la carte le dit tant que ce n'est pas fait. Ensuite, **chaque fiche
+  miroite d'elle-même** ; l'écoute est coupée à la fermeture.
+- La position de départ est relevée à la première mesure — on tient le téléphone comme
+  on veut. Angle × 0,6, borné à ±14°, lissé sur 140 ms. Mouvement réduit : rien.
+- **Piège de l'aperçu** : Chrome y expose aussi `requestPermission`, qui exige une
+  activation utilisateur — un clic simulé est refusé. Pour tester, la remplacer par une
+  fonction qui rend `'granted'`, puis envoyer des `deviceorientation` (beta et gamma
+  posés par `defineProperty`). Le vrai comportement ne se vérifie que sur l'iPhone.
+
+**Favoris partagés** : la capsule « ♥ 4 » sur la fiche d'une carte — combien de
+dresseurs l'ont en favori.
+
+- **Pas de table à part** (Cartodex en tenait une, `card_favorites`) : le favori voyage
+  déjà avec la collection synchronisée. `favoris_carte(carte)`, dans la migration
+  `20261027000000_favoris_partages.sql`, compte les collections qui le portent, en
+  EXCLUANT le compte connecté ; l'appli ajoute son cœur LOCAL. Le nombre suit donc le
+  toucher à l'instant, sans attendre l'envoi, et un favori venu d'une sauvegarde
+  Cartodex compte dès la synchronisation.
+- **Comptes connectés seulement**, des deux côtés (fonction réservée à
+  `authenticated`, et `favoris.js` ne demande rien sans compte) : l'appli n'adresse
+  rien à Supabase pour qui n'a pas de compte. Un nombre, jamais une identité.
+- Relevé une fois par carte et par cinq minutes ; un changement de compte vide ce qui a
+  été relevé (on excluait un autre compte). Zéro ne s'affiche pas.
+- **La migration reste à exécuter dans Supabase.** D'ici là, la fonction manque et aucun
+  nombre ne s'affiche — rien ne casse.
+- Vérifié avec un client simulé : aucun appel sans compte ; « 3 » puis « 4 » au
+  toucher, « 3 » au second ; réouverture sans nouvel appel ; nouvel appel pour un
+  autre compte.
+
+**À reprendre avant toute publication du site ou de la version store** : la politique
+de confidentialité dit qu'« en l'absence de compte, aucune requête réseau n'est
+émise ». Ce n'est plus vrai de l'univers Cartes, qui interroge TCGdex (catalogue et
+images), ni de PokéAdvisor, qui envoie questions et résumé à Mistral AI avec la clé de
+l'utilisateur. Le compteur des favoris, lui, est un agrégat de collections déjà
+hébergées. Le dossier `legal/` (politique fr / en, registre, étiquette App Privacy) doit
+suivre, comme pour les publicités.
 
 ## Deux variantes : App Store et « Unydex Dev » (06/10/2026)
 
@@ -586,6 +676,10 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `src/cartes/classeurs.js` | Les classeurs et leurs pochettes (`pcbox.classeurs`) |
 | `src/cartes/prix.js` | Historique du prix de chaque carte suivie (`pcbox.cartes.prix`) |
 | `src/cartes/regles.js` | Raretés, variantes, états, distance d'édition (règles de Cartodex) |
+| `src/cartes/advisor.js` | PokéAdvisor : conversation Mistral, réglages, mémoire (`pcbox.advisor.*`) |
+| `src/cartes/cartodex.js` | Lecture d'une sauvegarde Cartodex (`lisCartodex`) |
+| `src/cartes/favoris.js` | Compteur partagé des favoris (`favoris_carte`, comptes connectés) |
+| `supabase/migrations/20261027000000_favoris_partages.sql` | La fonction de ce compteur — **à exécuter dans Supabase** |
 | `src/data/i18n/en.json` | Surcouche anglaise, **générée**, 1,7 Mo |
 | `src/data/i18n/ja.json` | Surcouche japonaise, **générée**, 1,9 Mo |
 | `scripts/fetch-i18n.mjs` | Produit ces deux surcouches (`npm run fetch-i18n`) |

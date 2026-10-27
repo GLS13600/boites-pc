@@ -173,6 +173,22 @@ export function remplace(v) {
   return true;
 }
 
+// Ajoute ce que l'on n'a pas encore, sans toucher à ce qu'on a : une carte déjà dans
+// la collection garde ses exemplaires. Sert à reprendre une sauvegarde de Cartodex.
+// Rend le nombre de cartes ajoutées.
+export function fusionne(v) {
+  const propre = assainit(v);
+  if (!propre) return 0;
+  let n = 0;
+  for (const [id, c] of Object.entries(propre)) {
+    if (cartes[id]) continue;
+    cartes[id] = c;
+    n++;
+  }
+  if (n) ecrire();
+  return n;
+}
+
 // Ce qui vient d'un FICHIER (ou du compte) est repris champ par champ : une clé qui n'a
 // pas la forme d'un identifiant TCGdex est écartée, une image qui ne vient pas de
 // TCGdex aussi — elles finissent dans des attributs HTML et des URL. Même règle que

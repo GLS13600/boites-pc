@@ -150,6 +150,19 @@ export function deplacePoches(id, indices, vers) {
 }
 
 // ---------------------------------------------------------------- sauvegarde
+// Ajoute des classeurs venus d'ailleurs (Cartodex) sans toucher aux siens : un
+// identifiant déjà présent est laissé de côté. Rend le nombre de classeurs ajoutés.
+export function ajouteTous(v) {
+  const propres = assainit(v) || [];
+  let n = 0;
+  for (const c of propres) {
+    if (classeur(c.id)) continue;
+    liste.push(c);
+    n++;
+  }
+  if (n) ecrire();
+  return n;
+}
 export const exporte = () => liste;
 export function remplace(v) {
   const propre = assainit(v);

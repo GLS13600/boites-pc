@@ -71,7 +71,9 @@ function cspPlugin(url) {
     "media-src 'self' blob:",
     "font-src 'self'",
     "worker-src 'self' blob:",
-    `connect-src 'self' blob: data: https://api.tcgdex.net${origineSb}`,
+    // api.mistral.ai : PokéAdvisor, avec la clé de l'utilisateur — la seule destination
+    // où elle peut partir.
+    `connect-src 'self' blob: data: https://api.tcgdex.net https://api.mistral.ai${origineSb}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

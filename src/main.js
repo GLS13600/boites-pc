@@ -22,6 +22,7 @@ import { creeCompteUI } from './compte-ui.js';
 import { etat as etatCompte } from './compte.js';
 import * as cartesColl from './cartes/collection.js';
 import * as classeursColl from './cartes/classeurs.js';
+import { lisCartodex } from './cartes/cartodex.js';
 import * as recents from './recents.js';
 import { creeCartes } from './cartes/vues.js';
 // La synchronisation ne connaît ni l'état ni les clés de stockage : main.js lui
@@ -608,6 +609,8 @@ const ICO = {
   rafraichir: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4.2h-4.2"/></svg>',
   trier: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4.5v15M8 4.5 4.8 7.7M8 4.5l3.2 3.2M16 19.5v-15M16 19.5l-3.2-3.2M16 19.5l3.2-3.2"/></svg>',
   reglages: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h9.5M18 7h1.5M4.5 17h3M11.5 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="9.5" cy="17" r="2.2"/></svg>',
+  envoi: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5.5M5.8 11.7 12 5.5l6.2 6.2"/></svg>',
+  cle: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="3.6"/><path d="M11.6 12H20M17 12v3M20 12v2.4"/></svg>',
 };
 
 // Icônes des blocs de Réglages. La pastille qui les porte prend `--c` en CSS.
@@ -1819,6 +1822,24 @@ const cartes = creeCartes({
   estCapture: (n) => state.caught.has(n),
   // La passerelle vers le Pokédex : la fiche de la carte s'efface devant celle du Pokémon.
   ficheJeu: (n) => { fermeCarte(); openSheet(n); },
+  // Pour PokéAdvisor : changer de vue, retrouver un Pokémon par son nom, et l'avancement
+  // du Living Dex — national (0) ou d'une région —, sur la collection NORMALE.
+  va: (v) => vaVers(v),
+  numeroDe: (nom) => {
+    const f = fold(String(nom || '').trim());
+    for (let id = 1; id <= 1025; id++) if (fold(pokedex[id]?.name || '') === f) return id;
+    return 0;
+  },
+  livingDex: (n) => {
+    const g = plageDex(n);
+    const manquants = [];
+    let pris = 0;
+    for (let id = g.from; id <= g.to; id++) {
+      if (state.caught.has(id)) pris++;
+      else manquants.push(`${pokedex[id]?.name || id} (${id})`);
+    }
+    return { nom: g.name, pris, total: g.to - g.from + 1, manquants };
+  },
   annonce: (texte, retablir) => proposeAnnulation(texte, retablir),
   noteRecent: (id) => recents.note('carte', id),
   ouvreLien,
@@ -3180,6 +3201,18 @@ async function appliqueDonnees(data) {
   // Des CLÉS, traduites seulement au moment du message : le fichier peut changer la
   // langue, et la confirmation doit alors partir dans la NOUVELLE.
   const repris = [];
+
+  // Une sauvegarde de CARTODEX : sa collection et ses classeurs REJOIGNENT ceux
+  // d'Unydex sans les écraser — une carte déjà là garde ses exemplaires, un classeur
+  // déjà là reste tel quel. Le fichier n'a rien d'autre à reprendre.
+  const cartodex = lisCartodex(d);
+  if (cartodex) {
+    const nCartes = cartesColl.fusionne(cartodex.cartes);
+    const nClasseurs = classeursColl.ajouteTous(cartodex.classeurs);
+    if (!nCartes && !nClasseurs) throw new Error('vide');
+    render();
+    return [['partieCartodex', nCartes, nClasseurs]];
+  }
 
   if (Array.isArray(d.caught)) {
     // Les clés de formes cosmétiques sont des chaînes : ne pas tout forcer en nombre.

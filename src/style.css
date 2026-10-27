@@ -4104,6 +4104,9 @@ img {
   transition: transform 420ms var(--c-entree);
 }
 .cx-fiche-img.incline img { transition: transform 60ms linear; }
+/* Au gyroscope, les mesures arrivent par à-coups : un court lissage les fond. */
+.cx-fiche-img.gyro img, .cx-fiche-img.gyro .cx-reflet { transition: transform 140ms linear; }
+.cx-gyro-aide { margin: var(--e-3) var(--e-4) calc(-1 * var(--e-2)); text-align: center; font-size: var(--t-mini); color: var(--muted); }
 .cx-reflet {
   position: absolute;
   inset: 0;
@@ -4133,6 +4136,9 @@ img {
 .cx-fav .ico { width: 21px; height: 21px; }
 .cx-fav.on { color: #e0306f; border-color: #f2a6c2; background: color-mix(in srgb, #e0306f 10%, var(--panel)); }
 .cx-fav.on .ico { fill: currentColor; }
+/* Avec le nombre de dresseurs qui l'ont en favori, le rond devient une capsule. */
+.cx-fav.avec-nb { grid-auto-flow: column; gap: 5px; width: auto; min-width: 40px; padding: 0 13px 0 10px; border-radius: var(--r-rond); }
+.cx-fav.avec-nb span { font-size: var(--t-petit); font-weight: 800; font-variant-numeric: tabular-nums; }
 .cx-rar,
 .cx-pv {
   padding: 5px 11px;
@@ -4465,4 +4471,68 @@ img {
 
 @media (prefers-reduced-motion: reduce) {
   .cl-couv, .cl-teinte { transition: none; }
+}
+
+/* =====================================================================
+   PokéAdvisor (étape 5)
+   Une conversation au gabarit des messageries d'iOS : les questions à droite, sur le
+   rouge de l'appli ; les réponses à gauche, sur une carte, avec l'avatar choisi —
+   un starter, en sprite local (Cartodex chargeait des GIF distants).
+   ===================================================================== */
+.adv { grid-template-rows: 1fr auto; min-height: 100%; align-content: stretch; }
+.adv-fil { display: grid; gap: var(--e-3); align-content: start; padding-bottom: var(--e-2); }
+.adv-msg { display: flex; align-items: flex-end; gap: var(--e-2); max-width: 88%; }
+.adv-msg p { margin: 0; padding: 10px 14px; border-radius: 18px; font-size: var(--t-corps); line-height: 1.45; overflow-wrap: anywhere; }
+.adv-msg.moi { justify-self: end; }
+.adv-msg.moi p { background: var(--ball-degrade); color: var(--sur-ball); border-bottom-right-radius: 6px; }
+.adv-msg.lui { justify-self: start; }
+.adv-msg.lui p { background: var(--panel); border: 1px solid var(--rule-soft); border-bottom-left-radius: 6px; box-shadow: var(--ombre-1); }
+.adv-msg.erreur { justify-self: center; max-width: 100%; }
+.adv-msg.erreur p { padding: 4px 10px; background: transparent; color: var(--ball-texte); font-size: var(--t-petit); text-align: center; }
+.adv-msg.attente small { display: block; margin-top: 4px; font-size: var(--t-mini); color: var(--muted); }
+/* Les sprites ont une large marge transparente : la boîte déborde un peu pour que la
+   créature, elle, ait la taille d'une photo de profil. */
+.adv-avatar { flex: 0 0 auto; width: 52px; height: 52px; margin: -8px -6px -6px -8px; object-fit: contain; image-rendering: pixelated; }
+.adv-avatar.grand { width: 104px; height: 104px; }
+.adv-accueil { display: grid; justify-items: center; gap: var(--e-3); padding: var(--e-5) 0; text-align: center; color: var(--muted); }
+.adv-accueil p { margin: 0; max-width: 300px; line-height: 1.45; }
+.adv-idees { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--e-2); }
+.adv-idees .puce { height: auto; min-height: 40px; padding: 8px 14px; white-space: normal; text-align: left; }
+.adv-points { display: inline-flex; gap: 4px; padding: 4px 0; }
+.adv-points i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: adv-point 1s ease-in-out infinite; }
+.adv-points i:nth-child(2) { animation-delay: 0.15s; }
+.adv-points i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes adv-point { 0%, 80%, 100% { opacity: 0.3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+.adv-saisie {
+  position: sticky;
+  bottom: var(--e-2);
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  padding: 5px 5px 5px 6px;
+  border-radius: var(--r-rond);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  box-shadow: var(--ombre-2);
+}
+.adv-saisie input { flex: 1 1 auto; min-width: 0; height: 40px; padding: 0 12px; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 16px; }
+.adv-saisie input:focus { outline: none; }
+.adv-saisie:focus-within { border-color: var(--ball); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ball) 18%, transparent), var(--ombre-2); }
+.adv-envoi { position: relative; flex: 0 0 auto; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--ball-degrade); color: var(--sur-ball); }
+.adv-envoi .ico { width: 20px; height: 20px; stroke-width: 2.4; }
+.adv-envoi.stop { background: var(--ink); color: var(--paper); }
+.adv-envoi::after { content: ""; position: absolute; inset: -2px; }
+.adv-cle .champ .ico { color: var(--muted); }
+.adv-texte { margin: 0; color: var(--muted); font-size: var(--t-corps); line-height: 1.5; }
+.adv-avatars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.adv-avatars button { aspect-ratio: 1; border-radius: var(--r-sm); background: var(--slot); border: 1px solid var(--rule-soft); }
+.adv-avatars button.on { background: var(--caught-tint); border-color: var(--ball); box-shadow: 0 0 0 1px var(--ball); }
+.adv-avatars img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.adv-souvenirs { display: grid; gap: 4px; }
+.adv-souvenir { display: flex; align-items: center; justify-content: space-between; gap: var(--e-2); padding: 6px 6px 6px 12px; border-radius: var(--r-sm); background: var(--panel-2); border: 1px solid var(--rule-soft); font-size: var(--t-petit); }
+.adv-souvenir button { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; color: var(--muted); }
+.adv-souvenir .ico { width: 16px; height: 16px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .adv-points i { animation: none; opacity: 0.7; }
 }

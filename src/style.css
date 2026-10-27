@@ -784,7 +784,8 @@ img { display: block; }
    10px + safe-top en padding) : sans ça le bandeau passait sous l'îlot dynamique
    de l'iPhone, la vue combat n'ayant aucune barre supérieure pour l'en écarter. */
 .combat {
-  margin: var(--e-3);
+  /* Les marges des pages : 16 px de chaque côté, dans les deux univers. */
+  margin: var(--e-3) var(--e-4);
   margin-top: var(--e-2);
 }
 .combat-head { display: flex; align-items: stretch; gap: var(--e-2); margin-bottom: var(--e-4); }
@@ -1489,7 +1490,7 @@ img { display: block; }
    9 générations : un remake n'a pas d'entrée propre au Pokédex national. */
 /* L'en-tête est le premier élément de la vue depuis le retrait de la barre
    d'onglets : c'est donc lui qui porte la zone sûre, que la barre portait avant. */
-.dex { margin: calc(12px + var(--safe-top)) 12px 12px; }
+.dex { margin: calc(12px + var(--safe-top)) var(--e-4) var(--e-4); }
 .dex-head {
   display: flex;
   align-items: center;
@@ -1557,7 +1558,7 @@ img { display: block; }
 .dexm {
   min-height: 100%;
   box-sizing: border-box;
-  padding: calc(12px + var(--safe-top)) 12px 16px;
+  padding: calc(12px + var(--safe-top)) var(--e-4) var(--e-4);
   background: var(--paper);
   color: var(--ink);
 }
@@ -3630,7 +3631,7 @@ img {
 .tete-btn .ico { width: 20px; height: 20px; }
 .tete-btn b { font-size: 17px; line-height: 1; }
 .tete-btn:active { transform: scale(0.92); }
-.tete-btn.on { background: var(--caught-tint); border-color: var(--caught-edge); color: var(--ball); }
+.tete-btn.on { background: var(--caught-tint); border-color: var(--caught-edge); color: var(--ball-texte); }
 /* Le chromatique garde son or, comme partout dans l'appli. */
 .tete-btn.or { color: var(--muted); }
 .tete-btn.or.on { background: color-mix(in srgb, var(--shiny) 14%, var(--panel)); border-color: var(--shiny); color: var(--shiny); }
@@ -3711,7 +3712,7 @@ img {
   border-radius: var(--r-rond);
   background: color-mix(in srgb, var(--shiny) 15%, var(--panel));
   border: 1px solid color-mix(in srgb, var(--shiny) 45%, transparent);
-  color: color-mix(in srgb, var(--shiny) 68%, var(--ink));
+  color: color-mix(in srgb, var(--shiny) 58%, var(--ink));
   font-size: var(--t-petit);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -3801,7 +3802,7 @@ img {
 }
 .puce .ico { width: 18px; height: 18px; }
 .puce:active { transform: scale(0.95); }
-.puce.on { background-color: var(--caught-tint); border-color: var(--caught-edge); color: var(--ball); }
+.puce.on { background-color: var(--caught-tint); border-color: var(--caught-edge); color: var(--ball-texte); }
 .puce:disabled { opacity: 0.5; }
 .puce.large { width: 100%; height: 46px; justify-content: center; }
 /* Une liste déroulante habillée en puce : apparence native retirée, chevron dessiné.
@@ -3820,9 +3821,9 @@ img {
 }
 /* Deux ou trois listes se partagent la largeur plutôt que de déborder : elles
    rétrécissent, et la rangée ne défile que s'il en faut vraiment davantage. */
-.puces > .puce-select { flex: 1 1 auto; min-width: 0; }
+.puces > .puce-select { flex: 1 1 0; min-width: 0; }
 /* Un filtre qui s'écarte de son défaut se voit : le rouge de l'appli. */
-.puce-select.actif { border-color: var(--ball); color: var(--ball); }
+.puce-select.actif { border-color: var(--ball); color: var(--ball-texte); }
 /* La bascule grille / liste du Pokédex, en puce double. */
 .puces .dex-vues { flex: 0 0 auto; height: 40px; box-shadow: var(--ombre-1); }
 .puces .dex-vues button { min-height: 38px; }
@@ -3922,7 +3923,7 @@ img {
   color: var(--ink);
 }
 .cx-serie:active { background: var(--panel-2); }
-.cx-serie.on { background: var(--caught-tint); color: var(--ball); }
+.cx-serie.on { background: var(--caught-tint); color: var(--ball-texte); }
 .cx-serie-logo { display: flex; align-items: center; justify-content: center; height: 34px; }
 .cx-serie-logo img { max-width: 72px; max-height: 32px; object-fit: contain; }
 .cx-serie b { font-size: var(--t-corps); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -3932,7 +3933,7 @@ img {
   border-radius: var(--r-rond);
   background: var(--caught-tint);
   border: 1px solid var(--caught-edge);
-  color: var(--ball);
+  color: var(--ball-texte);
   font-size: var(--t-mini);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -3995,13 +3996,13 @@ img {
   border-radius: 6px;
   background: rgb(16 20 28 / 80%);
   color: #fff;
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.cx-v-var.v-normal { background: rgb(5 150 105 / 92%); }
-.cx-v-var.v-reverse { background: rgb(37 99 235 / 92%); }
+.cx-v-var.v-normal { background: rgb(4 120 87 / 95%); }
+.cx-v-var.v-reverse { background: rgb(29 78 216 / 95%); }
 .cx-v-var.v-holo { background: rgb(124 58 237 / 92%); }
 .cx-v-var.v-premiere { background: rgb(180 83 9 / 92%); }
 .cx-v-var.v-reverse_pokeball { background: rgb(220 38 38 / 92%); }
@@ -4054,7 +4055,7 @@ img {
   color: var(--muted);
 }
 .cx-vide p { margin: 0; line-height: 1.45; }
-.cx-suggestion { justify-self: start; color: var(--ball); }
+.cx-suggestion { justify-self: start; color: var(--ball-texte); }
 
 /* La barre de la sélection multiple, collée au bas de la zone qui défile. */
 .lot {
@@ -4142,7 +4143,7 @@ img {
   background: var(--panel-2);
   color: var(--ink);
 }
-.cx-pv { color: var(--ball); background: var(--caught-tint); border-color: var(--caught-edge); }
+.cx-pv { color: var(--ball-texte); background: var(--caught-tint); border-color: var(--caught-edge); }
 .cx-rar.r-peu_commune { color: #0f766e; border-color: #99d6cf; background: #e9f7f5; }
 .cx-rar.r-rare { color: #1d4ed8; border-color: #b4c8f7; background: #eef3ff; }
 .cx-rar.r-ultra_rare { color: #6d28d9; border-color: #cdb8f6; background: #f4efff; }
@@ -4237,3 +4238,19 @@ img {
   .bandeau-barre i { transition: none; }
   .cx-series, .cx-v.squelette .cx-v-img, .avance.squelette .avance-art { animation: none; }
 }
+
+/* ---- Cibles tactiles : 44 px au doigt, quel que soit le dessin ----
+   Relevé à la critique de design (27/10/2026) : boutons d'en-tête 38 px, « ± » des
+   exemplaires 34, puces de choix 34. Le dessin ne change pas ; un pseudo-élément
+   invisible porte la zone qui répond au toucher jusqu'aux 44 px d'iOS. Le retrait se
+   compte depuis la boîte de REMPLISSAGE, bordure exclue : 1 px de plus de chaque côté. */
+.tete-btn, .cx-pas button, .cx-choix .puce, .cx-liens .puce { position: relative; }
+.tete-btn::after, .cx-pas button::after, .cx-choix .puce::after, .cx-liens .puce::after, .cx-fav::after {
+  content: "";
+  position: absolute;
+}
+.tete-btn::after { inset: -4px; }
+.cx-pas button::after { inset: -6px; }
+.cx-choix .puce::after { inset: -6px 0; }
+.cx-liens .puce::after { inset: -5px 0; }
+.cx-fav::after { inset: -3px; }

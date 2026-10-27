@@ -38,9 +38,11 @@ pochettes, pages qui tournent), PokéAdvisor (assistant Mistral, clé de l'utili
 **Ne JAMAIS ouvrir `G:\Cartodex\.env` ni « client secret google auth.json »** :
 ce sont des secrets.
 
-Étapes : (1) coquille commune — FAITE ; (2) extensions, fiche, exemplaires ;
-(3) collection et prix ; (4) classeurs ; (5) PokéAdvisor, favoris partagés, 3D,
-passerelles Pokédex ↔ cartes, reprise d'une sauvegarde Cartodex, synchronisation.
+Étapes : (1) coquille commune — FAITE ; (2) extensions, fiche, exemplaires, et le
+langage commun appliqué aux vues Jeux — FAITE, avec une première collection et une
+page Valeur ; (3) suivi des prix d'une carte ; (4) classeurs ; (5) PokéAdvisor,
+favoris partagés, 3D, « Ses cartes » dans la fiche du Pokédex, reprise d'une
+sauvegarde Cartodex.
 
 ### La coquille (étape 1)
 
@@ -50,9 +52,9 @@ passerelles Pokédex ↔ cartes, reprise d'une sauvegarde Cartodex, synchronisat
   barre (voir « Interface »). Toucher l'onglet déjà ouvert remonte en haut de la vue.
 - **`ONGLET_DE`** donne l'onglet de chaque vue ; **`RACINES`** (accueil, jeux, scan,
   cartes, reglages) n'ont pas de barre de retour et portent elles-mêmes la zone sûre du
-  haut (`.vue.racine`). Les autres vues ont la barre « ‹ Jeux » / « ‹ Cartes », et le
-  glissement depuis le bord gauche (`VUES_RETOUR` = tout ce qui n'est pas racine)
-  ramène à la planche de leur univers.
+  haut (`.vue.racine`). Les autres vues ont un en-tête « ← titre » (voir l'étape 2 :
+  il a remplacé la barre « ‹ Jeux » / « ‹ Cartes »), et le glissement depuis le bord
+  gauche (`VUES_RETOUR` = tout ce qui n'est pas racine) ramène à la page d'avant.
 - **Planches** `jeux` et `cartes` (`renderPlanche`) : la mécanique des tuiles
   illustrées de l'ancien accueil, gardée. Jeux : Pokédex (grande, anneau), Boîtes,
   Équipes, Attaques, **Types** ; Cartes : Extensions (grande), Ma collection, Classeurs,
@@ -84,6 +86,123 @@ passerelles Pokédex ↔ cartes, reprise d'une sauvegarde Cartodex, synchronisat
 - **Piège de l'aperçu** : à la première ouverture du Scan, Vite découvre
   onnxruntime-web, ré-optimise ses dépendances et RECHARGE la page. Un parcours de test
   qui passe par le Scan finit sur l'accueil : ce n'est pas un bug de navigation.
+
+### Le langage commun : le design des vues cartes, partout (étape 2)
+
+Demandé : « base-toi sur le design des vues cartes [de Cartodex] pour l'appliquer au
+système pour les jeux ». Six composants, portés À L'IDENTIQUE par les deux univers —
+section « Langage commun » en fin de `style.css` :
+
+- **`.tete`**, l'en-tête des sous-pages (`tete(titre, actions)` dans main.js) : « ← »,
+  le titre de la page, ses actions en icônes à droite (`.tete-btn`). Il remplace
+  l'ancienne barre « ‹ Jeux » : `poser()` le sort de la zone qui défile quand il est
+  le premier enfant, et pose celui de la tuile sinon (`titreDeVue`). Un filet paraît
+  dessous dès que le contenu passe sous lui (`.defile`). Le « ← » appelle
+  `retourEnArriere()` — la même « page d'avant » que le glissement du bord, qui
+  emporte désormais l'en-tête avec la page. Les RACINES gardent leur grand titre.
+  - Boîtes : le chromatique ✦ et le « + » ont quitté la barre d'outils du bas pour
+    l'en-tête ; il n'y reste que le rail Capturer / Fiche / Ranger. Pokédex : ✦ aussi.
+  - Attaques : le titre suit la page (`titreAttaques()`, mis à jour par
+    `renderBattleSheet`) — la liste, puis le nom de l'attaque ouverte. En page, le
+    `h2` et le bouton « ‹ Toutes les attaques » ne sont plus émis (`enPage`) ; ils le
+    restent dans le panneau.
+- **`.pilule`**, le grand sélecteur : la série d'extensions (qui se déplie sur place),
+  la version du jeu (Équipes, Types — `piluleJeu()`, qui ouvre la liste des versions).
+- **`.bandeau`**, l'en-tête d'extension de Cartodex : image à gauche (logo, starters,
+  éventail de cartes), chiffres à droite (valeur dorée, « 6 / 207 · 3 % »), barre et
+  note dessous. Grille du Pokédex, extension, collection, valeur.
+- **`.avance`**, la ligne d'avancement : le menu du Pokédex (`carteDex`, starters en
+  guise de logo) et les extensions d'une série sont le MÊME composant, sceau compris
+  (`sceauHtml`). Les anciennes règles `.dexc*` ont été retirées.
+- **`.puces`**, la rangée de filtres : listes déroulantes habillées (`.puce-select`,
+  16 px contre le zoom d'iOS, chevron dessiné, rouge quand elles s'écartent du défaut)
+  et puces (`.puce`). Deux listes se partagent la largeur (`flex: 1 1 0`) plutôt que
+  de déborder. Pokédex, attaques, extensions, collection.
+- **`.champ`**, le champ de recherche à loupe, partout.
+- **La Poké Ball dessinée (`.marque`) veut dire « à moi »** : cases de boîte, grille du
+  Pokédex (`.dx-ok`, qui était une pastille rouge), cartes possédées. Et la règle du
+  Living Dex vaut pour les cartes : possédée en COULEUR, manquante en GRIS.
+- Marges des pages : 16 px de chaque côté dans les deux univers.
+- **Les panneaux recouvrent la barre du bas** (voile 20, panneau 21, barre 15) : depuis
+  l'étape 1 la barre passait au-dessus et cachait le bas de chaque panneau, alors que
+  les jetons prévoyaient l'inverse (« un panneau recouvre la barre »).
+
+#### Critique de design et accessibilité (27/10/2026)
+
+Passée avec la skill `design:design-critique`, mesures faites dans l'aperçu (contraste
+calculé sur la couleur et le fond réels, zone de toucher relevée par
+`elementFromPoint`), dans les deux thèmes :
+
+- **`--muted` assombri en clair, `#7c8592` → `#606977`** : 3,7:1 sur blanc et 3,4:1
+  sur le papier, sous l'AA ; la fusion l'avait mis sur tous les compteurs et toutes les
+  légendes. Après : 5,5 sur blanc, 5,1 sur papier, 4,7 sur le fond des rails. C'était
+  la « limite connue » des Réglages, levée pour toute l'appli d'un coup.
+- **`--ball-texte`** : le rouge ÉCRIT sur une teinte claire (puce active, PV,
+  compteurs, liste choisie) — rouge foncé en clair (4,1 → 5,9:1), rouge éclairci en
+  sombre (5:1). Le rouge des fonds et des barres ne change pas.
+- Étiquettes de variante du master set en 10 px, vert et bleu assombris (« Normale »
+  était à 3,4:1).
+- **Cibles tactiles à 44 px** sans toucher au dessin : un `::after` invisible élargit
+  boutons d'en-tête (38 px), « ± » des exemplaires (34), puces de choix (34), liens et
+  favori. Le retrait se compte depuis la boîte de remplissage, bordure exclue.
+- Gardé tel quel : master set et sélection en icônes dans l'en-tête — le mode se
+  dit dès qu'on le touche (note du master set, barre de sélection).
+
+### Les vues Cartes (étape 2)
+
+Tout vit dans **`src/cartes/vues.js`** (`creeCartes(ctx)`), sur le modèle de scan.js et
+compte-ui.js : main.js fournit traduction, `poser`, `tete`, annulation, le panneau de la
+fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pokédex.
+
+- **Extensions** : la série dans une pilule qui se déplie (`pcbox.cartes.serie`, la plus
+  récente par défaut hors « Autre » et Pocket), puis ses extensions, des plus récentes
+  aux plus anciennes, en lignes d'avancement. Entrer dans la vue ramène à la liste, comme
+  le menu du Pokédex (`cartes.entre`).
+- **Une extension** : bandeau, rareté (les 7 catégories de Cartodex, avec leur nombre),
+  tri (numéro, nom, prix, rareté), rail Toutes / Manquantes / Possédées — le composant
+  du filtre du Pokédex —, grille de trois avec bulle de prix et pastille « Poké Ball ×n ».
+  - Le DÉTAIL des cartes (rareté, variantes, prix) arrive une à une par la file de
+    quatre requêtes d'api.js : chaque arrivée refait SA vignette ; ce qui dépend de
+    toutes (rareté, tri par prix, master set) se refait par paquets de 700 ms. Mesuré :
+    les 207 cartes de « 151 » en ~4 s, puis gardées trente jours sur l'appareil.
+  - **Master set** (icône calques) : une vignette par variante, étiquetée et prix de la
+    variante (champs « -holo » de Cardmarket pour une reverse).
+  - **Sélection multiple** (icône coche) : toucher choisit, une barre collée en bas
+    propose Tout / Retirer / Ajouter ; une seule écriture pour tout le lot
+    (`coll.lot`), et « Annuler » rend la collection d'avant.
+- **Recherche** (toutes extensions) : TCGdex cherche sans casse mais AVEC accents —
+  « salameche » ne trouvait rien. `requete()` rend ses accents à ce qu'on tape en le
+  retrouvant dans un nom du Pokédex ; sans résultat, `proche()` propose le nom le plus
+  proche à la distance d'édition (« dracofeu » → « Vouliez-vous dire Dracaufeu ? »).
+  Le dictionnaire de 2 Mo de Cartodex n'est pas repris : les noms de l'appli suffisent.
+- **Fiche d'une carte** : grande image (inclinaison à la souris ; le gyroscope viendra
+  à l'étape 5), favori, rareté et types colorés, **exemplaires** groupés par variante,
+  langue et état avec − / + (un retrait propose « Annuler »), formulaire d'ajout en
+  puces, prix Cardmarket (référence = moyenne 30 j, à défaut 7 j, tendance, moyenne,
+  plus bas — l'ordre de Cartodex), liens Cardmarket, Vinted et eBay (domaines .fr en
+  français), **« Dans le Pokédex »** avec le sprite et l'état de capture du Pokémon, qui
+  ouvre sa fiche. Glisser de côté passe à la carte voisine de la liste affichée.
+  Ouvrir la fiche relève le prix du jour ; une carte possédée le recopie
+  (`notePrix`, qui n'écrit que si le prix a changé ou date de plus d'un jour).
+- **Ma collection** : bandeau (éventail des trois plus chères, valeur, nombre), recherche,
+  tri (ajout récent, extension — groupée sous des en-têtes —, nom, valeur), Toutes /
+  Favoris.
+- **Valeur** : total, courbe jour par jour (`pcbox.cartes.valeurs`, une valeur par jour,
+  hors sauvegarde), « Actualiser les prix » des cartes possédées, cartes les plus chères.
+- **Classeurs** et **PokéAdvisor** : pages d'attente, illustration de la tuile en grand.
+- **Langue des données** : TCGdex en français si l'appli l'est, en anglais sinon
+  (`api.poseLangue`, clés de cache préfixées par la langue). Le japonais de TCGdex décrit
+  d'autres extensions sous d'autres identifiants ; les identifiants des cartes
+  internationales, eux, sont les mêmes en français et en anglais.
+- **Sauvegarde et compte** : la collection part dans l'export (`cartes`) et dans la
+  synchronisation ; `rempli` et le résumé de l'arbitrage comptent les cartes. À
+  l'import, `assainit()` reprend chaque carte champ par champ — identifiant TCGdex,
+  image venue de `assets.tcgdex.net` seulement, variante, langue, état ramené à sa clé.
+- Une image absente retombe de la haute définition sur la basse, puis sur un dos de
+  carte dessiné ; un logo manquant disparaît sans laisser de trou (écoute `error` en
+  capture sur le document).
+- **Piège de test** : le bandeau « Annuler » s'efface au bout de 5 s. Un test qui clique
+  « Annuler » dans un second appel arrive trop tard et croit l'annulation cassée.
 
 ## Deux variantes : App Store et « Unydex Dev » (06/10/2026)
 
@@ -372,6 +491,11 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `src/sync.js` | Sauvegarde de la collection dans le compte |
 | `src/pubs.js` | Publicités AdMob : bannière, plein écran, interrupteur |
 | `src/abonnement.js` | Unydex+ : état de l'abonnement, formules, achat (simulé en Dev) |
+| `src/recents.js` | Journal des dernières captures et cartes, pour l'accueil |
+| `src/cartes/vues.js` | Les vues Cartes : extensions, recherche, fiche, collection, valeur |
+| `src/cartes/api.js` | TCGdex : lecture, cache IndexedDB, file de quatre requêtes |
+| `src/cartes/collection.js` | La collection de cartes et ses exemplaires (`pcbox.cartes`) |
+| `src/cartes/regles.js` | Raretés, variantes, états, distance d'édition (règles de Cartodex) |
 | `src/data/i18n/en.json` | Surcouche anglaise, **générée**, 1,7 Mo |
 | `src/data/i18n/ja.json` | Surcouche japonaise, **générée**, 1,9 Mo |
 | `scripts/fetch-i18n.mjs` | Produit ces deux surcouches (`npm run fetch-i18n`) |
@@ -2038,10 +2162,9 @@ artistique de l'appli.
 - **« Celui du téléphone » est devenu « Automatique »** : le libellé passait à la ligne
   et le rail montait à 62 px, désaligné de celui de la langue. 45 px après, sur une
   seule ligne. L'aide dit désormais ce qu'« Automatique » recouvre.
-- **Limite connue** : le texte d'aide (`--muted` sur `--panel`) est à 3,73 pour 1 en
-  thème clair, sous le 4,5 attendu par WCAG AA pour du petit texte. C'est la palette
-  générale qui est en cause, pas cette page — le corriger demanderait de toucher
-  `--muted`, lu partout.
+- ~~Limite connue : le texte d'aide (`--muted` sur `--panel`) à 3,73 pour 1 en thème
+  clair.~~ **Levée le 27/10/2026** : `--muted` assombri (#606977), 5,5:1 sur blanc —
+  voir « Critique de design et accessibilité » dans la fusion.
 
 ### Modifier son profil SUR PLACE (02/10/2026)
 

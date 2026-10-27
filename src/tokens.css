@@ -45,7 +45,12 @@
   --rule: #e3e0d6;         /* filets et bordures */
   --rule-soft: #efece4;    /* séparateurs à l'intérieur d'une carte */
   --ink: #1e2227;          /* texte principal */
-  --muted: #7c8592;        /* texte secondaire, légendes */
+  /* Texte secondaire, légendes. Assombri le 27/10/2026 (#7c8592 → #606977) : il ne
+     tenait que 3,7:1 sur le blanc des panneaux et 3,4:1 sur le papier, sous les 4,5:1
+     qu'exige WCAG AA pour du petit texte — et la fusion l'a mis partout, compteurs,
+     notes et légendes des cartes. Mesuré après : 5,5 sur blanc, 5,1 sur papier, 4,65
+     sur le fond des rails. */
+  --muted: #606977;
   --slot: #fbfaf7;         /* emplacement de boîte vide */
 
   /* ---- Couleurs : identité ---- */
@@ -59,6 +64,9 @@
   --sexe-m: #4a8fe0;       /* barre des sexes : mâles */
   --sexe-f: #e86fa4;       /* … et femelles, lisibles dans les deux thèmes */
   --sur-ball: #ffffff;     /* texte posé SUR le rouge — contraste 4,6:1, AA */
+  /* Le rouge écrit en TEXTE sur une teinte claire (puce active, PV, compteur) : le
+     rouge plein n'y tenait que 4,1:1, le rouge foncé tient 6:1. */
+  --ball-texte: var(--ball-fonce);
 
   /* ---- Rayons ---- */
   --r-xs: 8px;
@@ -139,6 +147,8 @@
   --ball: #f0524a;
   --ball-fonce: #c93d36;
   --ball-clair: #ff7b73;
+  /* Sur le bleu nuit, le rouge éclairci tient déjà 5:1 en texte. */
+  --ball-texte: var(--ball);
   /* Teinte des captures : le même rouge, posé sur le bleu nuit. */
   --caught-tint: #24151f;
   --caught-edge: #6b2f36;

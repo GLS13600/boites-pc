@@ -300,7 +300,8 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
       manque 64 : SV51 (Reshiram-GX) et GG51 (Clamiral de Hisui V) n'ont pas d'URL dans le
       relevé, et la ligne vide faisait planter la boucle HORS de son `try` — tout le reste
       de la série était abandonné (SV52–SV94, GG52–GG70). Corrigé : la ligne est sautée et
-      signalée (« sans URL dans le relevé »). Relancer le script récupère les 62 autres.
+      signalée (« sans URL dans le relevé »). Relancé : les 62 autres sont arrivés,
+      **1 167 visuels en tout**. Restent SV51 et GG51, faute d'URL dans le relevé.
     - **Les visuels ne servent qu'à la collection française** (`visuel` dans api.js), et
       une carte déjà possédée prend le sien au chargement (`prendVisuels` dans
       collection.js) au lieu de garder l'image anglaise recopiée à l'ajout. `VISUELS` y est

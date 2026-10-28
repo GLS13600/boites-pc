@@ -179,6 +179,9 @@ async function repriseCartodex(c) {
 // collection à chaque changement.
 async function prend(donnees) {
   await poseEtat(donnees, { compte: true });
+  // Des classeurs de l'appareil gardés face à un compte qui n'en a aucun (main.js,
+  // `appliqueDonnees`) : l'état local n'est PAS celui du compte, on l'envoie.
+  if (litEtat().classeurs?.length && !donnees?.classeurs?.length) { await envoie(); return; }
   ecris(CLE_ENVOYE, JSON.stringify(litEtat()));
   ecris(CLE_DATE, new Date().toISOString());
   previens();

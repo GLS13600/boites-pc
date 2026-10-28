@@ -3297,7 +3297,14 @@ async function appliqueDonnees(data, { compte = false } = {}) {
     repris.push(['partieCartes', Object.values(cartesColl.toutes()).filter((c) => c.ex?.length).length]);
   }
   // Les classeurs, repris de même (classeurs.js écarte ce qui n'a pas la bonne forme).
-  if (Array.isArray(d.classeurs) && classeursColl.remplace(d.classeurs) && classeursColl.tous().length) {
+  //
+  // SEULE exception à « le compte fait foi » : un compte SANS AUCUN classeur ne vide pas
+  // ceux de l'appareil. Jusqu'au 28/10/2026, l'appli relisait ses classeurs VIDES à chaque
+  // lancement (classeurs.js) et la synchronisation envoyait `classeurs: []` : un compte
+  // vide de classeurs est donc d'abord la trace de ce défaut, et des classeurs encore
+  // présents sur l'appareil doivent y retourner, pas disparaître (sync.js les renvoie).
+  const gardeClasseurs = compte && Array.isArray(d.classeurs) && !d.classeurs.length && classeursColl.tous().length > 0;
+  if (!gardeClasseurs && Array.isArray(d.classeurs) && classeursColl.remplace(d.classeurs) && classeursColl.tous().length) {
     repris.push(['partieClasseurs', classeursColl.tous().length]);
   }
 

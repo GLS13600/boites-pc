@@ -2739,6 +2739,13 @@ laquelle garder. **Retiré à la demande** : « on prend toujours celle du compt
   survivraient à la reprise) ;
 - le compte est vide → l'appareil envoie la sienne (premier compte, ou mode invité qui
   devient un compte).
+- **Seule exception, les classeurs** : un compte SANS AUCUN classeur ne vide pas ceux
+  de l'appareil, qui repartent vers le compte (`prend` envoie au lieu de marquer
+  « déjà envoyé »). Jusqu'au 28/10/2026 l'appli relisait ses classeurs vides à chaque
+  lancement et envoyait `classeurs: []` (voir « Les classeurs ») : un compte vide de
+  classeurs est d'abord la trace de ce défaut, et la mise à jour ne doit pas effacer
+  ceux qui survivent encore sur un appareil. Vérifié : compte sans classeur → celui de
+  l'appareil reste ; compte avec classeurs → ils remplacent ceux de l'appareil.
 - **Exception, qui n'en est pas une** : l'appli démarre sur une session DÉJÀ ouverte et
   l'appareil porte des changements faits sous ce compte mais pas encore partis (fermée
   avant les 2,5 s, hors ligne) — l'état local diffère de `pcbox.sync.envoye`. Ce sont les

@@ -140,7 +140,7 @@ const html = (s) => {
   return t.content.firstElementChild;
 };
 
-export function creeScan({ t, ouvrirFiche, ouvrirCarte = () => {}, nomDe = (k) => String(k), estMasque = () => false }) {
+export function creeScan({ t, langue = () => 'fr', ouvrirFiche, ouvrirCarte = () => {}, nomDe = (k) => String(k), estMasque = () => false }) {
   const el = html(`
     <section class="scan" aria-label="${t('scannerPokemon')}">
       <video class="scan-video" playsinline muted autoplay></video>
@@ -251,7 +251,8 @@ export function creeScan({ t, ouvrirFiche, ouvrirCarte = () => {}, nomDe = (k) =
 
   // Une carte, ou null. Les jumelles (même image, autre identifiant) l'accompagnent.
   async function reconnaisCarte(pixels) {
-    const r = await demande({ type: 'carte', pixels, n: pixels.length / (3 * TAILLE * TAILLE), taille: TAILLE },
+    // Le nom de la carte sur le cadre, dans la langue de l'appli (index.json en porte trois).
+    const r = await demande({ type: 'carte', pixels, n: pixels.length / (3 * TAILLE * TAILLE), taille: TAILLE, langue: langue() },
       [pixels.buffer]);
     const [premiere] = r.cartes;
     if (!premiere || premiere.sim < CARTE_SIM) return null;
@@ -894,7 +895,7 @@ export function creeScan({ t, ouvrirFiche, ouvrirCarte = () => {}, nomDe = (k) =
       await img.decode();
       const cote = Math.max(img.naturalWidth, img.naturalHeight) / CARTE_DANS_CADRE;
       const px = () => pixelsDe(img, img.naturalWidth / 2, img.naturalHeight / 2, cote, ECHELLES_CARTE);
-      const r = await demande({ type: 'carte', pixels: px(), n: ECHELLES_CARTE.length, taille: TAILLE });
+      const r = await demande({ type: 'carte', pixels: px(), n: ECHELLES_CARTE.length, taille: TAILLE, langue: langue() });
       // La décision du scan (seuils, rééditions) : une carte, ou null → Pokémon.
       return { proches: r.cartes, decision: await reconnaisCarte(px()) };
     };

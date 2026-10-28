@@ -797,6 +797,7 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `ml/fetch-catalogue.mjs` | Images des cartes de TCGdex (fr + en, sans Pocket) pour l'apprentissage |
 | `ml/suivi_cartes.py` | Tableau de bord en console de l'apprentissage |
 | `ml/cartes_doublons.py` | Groupes de rééditions par pHash (trop large : le bilan compare des vignettes de couleur) |
+| `ml/noms-cartes.mjs` | Noms des cartes du scan en fr / en / ja dans `index.json`, à relancer après chaque export |
 
 ## Données
 
@@ -1598,7 +1599,7 @@ modèle ultra fiable ». Google Lens n'a pas d'API publique, et Google Cloud Vis
   l'image d'une carte en une EMPREINTE de 256 nombres. Celle des 36 772 images du
   catalogue (TCGdex, français ET anglais, Pocket exclu — numérique) est calculée une fois
   sur le PC et embarquée (`public/scan-cartes/index.bin`, int8, ~9 Mo, et `index.json` :
-  identifiants et noms). Au scan, l'empreinte de la carte vue est comparée à toutes
+  identifiants et noms, 1,7 Mo). Au scan, l'empreinte de la carte vue est comparée à toutes
   (`cherche` dans scan-worker.js, ~20 ms) : la plus proche est la carte.
 - **Apprentissage** (`ml/cartes_empreinte.py`, données dans `A:\Jeu-scan`) : PAR PAIRES,
   comme CLIP — chaque carte « photographiée » (de travers, en perspective, reflet,
@@ -1642,6 +1643,21 @@ modèle ultra fiable ». Google Lens n'a pas d'API publique, et Google Cloud Vis
     catalogue AVANT le classifieur des Pokémon. Reconnue, la piste devient une `carte` :
     cadre BLEU sur la carte entière, nom de la carte, toucher → sa fiche (`ouvrirCarte`,
     fournie par main.js). Revérifiée toutes les 3 s, effacée après deux doutes.
+  - **Le nom sur le cadre est dans la langue de l'appli** (28/10/2026, à la demande) :
+    l'export ne gardait que le nom de l'IMAGE reconnue, et une carte vue sur son image
+    anglaise s'affichait « Charizard » en français. `ml/noms-cartes.mjs`, à relancer
+    APRÈS chaque export, réécrit `noms` de `index.json` en `{ en, fr, ja }` par
+    identifiant de carte, d'après les listes de TCGdex ; fr et ja ne gardent que ce qui
+    diffère de en. Le Worker reçoit `langue` (fournie par main.js) avec chaque carte.
+    - fr : le nom français de TCGdex ; pour les 1 179 cartes qu'il ne publie pas en
+      français (Gym Heroes et Challenge, Base Set 2, Skyridge, Legendary Collection…),
+      le nom anglais dont les NOMS DE POKÉMON sont traduits par ceux de l'appli
+      (« Blaine's Moltres » → « Blaine's Sulfura »).
+    - ja : le nom anglais, Pokémon traduits (« Flareon V » → « ブースター V »). L'univers
+      Cartes lit TCGdex en anglais hors du français, mais le cadre dit le Pokémon dans
+      la langue de l'appli.
+    - Le script vérifie Dracaufeu (Set de Base) et Dracaufeu-ex (151) dans les trois
+      langues avant d'écrire.
   - Bouton Poké Ball : le cadre manuel est d'abord comparé aux cartes, puis aux Pokémon.
   - Limite : une carte tournée de côté ou « full art » ne tombe pas dans la géométrie
     déduite en mode Auto ; elle se reconnaît au bouton, en la cadrant.
@@ -1651,6 +1667,11 @@ modèle ultra fiable ». Google Lens n'a pas d'API publique, et Google Cloud Vis
   - Sous la fiche d'une carte, le suivi se met en pause, comme sous celle d'un Pokémon.
   - Développement : `window.__scanCarte(url)` rend les cartes les plus proches d'une
     image. Retiré du build.
+  - **Piège de l'aperçu masqué** : après quelques rechargements, le Worker du scan peut
+    ne plus jamais répondre, même pour un Pokémon — un Worker neuf ne charge plus le
+    modèle non plus. Pour vérifier la recherche sans lui, extraire `cherche` de
+    scan-worker.js et l'exécuter sous Node sur `index.bin` / `index.json`, avec le
+    vecteur d'une carte de l'index comme requête.
 
 ## Boîte de combat
 

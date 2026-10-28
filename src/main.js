@@ -6585,6 +6585,7 @@ const scan = creeScan({
   // Le scan vit à part : il reçoit `t` plutôt que d'importer i18n.js lui-même, ce
   // qui garde main.js seul maître de l'ordre de chargement des traductions.
   t,
+  langue,
   ouvrirFiche: (key) => openSheet(key),
   // Une carte scannée ouvre sa fiche ; ses rééditions à l'image identique s'y parcourent.
   ouvrirCarte: (id, liste) => cartes.ouvre(id, liste?.length ? liste : [id]),

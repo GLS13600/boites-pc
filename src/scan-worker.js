@@ -54,7 +54,8 @@ async function traite(data) {
     } else if (data.type === 'charge-cartes') {
       // Scan des cartes : le réseau de l'EMPREINTE VISUELLE (ml/cartes_empreinte.py) et
       // l'index des cartes du catalogue — une empreinte de 256 nombres par image, en
-      // octets signés (int8, échelle 1/127), et la liste des identifiants et des noms.
+      // octets signés (int8, échelle 1/127), la liste des identifiants, et le nom de chaque
+      // carte en anglais, en français et en japonais (ml/noms-cartes.mjs).
       const t0 = performance.now();
       if (!sessions.cartes) {
         const [s, bin, meta] = await Promise.all([
@@ -70,7 +71,7 @@ async function traite(data) {
       const t0 = performance.now();
       const entree = new ort.Tensor('float32', data.pixels, [data.n, 3, data.taille, data.taille]);
       const { empreinte } = await sessions.cartes.run({ image: entree });
-      self.postMessage({ type: 'resultat', id: data.id, cartes: cherche(empreinte.data, data.n), ms: performance.now() - t0 });
+      self.postMessage({ type: 'resultat', id: data.id, cartes: cherche(empreinte.data, data.n, data.langue), ms: performance.now() - t0 });
     } else if (data.type === 'detecte') {
       const t0 = performance.now();
       const entree = new ort.Tensor('float32', data.pixels, [1, 3, data.hauteur, data.largeur]);
@@ -93,7 +94,8 @@ let index = null;
 // renormalisée, puis ressemblance (cosinus) avec chaque carte de l'index. Une carte a
 // souvent DEUX images (française et anglaise) : on garde la meilleure par identifiant.
 // ~9,4 millions de multiplications pour 36 772 cartes : une vingtaine de millisecondes.
-function cherche(e, n) {
+// Le nom est rendu dans la langue demandée : fr et ja ne portent que ce qui diffère de en.
+function cherche(e, n, langue) {
   const { vecteurs: V, dim: D, ids, noms } = index;
   const q = new Float32Array(D);
   for (let k = 0; k < n; k++) for (let j = 0; j < D; j++) q[j] += e[k * D + j];
@@ -117,7 +119,7 @@ function cherche(e, n) {
   for (const { i, s } of meilleurs) {
     if (vus.has(ids[i])) continue;
     vus.add(ids[i]);
-    sortie.push({ id: ids[i], nom: noms?.[i] ?? '', sim: Math.round(s * 1000) / 1000 });
+    sortie.push({ id: ids[i], nom: noms?.[langue]?.[ids[i]] ?? noms?.en?.[ids[i]] ?? '', sim: Math.round(s * 1000) / 1000 });
     if (sortie.length >= 8) break;
   }
   return sortie;

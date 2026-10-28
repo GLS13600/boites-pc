@@ -519,16 +519,17 @@ def exporte(args):
     index = empreintes_refs(m, cartes, dev)
     q = torch.clamp((index * 127).round(), -127, 127).to(torch.int8).numpy()
     (run / 'index.bin').write_bytes(q.tobytes())
-    # Les NOMS aussi : le cadre du scan affiche le nom de la carte aussitôt, sans réseau.
+    # Les NOMS, dans les trois langues de l'appli, sont ajoutés ensuite par
+    # ml/noms-cartes.mjs : le cadre du scan affiche le nom de la carte aussitôt, sans réseau.
     (run / 'index.json').write_text(json.dumps({'dim': DIM, 'echelle': 1 / 127,
-                                                'cartes': [c['id'] for c in cartes],
-                                                'noms': [c['nom'] for c in cartes]}, ensure_ascii=False),
+                                                'cartes': [c['id'] for c in cartes]}, ensure_ascii=False),
                                     encoding='utf8')
     m_cpu = m.float().cpu()
     x = torch.zeros(1, 3, TAILLE, TAILLE)
     torch.onnx.export(m_cpu, x, run / 'empreinte.onnx', input_names=['image'], output_names=['empreinte'],
                       dynamic_axes={'image': {0: 'lot'}, 'empreinte': {0: 'lot'}}, opset_version=17, dynamo=False)
     print(f"index : {q.shape[0]} empreintes, {q.nbytes / 1e6:.1f} Mo ; modèle : {(run / 'empreinte.onnx').stat().st_size / 1e6:.1f} Mo")
+    print("à faire ensuite, une fois copié dans l'appli : node ml/noms-cartes.mjs public/scan-cartes/index.json")
 
 
 if __name__ == '__main__':

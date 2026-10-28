@@ -224,6 +224,12 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
       l'ouverture de la liste ou d'un classeur ; détail demandé une fois s'il manque).
       Signalé : « Florizarre est dans ma collection et grisé dans le classeur 151 » — la
       pochette attendait `holo`, l'exemplaire était en `normal`.
+    - **Depuis Écarlate et Violet, plus de holo du tout** (28/10/2026, signalé sur
+      Rafflesia de 151) : toutes les rares y sont holographiques, il n'y a plus de rare
+      holo distincte, et Pokécardex range leur version de base en normale (+ reverse).
+      `ERE_TOUT_HOLO` (`sv`, `me`, `30th`, d'après l'extension de la carte) : la variante
+      holo n'existe que dans les séries d'avant. Vérifié : Rafflesia, Oyacata, Méganium →
+      normale + reverse ; Pingoléon, Dracaufeu du Set de Base, Ho-Oh → holo.
   - **Sélection multiple** (icône coche) : toucher choisit, une barre collée en bas
     propose Tout / Retirer / Ajouter ; une seule écriture pour tout le lot
     (`coll.lot`), et « Annuler » rend la collection d'avant.

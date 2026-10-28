@@ -61,11 +61,24 @@ export function extensionABall(setId, setNom) {
 // — ex, EX, GX, V, VMAX, VSTAR, TURBO, Prime, LÉGENDE, Radieux, illustrations, hyper
 // rares, promos… — n'a pas de version « holo » : sa version NORMALE est celle-là. TCGdex,
 // lui, la publie en `holo` seul ; on la range en `normal`.
+//
+// Depuis Écarlate et Violet (puis Méga-Évolution), TOUTES les rares sont holographiques :
+// il n'y a plus de rare holo distincte de la rare, et Pokécardex range leur version de
+// base en « normale » (+ reverse). TCGdex les publie en `holo` — Rafflesia de 151 —, on
+// les range donc en `normal` : la variante holo n'existe que dans les séries d'avant.
 const SPECIALE = /(^|[\s-])(ex|gx|v|vmax|vstar|vunion|break|turbo|lv\.?\s?x|prime|légende|legend)$|[★☆]/i;
+const ERE_TOUT_HOLO = /^(sv|me|30th)/i;
+const extensionDe = (c) => {
+  const s = typeof c?.set === 'object' ? c?.set?.id : c?.set;
+  if (s) return String(s);
+  const id = String(c?.id ?? '');
+  return id.slice(0, Math.max(0, id.lastIndexOf('-')));
+};
 export function holoClassique(c) {
   const r = String(c?.rarity ?? c?.rar ?? '').toLowerCase().trim();
   const nom = String(c?.name ?? c?.n ?? '').trim();
-  return categorie(c) === 'rare' && !r.startsWith('radi') && !SPECIALE.test(nom);
+  return categorie(c) === 'rare' && !r.startsWith('radi') && !SPECIALE.test(nom)
+    && !ERE_TOUT_HOLO.test(extensionDe(c));
 }
 // La variante telle qu'on la range : un « holo » sur une carte qui n'est pas une rare
 // holographique classique est sa version normale. Rareté inconnue : on ne tranche pas.

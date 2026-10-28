@@ -61,7 +61,8 @@ export function prixDe(d, variante) {
 }
 
 // L'extension d'une carte se lit dans son identifiant : « sv03.5-006 » → « sv03.5 ».
-const setDe = (id) => String(id).slice(0, Math.max(0, String(id).lastIndexOf('-'))) || String(id);
+// Une extension que l'appli fusionne à une autre (api.hote) compte pour son hôte.
+const setDe = (id) => api.hote(String(id).slice(0, Math.max(0, String(id).lastIndexOf('-'))) || String(id));
 const lit = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
 function blocsGardes() {
   try {
@@ -274,7 +275,7 @@ export function creeCartes(ctx) {
     const m = new Map();
     for (const [id, c] of Object.entries(coll.toutes())) {
       if (!c.ex?.length) continue;
-      const s = c.set || setDe(id);
+      const s = api.hote(c.set || setDe(id));
       m.set(s, (m.get(s) || 0) + 1);
     }
     return m;
@@ -777,7 +778,7 @@ export function creeCartes(ctx) {
       // plus ancienne, Énergies et Promos en fin de bloc, puis le numéro de la carte.
       const cle = new Map();
       for (const [id, c] of l) {
-        const set = c.set || setDe(id);
+        const set = api.hote(c.set || setDe(id));
         const serie = c.serie || serieDuSet(set);
         const bi = BLOCS.findIndex((b) => b.series.includes(serie));
         cle.set(id, { set, bi: bi < 0 ? BLOCS.length : bi, g: genreSet(set, c.setN || nomSetConnu(set)), r: toutesExt?.get(set)?.rang ?? -1 });
@@ -796,7 +797,7 @@ export function creeCartes(ctx) {
     if (etat.colTri !== 'extension') return `<div class="cx-grille">${l.map(tuile).join('')}</div>`;
     // Groupée comme Pokécardex : un en-tête par BLOC, puis un par extension.
     const groupes = new Map();
-    for (const e of l) { const k = e[1].set || setDe(e[0]); if (!groupes.has(k)) groupes.set(k, []); groupes.get(k).push(e); }
+    for (const e of l) { const k = api.hote(e[1].set || setDe(e[0])); if (!groupes.has(k)) groupes.set(k, []); groupes.get(k).push(e); }
     const parBloc = new Map();
     for (const [sid, cartes] of groupes) {
       const bi = etat.colBlocs?.get(cartes[0][0])?.bi ?? BLOCS.length;

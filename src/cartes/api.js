@@ -110,13 +110,51 @@ function completeLogo(x) {
   return x;
 }
 
+// ---------------------------------------------------------------- extensions fusionnées
+// TCGdex sépare ce qui ne fait qu'UNE extension en main (demandé) : la Collection
+// Classique du 30ᵉ anniversaire est rangée à la suite des cartes du 30ᵉ Anniversaire,
+// sous son nom. L'extension absorbée disparaît des listes, son compte rejoint celui de
+// l'hôte, et ses cartes — qui gardent leurs identifiants — sont rattachées à l'hôte
+// partout où l'appli range par extension (`hote`).
+const FUSIONS = { '30th-c': '30th' };
+const ABSORBEES = Object.entries(FUSIONS).reduce((m, [a, h]) => m.set(h, [...(m.get(h) || []), a]), new Map());
+export const hote = (setId) => FUSIONS[setId] ?? setId;
+const somme = (a = {}, b = {}) => Object.fromEntries([...new Set([...Object.keys(a), ...Object.keys(b)])]
+  .map((k) => [k, (Number(a[k]) || 0) + (Number(b[k]) || 0)]));
+// Une liste d'extensions sans les absorbées, l'hôte portant leur compte. Les objets lus
+// restent tels quels en mémoire (le cache les rend à chaque appel) : on rend des copies.
+function fusionneListe(l) {
+  if (!Array.isArray(l)) return l;
+  const parId = new Map(l.map((x) => [x.id, x]));
+  return l.filter((x) => !FUSIONS[x.id] || !parId.has(FUSIONS[x.id])).map((x) => {
+    const absorbees = (ABSORBEES.get(x.id) || []).map((a) => parId.get(a)).filter(Boolean);
+    return absorbees.length ? { ...x, cardCount: absorbees.reduce((c, a) => somme(c, a.cardCount), x.cardCount) } : x;
+  });
+}
+
 // ---------------------------------------------------------------- l'API
 export const series = () => lis('/series', 7 * JOUR);
 // Toutes les extensions, dans l'ordre de sortie : leurs noms pour les résultats d'une
 // recherche, et l'ordre pour montrer les cartes récentes d'abord.
-export const toutesExtensions = () => lis('/sets', 7 * JOUR).then((l) => { if (Array.isArray(l)) l.forEach(completeLogo); return l; });
-export const serie = (id) => lis(`/series/${encodeURIComponent(id)}`, 7 * JOUR).then((d) => { d?.sets?.forEach(completeLogo); return d; });
-export const extension = (id) => lis(`/sets/${encodeURIComponent(id)}`, 3 * JOUR).then(completeLogo);
+export const toutesExtensions = () => lis('/sets', 7 * JOUR).then((l) => { if (Array.isArray(l)) l.forEach(completeLogo); return fusionneListe(l); });
+export const serie = (id) => lis(`/series/${encodeURIComponent(id)}`, 7 * JOUR)
+  .then((d) => { d?.sets?.forEach(completeLogo); return d?.sets ? { ...d, sets: fusionneListe(d.sets) } : d; });
+// Une extension hôte rend ses cartes PUIS celles des extensions absorbées ; demander une
+// absorbée rend son hôte.
+const lisExtension = (id) => lis(`/sets/${encodeURIComponent(id)}`, 3 * JOUR).then(completeLogo);
+export const extension = async (id) => {
+  const h = hote(id);
+  // Une absorbée illisible (hors ligne, pas encore en cache) ne prive pas de l'hôte.
+  const [s, ...absorbees] = await Promise.all([lisExtension(h),
+    ...(ABSORBEES.get(h) || []).map((a) => lisExtension(a).catch(() => null))]);
+  const autres = absorbees.filter((a) => a?.cards);
+  if (!s || !autres.length) return s;
+  return {
+    ...s,
+    cards: [...(s.cards || []), ...autres.flatMap((a) => a.cards)],
+    cardCount: autres.reduce((c, a) => somme(c, a.cardCount), s.cardCount),
+  };
+};
 // Le détail d'une carte : rareté, variantes, Pokémon représentés, prix. Le prix bouge
 // chaque jour, le reste jamais : `pourPrix` raccourcit la durée de garde à un jour.
 export const carte = (id, { pourPrix = false } = {}) =>

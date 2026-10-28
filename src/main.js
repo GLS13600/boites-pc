@@ -24,6 +24,7 @@ import * as cartesColl from './cartes/collection.js';
 import * as classeursColl from './cartes/classeurs.js';
 import { lisCartodex } from './cartes/cartodex.js';
 import * as recents from './recents.js';
+import * as advisor from './cartes/advisor.js';
 import { creeCartes } from './cartes/vues.js';
 // La synchronisation ne connaît ni l'état ni les clés de stockage : main.js lui
 // fournit de quoi lire et poser la collection, elle se charge du transport.
@@ -1974,6 +1975,7 @@ function equipeAutorisee(jeu = state.jeu) {
 function retientEquipeLibre() {
   if (estPremium() || equipeLibre()) return;
   try { localStorage.setItem(LIBRE_KEY, state.jeu); } catch { /* le repli suffira */ }
+  marqueChange();
 }
 
 // L'écran d'abonnement : un panneau, comme les autres. Il s'ouvre là où l'on bute sur
@@ -3165,9 +3167,17 @@ function donneesCompletes() {
     onglets: state.ordreOnglets,
     // Équipes
     equipes: state.equipes,
-    // Cartes — l'héritage de Cartodex : chaque carte et ses exemplaires, et les classeurs.
+    // Cartes — l'héritage de Cartodex : chaque carte et ses exemplaires (favoris compris),
+    // les classeurs, et la courbe de valeur de la collection.
     cartes: cartesColl.exporte(),
     classeurs: classeursColl.exporte(),
+    valeurs: cartesColl.historique(),
+    // Depuis le 28/10/2026, « toutes les données » partent avec le compte : le journal
+    // « Récemment », PokéAdvisor (sans la clé Mistral, qui reste sur l'appareil) et la
+    // version de l'équipe gratuite (sans elle, changer d'appareil contournerait la limite).
+    recents: recents.tous(),
+    advisor: advisor.exporte(),
+    equipeLibre: (() => { try { return localStorage.getItem(LIBRE_KEY); } catch { return null; } })(),
     // Préférences
     jeu: state.jeu,
     view: state.view,
@@ -3199,10 +3209,18 @@ function importTout() {
 // Applique une charge, d'où qu'elle vienne : un fichier choisi à la main, ou la
 // collection rapportée du compte. Elle LÈVE sur un contenu inexploitable et rend la
 // liste de ce qui a été repris — c'est à l'appelant de décider s'il faut le dire.
-async function appliqueDonnees(data) {
+//
+// `compte` : la charge vient du compte, qui FAIT FOI (sync.js). Elle remplace alors tout :
+// une partie absente vaut vide, et les équipes ne fusionnent pas — sans cela, des cartes
+// ou des équipes de l'appareil survivraient à la reprise du compte.
+async function appliqueDonnees(data, { compte = false } = {}) {
   // Tableau nu = tout premier format, qui ne portait que les captures.
-  const d = Array.isArray(data) ? { caught: data } : data;
+  let d = Array.isArray(data) ? { caught: data } : data;
   if (!d || typeof d !== 'object') throw new Error('format');
+  if (compte) {
+    d = { caught: [], caughtShiny: [], boxes: {}, order: {}, equipes: {}, cartes: {}, classeurs: [], ...d };
+    state.equipes = {};
+  }
   // Des CLÉS, traduites seulement au moment du message : le fichier peut changer la
   // langue, et la confirmation doit alors partir dans la NOUVELLE.
   const repris = [];
@@ -3270,6 +3288,8 @@ async function appliqueDonnees(data) {
     }
     if (n) { saveCombat(); repris.push(['partieEquipes', n]); }
   }
+  // Un compte sans équipe vide celles de l'appareil : il faut l'écrire aussi.
+  if (compte) saveCombat();
 
   // Les cartes : reprises champ par champ (collection.js écarte tout identifiant ou toute
   // image qui n'a pas la forme attendue, comme `cleAdmise` pour les Pokémon).
@@ -3279,6 +3299,15 @@ async function appliqueDonnees(data) {
   // Les classeurs, repris de même (classeurs.js écarte ce qui n'a pas la bonne forme).
   if (Array.isArray(d.classeurs) && classeursColl.remplace(d.classeurs) && classeursColl.tous().length) {
     repris.push(['partieClasseurs', classeursColl.tous().length]);
+  }
+
+  // Le reste de « toutes les données » : courbe de valeur, journal, PokéAdvisor, équipe
+  // gratuite. Chaque module reprend champ par champ ce qui vient de l'extérieur.
+  if (Array.isArray(d.valeurs)) cartesColl.remetHistorique(d.valeurs);
+  if (Array.isArray(d.recents)) recents.remet(d.recents);
+  if (d.advisor && typeof d.advisor === 'object') advisor.remet(d.advisor);
+  if (typeof d.equipeLibre === 'string' && JEUX.some((v) => v.k === d.equipeLibre)) {
+    try { localStorage.setItem(LIBRE_KEY, d.equipeLibre); } catch { /* le repli suffira */ }
   }
 
   // Préférences : chacune n'est reprise que si elle est valide.
@@ -6744,17 +6773,22 @@ if (compteUI.revientDeConnexion()) state.vue = 'reglages';
 // La surcouche doit être en place AVANT le premier rendu : sinon l'appli s'ouvrirait
 // une fraction de seconde en français avant de se retraduire. En français il n'y a
 // rien à charger et `chargeLangue` rend la main tout de suite.
-poseLangueEtRend(langue());
+const langueLancee = Promise.resolve(poseLangueEtRend(langue()));
 
 // Le compte se relit au démarrage. `demarre()` rend la main tout de suite quand rien
 // n'est configuré, et n'attend jamais le réseau : le premier rendu n'en dépend pas.
 compteUI.branche(app, compteSheet);
+// Premier lancement : se connecter ou continuer en invité (compte-ui.js). Une fois la
+// langue posée, sans quoi l'écran s'ouvrirait en français avant de se retraduire.
+langueLancee.finally(() => compteUI.accueil());
 // La synchronisation reçoit de quoi lire et poser la collection. Elle ne part que
 // s'il y a un compte connecté : sans configuration Supabase, `marqueChange()` est un
 // appel vide, et rien ne change pour qui n'a pas de compte.
 brancheSync({ lit: donneesCompletes, pose: appliqueDonnees });
 cartesColl.brancheEcriture(() => marqueChange());
 classeursColl.brancheEcriture(() => marqueChange());
+recents.brancheEcriture(() => marqueChange());
+advisor.brancheEcriture(() => marqueChange());
 
 // Mise au point : le contrat de la synchronisation, pour le vérifier dans l'aperçu
 // sans passer par un fichier ni par un serveur. Retiré du build par Vite.

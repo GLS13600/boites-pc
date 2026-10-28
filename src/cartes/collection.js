@@ -228,8 +228,8 @@ export function assainit(v) {
 
 // ---------------------------------------------------------------- historique de la valeur
 // Une valeur par jour, relevée quand on regarde la page Valeur ou qu'on actualise les
-// prix : c'est ce qui permet de tracer la courbe de la collection. Donnée dérivée,
-// hors sauvegarde (elle se reconstitue toute seule).
+// prix : c'est ce qui permet de tracer la courbe de la collection. Elle part avec le
+// compte (28/10/2026 : « toutes les données ») : un relevé prévient la synchronisation.
 export function historique() {
   try {
     const v = JSON.parse(localStorage.getItem(CLE_VALEURS));
@@ -246,4 +246,12 @@ export function noteValeurDuJour(valeur) {
     h[h.length - 1].v = v;
   } else h.push({ d, v });
   try { localStorage.setItem(CLE_VALEURS, JSON.stringify(h.slice(-400))); } catch { /* sans gravité */ }
+  surEcriture();
+}
+// La courbe reprise du compte, point par point (une date, une valeur positive).
+export function remetHistorique(v) {
+  if (!Array.isArray(v)) return;
+  const h = v.filter((x) => x && /^\d{4}-\d{2}-\d{2}$/.test(String(x.d)) && Number(x.v) >= 0 && Number(x.v) < 1e8)
+    .map((x) => ({ d: x.d, v: Math.round(Number(x.v) * 100) / 100 })).slice(-400);
+  try { localStorage.setItem(CLE_VALEURS, JSON.stringify(h)); } catch { /* sans gravité */ }
 }

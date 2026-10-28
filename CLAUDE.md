@@ -2713,31 +2713,64 @@ un Pokémon dans le métro marche exactement comme avant.
   l'aperçu : deux captures, déconnecté, **zéro requête** vers Supabase. L'application
   reste exactement ce qu'elle était pour qui n'a pas de compte.
 
-#### Quand les deux côtés divergent
+#### À la connexion, le compte fait foi (28/10/2026)
 
-C'est le seul moment délicat, et il n'arrive qu'À LA CONNEXION. Trois cas :
+Un panneau demandait autrefois, quand l'appareil ET le compte portaient une collection,
+laquelle garder. **Retiré à la demande** : « on prend toujours celle du compte ».
 
-- rien sur le serveur → on envoie le local, sans rien demander ;
-- rien en local → on prend le serveur, sans rien demander ;
-- **les deux portent quelque chose → ON DEMANDE.** Un panneau résume les deux
-  collections (captures, équipes), dit d'où et de quand vient celle du compte, et
-  propose trois réponses : garder celle de l'appareil, prendre celle du compte,
-  décider plus tard. Écraser des centaines d'heures de jeu en silence serait
-  impardonnable, et c'est la seule raison pour laquelle ce panneau existe.
-  - **Fermer sans répondre vaut « plus tard »** — le voile, le glissement vers le
-    bas : on ne touche alors à rien, ni ici ni sur le serveur, et la question se
-    reposera à la connexion suivante.
-  - Les deux réponses ont le **même poids visuel** : aucune n'est « primaire », on ne
-    pousse pas vers l'une quand l'autre va être remplacée.
+- le compte porte une collection → elle **remplace** celle de l'appareil, sans rien
+  demander (`appliqueDonnees(d, { compte: true })` : une partie absente vaut vide, les
+  équipes ne fusionnent pas — sinon des cartes ou des équipes de l'appareil
+  survivraient à la reprise) ;
+- le compte est vide → l'appareil envoie la sienne (premier compte, ou mode invité qui
+  devient un compte).
+- **Exception, qui n'en est pas une** : l'appli démarre sur une session DÉJÀ ouverte et
+  l'appareil porte des changements faits sous ce compte mais pas encore partis (fermée
+  avant les 2,5 s, hors ligne) — l'état local diffère de `pcbox.sync.envoye`. Ce sont les
+  plus récents du compte : ils partent au lieu d'être écrasés. Après une connexion,
+  `pcbox.sync.envoye` est vide (la déconnexion l'efface) : le compte gagne toujours. Un
+  envoi d'avant le 28/10/2026 (sans `recents`) n'est pas pris pour un changement en
+  attente, sans quoi la mise à jour aurait fait écraser le compte par l'appareil.
 - Après avoir pris la collection du serveur, on **relit l'état réel** pour marquer ce
   qui est « déjà envoyé », au lieu de recopier l'objet reçu : `jsonb` réordonne les
   clés, le texte comparé ne correspondrait jamais, et la collection repartirait à
   chaque changement.
-- La confrontation n'a lieu qu'au **passage** à un compte connecté : `surChangement`
-  est aussi émis quand le jeton se rafraîchit, toutes les heures, et reposer la
-  question à chaque fois serait insupportable.
-- La déconnexion **oublie ce qu'on croyait envoyé** : se reconnecter doit reconfronter
-  les deux côtés, pas repartir d'une certitude périmée.
+- La reprise n'a lieu qu'au **passage** à un compte connecté : `surChangement` est
+  aussi émis quand le jeton se rafraîchit, toutes les heures.
+
+#### Tout ce que le compte enregistre (28/10/2026 : « toutes les données »)
+
+Captures normales et chromatiques, réglages et ordre des boîtes, ordre des onglets,
+équipes de toutes les versions, cartes (exemplaires, favoris), classeurs, préférences
+(jeu, vue, thème, langue) — et depuis le 28/10/2026 : la **courbe de valeur** de la
+collection (`valeurs`), le journal **« Récemment »** (`recents`), **PokéAdvisor**
+(`advisor` : modèle, styles, avatar, souvenirs, conversation — JAMAIS la clé Mistral)
+et la **version de l'équipe gratuite** (`equipeLibre` : sans elle, changer d'appareil
+contournerait la limite d'Unydex+). Ces modules préviennent la synchronisation à chaque
+écriture (`brancheEcriture`), et reprennent champ par champ ce qui revient du compte.
+Restent sur l'appareil : historique des prix (donnée de marché), cache TCGdex,
+préférences d'affichage (liste du Pokédex, blocs dépliés, mode du scan, pubs).
+
+#### L'écran d'accueil du premier lancement (28/10/2026)
+
+Demandé : « au premier lancement, l'écran qui demande de se connecter ou de passer en
+mode invité, avec une adresse et un mot de passe ou par Google ». `accueil()` de
+compte-ui.js, appelé une fois la langue posée :
+
+- plein écran par-dessus tout (`.bienvenue`, z-index 40), le formulaire du bloc Compte
+  du Profil (`htmlDeconnecte`, mêmes écoutes : Google, Apple en natif, e-mail et mot de
+  passe, création de compte, mot de passe oublié), puis « Continuer en invité » ;
+- `pcbox.bienvenue` retient la réponse (`compte` ou `invite`) : l'écran ne revient
+  plus, même après une déconnexion — le Profil prend le relais. Une session arrivée le
+  referme d'elle-même ;
+- une session déjà ouverte (`pcbox.session`) le saute ; le retour d'une connexion Google
+  sur le web le montre avec « Connexion en cours… » ; sans Supabase configuré, pas
+  d'écran ;
+- refait à chaque changement en GARDANT ce qui est tapé (sauf le mot de passe).
+- Vérifié dans l'aperçu, en clair et en sombre : affichage au premier lancement,
+  bascule vers la création de compte (adresse conservée), erreur « mot de passe
+  oublié » sans adresse, « invité » qui ferme et ne revient pas au rechargement. La
+  connexion réelle (e-mail, Google) n'a pas été jouée : pas de compte de test.
 
 #### Ce qui n'est PAS fait, et pourquoi
 
@@ -2751,19 +2784,19 @@ C'est le seul moment délicat, et il n'arrive qu'À LA CONNEXION. Trois cas :
 
 #### Mise au point
 
-Trois crochets de développement, tous retirés du build par Vite (vérifié : zéro
+Deux crochets de développement, tous retirés du build par Vite (vérifié : zéro
 occurrence dans `dist/`), sur le modèle de `window.__suivi` et `window.__ia` du scan :
 
 - `window.__compte` — l'état du compte, pour simuler une session sans créer de compte ;
-- `window.__fusion(infos)` — ouvre le panneau d'arbitrage sans serveur ;
 - `window.__donnees` — `{ lit, pose }`, le contrat de la synchronisation.
 
 Vérifié dans l'aperçu : la charge envoyée porte bien `id`, `donnees`, `modifie_le` et
 `appareil`, et `donnees` exactement les douze champs de l'export, sans date ;
 `pose` puis `lit` rendent la charge à l'identique — c'est ce qui garantit qu'on ne
 renvoie pas en boucle ; une charge vide, nulle ou textuelle est refusée, un tableau nu
-(le tout premier format d'export) est accepté ; les trois réponses du panneau et sa
-fermeture par le voile résolvent correctement.
+(le tout premier format d'export) est accepté. Le 28/10/2026 : une charge du compte
+(`{ compte: true }`) remplace captures, équipes, cartes, journal et PokéAdvisor, sans
+la clé Mistral, et écarte une entrée piégée du journal.
 
 ### Bloc « Légal » et dossier de conformité (02/10/2026)
 

@@ -9,8 +9,10 @@
 //   - aucune écriture n'attend le réseau ; l'interface ne montre jamais de sablier ;
 //   - un échec d'envoi est réessayé au prochain changement, pas signalé bruyamment ;
 //   - deux appareils modifiés hors ligne en même temps ne fusionnent pas champ par
-//     champ : c'est le DERNIER ÉCRIT qui gagne, et on le dit à l'utilisateur plutôt
-//     que d'écraser en silence (voir `aLaConnexion`).
+//     champ : c'est le DERNIER ÉCRIT qui gagne ;
+//   - à la connexion, LE COMPTE GAGNE (28/10/2026, à la demande) : s'il porte une
+//     collection, elle remplace celle de l'appareil, sans rien demander. L'appareil
+//     n'envoie la sienne que si le compte est vide (voir `aLaConnexion`).
 //
 // Pourquoi pas une vraie fusion (CRDT, journal d'opérations) : la collection tient
 // dans un objet que l'appli sait déjà produire et relire (`donneesCompletes` /
@@ -21,8 +23,7 @@
 //
 // Ce module ne connaît NI `state`, NI les clés de `localStorage`, NI la forme des
 // données : main.js les lui fournit par `brancher`. Il transporte, il n'interprète
-// pas — sauf pour compter captures et équipes, le minimum pour poser une question
-// compréhensible.
+// pas — sauf pour savoir si une collection est vide.
 
 import { sb, etat, configure, surChangement } from './compte.js';
 import { lisCartodex } from './cartes/cartodex.js';
@@ -120,16 +121,13 @@ const ecris = (k, v) => { try { localStorage.setItem(k, v); } catch { /* quota *
 
 // ---------------------------------------------------------------- à la connexion
 //
-// Le seul moment où les deux côtés peuvent diverger. Trois cas :
+// Le seul moment où les deux côtés peuvent diverger. Deux cas, sans jamais rien
+// demander (un panneau demandait autrefois laquelle garder ; retiré à la demande) :
 //
-//   - rien sur le serveur  → on envoie le local, sans rien demander ;
-//   - rien en local        → on prend le serveur, sans rien demander ;
-//   - les deux existent    → on demande, en montrant les DATES et le contenu. Écraser
-//                            la collection de quelqu'un sans le lui dire serait
-//                            impardonnable : ce sont des centaines d'heures de jeu.
-//
-// `demande` est fourni par l'interface et rend 'local' | 'serveur' | 'rien'.
-export async function aLaConnexion(demande) {
+//   - le compte porte une collection → elle REMPLACE celle de l'appareil ;
+//   - le compte est vide             → l'appareil envoie la sienne (premier compte,
+//                                       ou mode invité qui devient un compte).
+export async function aLaConnexion() {
   if (!configure() || !etat.user || !litEtat) return;
   const c = await sb();
   if (!c) return;
@@ -146,23 +144,20 @@ export async function aLaConnexion(demande) {
   // tout part dans la table d'Unydex. Une seule fois : ensuite la ligne d'Unydex existe.
   if (!data) await repriseCartodex(c);
 
-  const distant = rempli(data?.donnees) ? data : null;
-  const local = litEtat();
-
-  if (!distant) { await envoie(); return; }
-  if (!rempli(local)) { await prend(distant.donnees); return; }
-
-  // Les deux portent quelque chose : c'est à l'utilisateur de trancher.
-  const choix = await demande({
-    quand: data.modifie_le,
-    appareil: data.appareil,
-    local: compte(local),
-    serveur: compte(distant.donnees),
-  });
-  if (choix === 'serveur') await prend(distant.donnees);
-  else if (choix === 'local') await envoie();
-  // 'rien' : on ne touche à rien. Le prochain changement local repartira, et la
-  // question se reposera à la prochaine connexion.
+  // Une exception, qui n'en est pas une : l'appli démarre sur une session DÉJÀ ouverte
+  // et l'appareil porte des changements faits sous ce compte mais pas encore partis
+  // (fermée avant l'envoi, hors ligne). Ce sont les plus récents du compte : on les
+  // envoie au lieu de les écraser. Après une connexion, `CLE_ENVOYE` est vide (la
+  // déconnexion l'efface) : le compte gagne toujours.
+  //
+  // Un envoi d'AVANT le 28/10/2026 n'a pas encore les champs ajoutés ce jour-là
+  // (`recents`…) : il diffère forcément de l'état d'aujourd'hui, sans rien d'en attente.
+  // On ne le prend donc pas pour un changement local — le compte fait foi.
+  const envoye = lis(CLE_ENVOYE);
+  const enAttente = !!envoye && envoye.includes('"recents":') && envoye !== JSON.stringify(litEtat());
+  if (enAttente) await envoie();
+  else if (rempli(data?.donnees)) await prend(data.donnees);
+  else await envoie();
 }
 
 // La sauvegarde de Cartodex (`collections.data`, lue seulement, jamais écrite), fondue
@@ -183,7 +178,7 @@ async function repriseCartodex(c) {
 // texte comparé par `envoie()` ne correspondrait jamais — on renverrait la même
 // collection à chaque changement.
 async function prend(donnees) {
-  await poseEtat(donnees);
+  await poseEtat(donnees, { compte: true });
   ecris(CLE_ENVOYE, JSON.stringify(litEtat()));
   ecris(CLE_DATE, new Date().toISOString());
   previens();
@@ -196,36 +191,26 @@ const rempli = (d) => !!(d?.caught?.length || d?.caughtShiny?.length
   || Object.values(d?.cartes ?? {}).some((c) => c?.ex?.length || c?.fav)
   || (Array.isArray(d?.classeurs) && d.classeurs.length > 0));
 
-// De quoi présenter un choix compréhensible : « 342 capturés, 2 équipes » parle,
-// « modifié le 12/03 » tout seul ne dit pas ce qu'on risque de perdre.
-function compte(d) {
-  return {
-    captures: (d?.caught?.length ?? 0) + (d?.caughtShiny?.length ?? 0),
-    equipes: Object.values(d?.equipes ?? {}).filter((e) => e?.some?.(Boolean)).length,
-    cartes: Object.values(d?.cartes ?? {}).filter((c) => c?.ex?.length).length,
-  };
-}
-
 // ---------------------------------------------------------------- suivi du compte
 //
-// La confrontation n'a lieu qu'au PASSAGE à un compte connecté. `surChangement` est
-// aussi émis quand le jeton se rafraîchit, toutes les heures : relancer la question
-// à chaque fois serait insupportable, d'où la comparaison d'identifiant.
+// La reprise n'a lieu qu'au PASSAGE à un compte connecté. `surChangement` est aussi
+// émis quand le jeton se rafraîchit, toutes les heures : relire le compte à chaque fois
+// remplacerait des changements pas encore envoyés, d'où la comparaison d'identifiant.
 let dernierUser = null;
-export function suitLeCompte(demande) {
+export function suitLeCompte() {
   surChangement(() => {
     const id = etat.user?.id ?? null;
     if (id === dernierUser) return;
     dernierUser = id;
     if (!id) {
       // Déconnexion : on oublie ce qu'on croyait envoyé. Se reconnecter doit
-      // reconfronter les deux côtés, et non repartir d'une certitude périmée.
+      // relire le compte, et non repartir d'une certitude périmée.
       try { localStorage.removeItem(CLE_ENVOYE); } catch { /* quota */ }
       previens();
       return;
     }
-    // Cas le plus courant : l'appli démarre avec une session déjà en place. C'est
-    // exactement le moment de confronter les deux côtés.
-    aLaConnexion(demande).catch((e) => console.warn('sync', e?.message ?? e));
+    // Cas le plus courant : l'appli démarre avec une session déjà en place. Le compte
+    // est relu, et il fait foi.
+    aLaConnexion().catch((e) => console.warn('sync', e?.message ?? e));
   });
 }

@@ -39,8 +39,7 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
     occupe: false,
     pseudoEdit: false,   // le pseudo est en cours de modification, sur place
     pseudoEtat: null,    // 'libre' | 'pris' | 'invalide'
-    panneau: null,       // 'avatar' | 'fusion' | null — le panneau n'en montre qu'un
-    fusion: null,        // { infos, resoudre } quand on arbitre deux collections
+    panneau: null,       // 'avatar' | null
     avatarQ: '',
     avatarChoix: null,   // choix EN ATTENTE de validation, jamais encore enregistré
     avatarShiny: false,
@@ -67,12 +66,18 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
   // qu'il ne s'est rien passé.
   const attenteRetour = () => revientDeConnexion() && !etat.pret && !erreurRetour();
 
-  // Un rendu suffit : le bloc est reconstruit avec le reste de la page.
-  surChangement(() => { ui.erreur = null; rafraichit(); });
+  // Un rendu suffit : le bloc est reconstruit avec le reste de la page. Une session
+  // qui arrive referme l'écran d'accueil.
+  surChangement(() => {
+    ui.erreur = null;
+    if (etat.user && !litAccueil()) ecritAccueil('compte');
+    if (etat.user && ecran) fermeAccueil('compte');
+    rafraichit();
+  });
   // La ligne « envoyée à … » resterait figée sans cela.
   surSync(() => rafraichit());
-  // Et c'est ici qu'on arbitre, à l'arrivée d'une session.
-  suitLeCompte(demandeFusion);
+  // À l'arrivée d'une session, le compte est relu : il fait foi, sans rien demander.
+  suitLeCompte();
 
   const avatarUrl = (cle, shiny) => sprites.still(spriteKey(cle), !!shiny);
   const entreeDe = (cle) => CATALOGUE.find((e) => String(e.id) === String(cle));
@@ -82,6 +87,80 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
   function rafraichit() {
     rend();
     if (ui.panneau) panneau.maj(htmlPanneau());
+    majAccueil();
+  }
+
+  // ------------------------------------------------------------ écran d'accueil
+  //
+  // Au PREMIER lancement (28/10/2026, à la demande) : se connecter — e-mail et mot de
+  // passe, ou Google — ou continuer en invité. Le formulaire est celui du bloc Compte du
+  // Profil (`htmlDeconnecte`), mêmes écoutes : rien n'est écrit deux fois.
+  //   - `pcbox.bienvenue` retient la réponse ('compte' ou 'invite') : l'écran ne revient
+  //     plus, même après une déconnexion — le Profil prend alors le relais ;
+  //   - une session déjà ouverte (`pcbox.session`, la clé de supabase-js) le saute :
+  //     quelqu'un de connecté n'a rien à choisir. Le retour d'une connexion Google sur le
+  //     web, lui, le montre avec « Connexion en cours… » jusqu'à ce que la session arrive ;
+  //   - sans Supabase configuré, pas d'écran : il n'y aurait que « invité » à proposer.
+  // Il vit dans document.body, par-dessus tout, comme les panneaux.
+  const CLE_ACCUEIL = 'pcbox.bienvenue';
+  let ecran = null;
+  const litAccueil = () => { try { return localStorage.getItem(CLE_ACCUEIL); } catch { return 'invite'; } };
+  const ecritAccueil = (v) => { try { localStorage.setItem(CLE_ACCUEIL, v); } catch { /* il reviendra, sans gravité */ } };
+  const aUneSession = () => { try { return !!localStorage.getItem('pcbox.session'); } catch { return false; } };
+
+  function accueil() {
+    if (ecran || !configure() || etat.user || litAccueil()) return;
+    if (aUneSession() && !revientDeConnexion()) return;
+    ecran = document.createElement('div');
+    ecran.className = 'bienvenue';
+    ecran.setAttribute('role', 'dialog');
+    ecran.setAttribute('aria-modal', 'true');
+    ecran.setAttribute('aria-labelledby', 'bienvenue-titre');
+    document.body.append(ecran);
+    ecran.addEventListener('click', (e) => {
+      if (e.target.closest('[data-bienvenue-invite]')) fermeAccueil('invite');
+    });
+    ecoute(ecran);
+    majAccueil();
+  }
+
+  function htmlAccueil() {
+    const erreur = ui.erreur ?? erreurRetour();
+    return `
+      <div class="bienvenue-carte cpte">
+        <img class="bienvenue-logo" src="icon.svg" alt="" />
+        <h1 id="bienvenue-titre">${t('bienvenueTitre')}</h1>
+        <p class="bienvenue-texte">${t('bienvenueTexte')}</p>
+        ${attenteRetour() ? `<p class="reg-aide">${t('cpteConnexionEnCours')}</p>` : htmlDeconnecte({ aide: false })}
+        ${erreur ? `<p class="cpte-err">${esc(erreur)}</p>` : ''}
+        ${ui.message ? `<p class="cpte-ok">${esc(ui.message)}</p>` : ''}
+        <div class="bienvenue-invite">
+          <button class="btn" data-bienvenue-invite>${t('bienvenueInvite')}</button>
+          <small>${t('bienvenueInviteAide')}</small>
+        </div>
+      </div>`;
+  }
+
+  // Refait l'écran en GARDANT ce qui est tapé : une erreur de mot de passe ne doit pas
+  // obliger à réécrire son adresse.
+  function majAccueil() {
+    if (!ecran) return;
+    const gardes = Object.fromEntries([...ecran.querySelectorAll('input[name]')]
+      .filter((i) => i.type !== 'password').map((i) => [i.name, i.value]));
+    ecran.innerHTML = htmlAccueil();
+    for (const [nom, v] of Object.entries(gardes)) {
+      const champ = ecran.querySelector(`input[name="${nom}"]`);
+      if (champ && !champ.value) champ.value = v;
+    }
+  }
+
+  function fermeAccueil(choix) {
+    ecritAccueil(choix);
+    const el = ecran;
+    ecran = null;
+    if (!el) return;
+    el.classList.add('part');
+    setTimeout(() => el.remove(), 320);
   }
 
   // ------------------------------------------------------------ rendu de la page
@@ -99,10 +178,10 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
       </div>`;
   }
 
-  function htmlDeconnecte() {
+  function htmlDeconnecte({ aide = true } = {}) {
     const inscription = ui.mode === 'inscription';
     return `
-      <p class="reg-aide">${t('compteAide')}</p>
+      ${aide ? `<p class="reg-aide">${t('compteAide')}</p>` : ''}
 
       <div class="cpte-oauth">
         ${/* `VITE_GOOGLE_CLIENT_ID` est l'interrupteur unique de Google, sur le web
@@ -292,7 +371,7 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
       <div class="cpte-grille">${htmlPicks()}</div>`;
   }
 
-  const htmlPanneau = () => (ui.panneau === 'fusion' ? htmlPanneauFusion() : htmlPanneauAvatar());
+  const htmlPanneau = () => htmlPanneauAvatar();
 
   function ouvreAvatar() {
     const p = etat.profil ?? {};
@@ -305,12 +384,7 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
 
   // Appelé par main.js : le panneau se ferme aussi par le voile et par le
   // glissement vers le bas, qu'on ne voit pas d'ici.
-  // Fermer le panneau d'arbitrage SANS avoir choisi vaut « plus tard » : on ne
-  // touche à rien, ni ici ni sur le serveur, et la question se reposera.
-  function panneauFerme() {
-    ui.panneau = null;
-    if (ui.fusion) { const f = ui.fusion; ui.fusion = null; f.resoudre('rien'); }
-  }
+  function panneauFerme() { ui.panneau = null; }
 
   // Un choix ne redessine QUE ce qui change : refaire le panneau entier rendrait la
   // frappe et le défilement de la grille désagréables.
@@ -330,50 +404,6 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
   function majPicks() {
     const grille = panneau.corps()?.querySelector('.cpte-grille');
     if (grille) grille.innerHTML = htmlPicks();
-  }
-
-  // ------------------------------------------------------------ arbitrage
-  //
-  // Appelé par sync.js quand L'APPAREIL ET LE COMPTE portent tous deux une
-  // collection, et qu'elles diffèrent. On ne tranche jamais à la place de
-  // l'utilisateur : ce sont des centaines d'heures de jeu, et l'une des deux va
-  // être remplacée. Les deux sont donc résumées, avec la date et l'appareil.
-  function demandeFusion(infos) {
-    return new Promise((resoudre) => {
-      ui.fusion = { infos, resoudre };
-      ui.panneau = 'fusion';
-      panneau.ouvre(htmlPanneau());
-    });
-  }
-
-  // Mise au point : ouvrir l'arbitrage sans serveur, avec les chiffres qu'on veut.
-  // Même idiome que `window.__suivi` et `window.__ia` du scan, et retiré du build.
-  if (import.meta.env.DEV) {
-    window.__fusion = (infos) => demandeFusion(infos ?? {
-      quand: new Date().toISOString(),
-      appareil: 'iPhone',
-      local: { captures: 342, equipes: 2 },
-      serveur: { captures: 310, equipes: 1 },
-    });
-  }
-
-  function htmlPanneauFusion() {
-    const { infos } = ui.fusion ?? { infos: { local: {}, serveur: {} } };
-    const resume = (c) => t('syncResume', c.captures ?? 0, c.equipes ?? 0, c.cartes ?? 0);
-    return `
-      <h2 class="bs-title">${t('syncTitre')}</h2>
-      <p class="reg-aide">${esc(t('syncTexte', dateCourte(infos.quand), infos.appareil || ''))}</p>
-      <div class="cpte-choix">
-        <button class="cpte-opt" data-cpte-fusion="local">
-          <b>${t('syncGarderLocal')}</b>
-          <small>${esc(resume(infos.local))}</small>
-        </button>
-        <button class="cpte-opt" data-cpte-fusion="serveur">
-          <b>${t('syncGarderServeur')}</b>
-          <small>${esc(resume(infos.serveur))}</small>
-        </button>
-      </div>
-      <button class="btn cpte-plus-tard" data-cpte-fusion="rien">${t('syncPlusTard')}</button>`;
   }
 
   // ------------------------------------------------------------ interactions
@@ -398,21 +428,10 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
       if (e.target.closest('[data-cpte-mode]')) {
         ui.mode = ui.mode === 'connexion' ? 'inscription' : 'connexion';
         ui.erreur = ui.message = ui.pseudoEtat = null;
-        return rend();
+        return rafraichit();
       }
 
       if (e.target.closest('[data-cpte-avatar]')) return ouvreAvatar();
-
-      const fusion = e.target.closest('[data-cpte-fusion]');
-      if (fusion) {
-        const choix = fusion.dataset.cpteFusion;
-        const f = ui.fusion;
-        ui.fusion = null;
-        ui.panneau = null;
-        panneau.ferme();
-        f?.resoudre(choix);
-        return;
-      }
 
       // Envoi immédiat, à la demande. L'envoi automatique se tait ; celui-ci répond,
       // parce qu'on l'a demandé pour être rassuré.
@@ -462,9 +481,10 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
       }
 
       if (e.target.closest('[data-cpte-oubli]')) {
-        const champ = racine?.querySelector('[data-cpte-form] [name="email"]');
+        // Le champ de CE formulaire : celui du Profil ou celui de l'écran d'accueil.
+        const champ = cible.querySelector('[data-cpte-form] [name="email"]');
         const mail = champ?.value?.trim();
-        if (!mail) { ui.erreur = t('cpteMailInvalide'); return rend(); }
+        if (!mail) { ui.erreur = t('cpteMailInvalide'); return rafraichit(); }
         return lance(async () => {
           const r = await motDePasseOublie(mail, t);
           if (r.ok) ui.message = t('cpteOublieEnvoye');
@@ -559,5 +579,5 @@ export function creeCompteUI({ t, esc, sprites, spriteKey, imgFallback, CATALOGU
     }
   }
 
-  return { htmlCompte, branche, demarre, panneauFerme, revientDeConnexion };
+  return { htmlCompte, branche, demarre, panneauFerme, revientDeConnexion, accueil };
 }

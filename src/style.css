@@ -2977,6 +2977,50 @@ img {
 .cpte-note.libre { color: #1b8a4b; }
 .cpte-note.pris, .cpte-note.invalide { color: var(--ball); }
 
+/* ---------- Écran d'accueil du premier lancement (compte-ui.js, `accueil`) ----------
+   Par-dessus tout — barre du bas (15), panneaux (21) — : on choisit d'abord d'avoir un
+   compte ou non. Le formulaire est celui du Profil, avec ses classes .cpte-*. */
+.bienvenue {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--paper);
+  padding: calc(var(--e-8) + var(--safe-top)) var(--e-4) calc(var(--e-6) + var(--safe-bottom));
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  animation: bienvenue-entre var(--d-moyen) var(--c-entree) both;
+}
+.bienvenue.part { animation: bienvenue-part var(--d-moyen) var(--c-sortie) both; pointer-events: none; }
+@keyframes bienvenue-entre { from { opacity: 0; } }
+@keyframes bienvenue-part { to { opacity: 0; transform: scale(0.98); } }
+.bienvenue-carte {
+  width: 100%;
+  max-width: 420px;
+  background: var(--panel);
+  border-radius: var(--r-xl);
+  box-shadow: var(--ombre-2);
+  padding: var(--e-6) var(--e-5) var(--e-5);
+}
+.bienvenue-logo { display: block; width: 72px; height: 72px; border-radius: 18px; margin: 0 auto var(--e-4); box-shadow: var(--ombre-2); }
+.bienvenue h1 { margin: 0; text-align: center; font-size: var(--t-titre); line-height: 1.15; color: var(--ink); }
+.bienvenue-texte { margin: var(--e-2) 0 var(--e-5); text-align: center; font-size: var(--t-petit); line-height: 1.4; color: var(--muted); }
+.bienvenue-invite {
+  margin-top: var(--e-5);
+  padding-top: var(--e-4);
+  border-top: 1px solid var(--rule);
+  display: grid;
+  gap: var(--e-2);
+  text-align: center;
+}
+.bienvenue-invite .btn { width: 100%; min-height: 48px; }
+.bienvenue-invite small { font-size: var(--t-mini); line-height: 1.35; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) {
+  .bienvenue, .bienvenue.part { animation: none; }
+}
+
 .cpte-liens { display: flex; flex-wrap: wrap; gap: var(--e-3); margin-top: var(--e-3); }
 .cpte-liens button {
   border: 0;

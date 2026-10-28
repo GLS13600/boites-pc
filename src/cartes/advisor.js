@@ -39,7 +39,28 @@ const lit = (k, defaut) => {
 };
 const ecrit = (k, v) => {
   try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch { /* plein */ }
+  if (k !== CLES.cle) surEcriture();
 };
+// main.js branche ici sa synchronisation (marqueChange) : ce module n'en sait rien.
+let surEcriture = () => {};
+export function brancheEcriture(f) { surEcriture = f; }
+
+// Pour la sauvegarde : tout SAUF la clé Mistral, qui reste sur l'appareil. Ce qui revient
+// du compte est repris par les mêmes setters, donc avec leurs contrôles.
+export const exporte = () => ({ modele: lit(CLES.modele, null), styles: styles(), avatar: avatar(), memoire: memoire(), historique: historique() });
+export function remet(v) {
+  if (!v || typeof v !== 'object') return;
+  if (typeof v.modele === 'string') poseModele(v.modele);
+  if (Array.isArray(v.styles)) ecrit(CLES.styles, v.styles.filter((x) => STYLES[x]));
+  if (Number.isInteger(v.avatar)) poseAvatar(v.avatar);
+  if (v.memoire && typeof v.memoire === 'object' && !Array.isArray(v.memoire)) {
+    ecrit(CLES.memoire, Object.fromEntries(Object.entries(v.memoire).slice(-30)
+      .map(([k, x]) => [String(k).slice(0, 40), String(x ?? '').slice(0, 300)])));
+  }
+  if (Array.isArray(v.historique)) {
+    garde(v.historique.filter((m) => m && ['u', 'a', 'e'].includes(m.r) && typeof m.t === 'string').map((m) => ({ r: m.r, t: m.t.slice(0, 8000) })));
+  }
+}
 
 // ---------------------------------------------------------------- réglages
 export const cle = () => lit(CLES.cle, '') || '';

@@ -6,7 +6,8 @@
 // Chaque ligne est rattachée à son identifiant de carte TCGdex, qui devient le nom du
 // fichier, à la place du rang de Pokécardex (« 1.jpg ») : public/visuels-cartes/30th-c-014.webp,
 // embarqué dans le site et l'IPA. src/data/visuels-cartes.json en tient la liste, que lit
-// src/cartes/api.js : l'appli les retrouve sans table de correspondance. Trois façons de rattacher, dans l'ordre :
+// src/cartes/api.js : l'appli les retrouve sans table de correspondance. Quatre façons de rattacher, dans l'ordre :
+//   0. les cas vérifiés à la main (FORCES) ;
 //   1. le numéro dans l'extension ou dans une extension que l'appli lui fusionne
 //      (« 001/128 » → 30th-001, « R/RGB » → 30th-R, « TG05/TG30 » → swsh9tg-TG05) ;
 //   2. une carte RÉÉDITÉE qui garde son numéro d'origine (Collection Classique : « 58/102 »)
@@ -14,9 +15,12 @@
 //      chez les cartes de l'extension fusionnée qui restent à rattacher ;
 //   3. sinon la ligne est signalée, jamais devinée.
 //
-// Seules les cartes SANS image chez TCGdex (ni en français ni en anglais, fichier vérifié) sont
-// téléchargées, une à la fois, avec une pause : ce n'est pas notre serveur. Le script
-// reprend : un fichier déjà présent n'est pas refait.
+// Seules les cartes sans image FRANÇAISE chez TCGdex (fichier vérifié) sont téléchargées, une
+// à la fois, avec une pause : ce n'est pas notre serveur. Le script reprend : un fichier déjà
+// présent n'est pas refait. Depuis que les cartes anglaises ont leur collection (28/10/2026),
+// une carte qui n'a chez TCGdex que l'image anglaise prend elle aussi son scan français :
+// la collection française montrait sinon la carte en anglais. Les visuels ne servent qu'à
+// la collection française (src/cartes/api.js).
 //
 // Usage : node scripts/visuels-cartes.mjs [--essai]   (--essai : rattache sans télécharger)
 import fs from 'node:fs';
@@ -42,6 +46,18 @@ const SERIES = {
   MC1: ['2011bw'], MC2: ['2012bw'], MC3: ['2013bw'], MC4: ['2014xy'], MC5: ['2015xy'],
   MC6: ['2016xy'], MC7: ['2017sm'], MC8: ['2018sm-fr'], MC9: ['2019sm-fr'],
   MC10US: ['2021swsh'], MC11US: ['2022swsh'], M23: ['2023sv'], M24: ['2024sv'],
+  // Épée et Bouclier, avec leurs galeries et coffres ; Soleil et Lune ; les deux promos.
+  BRS: ['swsh9', 'swsh9tg'], ASR: ['swsh10', 'swsh10tg'], PGO: ['swsh10.5'], LOR: ['swsh11', 'swsh11tg'],
+  SIT: ['swsh12', 'swsh12tg'], CRZ: ['swsh12.5', 'swsh12.5gg'], CEL: ['cel25', 'cel25cc'],
+  SWSH45: ['swsh4.5', 'swsh4.5sv'], PRSWSH: ['swshp'],
+  SLE: ['sm3.5'], SM75: ['sm7.5'], SM115: ['sm115', 'sma'], DPK: ['det1'], PRSM: ['smp'],
+};
+
+// Les rééditions que le nom ne rattache pas, vérifiées à la main : le Faux Professeur Chen
+// s'appelle « Impostor » chez TCGdex et « Imposter » sur la carte du Set de Base, et le
+// Pikachu de ____ porte chez Pokécardex un numéro (« 24/25 ») qui n'est celui d'aucune extension.
+const FORCES = {
+  CEL: { '73/102': 'cel25cc-CC004', '24/25': 'cel25cc-CC008' },
 };
 
 // ------------------------------------------------------------ lire un .xlsx
@@ -105,8 +121,9 @@ async function traite(fichier) {
   const lignes = lisExcel(fichier);
   const entete = lignes.shift();
   const colUrl = Object.keys(entete).find((k) => lignes.some((l) => /pokecardex-scans[^/]*\/sets\//.test(l[k] ?? '')));
-  const colNum = Object.keys(entete).find((k) => k !== colUrl && lignes.filter((l) => /^[A-Z0-9]+\/[A-Z0-9]+$/i.test(l[k] ?? '')).length > lignes.length / 2);
-  if (!colUrl || !colNum) throw new Error('colonnes introuvables (numéro « 001/128 », URL pokecardex-scans)');
+  // Le numéro imprimé : « 001/128 », ou celui d'une promo, sans total (« SM01 », « SWSH001 »).
+  const colNum = Object.keys(entete).find((k) => k !== colUrl && lignes.filter((l) => /^[A-Z0-9]+\/[A-Z0-9]+$|^[A-Z]+\d+[A-Z]?$/i.test(l[k] ?? '')).length > lignes.length / 2);
+  if (!colUrl || !colNum) throw new Error('colonnes introuvables (numéro « 001/128 » ou « SM01 », URL pokecardex-scans)');
   const code = /\/sets\/([^/]+)\//.exec(lignes.find((l) => l[colUrl])[colUrl])[1];
   const ids = SERIES[code];
   if (!ids) throw new Error(`série Pokécardex « ${code} » inconnue : l'ajouter à SERIES`);
@@ -115,16 +132,23 @@ async function traite(fichier) {
   const cartes = ids.flatMap((id, i) => (en[i]?.cards ?? fr[i]?.cards ?? []).map((c) => {
     const f = fr[i]?.cards?.find((x) => x.id === c.id);
     return { id: c.id, set: id, local: num(c.localId), nomEn: en[i]?.cards?.find((x) => x.id === c.id)?.name, nomFr: f?.name,
-      images: [f?.image, en[i]?.cards?.find((x) => x.id === c.id)?.image].filter(Boolean) };
+      images: [f?.image].filter(Boolean) };
   }));
   const libres = new Set(cartes.map((c) => c.id));
   const rattache = new Map();   // ligne → carte
+
+  // 0. Les rattachements vérifiés à la main (FORCES).
+  for (const [i, l] of lignes.entries()) {
+    const c = cartes.find((x) => x.id === FORCES[code]?.[l[colNum]] && libres.has(x.id));
+    if (c) { rattache.set(i, c); libres.delete(c.id); }
+  }
 
   // 1. Par numéro, dans l'hôte puis dans les extensions fusionnées. Le total imprimé doit
   //    être celui de l'extension (« 129/128 » : 128) ou ne pas être un nombre (« R/RGB »,
   //    « TG05/TG30 ») : « 4/102 », une réédition, n'est pas la 004 de la Collection Classique.
   const officiel = Object.fromEntries(ids.map((id, i) => [id, Number((en[i] ?? fr[i])?.cardCount?.official)]));
   for (const [i, l] of lignes.entries()) {
+    if (rattache.has(i)) continue;
     const [a, total = ''] = String(l[colNum] ?? '').split('/');
     const c = cartes.find((x) => libres.has(x.id) && x.local === num(a) && (!/^\d+$/.test(total) || Number(total) === officiel[x.set]));
     if (c) { rattache.set(i, c); libres.delete(c.id); }
@@ -146,17 +170,25 @@ async function traite(fichier) {
   const sansLigne = cartes.filter((c) => libres.has(c.id));
   const sansCarte = lignes.map((l, i) => (rattache.has(i) ? null : `${l[colNum]}`)).filter(Boolean);
   // TCGdex annonce parfois une image dont le fichier n'existe pas (Mew B, G et R du 30ᵉ :
-  // 404 en français comme en anglais) : on vérifie le fichier, pas l'annonce.
+  // 404 en français comme en anglais) : on vérifie le fichier, pas l'annonce. Seule l'image
+  // FRANÇAISE compte.
   for (const [, c] of rattache) {
     c.image = false;
     for (const base of c.images) {
-      const r = await fetch(`${base}/low.webp`, { method: 'HEAD' }).catch(() => null);
-      if (r?.ok) { c.image = true; break; }
+      // Relancé sur une erreur de réseau ou de serveur : un échec passager ferait télécharger
+      // une carte que TCGdex a bel et bien (115 promos d'Épée et Bouclier au premier essai).
+      for (let essai = 0; essai < 4 && !c.image; essai++) {
+        const r = await fetch(`${base}/low.webp`, { method: 'HEAD' }).catch(() => null);
+        if (r?.ok) c.image = true;
+        else if (r && r.status < 500 && r.status !== 429) break;
+        else await new Promise((ok) => setTimeout(ok, 800 * (essai + 1)));
+      }
+      if (c.image) break;
     }
   }
   const aTelecharger = [...rattache].filter(([, c]) => !c.image);
   console.log(`${path.basename(fichier)} (${code} → ${ids.join(' + ')}) : ${rattache.size} / ${lignes.length} lignes rattachées, `
-    + `${aTelecharger.length} sans image chez TCGdex`);
+    + `${aTelecharger.length} sans image française chez TCGdex`);
   if (sansCarte.length) console.log(`  lignes non rattachées : ${sansCarte.join(', ')}`);
   if (sansLigne.length) console.log(`  cartes TCGdex sans ligne : ${sansLigne.map((c) => c.id).join(', ')}`);
 

@@ -31,10 +31,14 @@
 // sauvegarde et le compte.
 
 import { cleEtat, varianteReelle } from './regles.js';
+import visuels from '../data/visuels-cartes.json';
 
 const CLES = { fr: 'pcbox.cartes', en: 'pcbox.cartes.en' };
 const CLES_VALEURS = { fr: 'pcbox.cartes.valeurs', en: 'pcbox.cartes.en.valeurs' };
 const langueSure = (l) => (l === 'en' ? 'en' : 'fr');
+// Déclaré AVANT le premier `lire` (plus bas) : il s'en sert, et une constante lue avant sa
+// déclaration lèverait une erreur que `lire` avalerait — la collection paraîtrait vide.
+const VISUELS = new Set(visuels);
 
 let langue = 'fr';
 let cartes = lire('fr');
@@ -54,6 +58,7 @@ function lire(l) {
     // passent en « normal » dès le chargement, et le stockage suit.
     let n = 0;
     for (const [id, c] of Object.entries(v)) n += normalise(id, c);
+    if (langueSure(l) === 'fr') n += prendVisuels(v);
     if (n) { try { localStorage.setItem(CLE, JSON.stringify(v)); } catch { /* quota */ } }
     return v;
   } catch { return {}; }
@@ -71,6 +76,19 @@ function normalise(id, c) {
   for (const x of c.ex) {
     const v = varianteReelle(carte, x?.v);
     if (x && v !== x.v) { x.v = v; n++; }
+  }
+  return n;
+}
+
+// Les visuels embarqués (public/visuels-cartes/, scans français relevés sur Pokécardex) ne
+// servent qu'à la collection FRANÇAISE. Une carte ajoutée avant l'arrivée du sien garde
+// l'image qu'on lui connaissait alors — souvent l'anglaise de TCGdex, ou aucune : elle
+// prend son visuel au chargement. Rend le nombre de cartes changées.
+function prendVisuels(v) {
+  let n = 0;
+  for (const [id, c] of Object.entries(v)) {
+    const img = `visuels-cartes/${id}`;
+    if (c && VISUELS.has(id) && c.img !== img) { c.img = img; n++; }
   }
   return n;
 }
@@ -255,6 +273,7 @@ export const exporte = () => cartes;
 export function remplace(v) {
   const propre = assainit(v);
   if (!propre) return false;
+  if (langue === 'fr') prendVisuels(propre);
   cartes = propre;
   ecrire();
   return true;

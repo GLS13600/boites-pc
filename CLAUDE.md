@@ -285,6 +285,21 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
     par l'utilisateur). Il en manque 51 en 2018, 2019 et 2021 : le relevé n'a pas d'URL
     au-delà de la 18ᵉ ligne (images de la page pas encore chargées au moment du relevé).
     Code Pokécardex → extensions TCGdex : `SERIES` du script, à compléter à chaque série.
+    - **Deuxième lot (28/10/2026) : les cartes sans image FRANÇAISE.** Depuis que les
+      cartes anglaises ont leur collection, le script télécharge toute carte dont TCGdex
+      n'a pas l'image française — avant, seulement celles sans image du tout, et la
+      collection française montrait donc des cartes en anglais. 14 séries : galeries et
+      coffres d'Épée et Bouclier, Célébrations et sa Collection Classique, Destinées
+      Occultes et Radieuses, Détective Pikachu, Légendes Brillantes, Majesté des Dragons,
+      promos SL et EB (numéros sans total : « SM01 », « SWSH001 »). 946 visuels ; Pokémon
+      GO (`swsh10.5`) n'en demande aucun. Deux rééditions de la Collection Classique ne se
+      rattachent pas par le nom : `FORCES` du script les donne, vérifiées à la main. La
+      vérification de l'image TCGdex est RELANCÉE sur une erreur passagère : sans ça, 115
+      promos qui ont leur image passaient pour en manquer.
+    - **Les visuels ne servent qu'à la collection française** (`visuel` dans api.js), et
+      une carte déjà possédée prend le sien au chargement (`prendVisuels` dans
+      collection.js) au lieu de garder l'image anglaise recopiée à l'ajout. `VISUELS` y est
+      déclaré AVANT le premier `lire` — le piège des classeurs.
     **`robots.txt` de Pokécardex** : il interdit nommément les agents d'Anthropic et réserve
     ses droits sur l'extraction (directive (UE) 2019/790, art. 4) — Claude ne lance pas les
     téléchargements, l'utilisateur lance le script lui-même.

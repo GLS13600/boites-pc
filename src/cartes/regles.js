@@ -63,9 +63,10 @@ export function extensionABall(setId, setNom) {
 // lui, la publie en `holo` seul ; on la range en `normal`.
 //
 // Depuis Écarlate et Violet (puis Méga-Évolution), TOUTES les rares sont holographiques :
-// il n'y a plus de rare holo distincte de la rare, et Pokécardex range leur version de
-// base en « normale » (+ reverse). TCGdex les publie en `holo` — Rafflesia de 151 —, on
-// les range donc en `normal` : la variante holo n'existe que dans les séries d'avant.
+// elles se rangent en « holo » (+ reverse), JAMAIS en « normale » — même quand TCGdex
+// annonce aussi une normale (Méganium de Méga-Évolution). Demandé le 28/10/2026 ; une
+// version intermédiaire les rangeait en normale, et les exemplaires et pochettes rangés
+// ainsi repassent en holo (`varianteReelle`).
 const SPECIALE = /(^|[\s-])(ex|gx|v|vmax|vstar|vunion|break|turbo|lv\.?\s?x|prime|légende|legend)$|[★☆]/i;
 const ERE_TOUT_HOLO = /^(sv|me|30th)/i;
 const extensionDe = (c) => {
@@ -77,15 +78,19 @@ const extensionDe = (c) => {
 export function holoClassique(c) {
   const r = String(c?.rarity ?? c?.rar ?? '').toLowerCase().trim();
   const nom = String(c?.name ?? c?.n ?? '').trim();
-  return categorie(c) === 'rare' && !r.startsWith('radi') && !SPECIALE.test(nom)
-    && !ERE_TOUT_HOLO.test(extensionDe(c));
+  return categorie(c) === 'rare' && !r.startsWith('radi') && !SPECIALE.test(nom);
 }
+// Une rare d'Écarlate et Violet ou de Méga-Évolution : holo, et seulement holo.
+const rareToutHolo = (c) => holoClassique(c) && ERE_TOUT_HOLO.test(extensionDe(c));
 // La variante telle qu'on la range : un « holo » sur une carte qui n'est pas une rare
-// holographique classique est sa version normale. Rareté inconnue : on ne tranche pas.
+// holographique est sa version normale ; une « normale » d'une rare d'Écarlate et Violet
+// ou de Méga-Évolution est sa version holo. Rareté inconnue : on ne tranche pas.
 export function varianteReelle(c, v) {
-  if (v !== 'holo') return v;
+  if (v !== 'holo' && v !== 'normal') return v;
   const r = String(c?.rarity ?? c?.rar ?? '').trim();
-  return r && !holoClassique(c) ? 'normal' : v;
+  if (!r) return v;
+  if (v === 'holo') return holoClassique(c) ? v : 'normal';
+  return rareToutHolo(c) ? 'holo' : v;
 }
 
 export function variantes(c, setId, setNom) {
@@ -94,14 +99,15 @@ export function variantes(c, setId, setNom) {
   const v = c?.variants;
   const liste = [];
   if (v && typeof v === 'object') {
-    const holo = !!v.holo && holoClassique(c);
-    if (v.normal || (v.holo && !holo)) liste.push('normal');
+    const toutHolo = rareToutHolo(c);
+    const holo = (!!v.holo || toutHolo) && holoClassique(c);
+    if ((v.normal && !toutHolo) || (v.holo && !holo)) liste.push('normal');
     if (holo) liste.push('holo');
     if (v.reverse) liste.push('reverse');
     if (v.firstEdition) liste.push('premiere');
   }
   if (!liste.length) {
-    liste.push('normal');
+    liste.push(rareToutHolo(c) ? 'holo' : 'normal');
     if (courante) liste.push('reverse');
   }
   if (courante && extensionABall(setId, setNom)) liste.push('reverse_pokeball', 'reverse_masterball');

@@ -1056,7 +1056,9 @@ export function creeCartes(ctx) {
   }
 
   // Les pochettes « holo » d'une carte spéciale (ex, V, illustrations…) deviennent
-  // « normal », comme les exemplaires de la collection (regles.js, `varianteReelle`) :
+  // « normal », et les pochettes « normal » d'une rare d'Écarlate et Violet ou de
+  // Méga-Évolution deviennent « holo », comme les exemplaires de la collection
+  // (regles.js, `varianteReelle`) :
   // sans cela, un classeur master set préparé avant le 28/10/2026 attendrait une
   // variante holo qui n'existe pas, et la carte possédée y resterait grise. Il faut la
   // rareté : celle du détail, sinon celle recopiée dans la collection ; une carte dont
@@ -1065,13 +1067,17 @@ export function creeCartes(ctx) {
   function rangeVariantesClasseurs(demander = true) {
     const inconnues = new Set();
     cls.renommeCles((k) => {
-      if (cls.varianteDe(k) !== 'holo') return k;
+      const avant = cls.varianteDe(k);
+      if (avant !== 'holo' && avant !== 'normal') return k;
       const id = cls.idDe(k);
+      // « normale » : seules les rares d'Écarlate et Violet et de Méga-Évolution changent
+      // (en holo) ; inutile de demander le détail des autres extensions.
+      if (avant === 'normal' && !/^(sv|me|30th)/i.test(setDe(id))) return k;
       const d = detail(id), co = coll.carte(id);
       const carte = d?.rarity ? d : co?.rar ? { id, rar: co.rar, n: co.n, num: co.num } : null;
       if (!carte) { inconnues.add(id); return k; }
-      const v = varianteReelle(carte, 'holo');
-      return v === 'holo' ? k : `${id}|${v}`;
+      const v = varianteReelle(carte, avant);
+      return v === avant ? k : `${id}|${v}`;
     });
     // Une seule demande, puis une seule passe : hors ligne, elle échouerait sans fin.
     if (demander && inconnues.size && !rangementDemande) {

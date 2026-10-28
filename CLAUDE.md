@@ -448,14 +448,40 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   puis la page courante au centre (82 %), ses voisines qui dépassent de chaque côté,
   assombries — la disposition de Cartodex sur iPhone. Pages SOMBRES dans les deux
   thèmes, perforées sur la gauche : c'est un décor, comme l'écran d'équipe.
-  - **Tourner la page** : la piste suit le doigt, la feuille bascule en 3D (`rotateY`,
-    perspective sur le livre) ; au-delà de 60 px elle tourne, en deçà elle revient. Au
-    bout du classeur elle ne suit qu'au tiers. Boutons ‹ › sous le livre. Le geste se
-    décide au premier mouvement (vertical = la vue défile) et laisse les 26 premiers
-    pixels au retour par le bord.
-  - **Le livre se refait EN PLACE** (`majLivre`) — page tournée, détail arrivé — et
-    jamais pendant un geste (`livreTouche`). Les cartes dont on ne sait rien (venues
-    d'une recherche, d'un autre appareil) demandent leur détail ; la page suit.
+  - **Tourner la page** (refait le 28/10/2026, à la demande : « des décalages, bugs
+    d'affichage et glitchs lors des slides ; je veux des mouvements fluides ») : UNE
+    position, `mvt.pos`, en pages (2,4 = entre la 3ᵉ et la 4ᵉ). Chaque feuille se place
+    d'après son écart à cette position (`styleFeuille` : translation, échelle 0,94,
+    inclinaison de 8°, voile `.cl-voile`) ; le doigt la déplace 1 pour 1, puis un RESSORT
+    (`anime`, raideur 420, amorti à 0,9) la mène à la page en partant de la vitesse du
+    doigt. Aucune transition CSS : rien ne peut se désaccorder du geste, et une page qui
+    tourne se rattrape au vol. Tourne au-delà de 60 px, ou plus court si le geste est vif
+    (> 300 px/s). Au bout du classeur la page ne suit qu'au tiers ; un bouton au bout la
+    fait buter. Deux appuis rapides sur › tournent deux pages. Le geste se décide au
+    premier mouvement (vertical = la vue défile), sans rattraper les 8 px de la décision,
+    et laisse les 26 premiers pixels au retour par le bord.
+    - **Cinq feuilles posées** (la page, deux de chaque côté), empilées dans la même case
+      de la grille `.cl-piste`, qui porte la perspective. Elles sont RECYCLÉES quand la
+      page change (`recycle`, dès la moitié franchie) : jamais refaites pendant le
+      mouvement, leurs images restent décodées, et la page suivante entre déjà chargée.
+    - Les images passent par `prochaineImage` : `requestAnimationFrame`, relayé par un
+      minuteur s'il ne vient pas (aperçu masqué) — l'animation va au bout au lieu de
+      rester figée. Mouvement réduit : la page change d'un coup.
+    - Défauts de l'ancienne version, mesurés dans l'aperçu : voisines réduites depuis
+      leur bord GAUCHE (`transform-origin: 0 50%`), d'où 22 px visibles à droite contre
+      3 à gauche ; voisines posées 4 px plus bas que la page, qui sautait à l'arrivée ;
+      tout le livre refait (images re-décodées, clignotement) à chaque page, à chaque
+      détail arrivé, à chaque échange (`cls.surChangement` → `rend`), au chargement de
+      l'extension (`charge` → `rend`, qui coupait un geste en cours) ; perspective sans
+      effet (posée sur le grand-parent d'une piste déjà transformée) ; un toucher pendant
+      l'animation la figeait à mi-chemin et désaccordait page affichée et page comptée.
+  - **Le livre se met à jour EN PLACE** (`majLivre`) — contenu, détail arrivé, sélection,
+    teinte, nom : seules les pochettes dont le balisage change (`__src`, `remplaceSiChange`)
+    sont remplacées, et elles gardent leur `<img>` quand l'image est la même. Pendant un
+    geste, une page qui tourne ou une carte portée, la mise à jour attend (`mvt.attente`).
+    Seul un autre format de page refait la vue. `majClasseurs()` : le livre sur place, la
+    liste en entier. Les cartes dont on ne sait rien (venues d'une recherche, d'un autre
+    appareil) demandent leur détail ; la page suit.
   - Au moins 10 pages, et toujours une de plus que le contenu : on feuillette des pages
     libres comme dans un vrai classeur (Cartodex en imposait 60).
 - **Couleurs libres, roue chromatique et favoris** (28/10/2026, à la demande) : dans le
@@ -485,13 +511,17 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   - **Sélection** (icône coche) : Déplacer — la barre demande la pochette d'arrivée —
     ou Retirer, avec « Annuler ».
   - **Glisser-déposer** (28/10/2026, à la demande : « le même système que les Pokémon
-    dans les boîtes ») : appui de 450 ms sur une pochette pleine, la carte brille et le
-    téléphone vibre, un fantôme (`.cl-fantome`) suit le doigt ; relâchée sur une autre
-    pochette, elle s'y pose — pleine, les deux échangent (`cls.echange`), libre, sa place
-    reste vide. S'attarder 550 ms sur les 46 px du bord du livre tourne la page sans
-    lâcher la carte (`.bord-g` / `.bord-d`). Pointer Events, écoutés sur `window` comme
-    dans les boîtes : le livre est refait pendant le geste, et `marqueTenue()` rend ses
-    marques à la carte portée.
+    dans les boîtes ») : appui de 450 ms sur une pochette pleine, le téléphone vibre et
+    la carte se SOULÈVE — le fantôme (`.cl-fantome`, image clonée donc déjà décodée)
+    naît exactement sur la pochette et garde la prise du doigt, sa pochette n'en garde
+    qu'une trace (`.glisse`) ; la pochette visée s'ouvre un peu (`.cible`). Relâchée sur
+    une autre pochette, le fantôme y GLISSE (220 ms) et s'y pose à plat ; pleine, la carte
+    qui l'occupait part vers la place libérée. L'échange (`cls.echange`) n'est écrit qu'à
+    l'arrivée, après avoir fait passer les `<img>` d'une pochette à l'autre : la mise à
+    jour les retrouve, rien ne se recharge. Relâchée ailleurs, la carte retourne à sa
+    place. S'attarder 550 ms sur les 46 px du bord du livre tourne la page sans lâcher la
+    carte (`.bord-g` / `.bord-d`). Pointer Events, écoutés sur `window` comme dans les
+    boîtes ; `marqueTenue()` rend ses marques à la carte portée sur une feuille recyclée.
     - Avant l'appui long, tout mouvement de plus de 8 px l'annule : le doigt tourne la
       page ou fait défiler, comme avant. Une fois la carte portée, le geste de la page
       se tait (`touchmove` empêché, `livreTouche` à faux).
@@ -501,6 +531,14 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
     - Vérifié dans l'aperçu par des PointerEvent : vers une pochette libre, échange,
       mouvement avant l'appui long (rien ne bouge), page tournée au bord puis dépôt en
       page 2, toucher simple → fiche.
+    - Revérifié le 28/10/2026 (TouchEvent et PointerEvent, positions relevées image par
+      image) : la page suit le doigt au pixel et l'animation repart d'où il l'a laissée ;
+      geste vif de 45 px → page tournée, geste lent de 36 px → retour ; résistance au
+      début du classeur (100 px de doigt, 34 px de page) ; voisines à 14 px de chaque
+      côté ; fantôme né à 0 px de sa pochette, posé à la place exacte de la cible, images
+      des deux pochettes reprises telles quelles ; mode sélection et réglages sans refaire
+      la vue (9 images sur 9 gardées). Le vrai rendu à 60 / 120 images par seconde ne se
+      juge que sur l'iPhone : l'aperçu ne donne qu'une image toutes les ~60 ms.
 - **Créer / régler** (second panneau de l'univers Cartes, `outilSheet`) : nom, 4, 9 ou
   12 pochettes par page (2×2, 3×3, 4×3), teinte, et à la création le contenu — vide,
   ou **d'une extension**, cherchée parmi les 202, en « une pochette par carte » ou en

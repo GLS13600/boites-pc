@@ -4512,42 +4512,38 @@ img {
 .cl-mini { display: block; width: 40px; height: 52px; border-radius: 4px 8px 8px 4px; background: linear-gradient(152deg, var(--cl-haut), var(--cl-bas)); box-shadow: var(--ombre-1); }
 
 /* ---- Le livre ----
-   Trois feuilles sur une piste : la courante au centre (82 %), ses voisines qui
-   dépassent de chaque côté, plus sombres. La piste glisse sous le doigt et la feuille
-   courante bascule en 3D ; au-delà de 60 px, la page tourne. */
+   Cinq feuilles empilées dans la même case de la piste ; chacune se place d'après son
+   écart à la position du livre (vues.js, `styleFeuille`) : la courante au centre (82 %),
+   ses voisines qui dépassent de chaque côté, plus petites et voilées. Le doigt et un
+   ressort déplacent cette position : aucune transition CSS ici, rien qui puisse se
+   désaccorder du geste. La piste porte la perspective : l'inclinaison a de la profondeur. */
 .cl-livre {
   position: relative;
   overflow: hidden;
   margin: 0 calc(-1 * var(--e-4));
   padding: 4px 0 10px;
-  perspective: 1400px;
   touch-action: pan-y;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
 }
-.cl-piste { position: relative; }
+.cl-piste { display: grid; grid-template-columns: minmax(0, 1fr); perspective: 1200px; }
 .cl-feuille {
+  grid-area: 1 / 1;
+  justify-self: center;
   position: relative;
   width: 82%;
-  margin: 0 auto;
   padding: 12px 10px 14px 24px;
   border-radius: 6px 16px 16px 6px;
   background: linear-gradient(to right, var(--cl-page-2), var(--cl-page) 12%);
   box-shadow: 0 6px 18px rgb(0 0 0 / 28%);
-  transform-origin: 0 50%;
+  -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
+  will-change: transform, opacity;
 }
-.cl-feuille.prec, .cl-feuille.suiv {
-  position: absolute;
-  top: 4px;
-  left: 9%;
-  opacity: 0.5;
-  filter: brightness(0.8);
-  pointer-events: none;
-}
-.cl-feuille.prec { transform: translateX(calc(-100% - 12px)) scale(0.94); }
-.cl-feuille.suiv { transform: translateX(calc(100% + 12px)) scale(0.94); }
+.cl-feuille:not(.cour) { pointer-events: none; }
+/* Le voile des voisines : son opacité suit l'écart — moins coûteux qu'un filtre animé. */
+.cl-voile { position: absolute; inset: 0; z-index: 4; border-radius: inherit; background: #000; pointer-events: none; will-change: opacity; }
 .cl-trous { position: absolute; left: 7px; top: 10%; bottom: 10%; display: flex; flex-direction: column; justify-content: space-between; }
 .cl-trous i { width: 9px; height: 9px; border-radius: 50%; background: var(--paper); box-shadow: inset 0 1px 2px rgb(0 0 0 / 55%); }
 .cl-grille { display: grid; gap: 6px; }
@@ -4564,9 +4560,12 @@ img {
   border: 1.5px dashed rgb(255 255 255 / 16%);
   background: rgb(255 255 255 / 4%);
   color: rgb(255 255 255 / 55%);
+  transition: transform var(--d-court) var(--c-ressort);
 }
 .cl-poche .ico { width: 18px; height: 18px; }
 .cl-poche:active { transform: scale(0.96); }
+/* Une page qu'on fait glisser ne doit pas enfoncer la pochette sous le doigt. */
+.cl-livre.geste .cl-poche:active { transform: none; }
 .cl-poche.pleine { border: 0; background: rgb(255 255 255 / 6%); box-shadow: 0 1px 3px rgb(0 0 0 / 45%); }
 .cl-poche img { width: 100%; height: 100%; object-fit: cover; }
 .cl-poche.manque img { filter: grayscale(1); opacity: 0.5; }
@@ -4603,28 +4602,36 @@ img {
   font-variant-numeric: tabular-nums;
 }
 .cl-poche.choisie { outline: 3px solid var(--ball); outline-offset: -3px; }
-/* Glisser-déposer (appui long), comme les cases des boîtes : la carte saisie brille, puis
-   s'efface quand le fantôme la prend ; la pochette visée s'entoure de rouge. */
-.cl-poche.tenu {
-  z-index: 3;
-  transform: scale(1.06);
-  box-shadow: 0 0 0 2px var(--ball), 0 0 16px 3px rgb(214 69 60 / 50%);
-}
-.cl-poche.tenu.glisse { transform: none; box-shadow: 0 0 0 2px var(--ball); }
-.cl-poche.tenu.glisse img { opacity: 0.25; }
-.cl-poche.cible { outline: 3px solid var(--ball); outline-offset: -3px; }
+/* Glisser-déposer (appui long), comme les cases des boîtes : la carte se soulève — sa
+   pochette n'en garde qu'une trace, le fantôme la porte —, la pochette visée s'entoure de
+   rouge et s'ouvre un peu. Au lâcher, le fantôme glisse jusqu'à sa place et s'y pose à plat. */
+.cl-poche.glisse { box-shadow: 0 0 0 2px var(--ball); }
+.cl-poche.glisse img { opacity: 0.25; }
+.cl-poche.cible { z-index: 2; outline: 3px solid var(--ball); outline-offset: -3px; transform: scale(1.05); }
 .cl-fantome {
   position: fixed;
   top: 0;
   left: 0;
   z-index: 40;
+  pointer-events: none; /* sinon elementFromPoint ne verrait que le fantôme */
+  will-change: transform;
+}
+.cl-fantome.vole { transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.cl-fantome-carte {
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   border-radius: 6px;
-  pointer-events: none; /* sinon elementFromPoint ne verrait que le fantôme */
-  box-shadow: 0 10px 24px rgb(0 0 0 / 40%);
-  opacity: 0.95;
+  box-shadow: 0 14px 28px rgb(0 0 0 / 42%);
+  transform: rotate(-3deg) scale(1.08);
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 220ms ease;
 }
-.cl-fantome img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.cl-fantome.leve .cl-fantome-carte { animation: clSouleve 240ms var(--c-ressort); }
+.cl-fantome.plat .cl-fantome-carte,
+.cl-fantome.pose .cl-fantome-carte { transform: none; box-shadow: 0 1px 3px rgb(0 0 0 / 45%); }
+.cl-fantome-carte img { display: block; width: 100%; height: 100%; object-fit: cover; }
+@keyframes clSouleve { from { transform: none; box-shadow: 0 1px 3px rgb(0 0 0 / 45%); } }
+@media (prefers-reduced-motion: reduce) { .cl-fantome.leve .cl-fantome-carte { animation: none; } }
 /* Bord du livre armé pendant un glissement : la page va tourner de ce côté. */
 .cl-livre.bord-g::before,
 .cl-livre.bord-d::before {
@@ -4633,7 +4640,7 @@ img {
   top: 0;
   bottom: 0;
   width: 46px;
-  z-index: 2;
+  z-index: 20; /* au-dessus des feuilles, qui s'étagent jusqu'à 10 */
   pointer-events: none;
   animation: bordPulse 550ms ease-out;
 }

@@ -160,13 +160,15 @@ export function creeCartes(ctx) {
   const vueCartes = () => ['extensions', 'collection', 'classeurs', 'valeur', 'advisor'].includes(ctx.vue());
 
   // Charge une ressource une seule fois, puis redessine la vue si elle est encore là.
-  function charge(cle, fabrique, range) {
+  // `suite` : ce qu'on refait à l'arrivée — la vue entière par défaut ; le livre d'un
+  // classeur, lui, se met à jour sur place (un geste en cours n'est pas interrompu).
+  function charge(cle, fabrique, range, suite = () => rend(ctx.vue())) {
     if (enCours.has(cle) || echecs.has(cle)) return;
     enCours.add(cle);
     fabrique()
       .then(range)
       .catch(() => echecs.add(cle))
-      .finally(() => { enCours.delete(cle); if (vueCartes()) rend(ctx.vue()); });
+      .finally(() => { enCours.delete(cle); if (vueCartes()) suite(); });
   }
 
   // Le nom d'une extension, si on l'a déjà croisée dans une série chargée.
@@ -1015,6 +1017,8 @@ export function creeCartes(ctx) {
   // page, qui bascule légèrement en 3D. Les pochettes suivent la règle de toute l'appli :
   // carte possédée en couleur, manquante en gris, place libre en pointillés.
   const pagesDe = (c) => Math.max(10, Math.ceil(c.cartes.length / c.poches) + 1);
+  // La position du livre et son mouvement (voir « Le livre ») : déclarée avant tout rendu.
+  const mvt = { pos: 0, vit: 0, cible: 0, actif: false, attente: false, boucle: 0 };
   const possedeCle = (k) => {
     const v = cls.varianteDe(k);
     return v ? coll.possedeVariante(cls.idDe(k), v) : coll.possede(cls.idDe(k));
@@ -1052,7 +1056,7 @@ export function creeCartes(ctx) {
   function veilleLogos() {
     if (toutesExt || essaiExt) return;
     essaiExt = true;
-    chargeToutesExt().then(() => { if (ctx.vue() === 'classeurs' && !etat.cls && toutesExt) rend('classeurs'); });
+    chargeToutesExt().then(() => { if (ctx.vue() === 'classeurs' && toutesExt) majClasseurs(); });
   }
 
   function couverture(c) {
@@ -1165,26 +1169,56 @@ export function creeCartes(ctx) {
       </button>`;
   }
 
-  function feuille(c, page, sorte) {
+  // ---- Le livre ----
+  // La position du livre est un nombre de pages, `mvt.pos` : 2 = la troisième page bien en
+  // face, 2,4 = on passe de la troisième à la quatrième. Chaque feuille se place d'après son
+  // écart à cette position (`styleFeuille`) : translation, échelle, légère inclinaison,
+  // voile. Le doigt et le ressort ne font que déplacer `pos` — aucun saut possible entre le
+  // geste et l'animation qui le prolonge, et une page qui tourne se rattrape au vol.
+  // Cinq feuilles sont posées (la page, deux de chaque côté) et RECYCLÉES quand la page
+  // change : aucune n'est refaite pendant le mouvement, leurs images restent décodées.
+  const ECART_FEUILLES = 12;   // px entre deux feuilles
+  function styleFeuille(r) {
+    const a = Math.min(Math.abs(r), 2);
+    const pres = Math.min(a, 1);                 // 0 en face, 1 voisine
+    const loin = Math.max(0, a - 1);             // au-delà de la voisine : elle sort du champ
+    const sens = Math.max(-1, Math.min(1, r));
+    const echelle = 1 - 0.06 * pres - 0.04 * loin;
+    const opacite = a <= 1 ? 1 - 0.4 * pres : 0.6 * (2 - a);
+    return {
+      feuille: `transform: translateX(calc(${(r * 100).toFixed(3)}% + ${(r * ECART_FEUILLES).toFixed(2)}px)) `
+        + `rotateY(${(-sens * 8).toFixed(2)}deg) scale(${echelle.toFixed(4)}); opacity: ${opacite.toFixed(3)}; z-index: ${10 - Math.round(a * 4)}`,
+      voile: `opacity: ${(0.3 * pres).toFixed(3)}`,
+    };
+  }
+
+  // Une feuille naît déjà à sa place : son style est posé dans le balisage.
+  function feuille(c, page) {
+    const s = styleFeuille(page - mvt.pos);
+    const cour = page === etat.clsPage;
     let html = '';
     for (let k = 0; k < c.poches; k++) html += poche(c, page * c.poches + k);
     return `
-      <div class="cl-feuille ${sorte}" ${sorte === 'cour' ? '' : 'aria-hidden="true"'}>
+      <div class="cl-feuille ${cour ? 'cour' : ''}" data-page="${page}" style="${s.feuille}" ${cour ? '' : 'aria-hidden="true"'}>
         <span class="cl-trous" aria-hidden="true"><i></i><i></i><i></i></span>
         <div class="cl-grille g${c.poches}">${html}</div>
+        <span class="cl-voile" style="${s.voile}" aria-hidden="true"></span>
       </div>`;
+  }
+  // Les pages posées : celle d'en face d'abord (ses images chargent en premier), puis ses
+  // voisines, deux de chaque côté, dans les bornes du classeur.
+  function pagesPosees(c) {
+    const l = [];
+    for (let k = etat.clsPage - 2; k <= etat.clsPage + 2; k++) if (k >= 0 && k < pagesDe(c)) l.push(k);
+    return l.sort((x, y) => Math.abs(x - etat.clsPage) - Math.abs(y - etat.clsPage));
   }
 
   function htmlLivre(c) {
     const pages = pagesDe(c);
     const p = etat.clsPage;
     return `
-      <div class="cl-livre ${teinteClasseur(c).classe}" style="${esc(teinteClasseur(c).style)}" data-cl-livre>
-        <div class="cl-piste">
-          ${p > 0 ? feuille(c, p - 1, 'prec') : ''}
-          ${feuille(c, p, 'cour')}
-          ${p < pages - 1 ? feuille(c, p + 1, 'suiv') : ''}
-        </div>
+      <div class="cl-livre ${teinteClasseur(c).classe}" style="${esc(teinteClasseur(c).style)}" data-cl-livre data-poches="${c.poches}">
+        <div class="cl-piste">${pagesPosees(c).map((k) => feuille(c, k)).join('')}</div>
       </div>
       <div class="cl-nav">
         <button class="tete-btn" data-cl-tourne="-1" ${p === 0 ? 'disabled' : ''} aria-label="${t('clPagePrec')}">${ICO.gauche}</button>
@@ -1222,100 +1256,225 @@ export function creeCartes(ctx) {
       </div>`;
   }
 
+  // Chaque pochette, le bandeau et la barre de sélection gardent le balisage dont ils sont
+  // nés (`__src`) : la mise à jour du livre ne remplace que ce qui a changé.
+  function notePoches(racine, c) {
+    for (const b of racine.querySelectorAll('[data-cl-poche]')) b.__src = poche(c, Number(b.dataset.clPoche));
+  }
+
   function vueLivre() {
     const c = cls.classeur(etat.cls);
     if (!c) { etat.cls = null; return vueClasseurs(); }
     // Un classeur préparé depuis une extension en connaît les images : on la relit.
-    if (c.set && !extensions.has(c.set)) charge(`set:${c.set}`, () => api.extension(c.set), (d) => extensions.set(c.set, d));
+    if (c.set && !extensions.has(c.set)) {
+      charge(`set:${c.set}`, () => api.extension(c.set), (d) => extensions.set(c.set, d), () => { if (ctx.vue() === 'classeurs') majClasseurs(); });
+    }
     if (!toutesExt) veilleLogos();
     etat.clsPage = Math.min(Math.max(0, etat.clsPage), pagesDe(c) - 1);
+    // Le livre repart au repos, bien en face de sa page.
+    mvt.boucle++;
+    Object.assign(mvt, { pos: etat.clsPage, cible: etat.clsPage, vit: 0, actif: false, attente: false });
     setTimeout(() => rangeVariantesClasseurs(), 0);
     const actions = `
       <button class="tete-btn ${etat.clsSel ? 'on' : ''}" data-cl-selection aria-pressed="${!!etat.clsSel}"
               title="${t('cxSelection')}" aria-label="${t('cxSelection')}">${ICO.selection}</button>
       <button class="tete-btn" data-cl-reglages title="${t('clReglages')}" aria-label="${t('clReglages')}">${ICO.reglages}</button>`;
-    const els = [ctx.tete(c.nom, actions), h(`
+    const bandeau = bandeauClasseur(c);
+    const lot = etat.clsSel ? barreLotClasseur() : '';
+    const section = h(`
       <section class="cx-page cl-vue">
-        ${bandeauClasseur(c)}
+        ${bandeau}
         ${htmlLivre(c)}
-        ${etat.clsSel ? barreLotClasseur() : ''}
-      </section>`)];
+        ${lot}
+      </section>`);
+    notePoches(section, c);
+    const bd = section.querySelector('.bandeau');
+    if (bd) bd.__src = bandeau;
+    const barre = section.querySelector(':scope > .lot');
+    if (barre) barre.__src = lot;
     setTimeout(chargePoches, 0);
-    return els;
+    return [ctx.tete(c.nom, actions), section];
   }
 
-  // Refait le livre EN PLACE (page tournée, détail arrivé) : le défilement ne bouge pas,
-  // et un geste en cours n'est jamais interrompu.
+  // Remplace un élément dont le balisage a changé. Une pochette garde son image si c'est la
+  // même : une image déjà décodée ne clignote pas.
+  function remplaceSiChange(el, src) {
+    if (el.__src === src) return el;
+    const n = h(src);
+    n.__src = src;
+    const vieille = el.querySelector('img'), neuve = n.querySelector('img');
+    if (vieille && neuve && vieille.getAttribute('src') === neuve.getAttribute('src')) neuve.replaceWith(vieille);
+    el.replaceWith(n);
+    return n;
+  }
+
+  // Refait le livre EN PLACE (contenu changé, détail arrivé, sélection) : seules les
+  // pochettes qui changent sont remplacées. Pendant un geste ou une page qui tourne, la mise
+  // à jour attend la fin — rien ne bouge sous le doigt.
   let livreTouche = false;
-  // La carte portée par un appui long (voir « Déplacer une carte ») : le livre peut être
-  // refait pendant le geste (détail arrivé, page tournée au bord) — on lui rend ses marques.
+  // La carte portée par un appui long (voir « Déplacer une carte ») : une page tournée au
+  // bord pendant le geste refait des feuilles — on rend ses marques à la carte portée.
   let tenue = null;
   function marqueTenue() {
     if (!tenue?.arme) return;
-    document.querySelector(`[data-cl-livre] .cl-feuille.cour [data-cl-poche="${tenue.i}"]`)?.classList.add('tenu', 'glisse');
+    document.querySelector(`[data-cl-livre] [data-cl-poche="${tenue.i}"]`)?.classList.add('tenu', 'glisse');
   }
   function majLivre() {
     const c = cls.classeur(etat.cls);
-    const livre = document.querySelector('[data-cl-livre]');
-    if (!c || !livre || livreTouche) return;
-    const neuf = h(`<div>${htmlLivre(c)}</div>`);
-    const [nLivre, nNav] = [...neuf.children];
-    livre.replaceWith(nLivre);
-    document.querySelector('.cl-nav')?.replaceWith(nNav);
-    const b = document.querySelector('.cl-vue .bandeau');
-    if (b) b.outerHTML = bandeauClasseur(c);
+    const livreEl = document.querySelector('[data-cl-livre]');
+    if (!c || !livreEl) return;
+    if (livreTouche || mvt.actif || tenue) { mvt.attente = true; return; }
+    mvt.attente = false;
+    // Un autre format de page change toute la grille : on refait la vue.
+    if (Number(livreEl.dataset.poches) !== c.poches) { rend('classeurs'); return; }
+    const teinte = teinteClasseur(c);
+    livreEl.className = `cl-livre ${teinte.classe}`;
+    livreEl.setAttribute('style', teinte.style);
+    // Des cartes retirées ont pu raccourcir le classeur.
+    const der = pagesDe(c) - 1;
+    if (mvt.pos > der) Object.assign(mvt, { pos: der, cible: der, vit: 0 });
+    recycle(true);
+    for (const b of livreEl.querySelectorAll('[data-cl-poche]')) remplaceSiChange(b, poche(c, Number(b.dataset.clPoche)));
+    const vue = livreEl.closest('.cl-vue');
+    const bd = vue?.querySelector('.bandeau');
+    if (bd) remplaceSiChange(bd, bandeauClasseur(c));
+    // Le mode sélection : son bouton dans l'en-tête, sa barre au bas de la page.
+    const sel = document.querySelector('[data-cl-selection]');
+    if (sel) { sel.classList.toggle('on', !!etat.clsSel); sel.setAttribute('aria-pressed', String(!!etat.clsSel)); }
+    const lot = vue?.querySelector(':scope > .lot');
+    const lotSrc = etat.clsSel ? barreLotClasseur() : '';
+    if (lot && !lotSrc) lot.remove();
+    else if (lot) remplaceSiChange(lot, lotSrc);
+    else if (lotSrc && vue) { const n = h(lotSrc); n.__src = lotSrc; vue.append(n); }
+    const titre = document.querySelector('.tete .tete-titre');
+    if (titre && titre.textContent !== c.nom) titre.textContent = c.nom;
     chargePoches();
-    marqueTenue();
   }
+  // Le livre affiché suit sur place ; la liste des classeurs, elle, se refait.
+  const majClasseurs = () => (etat.cls && document.querySelector('[data-cl-livre]') ? majLivre() : rend('classeurs'));
 
   // ---- Tourner la page ----
-  // La piste porte les trois feuilles ; le doigt la fait glisser, et la feuille courante
-  // bascule un peu, comme une page qu'on soulève. Au-delà de 60 px, la page tourne.
-  const pisteEl = () => document.querySelector('.cl-piste');
-  function poseLivre(dx) {
-    const piste = pisteEl();
-    if (!piste) return;
-    const w = piste.getBoundingClientRect().width || 340;
-    piste.style.transform = `translateX(${dx}px)`;
-    const cour = piste.querySelector('.cl-feuille.cour');
-    if (cour) cour.style.transform = `rotateY(${(-dx / w) * 16}deg)`;
-  }
-  function remetLivre() {
-    const piste = pisteEl();
-    if (!piste) return;
-    const cour = piste.querySelector('.cl-feuille.cour');
-    for (const el of [piste, cour]) {
-      if (!el) continue;
-      el.style.transition = reduit() ? 'none' : 'transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1)';
-      el.style.transform = '';
+  const feuillesEl = () => document.querySelectorAll('[data-cl-livre] .cl-feuille');
+  function poseFeuilles() {
+    for (const f of feuillesEl()) {
+      const s = styleFeuille(Number(f.dataset.page) - mvt.pos);
+      f.style.cssText = s.feuille;
+      const v = f.lastElementChild;
+      if (v?.classList.contains('cl-voile')) v.style.cssText = s.voile;
     }
+  }
+  // La page d'en face change dès qu'on a passé la moitié : le compteur suit, les feuilles
+  // trop loin partent, celles qui entrent dans le champ arrivent — déjà à leur place.
+  function recycle(force = false) {
+    const c = cls.classeur(etat.cls);
+    const piste = document.querySelector('[data-cl-livre] .cl-piste');
+    if (!c || !piste) return;
+    const p = Math.min(pagesDe(c) - 1, Math.max(0, Math.round(mvt.pos)));
+    if (p === etat.clsPage && !force) return;
+    etat.clsPage = p;
+    const voulues = new Set(pagesPosees(c));
+    for (const f of [...piste.children]) {
+      const k = Number(f.dataset.page);
+      if (voulues.has(k)) voulues.delete(k); else f.remove();
+    }
+    for (const k of voulues) { const f = h(feuille(c, k)); notePoches(f, c); piste.append(f); }
+    for (const f of piste.children) {
+      const cour = Number(f.dataset.page) === p;
+      f.classList.toggle('cour', cour);
+      if (cour) f.removeAttribute('aria-hidden'); else f.setAttribute('aria-hidden', 'true');
+    }
+    majNav(c);
+    marqueTenue();
+    chargePoches();
+  }
+  function majNav(c) {
+    const nav = document.querySelector('.cl-nav');
+    if (!nav) return;
+    const der = pagesDe(c) - 1;
+    const vise = mvt.actif ? mvt.cible : etat.clsPage;
+    const [prec, suiv] = nav.querySelectorAll('[data-cl-tourne]');
+    if (prec) prec.disabled = vise <= 0;
+    if (suiv) suiv.disabled = vise >= der;
+    const txt = nav.querySelector('.cl-nav-txt');
+    const neuf = t('clPage', etat.clsPage + 1, der + 1);
+    if (txt && txt.textContent !== neuf) txt.textContent = neuf;
+  }
+
+  // Le ressort : légèrement sous l'amortissement critique, il arrive vite et se pose sans
+  // rebondir à l'œil (moins d'un pixel de dépassement).
+  const RESSORT = 420, AMORTI = 2 * 0.9 * Math.sqrt(RESSORT);
+  // Une image par affichage ; si l'appareil n'en donne plus (onglet masqué), un minuteur
+  // prend le relais — l'animation va alors au bout au lieu de rester figée à mi-chemin.
+  function prochaineImage(f) {
+    let fait = false, id = 0, to = 0;
+    const go = () => { if (fait) return; fait = true; cancelAnimationFrame(id); clearTimeout(to); f(performance.now()); };
+    id = requestAnimationFrame(go);
+    to = setTimeout(go, 60);
+  }
+  function anime() {
+    if (reduit()) { stoppe(); Object.assign(mvt, { pos: mvt.cible, vit: 0 }); poseFeuilles(); recycle(); arrete(); return; }
+    if (mvt.actif) return;     // la boucle tourne déjà : elle lit la nouvelle cible
+    mvt.actif = true;
+    const boucle = ++mvt.boucle;
+    let avant = performance.now();
+    const pas = (now) => {
+      if (boucle !== mvt.boucle) return;
+      // Intégré par petits pas : la course est la même quelle que soit la cadence.
+      const dt = Math.min(0.5, Math.max(0, (now - avant) / 1000));
+      avant = now;
+      for (let n = Math.ceil(dt / 0.004), k = 0; k < n; k++) {
+        const d = dt / n;
+        mvt.vit += (-RESSORT * (mvt.pos - mvt.cible) - AMORTI * mvt.vit) * d;
+        mvt.pos += mvt.vit * d;
+      }
+      const fini = Math.abs(mvt.pos - mvt.cible) < 0.002 && Math.abs(mvt.vit) < 0.05;
+      if (fini) Object.assign(mvt, { pos: mvt.cible, vit: 0 });
+      poseFeuilles();
+      recycle();
+      if (fini) { mvt.actif = false; arrete(); return; }
+      prochaineImage(pas);
+    };
+    prochaineImage(pas);
+  }
+  function stoppe() { mvt.boucle++; mvt.actif = false; }
+  // L'animation est finie : la nav se recale, et une mise à jour mise en attente passe.
+  function arrete() {
+    const c = cls.classeur(etat.cls);
+    if (c) majNav(c);
+    if (mvt.attente) majLivre();
+  }
+  // Une page qui tourne va au bout tout de suite (on pose une carte dessus).
+  function finitTour() {
+    if (!mvt.actif) return;
+    stoppe();
+    Object.assign(mvt, { pos: mvt.cible, vit: 0 });
+    poseFeuilles();
+    recycle();
+  }
+  // La page revient bien en face (geste trop court, carte saisie).
+  function ramene() {
+    const c = cls.classeur(etat.cls);
+    if (!c) return;
+    mvt.cible = Math.min(pagesDe(c) - 1, Math.max(0, Math.round(mvt.pos)));
+    if (mvt.pos !== mvt.cible || mvt.vit) anime();
   }
   function tourne(dir) {
     const c = cls.classeur(etat.cls);
-    if (!c) return;
-    const cible = etat.clsPage + dir;
-    const piste = pisteEl();
-    if (cible < 0 || cible >= pagesDe(c) || !piste) { remetLivre(); return; }
+    if (!c || !document.querySelector('[data-cl-livre]')) return;
+    const der = pagesDe(c) - 1;
+    // Deux appuis rapides tournent deux pages : on part de la page visée, pas de celle vue.
+    const base = mvt.actif ? mvt.cible : etat.clsPage;
+    const cible = Math.min(der, Math.max(0, base + dir));
+    if (cible === base) {
+      // Au bout du classeur, la page bute et revient : on sent qu'il n'y a plus rien.
+      mvt.vit += dir * 1.6;
+      anime();
+      return;
+    }
     ctx.haptique();
-    if (reduit()) { etat.clsPage = cible; majLivre(); return; }
-    const cour = piste.querySelector('.cl-feuille.cour');
-    const pas = (cour?.getBoundingClientRect().width || 300) + 12;
-    const courbe = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
-    piste.style.transition = `transform 260ms ${courbe}`;
-    piste.style.transform = `translateX(${-dir * pas}px)`;
-    if (cour) {
-      cour.style.transition = `transform 260ms ${courbe}, opacity 260ms ease`;
-      cour.style.transform = `rotateY(${dir * 18}deg) scale(0.94)`;
-      cour.style.opacity = '0.55';
-    }
-    const venant = piste.querySelector(dir > 0 ? '.cl-feuille.suiv' : '.cl-feuille.prec');
-    if (venant) {
-      venant.style.transition = `transform 260ms ${courbe}, opacity 260ms ease, filter 260ms ease`;
-      venant.style.transform = `translateX(${dir > 0 ? 'calc(100% + 12px)' : 'calc(-100% - 12px)'}) scale(1)`;
-      venant.style.opacity = '1';
-      venant.style.filter = 'none';
-    }
-    setTimeout(() => { etat.clsPage = cible; majLivre(); }, 270);
+    mvt.cible = cible;
+    anime();
+    majNav(c);
   }
 
   // ---- Ranger des cartes : le sélecteur ----
@@ -1587,7 +1746,7 @@ export function creeCartes(ctx) {
       cls.modifie(e.id, { nom, poches: e.poches, couleur: e.couleur, pages: e.pages });
       etat.clsEdition = null;
       ctx.panneau2.ferme();
-      rend('classeurs');
+      majClasseurs();
       return;
     }
     if (e.contenu === 'set' && !e.set) { e.nom = nom; e.erreur = t('clChoisirExtension'); majEdition(); return; }
@@ -2398,7 +2557,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
         etat.clsSel = etat.clsSel ? null : new Set();
         etat.clsDeplace = false;
         ctx.haptique();
-        rend('classeurs');
+        majClasseurs();
         return;
       }
       if ((x = q('[data-cl-tourne]'))) { tourne(Number(x.dataset.clTourne)); return; }
@@ -2406,15 +2565,16 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
         const c = cls.classeur(etat.cls);
         const a = x.dataset.clLot;
         if (!c) return;
-        if (a === 'annule') { etat.clsDeplace = false; rend('classeurs'); return; }
-        if (a === 'deplace') { if (etat.clsSel?.size) { etat.clsDeplace = true; rend('classeurs'); } return; }
+        if (a === 'annule') { etat.clsDeplace = false; majClasseurs(); return; }
+        if (a === 'deplace') { if (etat.clsSel?.size) { etat.clsDeplace = true; majClasseurs(); } return; }
         if (a === 'retire' && etat.clsSel?.size) {
           const avant = c.cartes.slice();
-          const n = etat.clsSel.size;
-          cls.vide(c.id, [...etat.clsSel]);
+          const sel = etat.clsSel;
+          const n = sel.size;
           etat.clsSel = null;
+          cls.vide(c.id, [...sel]);
           ctx.haptique();
-          rend('classeurs');
+          majClasseurs();
           ctx.annonce(t('clRetires', n), () => cls.remetCartes(c.id, avant));
         }
         return;
@@ -2425,10 +2585,11 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
         const i = Number(x.dataset.clPoche);
         // La sélection attend sa pochette d'arrivée : elle s'y range.
         if (etat.clsDeplace) {
-          cls.deplacePoches(c.id, [...etat.clsSel], i);
+          const sel = [...etat.clsSel];
           Object.assign(etat, { clsSel: null, clsDeplace: false });
+          cls.deplacePoches(c.id, sel, i);
           ctx.haptique();
-          rend('classeurs');
+          majClasseurs();
           return;
         }
         if (etat.clsSel) {
@@ -2519,57 +2680,108 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     // ---- Tourner les pages du doigt ----
     // Le geste se décide au premier mouvement, comme partout : horizontal, il tourne la
     // page ; vertical, la vue défile. Depuis le bord gauche, il appartient au retour.
-    let lx0 = 0, ly0 = 0, ldx = 0, laxe = null;
+    // Le doigt déplace la position du livre ; au lâcher, le ressort part avec la vitesse du
+    // doigt : un geste vif tourne la page même court, un geste lent au-delà de 60 px aussi.
+    let lx0 = 0, ly0 = 0, laxe = null, pos0 = 0, largeur = 300, traces = [];
     app.addEventListener('touchstart', (e) => {
       if (!e.target.closest('[data-cl-livre]') || e.touches.length !== 1 || e.touches[0].clientX <= 26) return;
       livreTouche = true;
       laxe = null;
-      ldx = 0;
       lx0 = e.touches[0].clientX;
       ly0 = e.touches[0].clientY;
-      const piste = pisteEl();
-      if (piste) {
-        piste.style.transition = 'none';
-        const cour = piste.querySelector('.cl-feuille.cour');
-        if (cour) cour.style.transition = 'none';
-      }
     }, { passive: true });
     app.addEventListener('touchmove', (e) => {
       // Une carte portée : ni page tournée, ni défilement de la vue — le doigt la déplace.
       if (tenue?.arme) { e.preventDefault(); return; }
       if (!livreTouche) return;
-      const mx = e.touches[0].clientX - lx0, my = e.touches[0].clientY - ly0;
+      const x = e.touches[0].clientX;
+      const mx = x - lx0, my = e.touches[0].clientY - ly0;
       if (!laxe) {
         if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
         laxe = Math.abs(mx) > Math.abs(my) ? 'x' : 'y';
         if (laxe === 'y') { livreTouche = false; return; }
+        // Le livre part d'ici, sans rattraper les 8 px de la décision : pas d'à-coup. Une
+        // page qui tournait encore est saisie au vol, là où elle en est.
+        stoppe();
+        lx0 = x;
+        pos0 = mvt.pos;
+        largeur = (document.querySelector('[data-cl-livre] .cl-feuille.cour')?.offsetWidth || 288) + ECART_FEUILLES;
+        traces = [];
+        document.querySelector('[data-cl-livre]')?.classList.add('geste');
       }
       e.preventDefault();
       const c = cls.classeur(etat.cls);
+      if (!c) return;
+      const der = pagesDe(c) - 1;
+      let p = pos0 - (x - lx0) / largeur;
       // Au bout du classeur, la page résiste : elle ne suit qu'au tiers.
-      const bout = !c || (mx > 0 && etat.clsPage === 0) || (mx < 0 && etat.clsPage >= pagesDe(c) - 1);
-      ldx = bout ? mx / 3 : mx;
-      poseLivre(ldx);
+      if (p < 0) p /= 3; else if (p > der) p = der + (p - der) / 3;
+      Object.assign(mvt, { pos: p, vit: 0 });
+      traces.push({ t: e.timeStamp, x });
+      while (traces.length > 2 && e.timeStamp - traces[0].t > 100) traces.shift();
+      poseFeuilles();
+      recycle();
     }, { passive: false });
-    const finLivre = () => {
+    const finLivre = (e) => {
       if (!livreTouche) return;
       livreTouche = false;
-      if (laxe !== 'x') return;
-      if (Math.abs(ldx) > 60) tourne(ldx < 0 ? 1 : -1); else remetLivre();
+      if (laxe !== 'x') { if (mvt.attente) majLivre(); return; }
+      document.querySelector('[data-cl-livre]')?.classList.remove('geste');
+      const c = cls.classeur(etat.cls);
+      if (!c) return;
+      const der = pagesDe(c) - 1;
+      // La vitesse du doigt sur ses 100 dernières millisecondes ; arrêté avant de lâcher,
+      // il n'a plus d'élan.
+      const a = traces[0], b = traces[traces.length - 1];
+      const v = a && b && b.t > a.t && e.timeStamp - b.t < 80 ? ((b.x - a.x) / (b.t - a.t)) * 1000 : 0;
+      const dx = (b?.x ?? lx0) - lx0;
+      const depart = Math.min(der, Math.max(0, Math.round(pos0)));
+      let cible = Math.min(der, Math.max(0, Math.round(mvt.pos)));
+      if (Math.abs(dx) > 60 || (Math.abs(v) > 300 && Math.abs(dx) > 10 && Math.sign(v) === Math.sign(dx))) {
+        cible = Math.min(der, Math.max(0, depart + (dx < 0 ? 1 : -1)));
+      }
+      if (cible !== etat.clsPage || cible !== depart) ctx.haptique();
+      // L'élan du doigt devient celui de la page (en pages par seconde, borné).
+      mvt.cible = cible;
+      mvt.vit = Math.max(-4, Math.min(4, -v / largeur));
+      anime();
+      majNav(c);
     };
     app.addEventListener('touchend', finLivre, { passive: true });
     app.addEventListener('touchcancel', finLivre, { passive: true });
 
     // ---- Déplacer une carte : appui long puis glissement, comme dans les boîtes ----
-    // Appui de 450 ms sur une pochette pleine : la carte s'illumine, le téléphone vibre,
-    // un fantôme suit le doigt. Relâchée sur une autre pochette, elle s'y pose — pleine,
-    // les deux échangent. S'attarder au bord gauche ou droit du livre tourne la page sans
-    // lâcher la carte. Avant l'appui long, tout mouvement l'annule : le doigt tourne alors
-    // la page ou fait défiler la vue, comme avant. Pas en mode sélection, qui a son
-    // propre « Déplacer ».
-    const APPUI_MS = 450, BORD_PX = 46, BORD_MS = 550;
-    let finGlisse = 0;
+    // Appui de 450 ms sur une pochette pleine : la carte se soulève de sa pochette — le
+    // fantôme naît exactement sur elle et garde la prise du doigt —, le téléphone vibre.
+    // Relâchée sur une autre pochette, elle y glisse ; pleine, la carte qui l'occupait part
+    // vers la place libérée. Relâchée ailleurs, elle retourne à sa place. S'attarder au bord
+    // gauche ou droit du livre tourne la page sans lâcher la carte. Avant l'appui long, tout
+    // mouvement l'annule : le doigt tourne alors la page ou fait défiler la vue, comme avant.
+    // Pas en mode sélection, qui a son propre « Déplacer ».
+    const APPUI_MS = 450, BORD_PX = 46, BORD_MS = 550, VOL_MS = 220;
+    let finGlisse = 0, enVol = false;
     const pocheSous = (x, y) => document.elementFromPoint(x, y)?.closest('[data-cl-livre] .cl-feuille.cour [data-cl-poche]') || null;
+    // La place d'une pochette à l'écran, sans l'échelle d'un appui (:active) : son centre,
+    // et sa taille de mise en page.
+    const placeDe = (b) => {
+      const r = b.getBoundingClientRect();
+      return { x: r.left + r.width / 2 - b.offsetWidth / 2, y: r.top + r.height / 2 - b.offsetHeight / 2, w: b.offsetWidth, h: b.offsetHeight };
+    };
+    // Un fantôme : la copie de la carte d'une pochette, posée exactement sur elle. L'image
+    // est CLONÉE (déjà décodée) : un fantôme ne naît jamais vide.
+    function fantomeDe(b) {
+      const p = placeDe(b);
+      const f = h(`<div class="cl-fantome" style="width:${p.w}px;height:${p.h}px"><div class="cl-fantome-carte"></div></div>`);
+      const img = b.querySelector('img')?.cloneNode();
+      if (img) { img.removeAttribute('loading'); img.decoding = 'sync'; f.firstElementChild.append(img); }
+      f.style.transform = `translate3d(${p.x}px, ${p.y}px, 0)`;
+      return f;
+    }
+    // Le fantôme glisse jusqu'à une place, puis on appelle `fin` (une seule fois).
+    function vole(f, p) {
+      f.classList.add('vole');
+      f.style.transform = `translate3d(${p.x}px, ${p.y}px, 0)`;
+    }
     function lacheTenue() {
       if (!tenue) return;
       clearTimeout(tenue.minuteur);
@@ -2579,6 +2791,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
         .forEach((el) => el.classList.remove('tenu', 'glisse', 'cible'));
       document.querySelector('[data-cl-livre]')?.classList.remove('bord-g', 'bord-d');
       tenue = null;
+      if (mvt.attente) majLivre();
     }
     function arme() {
       if (!tenue) return;
@@ -2587,24 +2800,24 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       tenue.arme = true;
       // Le geste de la page, s'il avait commencé, s'efface : c'est la carte qu'on déplace.
       livreTouche = false;
-      remetLivre();
+      ramene();
       ctx.haptique();
-      el.classList.add('tenu');
-      const b = el.getBoundingClientRect();
-      const img = el.querySelector('img')?.getAttribute('src');
-      tenue.fantome = h(`<div class="cl-fantome" style="width:${b.width}px;height:${b.height}px">${img ? `<img src="${esc(img)}" alt="" />` : ''}</div>`);
+      const p = placeDe(el);
+      tenue.ox = tenue.x - p.x;
+      tenue.oy = tenue.y - p.y;
+      tenue.fantome = fantomeDe(el);
+      tenue.fantome.classList.add('leve');
       document.body.append(tenue.fantome);
-      bougeFantome(tenue.x, tenue.y);
+      el.classList.add('tenu', 'glisse');
     }
     function bougeFantome(x, y) {
-      if (tenue?.fantome) tenue.fantome.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) rotate(-3deg) scale(1.06)`;
+      if (tenue?.fantome) tenue.fantome.style.transform = `translate3d(${x - tenue.ox}px, ${y - tenue.oy}px, 0)`;
     }
     function veilleBord(x) {
       const livre = document.querySelector('[data-cl-livre]');
       if (!livre) return;
       const b = livre.getBoundingClientRect();
       const dir = x < b.left + BORD_PX ? -1 : x > b.right - BORD_PX ? 1 : 0;
-      // La classe est reposée à chaque mouvement : un livre refait l'aurait perdue.
       livre.classList.toggle('bord-g', dir < 0);
       livre.classList.toggle('bord-d', dir > 0);
       if (dir === tenue.bord) return;
@@ -2618,8 +2831,50 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
         }, BORD_MS);
       }
     }
+    // La carte se pose. Sur une autre pochette, le fantôme y glisse et la carte qui
+    // l'occupait part vers la place libérée ; l'échange n'est écrit qu'à l'arrivée, d'un
+    // seul coup (les images changent de pochette sans être rechargées). Ailleurs, elle
+    // retourne à sa place.
+    function depose(i, j) {
+      const c = cls.classeur(etat.cls);
+      const f = tenue?.fantome;
+      const bi = document.querySelector(`[data-cl-livre] [data-cl-poche="${i}"]`);
+      const bj = j == null ? null : document.querySelector(`[data-cl-livre] .cl-feuille.cour [data-cl-poche="${j}"]`);
+      const enFace = (b) => !!b?.closest('.cl-feuille.cour');
+      let autre = null;
+      const fin = () => {
+        enVol = false;
+        autre?.remove();
+        lacheTenue();
+        if (c && bj) {
+          // Les images changent de pochette AVANT l'écriture : la mise à jour du livre les
+          // retrouve et les garde, sans les recharger.
+          const ii = bi?.querySelector('img'), ij = bj.querySelector('img');
+          if (ii && ij) { const m = document.createElement('i'); ii.replaceWith(m); ij.replaceWith(ii); m.replaceWith(ij); }
+          else if (ii) bj.append(ii);
+          else if (ij && bi) bi.append(ij);
+          cls.echange(c.id, i, j);
+          ctx.haptique();
+        }
+        majLivre();
+      };
+      const vers = bj || (enFace(bi) ? bi : null);
+      if (!f || !vers || reduit()) { fin(); return; }
+      enVol = true;
+      if (bj?.querySelector('img') && enFace(bi)) {
+        autre = fantomeDe(bj);
+        autre.classList.add('plat');
+        document.body.append(autre);
+        bj.classList.add('glisse');
+        autre.getBoundingClientRect();   // sa place de départ est posée avant le vol
+        vole(autre, placeDe(bi));
+      }
+      f.classList.add('pose');
+      vole(f, placeDe(vers));
+      setTimeout(fin, VOL_MS + 20);
+    }
     app.addEventListener('pointerdown', (e) => {
-      if (e.button > 0 || etat.clsSel || tenue) return;
+      if (e.button > 0 || etat.clsSel || tenue || enVol) return;
       const el = e.target.closest('[data-cl-livre] .cl-feuille.cour [data-cl-poche]');
       const c = cls.classeur(etat.cls);
       if (!el || !c) return;
@@ -2629,7 +2884,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       tenue.minuteur = setTimeout(arme, APPUI_MS);
     });
     window.addEventListener('pointermove', (e) => {
-      if (!tenue || e.pointerId !== tenue.id) return;
+      if (!tenue || e.pointerId !== tenue.id || enVol) return;
       tenue.x = e.clientX;
       tenue.y = e.clientY;
       if (!tenue.arme) {
@@ -2643,24 +2898,20 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       veilleBord(e.clientX);
     });
     window.addEventListener('pointerup', (e) => {
-      if (!tenue || e.pointerId !== tenue.id) return;
+      if (!tenue || e.pointerId !== tenue.id || enVol) return;
       if (!tenue.arme) { lacheTenue(); return; }
-      const c = cls.classeur(etat.cls);
-      const cible = pocheSous(e.clientX, e.clientY);
-      const i = tenue.i;
       finGlisse = Date.now();
-      lacheTenue();
-      if (c && cible) {
-        const j = Number(cible.dataset.clPoche);
-        if (j !== i) { cls.echange(c.id, i, j); ctx.haptique(); }
-      }
-      majLivre();
+      clearTimeout(tenue.bordMinuteur);
+      document.querySelector('[data-cl-livre]')?.classList.remove('bord-g', 'bord-d');
+      // Une page qui tournait va au bout : c'est sur elle qu'on pose.
+      finitTour();
+      const cible = pocheSous(e.clientX, e.clientY);
+      const j = cible ? Number(cible.dataset.clPoche) : null;
+      depose(tenue.i, j != null && j !== tenue.i ? j : null);
     });
     window.addEventListener('pointercancel', (e) => {
-      if (!tenue || e.pointerId !== tenue.id) return;
-      if (tenue.arme) finGlisse = Date.now();
-      lacheTenue();
-      majLivre();
+      if (!tenue || e.pointerId !== tenue.id || enVol) return;
+      if (tenue.arme) { finGlisse = Date.now(); finitTour(); depose(tenue.i, null); } else lacheTenue();
     });
     // Le toucher qui suit un relâchement n'est pas un toucher : il ouvrirait la fiche de
     // la carte qu'on vient de poser.
@@ -2802,7 +3053,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
           etat.clsAjout = null;
           ctx.panneau2.ferme();
           ctx.haptique();
-          rend('classeurs');
+          majClasseurs();
         }
       }
     });
@@ -2820,8 +3071,9 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     });
     // Un classeur change (ici, sur un autre appareil, par un import) : la vue suit.
     cls.surChangement(() => {
-      if (ctx.vue() !== 'classeurs' || livreTouche) return;
-      rend('classeurs');
+      if (ctx.vue() !== 'classeurs') return;
+      if (etat.cls && cls.classeur(etat.cls) && document.querySelector('[data-cl-livre]')) { majLivre(); return; }
+      if (!livreTouche) rend('classeurs');
     });
 
     const corps = panneau.corps;

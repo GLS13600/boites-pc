@@ -162,6 +162,18 @@ export function range(id, depuis, cles) {
   ecrire();
 }
 
+// Glisser-déposer (appui long, comme dans les boîtes) : la carte prend la pochette visée.
+// Pleine, les deux échangent ; libre, la carte s'y installe et laisse sa place vide. Rien
+// d'autre ne bouge — dans un vrai classeur, on ne décale pas les pages.
+export function echange(id, i, j) {
+  const c = classeur(id);
+  if (!c || i === j || i < 0 || j < 0) return;
+  while (c.cartes.length <= Math.max(i, j)) c.cartes.push(null);
+  [c.cartes[i], c.cartes[j]] = [c.cartes[j], c.cartes[i]];
+  while (c.cartes.length && c.cartes[c.cartes.length - 1] == null) c.cartes.pop();
+  ecrire();
+}
+
 // Vide des pochettes : elles restent à leur place, libres.
 export function vide(id, indices) {
   const c = classeur(id);

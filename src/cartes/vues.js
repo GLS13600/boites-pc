@@ -1194,6 +1194,13 @@ export function creeCartes(ctx) {
   // Refait le livre EN PLACE (page tournée, détail arrivé) : le défilement ne bouge pas,
   // et un geste en cours n'est jamais interrompu.
   let livreTouche = false;
+  // La carte portée par un appui long (voir « Déplacer une carte ») : le livre peut être
+  // refait pendant le geste (détail arrivé, page tournée au bord) — on lui rend ses marques.
+  let tenue = null;
+  function marqueTenue() {
+    if (!tenue?.arme) return;
+    document.querySelector(`[data-cl-livre] .cl-feuille.cour [data-cl-poche="${tenue.i}"]`)?.classList.add('tenu', 'glisse');
+  }
   function majLivre() {
     const c = cls.classeur(etat.cls);
     const livre = document.querySelector('[data-cl-livre]');
@@ -1205,6 +1212,7 @@ export function creeCartes(ctx) {
     const b = document.querySelector('.cl-vue .bandeau');
     if (b) b.outerHTML = bandeauClasseur(c);
     chargePoches();
+    marqueTenue();
   }
 
   // ---- Tourner la page ----
@@ -2472,6 +2480,8 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       }
     }, { passive: true });
     app.addEventListener('touchmove', (e) => {
+      // Une carte portée : ni page tournée, ni défilement de la vue — le doigt la déplace.
+      if (tenue?.arme) { e.preventDefault(); return; }
       if (!livreTouche) return;
       const mx = e.touches[0].clientX - lx0, my = e.touches[0].clientY - ly0;
       if (!laxe) {
@@ -2494,6 +2504,116 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     };
     app.addEventListener('touchend', finLivre, { passive: true });
     app.addEventListener('touchcancel', finLivre, { passive: true });
+
+    // ---- Déplacer une carte : appui long puis glissement, comme dans les boîtes ----
+    // Appui de 450 ms sur une pochette pleine : la carte s'illumine, le téléphone vibre,
+    // un fantôme suit le doigt. Relâchée sur une autre pochette, elle s'y pose — pleine,
+    // les deux échangent. S'attarder au bord gauche ou droit du livre tourne la page sans
+    // lâcher la carte. Avant l'appui long, tout mouvement l'annule : le doigt tourne alors
+    // la page ou fait défiler la vue, comme avant. Pas en mode sélection, qui a son
+    // propre « Déplacer ».
+    const APPUI_MS = 450, BORD_PX = 46, BORD_MS = 550;
+    let finGlisse = 0;
+    const pocheSous = (x, y) => document.elementFromPoint(x, y)?.closest('[data-cl-livre] .cl-feuille.cour [data-cl-poche]') || null;
+    function lacheTenue() {
+      if (!tenue) return;
+      clearTimeout(tenue.minuteur);
+      clearTimeout(tenue.bordMinuteur);
+      tenue.fantome?.remove();
+      document.querySelectorAll('[data-cl-livre] .tenu, [data-cl-livre] .glisse, [data-cl-livre] .cible')
+        .forEach((el) => el.classList.remove('tenu', 'glisse', 'cible'));
+      document.querySelector('[data-cl-livre]')?.classList.remove('bord-g', 'bord-d');
+      tenue = null;
+    }
+    function arme() {
+      if (!tenue) return;
+      const el = document.querySelector(`[data-cl-livre] .cl-feuille.cour [data-cl-poche="${tenue.i}"]`);
+      if (!el) { lacheTenue(); return; }
+      tenue.arme = true;
+      // Le geste de la page, s'il avait commencé, s'efface : c'est la carte qu'on déplace.
+      livreTouche = false;
+      remetLivre();
+      ctx.haptique();
+      el.classList.add('tenu');
+      const b = el.getBoundingClientRect();
+      const img = el.querySelector('img')?.getAttribute('src');
+      tenue.fantome = h(`<div class="cl-fantome" style="width:${b.width}px;height:${b.height}px">${img ? `<img src="${esc(img)}" alt="" />` : ''}</div>`);
+      document.body.append(tenue.fantome);
+      bougeFantome(tenue.x, tenue.y);
+    }
+    function bougeFantome(x, y) {
+      if (tenue?.fantome) tenue.fantome.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) rotate(-3deg) scale(1.06)`;
+    }
+    function veilleBord(x) {
+      const livre = document.querySelector('[data-cl-livre]');
+      if (!livre) return;
+      const b = livre.getBoundingClientRect();
+      const dir = x < b.left + BORD_PX ? -1 : x > b.right - BORD_PX ? 1 : 0;
+      // La classe est reposée à chaque mouvement : un livre refait l'aurait perdue.
+      livre.classList.toggle('bord-g', dir < 0);
+      livre.classList.toggle('bord-d', dir > 0);
+      if (dir === tenue.bord) return;
+      tenue.bord = dir;
+      clearTimeout(tenue.bordMinuteur);
+      if (dir) {
+        tenue.bordMinuteur = setTimeout(() => {
+          if (!tenue?.arme) return;
+          tenue.bord = 0;   // encore au bord ? le mouvement suivant réarme une page de plus
+          tourne(dir);
+        }, BORD_MS);
+      }
+    }
+    app.addEventListener('pointerdown', (e) => {
+      if (e.button > 0 || etat.clsSel || tenue) return;
+      const el = e.target.closest('[data-cl-livre] .cl-feuille.cour [data-cl-poche]');
+      const c = cls.classeur(etat.cls);
+      if (!el || !c) return;
+      const i = Number(el.dataset.clPoche);
+      if (c.cartes[i] == null) return;
+      tenue = { i, id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, arme: false, bord: 0 };
+      tenue.minuteur = setTimeout(arme, APPUI_MS);
+    });
+    window.addEventListener('pointermove', (e) => {
+      if (!tenue || e.pointerId !== tenue.id) return;
+      tenue.x = e.clientX;
+      tenue.y = e.clientY;
+      if (!tenue.arme) {
+        if (Math.hypot(e.clientX - tenue.x0, e.clientY - tenue.y0) > 8) lacheTenue();
+        return;
+      }
+      bougeFantome(e.clientX, e.clientY);
+      const cible = pocheSous(e.clientX, e.clientY);
+      document.querySelectorAll('[data-cl-livre] .cible').forEach((x) => { if (x !== cible) x.classList.remove('cible'); });
+      if (cible && Number(cible.dataset.clPoche) !== tenue.i) cible.classList.add('cible');
+      veilleBord(e.clientX);
+    });
+    window.addEventListener('pointerup', (e) => {
+      if (!tenue || e.pointerId !== tenue.id) return;
+      if (!tenue.arme) { lacheTenue(); return; }
+      const c = cls.classeur(etat.cls);
+      const cible = pocheSous(e.clientX, e.clientY);
+      const i = tenue.i;
+      finGlisse = Date.now();
+      lacheTenue();
+      if (c && cible) {
+        const j = Number(cible.dataset.clPoche);
+        if (j !== i) { cls.echange(c.id, i, j); ctx.haptique(); }
+      }
+      majLivre();
+    });
+    window.addEventListener('pointercancel', (e) => {
+      if (!tenue || e.pointerId !== tenue.id) return;
+      if (tenue.arme) finGlisse = Date.now();
+      lacheTenue();
+      majLivre();
+    });
+    // Le toucher qui suit un relâchement n'est pas un toucher : il ouvrirait la fiche de
+    // la carte qu'on vient de poser.
+    app.addEventListener('click', (e) => {
+      if (Date.now() - finGlisse < 450 && e.target.closest('[data-cl-livre]')) { e.stopPropagation(); e.preventDefault(); }
+    }, true);
+    // Un appui long sur une image ouvrirait le menu du système (ordinateur).
+    app.addEventListener('contextmenu', (e) => { if (tenue && e.target.closest('[data-cl-livre]')) e.preventDefault(); });
 
     // ---- Le second panneau : créer un classeur, le régler, y ranger des cartes ----
     const corps2 = ctx.panneau2.corps;

@@ -4577,6 +4577,42 @@ img {
   font-variant-numeric: tabular-nums;
 }
 .cl-poche.choisie { outline: 3px solid var(--ball); outline-offset: -3px; }
+/* Glisser-déposer (appui long), comme les cases des boîtes : la carte saisie brille, puis
+   s'efface quand le fantôme la prend ; la pochette visée s'entoure de rouge. */
+.cl-poche.tenu {
+  z-index: 3;
+  transform: scale(1.06);
+  box-shadow: 0 0 0 2px var(--ball), 0 0 16px 3px rgb(214 69 60 / 50%);
+}
+.cl-poche.tenu.glisse { transform: none; box-shadow: 0 0 0 2px var(--ball); }
+.cl-poche.tenu.glisse img { opacity: 0.25; }
+.cl-poche.cible { outline: 3px solid var(--ball); outline-offset: -3px; }
+.cl-fantome {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  overflow: hidden;
+  border-radius: 6px;
+  pointer-events: none; /* sinon elementFromPoint ne verrait que le fantôme */
+  box-shadow: 0 10px 24px rgb(0 0 0 / 40%);
+  opacity: 0.95;
+}
+.cl-fantome img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* Bord du livre armé pendant un glissement : la page va tourner de ce côté. */
+.cl-livre.bord-g::before,
+.cl-livre.bord-d::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 46px;
+  z-index: 2;
+  pointer-events: none;
+  animation: bordPulse 550ms ease-out;
+}
+.cl-livre.bord-g::before { left: 0; background: linear-gradient(to right, #d6453c66, #d6453c00); }
+.cl-livre.bord-d::before { right: 0; background: linear-gradient(to left, #d6453c66, #d6453c00); }
 .cl-poche .cx-v-coche { width: 30px; height: 30px; }
 .cl-nav { display: flex; align-items: center; justify-content: center; gap: var(--e-4); }
 .cl-nav-txt { min-width: 110px; text-align: center; font-size: var(--t-petit); font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }

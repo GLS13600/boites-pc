@@ -405,6 +405,23 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
     présélectionnée pour l'ajout (`ouvre(id, liste, { variante })`).
   - **Sélection** (icône coche) : Déplacer — la barre demande la pochette d'arrivée —
     ou Retirer, avec « Annuler ».
+  - **Glisser-déposer** (28/10/2026, à la demande : « le même système que les Pokémon
+    dans les boîtes ») : appui de 450 ms sur une pochette pleine, la carte brille et le
+    téléphone vibre, un fantôme (`.cl-fantome`) suit le doigt ; relâchée sur une autre
+    pochette, elle s'y pose — pleine, les deux échangent (`cls.echange`), libre, sa place
+    reste vide. S'attarder 550 ms sur les 46 px du bord du livre tourne la page sans
+    lâcher la carte (`.bord-g` / `.bord-d`). Pointer Events, écoutés sur `window` comme
+    dans les boîtes : le livre est refait pendant le geste, et `marqueTenue()` rend ses
+    marques à la carte portée.
+    - Avant l'appui long, tout mouvement de plus de 8 px l'annule : le doigt tourne la
+      page ou fait défiler, comme avant. Une fois la carte portée, le geste de la page
+      se tait (`touchmove` empêché, `livreTouche` à faux).
+    - Le `click` qui suit le relâchement est absorbé (450 ms) : il ouvrirait la fiche de
+      la carte qu'on vient de poser. Un simple toucher l'ouvre toujours.
+    - Pas en mode sélection, qui a son propre « Déplacer ».
+    - Vérifié dans l'aperçu par des PointerEvent : vers une pochette libre, échange,
+      mouvement avant l'appui long (rien ne bouge), page tournée au bord puis dépôt en
+      page 2, toucher simple → fiche.
 - **Créer / régler** (second panneau de l'univers Cartes, `outilSheet`) : nom, 4, 9 ou
   12 pochettes par page (2×2, 3×3, 4×3), teinte, et à la création le contenu — vide,
   ou **d'une extension**, cherchée parmi les 202, en « une pochette par carte » ou en

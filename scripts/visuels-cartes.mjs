@@ -37,6 +37,11 @@ const TAILLE = 'hd';
 // l'appli lui fusionne (src/cartes/api.js, FUSIONS). À compléter à chaque série déposée.
 const SERIES = {
   '30C': ['30th', '30th-c'],
+  // McDonald's : codes relevés pour les logos (fetch-logos-cartes.mjs). 2018 et 2019 : les
+  // éditions françaises de 40 cartes ; 2021 et 2022 : Pokécardex n'a que l'américaine.
+  MC1: ['2011bw'], MC2: ['2012bw'], MC3: ['2013bw'], MC4: ['2014xy'], MC5: ['2015xy'],
+  MC6: ['2016xy'], MC7: ['2017sm'], MC8: ['2018sm-fr'], MC9: ['2019sm-fr'],
+  MC10US: ['2021swsh'], MC11US: ['2022swsh'], M23: ['2023sv'], M24: ['2024sv'],
 };
 
 // ------------------------------------------------------------ lire un .xlsx

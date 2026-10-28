@@ -17,6 +17,7 @@ import * as prix from './prix.js';
 import * as cls from './classeurs.js';
 import * as advisor from './advisor.js';
 import * as favoris from './favoris.js';
+import * as couleurs from './couleurs.js';
 import { categorie, variantes, CATEGORIES, LANGUES_CARTE, ETATS, VARIANTES, cleEtat, distance } from './regles.js';
 
 const BLOCS_KEY = 'pcbox.cartes.blocs';
@@ -78,6 +79,18 @@ function blocsGardes() {
   return new Set([BLOCS[0].id]);
 }
 
+// Les couleurs d'un classeur à poser sur un élément : la classe d'une des six teintes
+// dessinées (`.c-nuit`…) ou `.c-libre`, et les variables CSS d'une couleur de la roue
+// (couverture, pages). `couv-claire` et `pages-claires` font passer l'écriture et les
+// pochettes au sombre sur une couleur claire.
+function teinteClasseur({ couleur, pages }, { avecPages = true } = {}) {
+  const libre = couleurs.HEX.test(couleur || '');
+  const p = avecPages && couleurs.HEX.test(pages || '') ? pages : '';
+  const classes = [libre ? 'c-libre' : `c-${couleur || 'nuit'}`];
+  if (libre && couleurs.estClaire(couleur)) classes.push('couv-claire');
+  if (p && couleurs.estClaire(p)) classes.push('pages-claires');
+  return { classe: classes.join(' '), style: couleurs.enStyle(couleurs.variables(libre ? couleur : '', p)) };
+}
 export function creeCartes(ctx) {
   const { t, esc, h, fold, euros, ICO, panneau } = ctx;
   api.poseLangue(ctx.langue());
@@ -1028,7 +1041,7 @@ export function creeCartes(ctx) {
     const logo = c.logo ? logoSet(c.logo) : '';
     const pc = v.pleines ? (100 * v.possedees) / v.pleines : 0;
     return `
-      <button class="cl-couv c-${esc(c.couleur)}" data-cl="${esc(c.id)}"
+      <button class="cl-couv ${teinteClasseur(c).classe}" style="${esc(teinteClasseur(c).style)}" data-cl="${esc(c.id)}"
               aria-label="${esc(c.nom)}, ${esc(t('clContenu', v.possedees, v.pleines))}">
         <span class="cl-anneaux" aria-hidden="true"><i></i><i></i><i></i></span>
         <span class="cl-couv-art">${logo ? `<img src="${esc(api.logo(logo))}" alt="" loading="lazy" />`
@@ -1114,7 +1127,7 @@ export function creeCartes(ctx) {
     const pages = pagesDe(c);
     const p = etat.clsPage;
     return `
-      <div class="cl-livre c-${esc(c.couleur)}" data-cl-livre>
+      <div class="cl-livre ${teinteClasseur(c).classe}" style="${esc(teinteClasseur(c).style)}" data-cl-livre>
         <div class="cl-piste">
           ${p > 0 ? feuille(c, p - 1, 'prec') : ''}
           ${feuille(c, p, 'cour')}
@@ -1134,7 +1147,7 @@ export function creeCartes(ctx) {
     const pc = v.pleines ? (100 * v.possedees) / v.pleines : 0;
     return `
       <div class="bandeau">
-        <span class="bandeau-art">${logo ? `<img src="${esc(api.logo(logo))}" alt="" />` : `<span class="cl-mini c-${esc(c.couleur)}"></span>`}</span>
+        <span class="bandeau-art">${logo ? `<img src="${esc(api.logo(logo))}" alt="" />` : `<span class="cl-mini ${teinteClasseur(c).classe}" style="${esc(teinteClasseur(c).style)}"></span>`}</span>
         <span class="bandeau-chiffres">
           ${v.possede > 0 ? `<span class="bandeau-valeur">${euros(v.possede)}</span>` : ''}
           <span class="bandeau-compte"><b>${v.possedees}</b> / ${v.pleines}<small> · ${pourcent(pc)}</small></span>
@@ -1313,8 +1326,8 @@ export function creeCartes(ctx) {
   function ouvreEdition(id) {
     const c = id ? cls.classeur(id) : null;
     etat.clsEdition = c
-      ? { id: c.id, nom: c.nom, poches: c.poches, couleur: c.couleur }
-      : { nom: '', poches: 9, couleur: 'nuit', contenu: 'vide', set: '', mise: 'simple', qSet: '', prepa: null, erreur: '' };
+      ? { id: c.id, nom: c.nom, poches: c.poches, couleur: c.couleur, pages: c.pages || '', roue: null }
+      : { nom: '', poches: 9, couleur: 'nuit', pages: '', roue: null, contenu: 'vide', set: '', mise: 'simple', qSet: '', prepa: null, erreur: '' };
     if (!c) chargeToutesExt().then(majEdition);
     ctx.panneau2.ouvre(htmlEdition());
   }
@@ -1351,12 +1364,7 @@ export function creeCartes(ctx) {
         <div class="cx-choix-puces">${cls.POCHES.map((n) => `
           <button class="puce ${e.poches === n ? 'on' : ''}" data-cl-poches="${n}" aria-pressed="${e.poches === n}">${t('clPochesN', n)}</button>`).join('')}</div>
       </div>
-      <div class="cx-choix">
-        <span class="cx-choix-lib">${t('clCouleur')}</span>
-        <div class="cx-choix-puces">${cls.COULEURS.map((k) => `
-          <button class="cl-teinte c-${k} ${e.couleur === k ? 'on' : ''}" data-cl-couleur="${k}"
-                  aria-pressed="${e.couleur === k}" aria-label="${t(`clCouleur_${k}`)}" title="${t(`clCouleur_${k}`)}"></button>`).join('')}</div>
-      </div>
+      ${htmlCouleurs(e)}
       ${creation ? `
         <div class="cx-choix">
           <span class="cx-choix-lib">${t('clContenuLib')}</span>
@@ -1385,6 +1393,125 @@ export function creeCartes(ctx) {
       <button class="catch-btn" data-cl-valide ${e.prepa ? 'disabled' : ''}>${e.prepa
         ? t('clPreparation', e.prepa.fait, e.prepa.total) : creation ? t('clCreer') : t('clEnregistrer')}</button>`;
   }
+  // ---- Couleurs du classeur : nuanciers, favoris et roue chromatique ----
+  //
+  // Deux choix, la couverture (« couleur du classeur ») et les pages. Pour chacun : les
+  // teintes proposées (les six dessinées pour la couverture, « comme le classeur » pour
+  // les pages), les couleurs FAVORITES — communes, gardées dans le compte —, et la roue,
+  // qui se déplie sous le nuancier. L'aperçu en tête suit le doigt.
+  const pastille = (hex, actif, attr, libelle) => `
+    <button class="cl-teinte libre ${actif ? 'on' : ''}" style="--sw:${hex}" ${attr}
+            aria-pressed="${actif}" aria-label="${esc(libelle)}" title="${esc(libelle)}"></button>`;
+  function htmlCouleurs(e) {
+    const favs = cls.favoris();
+    const couvLibre = couleurs.HEX.test(e.couleur);
+    const t1 = teinteClasseur(e);
+    return `
+      <div class="cl-apercu ${t1.classe}" style="${esc(t1.style)}" data-cl-apercu aria-hidden="true">
+        <span class="cl-apercu-couv"></span>
+        <span class="cl-apercu-page"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      </div>
+      <div class="cx-choix">
+        <span class="cx-choix-lib">${t('clCouleur')}</span>
+        <div class="cx-choix-puces">
+          ${cls.COULEURS.map((k) => `
+            <button class="cl-teinte c-${k} ${e.couleur === k ? 'on' : ''}" data-cl-couleur="${k}"
+                    aria-pressed="${e.couleur === k}" aria-label="${t(`clCouleur_${k}`)}" title="${t(`clCouleur_${k}`)}"></button>`).join('')}
+          ${couvLibre && !favs.includes(e.couleur) ? pastille(e.couleur, true, `data-cl-couleur="${e.couleur}"`, e.couleur) : ''}
+          ${favs.map((hex) => pastille(hex, e.couleur === hex, `data-cl-couleur="${hex}"`, hex)).join('')}
+          <button class="cl-teinte roue ${e.roue === 'couv' ? 'on' : ''}" data-cl-roue-ouvre="couv"
+                  aria-expanded="${e.roue === 'couv'}" aria-label="${t('clRoue')}" title="${t('clRoue')}"></button>
+        </div>
+        ${e.roue === 'couv' ? htmlRoue(e, 'couv') : ''}
+      </div>
+      <div class="cx-choix">
+        <span class="cx-choix-lib">${t('clCouleurPages')}</span>
+        <div class="cx-choix-puces">
+          <button class="cl-teinte auto ${teinteClasseur({ couleur: e.couleur }).classe} ${!e.pages ? 'on' : ''}"
+                  style="${esc(teinteClasseur({ couleur: e.couleur }).style)}" data-cl-pages=""
+                  aria-pressed="${!e.pages}" aria-label="${t('clPagesAuto')}" title="${t('clPagesAuto')}"></button>
+          ${e.pages && !favs.includes(e.pages) ? pastille(e.pages, true, `data-cl-pages="${e.pages}"`, e.pages) : ''}
+          ${favs.map((hex) => pastille(hex, e.pages === hex, `data-cl-pages="${hex}"`, hex)).join('')}
+          <button class="cl-teinte roue ${e.roue === 'pages' ? 'on' : ''}" data-cl-roue-ouvre="pages"
+                  aria-expanded="${e.roue === 'pages'}" aria-label="${t('clRoue')}" title="${t('clRoue')}"></button>
+        </div>
+        ${e.roue === 'pages' ? htmlRoue(e, 'pages') : ''}
+      </div>`;
+  }
+  // La couleur que règle la roue ouverte, et sa position (TSV).
+  const couleurRoue = (e) => (e.roue === 'pages' ? e.pages : e.couleur);
+  function tsvRoue(e) {
+    const hex = couleurRoue(e);
+    if (couleurs.HEX.test(hex || '')) return couleurs.hexVersTsv(hex);
+    return e.roue === 'pages' ? { h: 220, s: 0.55, v: 0.22 } : { h: 220, s: 0.7, v: 0.6 };
+  }
+  function htmlRoue(e, cible) {
+    const { h, s: sat, v } = e.tsv || tsvRoue(e);
+    const hex = couleurs.tsvVersHex(h, sat, v);
+    const fav = cls.favoris().includes(hex);
+    const rad = (h * Math.PI) / 180;
+    return `
+      <div class="cl-roue-bloc" data-cl-roue-bloc="${cible}">
+        <div class="cl-roue" data-cl-roue data-geste-local style="--v:${v.toFixed(3)}" role="slider"
+             aria-label="${t('clRoue')}" aria-valuetext="${hex}">
+          <span class="cl-roue-pt" style="left:${50 + 50 * sat * Math.sin(rad)}%;top:${50 - 50 * sat * Math.cos(rad)}%;background:${hex}"></span>
+        </div>
+        <div class="cl-roue-cote">
+          <span class="cl-roue-apercu" style="background:${hex}"></span>
+          <b class="cl-roue-hex">${hex.toUpperCase()}</b>
+          <label class="cl-lum"><span>${t('clLuminosite')}</span>
+            <input type="range" min="4" max="100" value="${Math.round(v * 100)}" data-cl-lum />
+          </label>
+          <button class="puce ${fav ? 'on' : ''}" data-cl-favori aria-pressed="${fav}">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"${fav ? ' fill="currentColor"' : ''}/></svg>
+            <span>${fav ? t('clFavoriRetire') : t('clFavoriAjoute')}</span>
+          </button>
+        </div>
+      </div>`;
+  }
+  // Pendant le geste, on ne refait que la roue et l'aperçu : refaire le panneau à chaque
+  // mouvement couperait le glissement. Le panneau entier suit au relâchement.
+  function appliqueRoue(e) {
+    const hex = couleurs.tsvVersHex(e.tsv.h, e.tsv.s, e.tsv.v);
+    if (e.roue === 'pages') e.pages = hex; else e.couleur = hex;
+    const corps = ctx.panneau2.corps;
+    const roue = corps.querySelector('[data-cl-roue]');
+    if (roue) {
+      const rad = (e.tsv.h * Math.PI) / 180;
+      roue.style.setProperty('--v', e.tsv.v.toFixed(3));
+      roue.setAttribute('aria-valuetext', hex);
+      const pt = roue.querySelector('.cl-roue-pt');
+      Object.assign(pt.style, { left: `${50 + 50 * e.tsv.s * Math.sin(rad)}%`, top: `${50 - 50 * e.tsv.s * Math.cos(rad)}%`, background: hex });
+    }
+    const ap = corps.querySelector('.cl-roue-apercu');
+    if (ap) ap.style.background = hex;
+    const txt = corps.querySelector('.cl-roue-hex');
+    if (txt) txt.textContent = hex.toUpperCase();
+    const fav = corps.querySelector('[data-cl-favori]');
+    if (fav) {
+      const oui = cls.favoris().includes(hex);
+      fav.classList.toggle('on', oui);
+      fav.setAttribute('aria-pressed', String(oui));
+      fav.querySelector('span').textContent = oui ? t('clFavoriRetire') : t('clFavoriAjoute');
+      fav.querySelector('path')?.setAttribute('fill', oui ? 'currentColor' : 'none');
+    }
+    const apercu = corps.querySelector('[data-cl-apercu]');
+    if (apercu) {
+      const x = teinteClasseur(e);
+      apercu.className = `cl-apercu ${x.classe}`;
+      apercu.setAttribute('style', x.style);
+    }
+  }
+  function roueDepuisPoint(e, roue, x, y) {
+    const b = roue.getBoundingClientRect();
+    const dx = x - (b.left + b.width / 2), dy = y - (b.top + b.height / 2);
+    const rayon = b.width / 2;
+    e.tsv = { ...(e.tsv || tsvRoue(e)),
+      h: ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360,
+      s: Math.min(1, Math.hypot(dx, dy) / rayon) };
+    appliqueRoue(e);
+  }
+
   function majEdition() {
     if (!etat.clsEdition || !ctx.panneau2.ouvert()) return;
     const nom = ctx.panneau2.corps.querySelector('[data-cl-nom]');
@@ -1396,7 +1523,7 @@ export function creeCartes(ctx) {
     if (!e || e.prepa) return;
     const nom = (ctx.panneau2.corps.querySelector('[data-cl-nom]')?.value ?? e.nom).trim();
     if (e.id) {
-      cls.modifie(e.id, { nom, poches: e.poches, couleur: e.couleur });
+      cls.modifie(e.id, { nom, poches: e.poches, couleur: e.couleur, pages: e.pages });
       etat.clsEdition = null;
       ctx.panneau2.ferme();
       rend('classeurs');
@@ -1439,7 +1566,7 @@ export function creeCartes(ctx) {
     }
     const c = cls.cree({
       nom: nom || (e.set ? nomSetConnu(e.set) : '') || t('clNomDefaut'),
-      poches: e.poches, couleur: e.couleur, logo: e.contenu === 'set' ? e.set : '', set: e.contenu === 'set' ? e.set : '',
+      poches: e.poches, couleur: e.couleur, pages: e.pages, logo: e.contenu === 'set' ? e.set : '', set: e.contenu === 'set' ? e.set : '',
       mise: e.contenu === 'set' ? e.mise : '', cartes, prix: prixCartes,
     });
     etat.clsEdition = null;
@@ -2376,13 +2503,61 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       const b = corps2.querySelector('[data-cl-ajoute]');
       if (b) b.disabled = !etat.clsAjout.choix.size;
     };
+    // La roue chromatique suit le doigt (souris comme toucher) ; le panneau est refait au
+    // relâchement, une fois la couleur posée.
+    let roueTenue = null;
+    corps2.addEventListener('pointerdown', (e) => {
+      const roue = e.target.closest('[data-cl-roue]');
+      if (!roue || !etat.clsEdition) return;
+      e.preventDefault();
+      roueTenue = { roue, id: e.pointerId };
+      roueDepuisPoint(etat.clsEdition, roue, e.clientX, e.clientY);
+      // La capture garde le doigt sur la roue même s'il en sort ; elle peut être refusée
+      // (pointeur déjà relâché) sans que la couleur posée en souffre.
+      try { roue.setPointerCapture(e.pointerId); } catch { /* sans capture, le geste suit tout de même */ }
+    });
+    corps2.addEventListener('pointermove', (e) => {
+      if (!roueTenue || e.pointerId !== roueTenue.id || !etat.clsEdition) return;
+      roueDepuisPoint(etat.clsEdition, roueTenue.roue, e.clientX, e.clientY);
+    });
+    const lacheRoue = (e) => {
+      if (!roueTenue || e.pointerId !== roueTenue.id) return;
+      roueTenue = null;
+      ctx.haptique();
+      majEdition();
+    };
+    corps2.addEventListener('pointerup', lacheRoue);
+    corps2.addEventListener('pointercancel', lacheRoue);
+    corps2.addEventListener('input', (e) => {
+      if (!e.target.matches('[data-cl-lum]') || !etat.clsEdition) return;
+      const ed = etat.clsEdition;
+      ed.tsv = { ...(ed.tsv || tsvRoue(ed)), v: Number(e.target.value) / 100 };
+      appliqueRoue(ed);
+    });
+    corps2.addEventListener('change', (e) => {
+      if (e.target.matches('[data-cl-lum]')) majEdition();
+    });
+
     corps2.addEventListener('click', (e) => {
       const q = (sel) => e.target.closest(sel);
       let x;
       const ed = etat.clsEdition;
       if (ed) {
         if ((x = q('[data-cl-poches]'))) { ed.poches = Number(x.dataset.clPoches); majEdition(); return; }
-        if ((x = q('[data-cl-couleur]'))) { ed.couleur = x.dataset.clCouleur; ctx.haptique(); majEdition(); return; }
+        if ((x = q('[data-cl-couleur]'))) { ed.couleur = x.dataset.clCouleur; ed.tsv = null; ctx.haptique(); majEdition(); return; }
+        if ((x = q('[data-cl-pages]'))) { ed.pages = x.dataset.clPages; ed.tsv = null; ctx.haptique(); majEdition(); return; }
+        if ((x = q('[data-cl-roue-ouvre]'))) {
+          const cible = x.dataset.clRoueOuvre;
+          ed.roue = ed.roue === cible ? null : cible;
+          ed.tsv = null;
+          majEdition();
+          return;
+        }
+        if (q('[data-cl-favori]')) {
+          const hex = couleurRoue(ed);
+          if (couleurs.HEX.test(hex || '')) { cls.basculeFavori(hex); ctx.haptique(); majEdition(); }
+          return;
+        }
         if ((x = q('[data-cl-contenu]'))) { ed.contenu = x.dataset.clContenu; ed.erreur = ''; majEdition(); return; }
         if ((x = q('[data-cl-mise]'))) { ed.mise = x.dataset.clMise; majEdition(); return; }
         if ((x = q('[data-cl-set]'))) { ed.set = x.dataset.clSet; ed.erreur = ''; ctx.haptique(); majEdition(); return; }

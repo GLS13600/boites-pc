@@ -4608,6 +4608,109 @@ img {
 .cl-lot-ajout { position: sticky; bottom: 0; margin-top: var(--e-3); }
 .sheet .cx-choix { margin-bottom: var(--e-3); }
 
+/* ---- Couleurs libres : roue chromatique, favoris (couleurs.js) ----
+   Une couleur de la roue pose ses variables en ligne (--cl-haut, --cl-bas, --cl-page,
+   --cl-page-2) ; .c-libre ne sert que de repli. Sur une couleur claire, l'écriture de
+   la couverture et les pochettes passent au sombre. */
+.c-libre { --cl-haut: #34497e; --cl-bas: #0c1120; --cl-page: #13203a; --cl-page-2: #0b1424; }
+.cl-couv.couv-claire { color: #10141c; }
+.cl-couv.couv-claire .cl-couv-txt small { color: rgb(16 20 28 / 78%); }
+.cl-couv.couv-claire .cl-couv-barre { background: rgb(16 20 28 / 16%); }
+.cl-couv.couv-claire .cl-couv-barre i { background: #10141c; }
+.cl-couv.couv-claire .cl-couv-valeur { background: #10141c; color: #fff; }
+.pages-claires .cl-poche { border-color: rgb(16 20 28 / 26%); background: rgb(16 20 28 / 4%); color: rgb(16 20 28 / 55%); }
+.pages-claires .cl-poche.pleine { background: rgb(16 20 28 / 6%); box-shadow: 0 1px 3px rgb(0 0 0 / 30%); }
+.pages-claires .cl-trous i { box-shadow: inset 0 1px 2px rgb(0 0 0 / 35%); }
+.cl-teinte.libre { background: var(--sw); }
+.cl-teinte.auto { background: linear-gradient(to right, var(--cl-page-2), var(--cl-page) 40%); }
+.cl-teinte.auto::before {
+  content: "A";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgb(255 255 255 / 80%);
+  font-size: 15px;
+  font-weight: 800;
+}
+.cl-teinte.roue {
+  background:
+    radial-gradient(circle closest-side, #fff 0, rgb(255 255 255 / 0) 100%),
+    conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+}
+/* L'aperçu : la couverture et une page du classeur, qui suivent le doigt sur la roue. */
+.cl-apercu {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: var(--e-3);
+  height: 92px;
+  margin: 0 0 var(--e-4);
+}
+.cl-apercu-couv {
+  width: 66px;
+  border-radius: 4px 10px 10px 4px;
+  background: linear-gradient(152deg, var(--cl-haut), var(--cl-bas));
+  box-shadow: var(--ombre-2), inset 6px 0 0 rgb(0 0 0 / 16%);
+}
+.cl-apercu-page {
+  width: 66px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  padding: 7px 7px 7px 12px;
+  border-radius: 4px 10px 10px 4px;
+  background: linear-gradient(to right, var(--cl-page-2), var(--cl-page) 14%);
+  box-shadow: var(--ombre-2);
+}
+.cl-apercu-page i { border-radius: 2px; border: 1px dashed rgb(255 255 255 / 22%); }
+.cl-apercu.pages-claires .cl-apercu-page i { border-color: rgb(16 20 28 / 26%); }
+/* La roue : la teinte suit l'angle, la saturation la distance au centre ; la luminosité,
+   réglée au curseur, l'assombrit (--v). Elle garde ses gestes (data-geste-local). */
+.cl-roue-bloc {
+  display: grid;
+  grid-template-columns: minmax(0, 190px) minmax(0, 1fr);
+  gap: var(--e-4);
+  align-items: center;
+  margin-top: var(--e-3);
+  padding: var(--e-3);
+  border-radius: var(--r-md);
+  background: var(--panel-2, var(--paper));
+  border: 1px solid var(--rule);
+}
+.cl-roue {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle closest-side, #fff 0, rgb(255 255 255 / 0) 100%),
+    conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+  box-shadow: var(--ombre-2);
+  touch-action: none;
+  cursor: crosshair;
+}
+.cl-roue::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: #000; opacity: calc(1 - var(--v, 1)); pointer-events: none; }
+.cl-roue-pt {
+  position: absolute;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 35%), 0 2px 6px rgb(0 0 0 / 35%);
+  pointer-events: none;
+}
+.cl-roue-cote { display: grid; gap: var(--e-2); justify-items: start; min-width: 0; }
+.cl-roue-apercu { width: 44px; height: 44px; border-radius: var(--r-sm); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%), var(--ombre-1); }
+.cl-roue-hex { font-size: var(--t-petit); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.cl-lum { display: grid; gap: 2px; width: 100%; font-size: var(--t-mini); font-weight: 700; color: var(--muted); }
+.cl-lum input { width: 100%; accent-color: var(--ball); }
+.cl-roue-cote .puce { height: 36px; padding: 0 var(--e-3); font-size: 14px; }
+.cl-roue-cote .puce .ico { width: 16px; height: 16px; }
+@media (max-width: 360px) { .cl-roue-bloc { grid-template-columns: 1fr; } }
+
 @media (prefers-reduced-motion: reduce) {
   .cl-couv, .cl-teinte { transition: none; }
 }

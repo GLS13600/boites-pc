@@ -9,7 +9,9 @@
 //   {
 //     id, nom,
 //     poches:  4 | 9 | 12 par page,
-//     couleur: teinte de la couverture et des pages (COULEURS),
+//     couleur: teinte de la couverture et des pages — une des COULEURS dessinées, ou
+//              une couleur libre de la roue chromatique (#rrggbb, 28/10/2026),
+//     pages:   couleur des pages choisie à part (#rrggbb ; '' : celle du classeur),
 //     logo:    extension dont le logo orne la couverture ('' : aucune),
 //     set, mise : extension et disposition d'un classeur préparé (voir vues),
 //     cartes:  [pochette],
@@ -20,9 +22,17 @@
 // `localStorage` est la source de vérité, comme pour le reste ; l'écriture prévient la
 // synchronisation, et la sauvegarde emporte les classeurs.
 
+import { HEX } from './couleurs.js';
+
 const CLE = 'pcbox.classeurs';
+const CLE_FAVORIS = 'pcbox.classeurs.couleurs';
 export const POCHES = [4, 9, 12];
 export const COULEURS = ['nuit', 'rouge', 'vert', 'bleu', 'violet', 'or'];
+const couleurAdmise = (x) => COULEURS.includes(x) || (typeof x === 'string' && HEX.test(x));
+const pagesAdmises = (x) => typeof x === 'string' && HEX.test(x);
+// Les couleurs favorites, communes à tous les classeurs : une palette de couleurs de la
+// roue, pour les retrouver d'un classeur à l'autre. Elles partent avec le compte.
+const FAVORIS_MAX = 18;
 
 // Le filtre de ce qui vient de l'extérieur (voir `assainit`), déclaré AVANT la lecture
 // du stockage : `lire()` s'en sert dès le chargement du module. Déclaré en fin de
@@ -79,12 +89,13 @@ export const clesPoche = (p) => (p == null ? [] : Array.isArray(p) ? p : [p]);
 export const idDe = (cle) => String(cle).split('|')[0];
 export const varianteDe = (cle) => String(cle).split('|')[1] || null;
 
-export function cree({ nom, poches = 9, couleur = 'nuit', logo = '', set = '', mise = '', cartes = [], prix = {} }) {
+export function cree({ nom, poches = 9, couleur = 'nuit', pages = '', logo = '', set = '', mise = '', cartes = [], prix = {} }) {
   const c = {
     id: `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
     nom: String(nom || '').trim().slice(0, 60) || 'Classeur',
     poches: POCHES.includes(poches) ? poches : 9,
-    couleur: COULEURS.includes(couleur) ? couleur : 'nuit',
+    couleur: couleurAdmise(couleur) ? couleur : 'nuit',
+    pages: pagesAdmises(pages) ? pages : '',
     logo: logo || '',
     set: set || '',
     mise: mise || '',
@@ -101,7 +112,8 @@ export function modifie(id, patch) {
   if (!c) return;
   if (patch.nom != null) c.nom = String(patch.nom).trim().slice(0, 60) || c.nom;
   if (POCHES.includes(patch.poches)) c.poches = patch.poches;
-  if (COULEURS.includes(patch.couleur)) c.couleur = patch.couleur;
+  if (couleurAdmise(patch.couleur)) c.couleur = patch.couleur;
+  if (patch.pages === '' || pagesAdmises(patch.pages)) c.pages = patch.pages;
   if (patch.logo != null) c.logo = patch.logo;
   ecrire();
 }
@@ -193,6 +205,31 @@ export function ajouteTous(v) {
   return n;
 }
 export const exporte = () => liste;
+
+// ---------------------------------------------------------------- couleurs favorites
+export function favoris() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CLE_FAVORIS));
+    return Array.isArray(v) ? v.filter(pagesAdmises).slice(0, FAVORIS_MAX) : [];
+  } catch { return []; }
+}
+function ecritFavoris(l) {
+  try { localStorage.setItem(CLE_FAVORIS, JSON.stringify(l)); } catch { /* quota */ }
+  surEcriture();
+}
+// Ajoute ou retire une couleur ; la plus récente en tête. Rend vrai si elle est favorite.
+export function basculeFavori(hex) {
+  if (!pagesAdmises(hex)) return false;
+  const l = favoris();
+  if (l.includes(hex)) { ecritFavoris(l.filter((x) => x !== hex)); return false; }
+  ecritFavoris([hex, ...l].slice(0, FAVORIS_MAX));
+  return true;
+}
+// Reprise depuis un fichier ou le compte : seules des couleurs #rrggbb passent.
+export function remetFavoris(v) {
+  if (!Array.isArray(v)) return;
+  ecritFavoris([...new Set(v.filter(pagesAdmises))].slice(0, FAVORIS_MAX));
+}
 export function remplace(v) {
   const propre = assainit(v);
   if (!propre) return false;
@@ -219,7 +256,8 @@ export function assainit(v) {
       id: c.id,
       nom: typeof c.nom === 'string' ? c.nom.slice(0, 60) : 'Classeur',
       poches: POCHES.includes(c.poches) ? c.poches : 9,
-      couleur: COULEURS.includes(c.couleur) ? c.couleur : 'nuit',
+      couleur: couleurAdmise(c.couleur) ? c.couleur : 'nuit',
+      pages: pagesAdmises(c.pages) ? c.pages : '',
       logo: typeof c.logo === 'string' && ID_SET.test(c.logo) ? c.logo : '',
       set: typeof c.set === 'string' && ID_SET.test(c.set) ? c.set : '',
       mise: ['simple', 'master', 'groupe'].includes(c.mise) ? c.mise : '',

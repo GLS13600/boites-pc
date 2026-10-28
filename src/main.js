@@ -1608,6 +1608,9 @@ function enableSwipeClose(el, close, nav = null) {
 
   el.addEventListener('touchstart', (e) => {
     if (!el.classList.contains('open') || e.touches.length !== 1) { drag = 'no'; return; }
+    // Une zone qui suit le doigt elle-même (la roue chromatique des classeurs) garde ses
+    // gestes : ni fermeture, ni navigation.
+    if (e.target.closest('[data-geste-local]')) { drag = 'no'; return; }
     startY = e.touches[0].clientY;
     startX = e.touches[0].clientX;
     startTop = body.scrollTop;
@@ -3171,6 +3174,8 @@ function donneesCompletes() {
     // les classeurs, et la courbe de valeur de la collection.
     cartes: cartesColl.exporte(),
     classeurs: classeursColl.exporte(),
+    // Les couleurs favorites des classeurs (roue chromatique), communes à tous.
+    couleursClasseurs: classeursColl.favoris(),
     valeurs: cartesColl.historique(),
     // Depuis le 28/10/2026, « toutes les données » partent avec le compte : le journal
     // « Récemment », PokéAdvisor (sans la clé Mistral, qui reste sur l'appareil) et la
@@ -3218,7 +3223,7 @@ async function appliqueDonnees(data, { compte = false } = {}) {
   let d = Array.isArray(data) ? { caught: data } : data;
   if (!d || typeof d !== 'object') throw new Error('format');
   if (compte) {
-    d = { caught: [], caughtShiny: [], boxes: {}, order: {}, equipes: {}, cartes: {}, classeurs: [], ...d };
+    d = { caught: [], caughtShiny: [], boxes: {}, order: {}, equipes: {}, cartes: {}, classeurs: [], couleursClasseurs: [], ...d };
     state.equipes = {};
   }
   // Des CLÉS, traduites seulement au moment du message : le fichier peut changer la
@@ -3311,6 +3316,7 @@ async function appliqueDonnees(data, { compte = false } = {}) {
   // Le reste de « toutes les données » : courbe de valeur, journal, PokéAdvisor, équipe
   // gratuite. Chaque module reprend champ par champ ce qui vient de l'extérieur.
   if (Array.isArray(d.valeurs)) cartesColl.remetHistorique(d.valeurs);
+  if (Array.isArray(d.couleursClasseurs)) classeursColl.remetFavoris(d.couleursClasseurs);
   if (Array.isArray(d.recents)) recents.remet(d.recents);
   if (d.advisor && typeof d.advisor === 'object') advisor.remet(d.advisor);
   if (typeof d.equipeLibre === 'string' && JEUX.some((v) => v.k === d.equipeLibre)) {

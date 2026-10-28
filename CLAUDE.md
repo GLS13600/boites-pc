@@ -379,6 +379,27 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
     d'une recherche, d'un autre appareil) demandent leur détail ; la page suit.
   - Au moins 10 pages, et toujours une de plus que le contenu : on feuillette des pages
     libres comme dans un vrai classeur (Cartodex en imposait 60).
+- **Couleurs libres, roue chromatique et favoris** (28/10/2026, à la demande) : dans le
+  panneau de création et de réglage, la couleur du classeur (couverture) ET celle des
+  pages se choisissent parmi les teintes proposées (les six dessinées ; « comme le
+  classeur » pour les pages), les couleurs FAVORITES, ou à la roue.
+  - `couleur` vaut une des six teintes OU `#rrggbb` ; `pages` vaut `''` (pages déduites
+    de la couverture) ou `#rrggbb`. `src/cartes/couleurs.js` (TSV ↔ hexadécimal,
+    luminance) déduit les variables `--cl-haut`, `--cl-bas`, `--cl-page`, `--cl-page-2`,
+    posées en ligne par `teinteClasseur()` sur la couverture, le livre et la miniature —
+    une teinte dessinée garde sa classe `.c-*`. Sur une couleur claire, `couv-claire` et
+    `pages-claires` passent l'écriture et les pochettes au sombre.
+  - La roue : teinte à l'angle, saturation à la distance du centre, luminosité au
+    curseur. Pendant le geste, seuls la roue et l'aperçu (couverture + page, en tête du
+    panneau) sont refaits ; le panneau entier au relâchement. Elle porte
+    `data-geste-local` : le glissement qui ferme les panneaux (`enableSwipeClose`) ne
+    l'attrape pas.
+  - Favoris : `pcbox.classeurs.couleurs` (18 au plus, la plus récente en tête), communs
+    aux deux choix, dans la sauvegarde et le compte (`couleursClasseurs`).
+  - Vérifié dans l'aperçu : couleur à la roue, favori ajouté puis proposé dans le
+    nuancier, pages à la luminosité, pages blanches (pochettes sombres), couverture
+    jaune clair (écriture sombre), teinte dessinée inchangée, couleurs dans la charge
+    du compte.
   - **Pochette libre** → le sélecteur d'ajout ; **pochette pleine** → la fiche de la
     carte, qu'on parcourt dans l'ordre du classeur, la variante de la pochette
     présélectionnée pour l'ajout (`ouvre(id, liste, { variante })`).
@@ -800,6 +821,7 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `src/cartes/api.js` | TCGdex : lecture, cache IndexedDB, file de quatre requêtes |
 | `src/cartes/collection.js` | La collection de cartes et ses exemplaires (`pcbox.cartes`) |
 | `src/cartes/classeurs.js` | Les classeurs et leurs pochettes (`pcbox.classeurs`) |
+| `src/cartes/couleurs.js` | Couleurs libres des classeurs : roue chromatique (TSV), dégradés déduits, luminance |
 | `src/cartes/prix.js` | Historique du prix de chaque carte suivie (`pcbox.cartes.prix`) |
 | `src/cartes/regles.js` | Raretés, variantes, états, distance d'édition (règles de Cartodex) |
 | `src/cartes/advisor.js` | PokéAdvisor : conversation Mistral, réglages, mémoire (`pcbox.advisor.*`) |

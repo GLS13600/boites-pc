@@ -771,8 +771,9 @@ export function creeCartes(ctx) {
       </select>`;
   }
   // Classée par collection (blocs puis extensions, comme Pokécardex) ou en une seule
-  // grille ; le tri choisi — numéro, ajout récent, nom, prix —, croissant ou décroissant,
-  // s'applique DANS chaque extension quand on classe, à toute la liste sinon.
+  // grille ; le tri choisi dans l'en-tête — numéro, ajout récent, nom, prix —, croissant
+  // ou décroissant, s'applique DANS chaque extension quand on classe, à toute la liste
+  // sinon. La rangée ne porte que le classement et le sens : le tri est déjà en haut.
   const optionsTri = () => option('numero', t('cxTriNumero'), etat.colTri) + option('recent', t('colTriRecent'), etat.colTri)
     + option('nom', t('cxTriNom'), etat.colTri) + option('prix', t('cxTriPrix'), etat.colTri);
   function htmlClassement() {
@@ -781,9 +782,6 @@ export function creeCartes(ctx) {
       <button class="puce ${etat.colGroupe ? 'on' : ''}" data-cx-colgroupe aria-pressed="${etat.colGroupe}">
         ${ICO.calques}<span>${t('colParCollection')}</span>
       </button>
-      <select class="puce-select ${etat.colTri !== 'numero' ? 'actif' : ''}" data-cx-coltri aria-label="${t('cxTri')}">
-        ${optionsTri()}
-      </select>
       <button class="puce" data-cx-colsens>
         <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${desc ? 'M12 4.5v15M12 19.5l-5-5M12 19.5l5-5' : 'M12 19.5v-15M12 4.5l-5 5M12 4.5l5 5'}"/></svg>
         <span>${desc ? t('colDecroissant') : t('colCroissant')}</span>
@@ -2168,13 +2166,11 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       if (el.matches('[data-cx-rarete]')) { etat.rarete = el.value; el.classList.toggle('actif', !!el.value); majGrille(); }
       else if (el.matches('[data-cx-tri]')) { etat.tri = el.value; el.classList.toggle('actif', el.value !== 'num'); majGrille(); }
       else if (el.matches('[data-cx-coltri]')) {
-        // Deux listes portent ce tri (l'icône de l'en-tête et la rangée) : on aligne
-        // l'autre. Changer de tri reprend son sens naturel — numéro et nom croissants, prix
-        // et ajout récent du plus grand au plus petit.
+        // Le tri vit dans l'icône de l'en-tête. Changer de tri reprend son sens naturel —
+        // numéro et nom croissants, prix et ajout récent du plus grand au plus petit.
         etat.colTri = el.value;
         etat.colSens = el.value === 'prix' || el.value === 'recent' ? 'desc' : 'asc';
-        for (const autre of document.querySelectorAll('[data-cx-coltri]')) autre.value = el.value;
-        document.querySelector('.tete-select [data-cx-coltri]')?.closest('.tete-select')?.classList.toggle('on', el.value !== 'numero');
+        el.closest('.tete-select')?.classList.toggle('on', el.value !== 'numero');
         majCollection();
       }
       else if (el.matches('[data-cx-colrarete]')) { etat.colRarete = el.value; el.classList.toggle('actif', !!el.value); majCollection(); }

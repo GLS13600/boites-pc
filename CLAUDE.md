@@ -230,8 +230,8 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   filtres, puis la rangée du classement, Toutes / Favoris.
   - **Classement et tri séparés** (28/10/2026, à la demande) : une puce « Par
     collection » (`etat.colGroupe`, gardée sur l'appareil, `pcbox.cartes.colgroupe`,
-    classée par défaut), le tri (numéro, ajout récent, nom, prix — aussi dans l'icône de
-    l'en-tête, les deux listes alignées) et son sens (« Croissant » / « Décroissant »).
+    classée par défaut), le tri (numéro, ajout récent, nom, prix), qui vit SEULEMENT dans l'icône de
+    l'en-tête — une seconde liste au milieu a été retirée, à la demande —, et son sens (« Croissant » / « Décroissant »).
     Classée : les extensions restent dans l'ordre de Pokécardex et le tri s'applique DANS
     chacune ; non classée : une seule grille, triée en entier (au numéro, dans l'ordre
     des extensions). Prix = celui d'UN exemplaire ; une carte sans prix connu finit en

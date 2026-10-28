@@ -49,11 +49,17 @@ const EXTENSIONS_BALL = new Set(['sv08.5', 'sv10.5w', 'sv10.5b']);
 export const extensionABall = (setId) => EXTENSIONS_BALL.has(String(setId || '').toLowerCase());
 // TCG Pocket est un jeu numérique : ses cartes n'ont pas de reverse.
 const POCKET = /^(a\d|b\d|p-[ab])/i;
+// Les séries Wizards d'avant la reverse (29/10/2026, à la demande) : Set de Base, Jungle,
+// Fossile, Base Set 2, Team Rocket, Gym, Neo, Southern Islands et les promos Wizards.
+// Elle arrive avec Legendary Collection (2002), puis toute la série e-card. TCGdex en
+// annonce pourtant quelques-unes (Southern Islands) : ici, on n'en propose AUCUNE.
+const WIZARDS_SANS_REVERSE = /^(base[1-5]|basep|wp|gym[12]|neo[1-4]|si1)$/i;
 
 // Les variantes qu'une carte peut prendre, dans l'ordre d'affichage. TCGdex les
 // publie désormais carte par carte (`variants`) : on les suit quand on les a, et l'on
 // retombe sinon sur une seule version. Toute commune, peu commune ou rare a sa REVERSE
-// (29/10/2026, à la demande), que TCGdex l'annonce ou non — sauf dans Pocket.
+// (29/10/2026, à la demande), que TCGdex l'annonce ou non — sauf dans Pocket et dans les
+// séries Wizards qui n'en ont jamais eu.
 //
 // « Holo », c'est la RARE HOLOGRAPHIQUE classique de chaque série, et elle seule
 // (28/10/2026, à la demande, convention de Pokécardex). Une carte spéciale toute brillante
@@ -103,12 +109,14 @@ export function variantes(c, setId) {
     const holo = (!!v.holo || toutHolo) && holoClassique(c);
     if ((v.normal && !toutHolo) || (v.holo && !holo)) liste.push('normal');
     if (holo) liste.push('holo');
-    if (v.reverse) liste.push('reverse');
+    // Six cartes de Southern Islands n'ont, chez TCGdex, QUE la reverse : elles retombent
+    // sur leur version normale, plus bas.
+    if (v.reverse && !WIZARDS_SANS_REVERSE.test(ext)) liste.push('reverse');
     if (v.firstEdition) liste.push('premiere');
   }
   if (!liste.length) liste.push(rareToutHolo(c) ? 'holo' : 'normal');
   // La reverse prend sa place d'affichage : avant la première édition.
-  if (courante && !liste.includes('reverse') && !POCKET.test(ext)) {
+  if (courante && !liste.includes('reverse') && !POCKET.test(ext) && !WIZARDS_SANS_REVERSE.test(ext)) {
     const p = liste.indexOf('premiere');
     liste.splice(p < 0 ? liste.length : p, 0, 'reverse');
   }

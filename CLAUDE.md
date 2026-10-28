@@ -238,8 +238,15 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   - **Reverse, Poké Ball, Master Ball** (29/10/2026, à la demande) — `variantes()` de
     regles.js :
     - toute COMMUNE, PEU COMMUNE ou RARE (catégories de `categorie()`) a sa reverse, que
-      TCGdex l'annonce ou non, Set de Base compris ; sauf Pocket, numérique. Placée avant
-      la première édition (« normale · reverse · 1ʳᵉ édition »).
+      TCGdex l'annonce ou non ; placée avant la première édition. Sauf Pocket, numérique,
+      et les séries Wizards d'AVANT la reverse (`WIZARDS_SANS_REVERSE`, demandé ensuite) :
+      Set de Base, Jungle, Fossile, Base Set 2, Team Rocket, Gym Heroes et Challenge, les
+      quatre Neo, Southern Islands, promos Wizards (`basep`, `wp`) — AUCUNE reverse, même
+      annoncée par TCGdex. La reverse arrive avec Legendary Collection (2002), puis
+      Expedition, Aquapolis et Skyridge, qui la gardent.
+    - Piège : TCGdex donne à six cartes de Southern Islands (Mew, Togepi, Coxy, Marill,
+      Roigada, Rafflesia) la SEULE variante reverse. La retirer après coup les laissait
+      sans aucune variante ; elle est écartée avant le repli sur la version normale.
     - reverse Poké Ball et Master Ball : Évolutions Prismatiques, Flamme Blanche, Foudre
       Noire SEULEMENT (`EXTENSIONS_BALL` : `sv08.5`, `sv10.5w`, `sv10.5b`), communes à
       rares. La règle de Cartodex les donnait aussi à Couronne Stellaire et Étincelles

@@ -4,8 +4,9 @@
 // l'URL de son scan sur le CDN de Pokécardex.
 //
 // Chaque ligne est rattachée à son identifiant de carte TCGdex, qui devient le nom du
-// fichier (reference/visuels-cartes/images/30th-c-014.webp) : l'appli les retrouvera sans
-// table de correspondance. Trois façons de rattacher, dans l'ordre :
+// fichier, à la place du rang de Pokécardex (« 1.jpg ») : public/visuels-cartes/30th-c-014.webp,
+// embarqué dans le site et l'IPA. src/data/visuels-cartes.json en tient la liste, que lit
+// src/cartes/api.js : l'appli les retrouve sans table de correspondance. Trois façons de rattacher, dans l'ordre :
 //   1. le numéro dans l'extension ou dans une extension que l'appli lui fusionne
 //      (« 001/128 » → 30th-001, « R/RGB » → 30th-R, « TG05/TG30 » → swsh9tg-TG05) ;
 //   2. une carte RÉÉDITÉE qui garde son numéro d'origine (Collection Classique : « 58/102 »)
@@ -13,7 +14,7 @@
 //      chez les cartes de l'extension fusionnée qui restent à rattacher ;
 //   3. sinon la ligne est signalée, jamais devinée.
 //
-// Seules les cartes SANS image chez TCGdex (ni en français ni en anglais) sont
+// Seules les cartes SANS image chez TCGdex (ni en français ni en anglais, fichier vérifié) sont
 // téléchargées, une à la fois, avec une pause : ce n'est pas notre serveur. Le script
 // reprend : un fichier déjà présent n'est pas refait.
 //
@@ -23,7 +24,9 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 
 const RACINE = new URL('../reference/visuels-cartes/', import.meta.url);
-const EXCEL = new URL('excel/', RACINE), IMAGES = new URL('images/', RACINE);
+const EXCEL = new URL('excel/', RACINE);
+const IMAGES = new URL('../public/visuels-cartes/', import.meta.url);
+const LISTE = new URL('../src/data/visuels-cartes.json', import.meta.url);
 const API = 'https://api.tcgdex.net/v2';
 const ESSAI = process.argv.includes('--essai');
 const PAUSE_MS = 400;
@@ -107,7 +110,7 @@ async function traite(fichier) {
   const cartes = ids.flatMap((id, i) => (en[i]?.cards ?? fr[i]?.cards ?? []).map((c) => {
     const f = fr[i]?.cards?.find((x) => x.id === c.id);
     return { id: c.id, set: id, local: num(c.localId), nomEn: en[i]?.cards?.find((x) => x.id === c.id)?.name, nomFr: f?.name,
-      image: !!(f?.image || en[i]?.cards?.find((x) => x.id === c.id)?.image) };
+      images: [f?.image, en[i]?.cards?.find((x) => x.id === c.id)?.image].filter(Boolean) };
   }));
   const libres = new Set(cartes.map((c) => c.id));
   const rattache = new Map();   // ligne → carte
@@ -137,6 +140,15 @@ async function traite(fichier) {
 
   const sansLigne = cartes.filter((c) => libres.has(c.id));
   const sansCarte = lignes.map((l, i) => (rattache.has(i) ? null : `${l[colNum]}`)).filter(Boolean);
+  // TCGdex annonce parfois une image dont le fichier n'existe pas (Mew B, G et R du 30ᵉ :
+  // 404 en français comme en anglais) : on vérifie le fichier, pas l'annonce.
+  for (const [, c] of rattache) {
+    c.image = false;
+    for (const base of c.images) {
+      const r = await fetch(`${base}/low.webp`, { method: 'HEAD' }).catch(() => null);
+      if (r?.ok) { c.image = true; break; }
+    }
+  }
   const aTelecharger = [...rattache].filter(([, c]) => !c.image);
   console.log(`${path.basename(fichier)} (${code} → ${ids.join(' + ')}) : ${rattache.size} / ${lignes.length} lignes rattachées, `
     + `${aTelecharger.length} sans image chez TCGdex`);
@@ -165,9 +177,17 @@ async function traite(fichier) {
   console.log(`  images : ${faits} téléchargées, ${deja} déjà là, ${echecs} échecs`);
 }
 
+// La liste des visuels embarqués, refaite d'après le dossier : ce qui est sur le disque fait foi.
+function ecrisListe() {
+  const ids = fs.existsSync(IMAGES) ? fs.readdirSync(IMAGES).filter((f) => f.endsWith('.webp')).map((f) => f.slice(0, -5)).sort() : [];
+  fs.writeFileSync(LISTE, JSON.stringify(ids));
+  console.log(`${ids.length} visuels embarqués (src/data/visuels-cartes.json)`);
+}
+
 const fichiers = fs.readdirSync(EXCEL).filter((f) => /\.xlsx$/i.test(f) && !f.startsWith('~$'));
 if (!fichiers.length) console.log(`aucun .xlsx dans ${EXCEL.pathname}`);
 for (const f of fichiers) {
   try { await traite(path.join(EXCEL.pathname.replace(/^\/([A-Za-z]:)/, '$1'), f)); }
   catch (e) { console.log(`${f} : ${e.message}`); }
 }
+if (!ESSAI) ecrisListe();

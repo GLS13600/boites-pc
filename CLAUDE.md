@@ -232,6 +232,20 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
     bandeau par BLOC (`.groupe-bloc`, ordre de `BLOCS`, « 2 extensions · 2 cartes »),
     puis ses extensions de la plus récente à la plus ancienne, Énergies puis Promos en
     fin de bloc (`genreSet`, partagé avec la vue Extensions), puis le numéro.
+  - **Visuels manquants, relevés par l'utilisateur** (28/10/2026) : il a relevé lui-même sur
+    Pokécardex les URL des scans (un Excel par série : numéro imprimé, URL), et demandé de
+    les embarquer dans le site ET l'IPA. `scripts/visuels-cartes.mjs` rattache chaque ligne à
+    son identifiant TCGdex — numéro et total imprimés, extensions fusionnées comprises ;
+    une RÉÉDITION au numéro d'origine (Collection Classique : « 58/102 ») est retrouvée par
+    le nom de l'originale —, puis ne télécharge que les cartes dont TCGdex n'a pas de
+    fichier image, une à la fois (taille « hd » : 444 × 620, ~60 Ko). **Le fichier est
+    vérifié, pas l'annonce** : TCGdex annonce une image pour les Mew B, G et R du 30ᵉ, qui
+    répond 404 dans les deux langues. Nom : `public/visuels-cartes/<id>.webp` au lieu du
+    rang de Pokécardex (« 14.jpg »). `api.js` pose ce visuel en `image` de la carte
+    partout où l'API la rend, et il PRIME sur celui de TCGdex ; `api.image()` le sert tel
+    quel (une seule taille). La collection l'accepte comme image à l'import. Premier lot :
+    30ᵉ Anniversaire, 33 visuels. Code Pokécardex → extensions TCGdex : `SERIES` du script,
+    à compléter à chaque série.
   - Demandé aussi : récupérer TOUTES les images de cartes de Pokécardex. **Refusé** —
     leurs scans sont leur travail, des milliers d'illustrations de The Pokémon Company,
     et aspirer leur catalogue chargerait leur serveur. Mesuré le 28/10/2026 : 1 640
@@ -812,7 +826,9 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `ml/fetch-catalogue.mjs` | Images des cartes de TCGdex (fr + en, sans Pocket) pour l'apprentissage |
 | `ml/suivi_cartes.py` | Tableau de bord en console de l'apprentissage |
 | `ml/cartes_doublons.py` | Groupes de rééditions par pHash (trop large : le bilan compare des vignettes de couleur) |
-| `scripts/visuels-cartes.mjs` | Visuels absents de TCGdex, d'après les relevés Pokécardex de l'utilisateur (`reference/visuels-cartes/`, hors git) |
+| `scripts/visuels-cartes.mjs` | Visuels absents de TCGdex, d'après les relevés Pokécardex de l'utilisateur (Excel dans `reference/visuels-cartes/excel/`, hors git) |
+| `public/visuels-cartes/` | Ces visuels, nommés par identifiant TCGdex (`30th-c-014.webp`), **générés** |
+| `src/data/visuels-cartes.json` | Leur liste, lue par `api.js`, **générée** |
 | `ml/noms-cartes.mjs` | Noms des cartes du scan en fr / en / ja dans `index.json`, à relancer après chaque export |
 
 ## Données

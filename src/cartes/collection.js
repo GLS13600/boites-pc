@@ -194,7 +194,8 @@ export function fusionne(v) {
 // TCGdex aussi — elles finissent dans des attributs HTML et des URL. Même règle que
 // `cleAdmise` pour les Pokémon.
 const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-const IMAGE = /^https:\/\/assets\.tcgdex\.net\/[A-Za-z0-9._/-]+$/;
+// L'image vient de TCGdex, ou des visuels embarqués (public/visuels-cartes/, chemin relatif).
+const IMAGE = /^(https:\/\/assets\.tcgdex\.net\/[A-Za-z0-9._/-]+|visuels-cartes\/[A-Za-z0-9._-]+)$/;
 const VARIANTE = /^[a-z_]{1,24}$/;
 const texte = (x, n = 120) => (typeof x === 'string' ? x.slice(0, n) : undefined);
 export function assainit(v) {

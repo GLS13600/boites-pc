@@ -11,6 +11,7 @@
 // poliment.
 
 import logosLocaux from '../data/logos-cartes.json';
+import visuelsLocaux from '../data/visuels-cartes.json';
 
 // La langue des DONNÉES suit celle de l'appli : français en français, anglais sinon —
 // TCGdex japonais décrit d'autres extensions, sous d'autres identifiants, et la
@@ -63,7 +64,8 @@ const enVol = new Map();     // cle -> promesse
 
 // Lit un chemin de l'API, en le gardant. `age` : au-delà, on retente le réseau (mais
 // on rend l'ancienne copie s'il ne répond pas).
-async function lis(chemin, age, lg = LANGUE) {
+const lis = (chemin, age, lg) => lisBrut(chemin, age, lg).then(completeImages);
+async function lisBrut(chemin, age, lg = LANGUE) {
   const cle = cleDe(chemin, lg);
   const frais = (e) => e && Date.now() - e.t < age;
   const m = memoire.get(cle);
@@ -94,9 +96,9 @@ export async function dejaConnu(chemin) {
   const cle = cleDe(chemin);
   const m = memoire.get(cle) || await litCache(cle);
   if (m) memoire.set(cle, m);
-  return m ? m.v : null;
+  return m ? completeImages(m.v) : null;
 }
-export const connuEnMemoire = (chemin) => memoire.get(cleDe(chemin))?.v ?? null;
+export const connuEnMemoire = (chemin) => completeImages(memoire.get(cleDe(chemin))?.v ?? null);
 
 // ---------------------------------------------------------------- logos manquants
 // TCGdex n'a pas le logo de 81 extensions (promos, POP, kits, McDonald's…) : 62 sont
@@ -138,6 +140,22 @@ function fusionneListe(l) {
     return absorbees.length ? { ...x, cardCount: absorbees.reduce((c, a) => somme(c, a.cardCount), x.cardCount) } : x;
   });
 }
+
+// ---------------------------------------------------------------- visuels manquants
+// TCGdex n'a d'image, dans aucune langue, ni pour certaines cartes (Collection Classique du
+// 30ᵉ anniversaire, galeries, coffres…) : leurs scans, relevés par l'utilisateur sur
+// Pokécardex, sont embarqués dans public/visuels-cartes/<identifiant>.webp
+// (scripts/visuels-cartes.mjs). Une carte qui en a un le reçoit comme `image`, partout où
+// l'API la rend (extension, détail, recherche, cartes d'un Pokémon). Le visuel embarqué
+// PRIME : TCGdex annonce parfois une image dont le fichier n'existe pas (Mew B, G, R du 30ᵉ).
+const VISUELS = new Set(visuelsLocaux);
+const visuel = (c) => { if (c && typeof c === 'object' && VISUELS.has(c.id)) c.image = `visuels-cartes/${c.id}`; };
+function completeImages(v) {
+  if (Array.isArray(v)) v.forEach(visuel);
+  else if (v && typeof v === 'object') { visuel(v); if (Array.isArray(v.cards)) v.cards.forEach(visuel); }
+  return v;
+}
+export const estVisuelLocal = (base) => typeof base === 'string' && base.startsWith('visuels-cartes/');
 
 // ---------------------------------------------------------------- l'API
 export const series = () => lis('/series', 7 * JOUR);
@@ -204,7 +222,8 @@ export const DOS = 'data:image/svg+xml;utf8,' + encodeURIComponent(
   + '<circle cx="50" cy="70" r="20" fill="#fff"/><path d="M30 70a20 20 0 0 1 40 0z" fill="#dc2626"/>'
   + '<path d="M30 70h40" stroke="#1a2336" stroke-width="4"/>'
   + '<circle cx="50" cy="70" r="6" fill="#fff" stroke="#1a2336" stroke-width="3"/></svg>');
-export const image = (base, qualite = 'low') => (base ? `${base}/${qualite}.webp` : DOS);
+// Un visuel embarqué n'a qu'une taille (444 × 620) : la même sert à la grille et à la fiche.
+export const image = (base, qualite = 'low') => (!base ? DOS : estVisuelLocal(base) ? `${base}.webp` : `${base}/${qualite}.webp`);
 // Logos et symboles d'extension : TCGdex les sert aussi sans extension. Les logos
 // existent en WebP ; les symboles n'existent QU'EN PNG (le WebP répond 400).
 export const logo = (base) => (base ? `${base}.webp` : '');

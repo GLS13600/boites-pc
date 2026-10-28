@@ -244,8 +244,13 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
     rang de Pokécardex (« 14.jpg »). `api.js` pose ce visuel en `image` de la carte
     partout où l'API la rend, et il PRIME sur celui de TCGdex ; `api.image()` le sert tel
     quel (une seule taille). La collection l'accepte comme image à l'import. Premier lot :
-    30ᵉ Anniversaire, 33 visuels. Code Pokécardex → extensions TCGdex : `SERIES` du script,
-    à compléter à chaque série.
+    30ᵉ Anniversaire, 33 visuels ; puis les 13 collections McDonald's, 183 visuels (lancé
+    par l'utilisateur). Il en manque 51 en 2018, 2019 et 2021 : le relevé n'a pas d'URL
+    au-delà de la 18ᵉ ligne (images de la page pas encore chargées au moment du relevé).
+    Code Pokécardex → extensions TCGdex : `SERIES` du script, à compléter à chaque série.
+    **`robots.txt` de Pokécardex** : il interdit nommément les agents d'Anthropic et réserve
+    ses droits sur l'extraction (directive (UE) 2019/790, art. 4) — Claude ne lance pas les
+    téléchargements, l'utilisateur lance le script lui-même.
   - Demandé aussi : récupérer TOUTES les images de cartes de Pokécardex. **Refusé** —
     leurs scans sont leur travail, des milliers d'illustrations de The Pokémon Company,
     et aspirer leur catalogue chargerait leur serveur. Mesuré le 28/10/2026 : 1 640

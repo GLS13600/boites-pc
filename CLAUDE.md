@@ -812,6 +812,7 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `ml/fetch-catalogue.mjs` | Images des cartes de TCGdex (fr + en, sans Pocket) pour l'apprentissage |
 | `ml/suivi_cartes.py` | Tableau de bord en console de l'apprentissage |
 | `ml/cartes_doublons.py` | Groupes de rééditions par pHash (trop large : le bilan compare des vignettes de couleur) |
+| `scripts/visuels-cartes.mjs` | Visuels absents de TCGdex, d'après les relevés Pokécardex de l'utilisateur (`reference/visuels-cartes/`, hors git) |
 | `ml/noms-cartes.mjs` | Noms des cartes du scan en fr / en / ja dans `index.json`, à relancer après chaque export |
 
 ## Données

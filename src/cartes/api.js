@@ -64,7 +64,11 @@ const enVol = new Map();     // cle -> promesse
 
 // Lit un chemin de l'API, en le gardant. `age` : au-delà, on retente le réseau (mais
 // on rend l'ancienne copie s'il ne répond pas).
-const lis = (chemin, age, lg) => lisBrut(chemin, age, lg).then(completeImages);
+// Les images anglaises (pokemontcg.io) sont relevées à part : on attend leur table, en
+// anglais, avant de rendre une réponse — sans elle, la première page montrerait les
+// images de TCGdex puis changerait d'images au rendu suivant.
+const lis = (chemin, age, lg) => lisBrut(chemin, age, lg)
+  .then(async (v) => { if ((lg ?? LANGUE) === 'en') await chargeImagesAnglaises(); return completeImages(v); });
 async function lisBrut(chemin, age, lg = LANGUE) {
   const cle = cleDe(chemin, lg);
   const frais = (e) => e && Date.now() - e.t < age;
@@ -149,7 +153,50 @@ function fusionneListe(l) {
 // l'API la rend (extension, détail, recherche, cartes d'un Pokémon). Le visuel embarqué
 // PRIME : TCGdex annonce parfois une image dont le fichier n'existe pas (Mew B, G, R du 30ᵉ).
 const VISUELS = new Set(visuelsLocaux);
-const visuel = (c) => { if (c && typeof c === 'object' && VISUELS.has(c.id)) c.image = `visuels-cartes/${c.id}`; };
+
+// En ANGLAIS, les visuels viennent de la base Pokémon TCG (28/10/2026, à la demande) :
+// src/data/images-anglaises.json (scripts/sets-pokemontcg.mjs) donne l'image de chaque
+// carte qu'elle connaît — '' : au chemin attendu, images.pokemontcg.io/<extension>/<n°> ;
+// sinon l'URL de sa petite image (images.scrydex.com pour les extensions récentes). Chargée
+// à la demande : qui reste en français ne la télécharge pas. Une carte qu'elle ignore
+// garde l'image anglaise de TCGdex, qui sert aussi de repli si la sienne ne charge pas.
+let imagesAnglaises = null, chargeAnglaises = null;
+function chargeImagesAnglaises() {
+  if (imagesAnglaises) return Promise.resolve();
+  return (chargeAnglaises ??= import('../data/images-anglaises.json')
+    .then((m) => { imagesAnglaises = m.default || m; })
+    .catch(() => { imagesAnglaises = {}; }));
+}
+const numeroPtcg = (n) => (/^\d+$/.test(n) ? String(Number(n)) : n);
+// La « base » d'une image anglaise, sans sa taille (voir `image`).
+function imageAnglaise(id) {
+  const v = imagesAnglaises?.[id];
+  if (v == null) return null;
+  if (v) return v.replace(/\.png$/, '').replace(/\/small$/, '');
+  const i = id.lastIndexOf('-');
+  const ext = imagesAnglaises._?.[id.slice(0, i)];
+  return ext ? `https://images.pokemontcg.io/${ext}/${numeroPtcg(id.slice(i + 1))}` : null;
+}
+const replis = new Map();   // base pokemontcg.io / scrydex → base TCGdex
+const visuel = (c) => {
+  if (!c || typeof c !== 'object' || typeof c.id !== 'string') return;
+  if (LANGUE !== 'en') { if (VISUELS.has(c.id)) c.image = `visuels-cartes/${c.id}`; return; }
+  const en = imageAnglaise(c.id);
+  if (!en) return;
+  if (c.image && c.image !== en && !estAnglaise(c.image)) replis.set(en, c.image);
+  c.image = en;
+};
+const estAnglaise = (base) => typeof base === 'string' && /^https:\/\/images\.(pokemontcg\.io|scrydex\.com)\//.test(base);
+// L'image de repli quand celle de la base Pokémon TCG ne charge pas : la grande retombe
+// sur la petite, puis sur l'image anglaise de TCGdex quand on la connaît.
+export function repli(src) {
+  const s = String(src || '');
+  if (s.endsWith('_hires.png')) return s.replace(/_hires\.png$/, '.png');
+  if (/images\.scrydex\.com\/.+\/large$/.test(s)) return s.replace(/\/large$/, '/small');
+  const base = s.replace(/\.png$/, '').replace(/\/small$/, '');
+  const tcg = replis.get(base);
+  return tcg ? image(tcg, 'low') : null;
+}
 function completeImages(v) {
   if (Array.isArray(v)) v.forEach(visuel);
   else if (v && typeof v === 'object') { visuel(v); if (Array.isArray(v.cards)) v.cards.forEach(visuel); }
@@ -223,7 +270,13 @@ export const DOS = 'data:image/svg+xml;utf8,' + encodeURIComponent(
   + '<path d="M30 70h40" stroke="#1a2336" stroke-width="4"/>'
   + '<circle cx="50" cy="70" r="6" fill="#fff" stroke="#1a2336" stroke-width="3"/></svg>');
 // Un visuel embarqué n'a qu'une taille (444 × 620) : la même sert à la grille et à la fiche.
-export const image = (base, qualite = 'low') => (!base ? DOS : estVisuelLocal(base) ? `${base}.webp` : `${base}/${qualite}.webp`);
+export function image(base, qualite = 'low') {
+  if (!base) return DOS;
+  if (estVisuelLocal(base)) return `${base}.webp`;
+  if (base.startsWith('https://images.pokemontcg.io/')) return qualite === 'high' ? `${base}_hires.png` : `${base}.png`;
+  if (base.startsWith('https://images.scrydex.com/')) return `${base}/${qualite === 'high' ? 'large' : 'small'}`;
+  return `${base}/${qualite}.webp`;
+}
 // Logos et symboles d'extension : TCGdex les sert aussi sans extension. Les logos
 // existent en WebP ; les symboles n'existent QU'EN PNG (le WebP répond 400).
 export const logo = (base) => (base ? `${base}.webp` : '');

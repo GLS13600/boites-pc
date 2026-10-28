@@ -24,6 +24,7 @@ import * as cartesColl from './cartes/collection.js';
 import * as classeursColl from './cartes/classeurs.js';
 import { lisCartodex } from './cartes/cartodex.js';
 import * as recents from './recents.js';
+import { image as imageCarte } from './cartes/api.js';
 import * as advisor from './cartes/advisor.js';
 import { creeCartes } from './cartes/vues.js';
 // La synchronisation ne connaît ni l'état ni les clés de stockage : main.js lui
@@ -3172,11 +3173,15 @@ function donneesCompletes() {
     equipes: state.equipes,
     // Cartes — l'héritage de Cartodex : chaque carte et ses exemplaires (favoris compris),
     // les classeurs, et la courbe de valeur de la collection.
-    cartes: cartesColl.exporte(),
-    classeurs: classeursColl.exporte(),
+    cartes: cartesColl.exporteLangue('fr'),
+    classeurs: classeursColl.exporteLangue('fr'),
+    // Les cartes ANGLAISES (28/10/2026) : une collection, des classeurs et une courbe à part.
+    cartesEn: cartesColl.exporteLangue('en'),
+    classeursEn: classeursColl.exporteLangue('en'),
     // Les couleurs favorites des classeurs (roue chromatique), communes à tous.
     couleursClasseurs: classeursColl.favoris(),
-    valeurs: cartesColl.historique(),
+    valeurs: cartesColl.historique('fr'),
+    valeursEn: cartesColl.historique('en'),
     // Depuis le 28/10/2026, « toutes les données » partent avec le compte : le journal
     // « Récemment », PokéAdvisor (sans la clé Mistral, qui reste sur l'appareil) et la
     // version de l'équipe gratuite (sans elle, changer d'appareil contournerait la limite).
@@ -3223,7 +3228,7 @@ async function appliqueDonnees(data, { compte = false } = {}) {
   let d = Array.isArray(data) ? { caught: data } : data;
   if (!d || typeof d !== 'object') throw new Error('format');
   if (compte) {
-    d = { caught: [], caughtShiny: [], boxes: {}, order: {}, equipes: {}, cartes: {}, classeurs: [], couleursClasseurs: [], ...d };
+    d = { caught: [], caughtShiny: [], boxes: {}, order: {}, equipes: {}, cartes: {}, classeurs: [], cartesEn: {}, classeursEn: [], couleursClasseurs: [], ...d };
     state.equipes = {};
   }
   // Des CLÉS, traduites seulement au moment du message : le fichier peut changer la
@@ -3235,8 +3240,11 @@ async function appliqueDonnees(data, { compte = false } = {}) {
   // déjà là reste tel quel. Le fichier n'a rien d'autre à reprendre.
   const cartodex = lisCartodex(d);
   if (cartodex) {
-    const nCartes = cartesColl.fusionne(cartodex.cartes);
-    const nClasseurs = classeursColl.ajouteTous(cartodex.classeurs);
+    // Cartodex est une collection FRANÇAISE ; ses exemplaires marqués anglais rejoignent
+    // ensuite la collection anglaise.
+    const nCartes = cartesColl.fusionne(cartodex.cartes, 'fr');
+    const nClasseurs = classeursColl.ajouteTous(cartodex.classeurs, 'fr');
+    cartesColl.separeAnglais();
     if (!nCartes && !nClasseurs) throw new Error('vide');
     render();
     return [['partieCartodex', nCartes, nClasseurs]];
@@ -3298,9 +3306,15 @@ async function appliqueDonnees(data, { compte = false } = {}) {
 
   // Les cartes : reprises champ par champ (collection.js écarte tout identifiant ou toute
   // image qui n'a pas la forme attendue, comme `cleAdmise` pour les Pokémon).
-  if (d.cartes && typeof d.cartes === 'object' && !Array.isArray(d.cartes) && cartesColl.remplace(d.cartes)) {
-    repris.push(['partieCartes', Object.values(cartesColl.toutes()).filter((c) => c.ex?.length).length]);
+  // Les cartes françaises, puis anglaises, chacune dans sa collection. Une sauvegarde
+  // d'avant le 28/10/2026 n'a qu'une collection, langues mêlées : ses exemplaires
+  // marqués anglais rejoignent ensuite la collection anglaise (`separeAnglais`).
+  const estObjet = (x) => x && typeof x === 'object' && !Array.isArray(x);
+  if (estObjet(d.cartes) && cartesColl.remplaceLangue('fr', d.cartes)) {
+    repris.push(['partieCartes', Object.values(cartesColl.exporteLangue('fr')).filter((c) => c.ex?.length).length]);
   }
+  if (estObjet(d.cartesEn)) cartesColl.remplaceLangue('en', d.cartesEn);
+  cartesColl.separeAnglais();
   // Les classeurs, repris de même (classeurs.js écarte ce qui n'a pas la bonne forme).
   //
   // SEULE exception à « le compte fait foi » : un compte SANS AUCUN classeur ne vide pas
@@ -3308,14 +3322,19 @@ async function appliqueDonnees(data, { compte = false } = {}) {
   // lancement (classeurs.js) et la synchronisation envoyait `classeurs: []` : un compte
   // vide de classeurs est donc d'abord la trace de ce défaut, et des classeurs encore
   // présents sur l'appareil doivent y retourner, pas disparaître (sync.js les renvoie).
-  const gardeClasseurs = compte && Array.isArray(d.classeurs) && !d.classeurs.length && classeursColl.tous().length > 0;
-  if (!gardeClasseurs && Array.isArray(d.classeurs) && classeursColl.remplace(d.classeurs) && classeursColl.tous().length) {
-    repris.push(['partieClasseurs', classeursColl.tous().length]);
+  const gardeClasseurs = compte && Array.isArray(d.classeurs) && !d.classeurs.length && classeursColl.exporteLangue('fr').length > 0;
+  if (!gardeClasseurs && Array.isArray(d.classeurs) && classeursColl.remplaceLangue('fr', d.classeurs) && classeursColl.exporteLangue('fr').length) {
+    repris.push(['partieClasseurs', classeursColl.exporteLangue('fr').length]);
   }
+  // Les classeurs anglais suivent la même règle : un compte qui n'en a aucun ne vide pas
+  // ceux de l'appareil.
+  const gardeClasseursEn = compte && Array.isArray(d.classeursEn) && !d.classeursEn.length && classeursColl.exporteLangue('en').length > 0;
+  if (!gardeClasseursEn && Array.isArray(d.classeursEn)) classeursColl.remplaceLangue('en', d.classeursEn);
 
   // Le reste de « toutes les données » : courbe de valeur, journal, PokéAdvisor, équipe
   // gratuite. Chaque module reprend champ par champ ce qui vient de l'extérieur.
-  if (Array.isArray(d.valeurs)) cartesColl.remetHistorique(d.valeurs);
+  if (Array.isArray(d.valeurs)) cartesColl.remetHistorique(d.valeurs, 'fr');
+  if (Array.isArray(d.valeursEn)) cartesColl.remetHistorique(d.valeursEn, 'en');
   if (Array.isArray(d.couleursClasseurs)) classeursColl.remetFavoris(d.couleursClasseurs);
   if (Array.isArray(d.recents)) recents.remet(d.recents);
   if (d.advisor && typeof d.advisor === 'object') advisor.remet(d.advisor);
@@ -3921,9 +3940,23 @@ function htmlTuile(tu) {
     </button>`;
 }
 
+// Les drapeaux de la page Cartes : français ou anglais, deux collections à part
+// (28/10/2026). Dessinés ici — un émoji de drapeau ne s'affiche pas sous Windows.
+const DRAPEAU = {
+  fr: '<svg viewBox="0 0 30 20" aria-hidden="true"><rect width="10" height="20" fill="#0055a4"/><rect x="10" width="10" height="20" fill="#fff"/><rect x="20" width="10" height="20" fill="#ef4135"/></svg>',
+  en: '<svg viewBox="0 0 60 40" aria-hidden="true"><rect width="60" height="40" fill="#012169"/><path d="M0 0 60 40M60 0 0 40" stroke="#fff" stroke-width="8"/><path d="M0 0 60 40M60 0 0 40" stroke="#c8102e" stroke-width="3"/><path d="M30 0v40M0 20h60" stroke="#fff" stroke-width="12"/><path d="M30 0v40M0 20h60" stroke="#c8102e" stroke-width="7"/></svg>',
+};
+function drapeauxCartes() {
+  const l = cartes.langue();
+  return `<div class="drapeaux" role="group" aria-label="${esc(t('cartesLangue'))}">${['fr', 'en'].map((k) => `
+    <button class="drapeau ${l === k ? 'on' : ''}" data-cartes-langue="${k}" aria-pressed="${l === k}"
+            aria-label="${esc(t(k === 'fr' ? 'cartesFr' : 'cartesEn'))}" title="${esc(t(k === 'fr' ? 'cartesFr' : 'cartesEn'))}">${DRAPEAU[k]}</button>`).join('')}</div>`;
+}
+
 function renderPlanche(cle) {
   poser(
-    entete(t(cle === 'jeux' ? 'navJeux' : 'navCartes'), t(cle === 'jeux' ? 'plancheJeuxSous' : 'plancheCartesSous')),
+    entete(t(cle === 'jeux' ? 'navJeux' : 'navCartes'), t(cle === 'jeux' ? 'plancheJeuxSous' : 'plancheCartesSous'),
+      cle === 'cartes' ? drapeauxCartes() : ''),
     h(`<section class="planche"><div class="tuiles">${PLANCHES[cle].map(htmlTuile).join('')}</div></section>`),
   );
 }
@@ -3953,7 +3986,7 @@ function htmlRecents() {
     if (r.type === 'carte') {
       const c = cartesColl.carte(r.id);
       return `<button class="acc-recent carte" data-carte="${esc(r.id)}" title="${esc(c?.n || r.id)}">
-        <img src="${esc(c?.img ? c.img + '/low.webp' : '')}" alt="${esc(c?.n || '')}" loading="lazy" />
+        <img src="${esc(c?.img ? imageCarte(c.img, 'low') : '')}" alt="${esc(c?.n || '')}" loading="lazy" />
       </button>`;
     }
     const k = cleSure(r.id);
@@ -4289,6 +4322,11 @@ function vaVers(vue) {
 }
 
 app.addEventListener('click', (e) => {
+  const drapeau = e.target.closest('button[data-cartes-langue]');
+  if (drapeau) {
+    if (cartes.changeLangue(drapeau.dataset.cartesLangue)) { retourHaptique(); render(); }
+    return;
+  }
   const b = e.target.closest('[data-tuile]');
   if (b) {
     const tu = toutesTuiles().find((x) => x.cle === b.dataset.tuile);
@@ -4368,10 +4406,10 @@ const titreDeVue = () => toutesTuiles().find((x) => x.vue === state.vue)?.nom()
 // Grand titre façon iOS, sur les RACINES (planches, Profil) : il coiffe la vue, puis se
 // réduit en défilant. Le rétrécissement est posé par une classe, pas par un calcul à
 // chaque image : le défilement reste fluide.
-function entete(titre, sous) {
+function entete(titre, sous, actions = '') {
   return h(`
     <header class="entete">
-      <h1>${esc(titre)}</h1>
+      ${actions ? `<div class="entete-ligne"><h1>${esc(titre)}</h1>${actions}</div>` : `<h1>${esc(titre)}</h1>`}
       ${sous ? `<p>${esc(sous)}</p>` : ''}
     </header>`);
 }
@@ -6800,6 +6838,9 @@ langueLancee.finally(() => compteUI.accueil());
 brancheSync({ lit: donneesCompletes, pose: appliqueDonnees });
 cartesColl.brancheEcriture(() => marqueChange());
 classeursColl.brancheEcriture(() => marqueChange());
+// Avant le 28/10/2026, une seule collection mêlait les langues : ses exemplaires marqués
+// anglais rejoignent la collection anglaise, une fois pour toutes (rien à faire ensuite).
+cartesColl.separeAnglais();
 recents.brancheEcriture(() => marqueChange());
 advisor.brancheEcriture(() => marqueChange());
 

@@ -24,7 +24,11 @@
 
 import { HEX } from './couleurs.js';
 
-const CLE = 'pcbox.classeurs';
+// Deux listes, française et anglaise (28/10/2026), comme les deux collections : une
+// seule ACTIVE à la fois (`changeLangue`). Les couleurs favorites sont communes.
+const CLES = { fr: 'pcbox.classeurs', en: 'pcbox.classeurs.en' };
+const langueSure = (l) => (l === 'en' ? 'en' : 'fr');
+let langue = 'fr';
 const CLE_FAVORIS = 'pcbox.classeurs.couleurs';
 export const POCHES = [4, 9, 12];
 export const COULEURS = ['nuit', 'rouge', 'vert', 'bleu', 'violet', 'or'];
@@ -54,11 +58,12 @@ const pocheSure = (p) => {
   return typeof p === 'string' && ID_CARTE.test(p) ? p : null;
 };
 
-let liste = lire();
+let liste = lire('fr');
 let surEcriture = () => {};
 const ecouteurs = new Set();
 
-function lire() {
+function lire(l) {
+  const CLE = CLES[langueSure(l)];
   let brut = null;
   try {
     brut = localStorage.getItem(CLE);
@@ -74,9 +79,29 @@ function lire() {
   }
 }
 function ecrire() {
-  try { localStorage.setItem(CLE, JSON.stringify(liste)); } catch { /* quota */ }
+  try { localStorage.setItem(CLES[langue], JSON.stringify(liste)); } catch { /* quota */ }
   surEcriture();
   for (const f of ecouteurs) f();
+}
+
+export const langueActive = () => langue;
+export function changeLangue(l) {
+  l = langueSure(l);
+  if (l === langue) return;
+  langue = l;
+  liste = lire(l);
+  for (const f of ecouteurs) f();
+}
+// Pour la sauvegarde et le compte : les classeurs d'une langue, active ou non.
+export const exporteLangue = (l) => (langueSure(l) === langue ? liste : lire(l));
+export function remplaceLangue(l, v) {
+  l = langueSure(l);
+  if (l === langue) return remplace(v);
+  const propre = assainit(v);
+  if (!propre) return false;
+  try { localStorage.setItem(CLES[l], JSON.stringify(propre)); } catch { /* quota */ }
+  surEcriture();
+  return true;
 }
 export function brancheEcriture(f) { surEcriture = f; }
 export function surChangement(f) { ecouteurs.add(f); }
@@ -221,15 +246,18 @@ export function deplacePoches(id, indices, vers) {
 // ---------------------------------------------------------------- sauvegarde
 // Ajoute des classeurs venus d'ailleurs (Cartodex) sans toucher aux siens : un
 // identifiant déjà présent est laissé de côté. Rend le nombre de classeurs ajoutés.
-export function ajouteTous(v) {
+export function ajouteTous(v, l = langue) {
   const propres = assainit(v) || [];
+  const cible = langueSure(l) === langue ? liste : lire(l);
   let n = 0;
   for (const c of propres) {
-    if (classeur(c.id)) continue;
-    liste.push(c);
+    if (cible.some((x) => x.id === c.id)) continue;
+    cible.push(c);
     n++;
   }
-  if (n) ecrire();
+  if (!n) return 0;
+  if (cible === liste) ecrire();
+  else { try { localStorage.setItem(CLES[langueSure(l)], JSON.stringify(cible)); } catch { /* quota */ } surEcriture(); }
   return n;
 }
 export const exporte = () => liste;

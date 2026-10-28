@@ -18,7 +18,7 @@ import * as cls from './classeurs.js';
 import * as advisor from './advisor.js';
 import * as favoris from './favoris.js';
 import * as couleurs from './couleurs.js';
-import { categorie, variantes, varianteReelle, CATEGORIES, LANGUES_CARTE, ETATS, VARIANTES, cleEtat, distance } from './regles.js';
+import { categorie, variantes, varianteReelle, CATEGORIES, ETATS, VARIANTES, cleEtat, distance } from './regles.js';
 
 const BLOCS_KEY = 'pcbox.cartes.blocs';
 // Les blocs, dans l'ordre de Pokécardex : du plus récent au plus ancien, puis les
@@ -32,7 +32,8 @@ const BLOCS = [
   { id: 'sm', series: ['sm'] }, { id: 'xy', series: ['xy'] }, { id: 'bw', series: ['bw'] },
   { id: 'hgss', series: ['hgss', 'col'] }, { id: 'pl', series: ['pl'] },
   { id: 'dp', series: ['dp'] }, { id: 'ex', series: ['ex'] },
-  { id: 'wizards', series: ['ecard', 'neo', 'base'], nom: 'cxBlocWizards' },
+  // Gym et Legendary Collection n'existent qu'en anglais chez TCGdex : Wizards aussi.
+  { id: 'wizards', series: ['ecard', 'lc', 'neo', 'gym', 'base'], nom: 'cxBlocWizards' },
   { id: 'pop', series: ['pop'], nom: 'cxBlocPop' }, { id: 'tk', series: ['tk'] },
   { id: 'mc', series: ['mc'] }, { id: 'misc', series: ['misc'], nom: 'cxBlocMisc' },
   { id: 'tcgp', series: ['tcgp'] },
@@ -91,9 +92,27 @@ function teinteClasseur({ couleur, pages }, { avecPages = true } = {}) {
   if (p && couleurs.estClaire(p)) classes.push('pages-claires');
   return { classe: classes.join(' '), style: couleurs.enStyle(couleurs.variables(libre ? couleur : '', p)) };
 }
+// La langue des CARTES (28/10/2026, à la demande) : choisie par les drapeaux de la page
+// Cartes, à part de celle de l'appli. Français ou anglais : deux collections, deux listes
+// de classeurs, les extensions et cartes de TCGdex dans cette langue, et en anglais les
+// visuels de la base Pokémon TCG. Par défaut, celle de l'appli si elle est française.
+const LANGUE_CARTES_KEY = 'pcbox.cartes.langue';
+export function langueCartes(langueAppli) {
+  const l = lit(LANGUE_CARTES_KEY);
+  return l === 'fr' || l === 'en' ? l : langueAppli === 'fr' ? 'fr' : 'en';
+}
+
 export function creeCartes(ctx) {
   const { t, esc, h, fold, euros, ICO, panneau } = ctx;
-  api.poseLangue(ctx.langue());
+  {
+    const l = langueCartes(ctx.langue());
+    api.poseLangue(l);
+    coll.changeLangue(l);
+    cls.changeLangue(l);
+  }
+  // Les exemplaires vont dans la collection de la langue choisie : la mention FR / EN /
+  // JP de chaque exemplaire n'est plus proposée ni affichée.
+  const langueExemplaire = () => (api.langueDonnees() === 'en' ? 'EN' : 'FR');
 
   // ---------------------------------------------------------------- état (de session)
   const etat = {
@@ -108,7 +127,7 @@ export function creeCartes(ctx) {
     liste: [],                  // les cartes affichées, pour passer de l'une à l'autre
     fiche: null,                // { id, liste } : la carte ouverte et sa liste
     ficheEchec: null,           // carte dont le détail n'a pas pu être lu
-    ajout: { v: null, l: 'FR', e: 'neuf' },
+    ajout: { v: null, e: 'neuf' },
     // Ma collection : classée par collection ou non (préférence gardée), et un tri avec
     // son sens, indépendants l'un de l'autre (28/10/2026, à la demande).
     colQ: '', colTri: 'numero', colSens: 'asc', colGroupe: litGroupe(), colFiltre: 'toutes', colRarete: '', colType: '',
@@ -709,7 +728,7 @@ export function creeCartes(ctx) {
         const [id, va] = cle.split('|');
         const d = detail(id);
         const v = va || variantes(d || { id }, s.id, s.name)[0];
-        if (ajoute) { coll.ajoute(ficheDe(id, d), v, { langue: etat.ajout.l, etat: etat.ajout.e }); ctx.noteRecent(id); n++; }
+        if (ajoute) { coll.ajoute(ficheDe(id, d), v, { langue: langueExemplaire(), etat: etat.ajout.e }); ctx.noteRecent(id); n++; }
         else if (coll.exemplairesVariante(id, v) || (!va && coll.exemplaires(id))) { coll.retire(id, va ? v : null); n++; }
       }
     });
@@ -1705,20 +1724,19 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
           if (!l.length) return 'Aucune carte possédée ne correspond.';
           return l.slice(0, 40).map(([x, c]) => `${x} | ${c.n} | ${c.setN || ''} | ×${c.ex.length}${prixUnitaire(x) ? ` | ${prixUnitaire(x)} €` : ''}`).join('\n');
         } },
-      { nom: 'ajouter_carte', description: 'Ajoute un exemplaire d’une carte à la collection.',
+      { nom: 'ajouter_carte', description: 'Ajoute un exemplaire d’une carte à la collection (celle de la langue choisie dans l’appli, française ou anglaise).',
         parametres: { type: 'object', properties: {
           id: { type: 'string', description: 'Identifiant TCGdex' },
           variante: { type: 'string', enum: VARIANTES, description: 'La première variante de la carte par défaut' },
-          langue: { type: 'string', enum: LANGUES_CARTE },
           etat: { type: 'string', enum: ETATS } }, required: ['id'] },
-        executer: async ({ id: x, variante, langue, etat: e }) => {
+        executer: async ({ id: x, variante, etat: e }) => {
           const k = id(x);
           const d = await api.carte(k).catch(() => null);
           if (!d) return `Carte ${k} introuvable.`;
           const vars = variantes(d, d.set?.id, d.set?.name);
           const v = vars.includes(variante) ? variante : vars[0];
           const avant = JSON.parse(JSON.stringify(coll.toutes()));
-          coll.ajoute(ficheDe(k, d), v, { langue: LANGUES_CARTE.includes(langue) ? langue : 'FR', etat: ETATS.includes(e) ? e : 'neuf' });
+          coll.ajoute(ficheDe(k, d), v, { langue: langueExemplaire(), etat: ETATS.includes(e) ? e : 'neuf' });
           const p = prixDe(d);
           if (p) coll.notePrix(k, p);
           prix.notePoint(k, d?.pricing?.cardmarket);
@@ -1936,15 +1954,15 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
   function listeExemplaires(c) {
     const g = new Map();
     for (const x of c.ex) {
-      const k = `${x.v}|${x.l}|${cleEtat(x.e)}`;
+      const k = `${x.v}|${cleEtat(x.e)}`;
       g.set(k, (g.get(k) || 0) + 1);
     }
     const rang = (v) => { const i = VARIANTES.indexOf(v); return i < 0 ? 99 : i; };
-    const lignes = [...g].map(([k, n]) => { const [v, l, e] = k.split('|'); return { k, v, l, e, n }; })
-      .sort((a, b) => rang(a.v) - rang(b.v) || a.l.localeCompare(b.l) || ETATS.indexOf(a.e) - ETATS.indexOf(b.e));
+    const lignes = [...g].map(([k, n]) => { const [v, e] = k.split('|'); return { k, v, e, n }; })
+      .sort((a, b) => rang(a.v) - rang(b.v) || ETATS.indexOf(a.e) - ETATS.indexOf(b.e));
     return `<div class="cx-ex">${lignes.map((x) => `
       <div class="cx-ex-ligne">
-        <span class="cx-ex-txt"><b>${esc(nomVariante(x.v))}</b><small>${esc(x.l)} · ${esc(nomEtat(x.e))}</small></span>
+        <span class="cx-ex-txt"><b>${esc(nomVariante(x.v))}</b><small>${esc(nomEtat(x.e))}</small></span>
         <span class="cx-pas">
           <button data-cx-moins="${esc(x.k)}" aria-label="${t('cxRetirerUn')}">${ICO.moins}</button>
           <b>${x.n}</b>
@@ -2081,7 +2099,6 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       ${n ? listeExemplaires(c) : `<p class="none">${t('cxAucunExemplaire')}</p>`}
       <div class="cx-ajout">
         ${choix('v', vars, etat.ajout.v, nomVariante, t('cxVariante'))}
-        ${choix('l', LANGUES_CARTE, etat.ajout.l, (l) => l, t('cxLangue'))}
         ${choix('e', ETATS, etat.ajout.e, nomEtat, t('cxEtat'))}
         <button class="catch-btn" data-cx-ajoute>${ICO.plus}<span>${n ? t('cxAjouterExemplaire') : t('cxAjouter')}</span></button>
       </div>
@@ -2124,9 +2141,9 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       panneau.corps.querySelector('[data-cx-fav]')?.replaceWith(h(boutonFavori(id)));
     });
   }
-  function ajouteDepuisFiche(id, v, l, e) {
+  function ajouteDepuisFiche(id, v, e) {
     const d = detail(id);
-    coll.ajoute(ficheDe(id, d), v, { langue: l, etat: e });
+    coll.ajoute(ficheDe(id, d), v, { langue: langueExemplaire(), etat: e });
     const p = prixDe(d);
     if (p) coll.notePrix(id, p);
     prix.notePoint(id, d?.pricing?.cardmarket);
@@ -2134,12 +2151,12 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     ctx.haptique();
     apresChangement(id);
   }
-  function retireDepuisFiche(id, v, l, e) {
+  function retireDepuisFiche(id, v, e) {
     const fiche = ficheDe(id);
-    coll.retire(id, v, { langue: l, etat: e });
+    coll.retire(id, v, { etat: e });
     ctx.haptique();
     apresChangement(id);
-    ctx.annonce(t('cxRetireUn', fiche.n), () => { coll.ajoute(fiche, v, { langue: l, etat: e }); apresChangement(id); });
+    ctx.annonce(t('cxRetireUn', fiche.n), () => { coll.ajoute(fiche, v, { langue: langueExemplaire(), etat: e }); apresChangement(id); });
   }
 
   // ---- Inclinaison au gyroscope ----
@@ -2319,8 +2336,12 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       const im = e.target;
       if (im?.tagName !== 'IMG' || im.dataset.repli === 'fin') return;
       if (im.closest('.avance-art, .pilule, .cx-serie-logo, .bandeau-art:not(.eventail)')) { im.dataset.repli = 'fin'; im.style.visibility = 'hidden'; return; }
-      if (!im.closest('.cx-v-img, .cx-fiche-img, .cx-mini, .acc-recent.carte, .eventail')) return;
+      if (!im.closest('.cx-v-img, .cx-fiche-img, .cx-mini, .acc-recent.carte, .eventail, .cl-poche, .cl-fantome')) return;
       if (im.src.endsWith('/high.webp')) { im.src = im.src.replace('/high.webp', '/low.webp'); return; }
+      // Image anglaise (pokemontcg.io, scrydex) : la grande retombe sur la petite, puis sur
+      // l'image anglaise de TCGdex quand on la connaît.
+      const r = api.repli(im.src);
+      if (r && r !== im.src) { im.src = r; return; }
       im.dataset.repli = 'fin';
       im.src = api.DOS;
     }, true);
@@ -2819,9 +2840,9 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
         panneau.maj(htmlFiche(f.id));
         return;
       }
-      if (q('[data-cx-ajoute]')) { ajouteDepuisFiche(f.id, etat.ajout.v, etat.ajout.l, etat.ajout.e); return; }
-      if ((x = q('[data-cx-plus]'))) { const [v, l, ee] = x.dataset.cxPlus.split('|'); ajouteDepuisFiche(f.id, v, l, ee); return; }
-      if ((x = q('[data-cx-moins]'))) { const [v, l, ee] = x.dataset.cxMoins.split('|'); retireDepuisFiche(f.id, v, l, ee); return; }
+      if (q('[data-cx-ajoute]')) { ajouteDepuisFiche(f.id, etat.ajout.v, etat.ajout.e); return; }
+      if ((x = q('[data-cx-plus]'))) { const [v, ee] = x.dataset.cxPlus.split('|'); ajouteDepuisFiche(f.id, v, ee); return; }
+      if ((x = q('[data-cx-moins]'))) { const [v, ee] = x.dataset.cxMoins.split('|'); retireDepuisFiche(f.id, v, ee); return; }
       if (q('[data-cx-fav]')) { coll.basculeFavori(ficheDe(f.id)); ctx.haptique(); apresChangement(f.id); return; }
       if ((x = q('[data-cx-lien]'))) { ctx.ouvreLien(x.dataset.cxLien); return; }
       if ((x = q('[data-cx-dex]'))) { ctx.ficheJeu(Number(x.dataset.cxDex)); }
@@ -2843,10 +2864,36 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     });
   }
 
+  // Français ↔ anglais : l'autre collection, l'autre liste de classeurs, et TCGdex dans
+  // l'autre langue. Tout ce qui a été lu dans la première est oublié, et la page revient
+  // à son départ (extension ouverte, recherche, sélection, classeur).
+  function changeLangue(l) {
+    l = l === 'en' ? 'en' : 'fr';
+    if (l === api.langueDonnees()) return false;
+    try { localStorage.setItem(LANGUE_CARTES_KEY, l); } catch { /* le défaut reprendra */ }
+    api.poseLangue(l);
+    coll.changeLangue(l);
+    cls.changeLangue(l);
+    api.videFile();
+    listeSeries = null;
+    toutesExt = null;
+    imagesAutres.clear();
+    detailsSerie.clear();
+    extensions.clear();
+    echecs.clear();
+    cartesPokemon.clear();
+    Object.assign(etat, { set: null, q: '', res: null, suggestion: null, selection: null, master: false, liste: [],
+      fiche: null, cls: null, clsPage: 0, clsSel: null, clsDeplace: false, clsAjout: null, clsEdition: null,
+      colQ: '', colRarete: '', colType: '', colFiltre: 'toutes' });
+    return true;
+  }
+
   return {
     rend,
     branche,
     sesCartes,
+    changeLangue,
+    langue: () => api.langueDonnees(),
     listeCartesPokemon: (num) => (cartesPokemon.get(Number(num)) || []).map((c) => c.id),
     reessaieCartesPokemon(num) { echecs.delete(`pkm:${num}`); chargeCartesPokemon(Number(num)); majCartesPokemon(); },
     ouvre,
@@ -2885,8 +2932,9 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       rend('extensions');
       surSaisie(nom);
     },
+    // La langue de l'APPLI a changé : celle des cartes non (elle a ses drapeaux), mais les
+    // noms d'extensions et de séries affichés viennent de TCGdex — on les relit.
     retraduit() {
-      api.poseLangue(ctx.langue());
       listeSeries = null;
       toutesExt = null;
       imagesAutres.clear();

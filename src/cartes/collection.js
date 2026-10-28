@@ -23,13 +23,21 @@
 //
 // `localStorage` est la source de vérité, comme pour le Living Dex ; le compte n'en
 // est qu'une copie (sync.js), et l'écriture prévient la synchronisation.
+//
+// DEUX COLLECTIONS, française et anglaise (28/10/2026, à la demande) : on choisit la
+// langue en haut de la page Cartes, et ce sont deux collections à part. Une seule est
+// ACTIVE à la fois — toutes les fonctions de ce module portent sur elle ; `changeLangue`
+// passe à l'autre. Les fonctions « …Langue » lisent ou écrivent l'une OU l'autre, pour la
+// sauvegarde et le compte.
 
 import { cleEtat, varianteReelle } from './regles.js';
 
-const CLE = 'pcbox.cartes';
-const CLE_VALEURS = 'pcbox.cartes.valeurs';
+const CLES = { fr: 'pcbox.cartes', en: 'pcbox.cartes.en' };
+const CLES_VALEURS = { fr: 'pcbox.cartes.valeurs', en: 'pcbox.cartes.en.valeurs' };
+const langueSure = (l) => (l === 'en' ? 'en' : 'fr');
 
-let cartes = lire();
+let langue = 'fr';
+let cartes = lire('fr');
 let surEcriture = () => {};
 const ecouteurs = new Set();
 // Écritures différées le temps d'un lot (sélection multiple) : cent cartes ajoutées
@@ -37,7 +45,8 @@ const ecouteurs = new Set();
 let differe = 0;
 let sale = false;
 
-function lire() {
+function lire(l) {
+  const CLE = CLES[langueSure(l)];
   try {
     const v = JSON.parse(localStorage.getItem(CLE));
     if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
@@ -68,9 +77,62 @@ function normalise(id, c) {
 
 function ecrire() {
   if (differe) { sale = true; return; }
-  try { localStorage.setItem(CLE, JSON.stringify(cartes)); } catch { /* quota : rien à faire de plus ici */ }
+  try { localStorage.setItem(CLES[langue], JSON.stringify(cartes)); } catch { /* quota : rien à faire de plus ici */ }
   surEcriture();
   for (const f of ecouteurs) f();
+}
+
+// ---------------------------------------------------------------- langue de la collection
+export const langueActive = () => langue;
+// Passe à l'autre collection : rien n'est écrit, on la relit.
+export function changeLangue(l) {
+  l = langueSure(l);
+  if (l === langue) return;
+  langue = l;
+  cartes = lire(l);
+  for (const f of ecouteurs) f();
+}
+// Pour la sauvegarde et le compte : la collection d'une langue, active ou non.
+export const exporteLangue = (l) => (langueSure(l) === langue ? cartes : lire(l));
+export function remplaceLangue(l, v) {
+  l = langueSure(l);
+  if (l === langue) return remplace(v);
+  const propre = assainit(v);
+  if (!propre) return false;
+  try { localStorage.setItem(CLES[l], JSON.stringify(propre)); } catch { /* quota */ }
+  surEcriture();
+  return true;
+}
+
+// Les exemplaires marqués anglais (`l: 'EN'`) de la collection française rejoignent la
+// collection anglaise : avant le 28/10/2026, une seule collection mêlait les langues, et
+// chaque exemplaire portait la sienne. Ceux marqués français ou japonais restent. Sert
+// au premier lancement et à la reprise d'une ancienne sauvegarde. Rend le nombre déplacé.
+export function separeAnglais() {
+  const fr = lire('fr'), en = lire('en');
+  let n = 0;
+  for (const [id, c] of Object.entries(fr)) {
+    const anglais = (c.ex || []).filter((x) => x?.l === 'EN');
+    if (!anglais.length) continue;
+    c.ex = c.ex.filter((x) => x?.l !== 'EN');
+    const e = en[id] || (en[id] = { ex: [], fav: false });
+    for (const k of ['n', 'set', 'setN', 'serie', 'num', 'rar', 'typ', 'dex']) if (e[k] == null && c[k] != null) e[k] = c[k];
+    // L'image française n'est pas celle de la carte anglaise : TCGdex range la sienne
+    // sous /en/ ; elle sera remplacée par celle de pokemontcg.io au prochain relevé.
+    if (!e.img && typeof c.img === 'string') e.img = c.img.replace('assets.tcgdex.net/fr/', 'assets.tcgdex.net/en/');
+    e.ex.push(...anglais);
+    if (!c.ex.length && !c.fav) delete fr[id];
+    n += anglais.length;
+  }
+  if (!n) return 0;
+  try {
+    localStorage.setItem(CLES.fr, JSON.stringify(fr));
+    localStorage.setItem(CLES.en, JSON.stringify(en));
+  } catch { /* quota */ }
+  cartes = langue === 'en' ? en : fr;
+  surEcriture();
+  for (const f of ecouteurs) f();
+  return n;
 }
 
 // Exécute `f` en ne gardant qu'une écriture à la fin.
@@ -201,16 +263,19 @@ export function remplace(v) {
 // Ajoute ce que l'on n'a pas encore, sans toucher à ce qu'on a : une carte déjà dans
 // la collection garde ses exemplaires. Sert à reprendre une sauvegarde de Cartodex.
 // Rend le nombre de cartes ajoutées.
-export function fusionne(v) {
+export function fusionne(v, l = langue) {
   const propre = assainit(v);
   if (!propre) return 0;
+  const cible = langueSure(l) === langue ? cartes : lire(l);
   let n = 0;
   for (const [id, c] of Object.entries(propre)) {
-    if (cartes[id]) continue;
-    cartes[id] = c;
+    if (cible[id]) continue;
+    cible[id] = c;
     n++;
   }
-  if (n) ecrire();
+  if (!n) return 0;
+  if (cible === cartes) ecrire();
+  else { try { localStorage.setItem(CLES[langueSure(l)], JSON.stringify(cible)); } catch { /* quota */ } surEcriture(); }
   return n;
 }
 
@@ -222,8 +287,10 @@ export function fusionne(v) {
 // `exu-%3F` chez TCGdex. Ni l'un ni l'autre ne sort d'un attribut HTML ; refusés, ces
 // deux cartes ne pouvaient être ni sauvegardées ni rangées dans un classeur.
 const ID = /^[A-Za-z0-9][A-Za-z0-9._!%-]{0,63}$/;
-// L'image vient de TCGdex, ou des visuels embarqués (public/visuels-cartes/, chemin relatif).
-const IMAGE = /^(https:\/\/assets\.tcgdex\.net\/[A-Za-z0-9._/-]+|visuels-cartes\/[A-Za-z0-9._-]+)$/;
+// L'image vient de TCGdex, des visuels embarqués (public/visuels-cartes/, chemin relatif)
+// ou, pour une carte anglaise, de la base Pokémon TCG (images.pokemontcg.io et
+// images.scrydex.com, où elle renvoie pour les extensions récentes).
+const IMAGE = /^(https:\/\/assets\.tcgdex\.net\/[A-Za-z0-9._/-]+|https:\/\/images\.(pokemontcg\.io|scrydex\.com)\/[A-Za-z0-9._/-]+|visuels-cartes\/[A-Za-z0-9._-]+)$/;
 const VARIANTE = /^[a-z_]{1,24}$/;
 const texte = (x, n = 120) => (typeof x === 'string' ? x.slice(0, n) : undefined);
 export function assainit(v) {
@@ -259,9 +326,9 @@ export function assainit(v) {
 // Une valeur par jour, relevée quand on regarde la page Valeur ou qu'on actualise les
 // prix : c'est ce qui permet de tracer la courbe de la collection. Elle part avec le
 // compte (28/10/2026 : « toutes les données ») : un relevé prévient la synchronisation.
-export function historique() {
+export function historique(l = langue) {
   try {
-    const v = JSON.parse(localStorage.getItem(CLE_VALEURS));
+    const v = JSON.parse(localStorage.getItem(CLES_VALEURS[langueSure(l)]));
     return Array.isArray(v) ? v.filter((x) => x && typeof x.d === 'string' && x.v >= 0) : [];
   } catch { return []; }
 }
@@ -274,13 +341,13 @@ export function noteValeurDuJour(valeur) {
     if (h[h.length - 1].v === v) return;
     h[h.length - 1].v = v;
   } else h.push({ d, v });
-  try { localStorage.setItem(CLE_VALEURS, JSON.stringify(h.slice(-400))); } catch { /* sans gravité */ }
+  try { localStorage.setItem(CLES_VALEURS[langue], JSON.stringify(h.slice(-400))); } catch { /* sans gravité */ }
   surEcriture();
 }
 // La courbe reprise du compte, point par point (une date, une valeur positive).
-export function remetHistorique(v) {
+export function remetHistorique(v, l = langue) {
   if (!Array.isArray(v)) return;
   const h = v.filter((x) => x && /^\d{4}-\d{2}-\d{2}$/.test(String(x.d)) && Number(x.v) >= 0 && Number(x.v) < 1e8)
     .map((x) => ({ d: x.d, v: Math.round(Number(x.v) * 100) / 100 })).slice(-400);
-  try { localStorage.setItem(CLE_VALEURS, JSON.stringify(h)); } catch { /* sans gravité */ }
+  try { localStorage.setItem(CLES_VALEURS[langueSure(l)], JSON.stringify(h)); } catch { /* sans gravité */ }
 }

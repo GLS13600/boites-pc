@@ -23,7 +23,9 @@ const chemin = (u) => u.pathname.replace(/^\/([A-Za-z]:)/, '$1');
 // français est la base, embarquée dans l'index : qui n'en change pas ne doit pas
 // télécharger deux langues qu'il ne lira jamais. Elles se mettent en cache au premier
 // choix de langue, qui demande de toute façon d'être en ligne une fois.
-const HORS_COQUILLE = /\.wasm$|^(en|ja)-[\w-]+\.js$/;
+// La table des images des cartes ANGLAISES (320 Ko) aussi : qui reste en français n'en a
+// pas l'usage, elle se met en cache au premier passage en anglais.
+const HORS_COQUILLE = /\.wasm$|^(en|ja)-[\w-]+\.js$|^images-anglaises-[\w-]+\.js$/;
 const assets = (await readdir(new URL('assets/', DIST))).filter((f) => !HORS_COQUILLE.test(f));
 const shell = ['./', './index.html', './icon.svg', ...assets.map((f) => `./assets/${f}`)];
 

@@ -67,7 +67,7 @@ function cspPlugin(url) {
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:",
     "style-src 'self' 'unsafe-inline'",
     // data: pour les dessins en ligne, blob: pour l'aperçu peint du scan.
-    "img-src 'self' data: blob: https://assets.tcgdex.net https://images.pokemontcg.io",
+    "img-src 'self' data: blob: https://assets.tcgdex.net https://images.pokemontcg.io https://images.scrydex.com",
     "media-src 'self' blob:",
     "font-src 'self'",
     "worker-src 'self' blob:",

@@ -192,7 +192,10 @@ const rempli = (d) => !!(d?.caught?.length || d?.caughtShiny?.length
   || Object.values(d?.equipes ?? {}).some((e) => e?.some?.(Boolean))
   // Depuis la fusion avec Cartodex, une collection de cartes seule est une collection.
   || Object.values(d?.cartes ?? {}).some((c) => c?.ex?.length || c?.fav)
-  || (Array.isArray(d?.classeurs) && d.classeurs.length > 0));
+  || (Array.isArray(d?.classeurs) && d.classeurs.length > 0)
+  // Et, depuis le 28/10/2026, la collection et les classeurs anglais.
+  || Object.values(d?.cartesEn ?? {}).some((c) => c?.ex?.length || c?.fav)
+  || (Array.isArray(d?.classeursEn) && d.classeursEn.length > 0));
 
 // ---------------------------------------------------------------- suivi du compte
 //

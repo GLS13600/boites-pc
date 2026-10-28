@@ -2977,6 +2977,32 @@ img {
 .cpte-note.libre { color: #1b8a4b; }
 .cpte-note.pris, .cpte-note.invalide { color: var(--ball); }
 
+/* ---------- Drapeaux de la page Cartes : langue des cartes (28/10/2026) ----------
+   À côté du grand titre : français ou anglais, deux collections à part. */
+.entete-ligne { display: flex; align-items: center; justify-content: space-between; gap: var(--e-3); }
+.drapeaux {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--r-rond);
+  background: var(--panel);
+  box-shadow: var(--ombre-1);
+}
+.drapeau {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 34px;
+  border-radius: var(--r-rond);
+  opacity: 0.45;
+  filter: grayscale(0.6);
+  transition: opacity var(--d-court) ease, filter var(--d-court) ease, background-color var(--d-court) ease;
+}
+.drapeau svg { width: 26px; height: 18px; border-radius: 3px; box-shadow: 0 0 0 1px rgb(0 0 0 / 12%); }
+.drapeau.on { opacity: 1; filter: none; background: var(--caught-tint); box-shadow: inset 0 0 0 1.5px var(--caught-edge); }
+.drapeau:active { transform: scale(0.94); }
+
 /* ---------- Écran d'accueil du premier lancement (compte-ui.js, `accueil`) ----------
    Par-dessus tout — barre du bas (15), panneaux (21) — : on choisit d'abord d'avoir un
    compte ou non. Le formulaire est celui du Profil, avec ses classes .cpte-*. */

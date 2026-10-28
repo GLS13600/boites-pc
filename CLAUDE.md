@@ -296,10 +296,41 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
 - **Valeur** : total, courbe jour par jour (`pcbox.cartes.valeurs`, une valeur par jour,
   hors sauvegarde), « Actualiser les prix » des cartes possédées, cartes les plus chères.
 - **Classeurs** et **PokéAdvisor** : pages d'attente, illustration de la tuile en grand.
-- **Langue des données** : TCGdex en français si l'appli l'est, en anglais sinon
-  (`api.poseLangue`, clés de cache préfixées par la langue). Le japonais de TCGdex décrit
-  d'autres extensions sous d'autres identifiants ; les identifiants des cartes
-  internationales, eux, sont les mêmes en français et en anglais.
+- **Langue des CARTES : deux collections, française et anglaise** (28/10/2026, à la
+  demande). Deux drapeaux à côté du grand titre de la page Cartes (`drapeauxCartes` dans
+  main.js, `.drapeaux`) choisissent la langue de tout l'univers Cartes, À PART de celle
+  de l'appli (`pcbox.cartes.langue` ; par défaut, celle de l'appli si elle est française,
+  l'anglais sinon). `cartes.changeLangue(l)` dans vues.js : TCGdex dans cette langue
+  (`api.poseLangue`, clés de cache préfixées), l'autre collection, l'autre liste de
+  classeurs, et tout ce qui avait été lu est oublié.
+  - **Deux collections** (`pcbox.cartes` / `pcbox.cartes.en`), **deux listes de
+    classeurs** (`pcbox.classeurs` / `pcbox.classeurs.en`, choix de l'utilisateur), deux
+    courbes de valeur. Une seule est ACTIVE (`changeLangue` de collection.js et de
+    classeurs.js) ; les fonctions « …Langue » (`exporteLangue`, `remplaceLangue`) lisent
+    ou écrivent l'une ou l'autre pour la sauvegarde et le compte (`cartesEn`,
+    `classeursEn`, `valeursEn`). Les couleurs favorites des classeurs et l'historique des
+    prix (par identifiant de carte) sont communs.
+  - **Plus de mention FR / EN / JP** sur les exemplaires : le formulaire d'ajout ne
+    propose plus la langue, la fiche ne l'affiche plus ; un exemplaire prend celle de la
+    collection (champ `l` gardé dans les données). Les exemplaires marqués EN de
+    l'ancienne collection unique rejoignent la collection anglaise (`separeAnglais`, au
+    lancement, à l'import et à la reprise du compte) ; FR et JP restent en français
+    (choix de l'utilisateur). Une sauvegarde Cartodex va toujours dans la française.
+  - **Visuels anglais : la base Pokémon TCG** (pokemontcg.io), demandé. `npm run
+    images-anglaises` (scripts/images-anglaises.mjs) relève UNE fois l'image de chaque
+    carte anglaise et écrit `src/data/images-anglaises.json` : extensions rapprochées par
+    le nom anglais (+ `ALIAS`) puis la date, cartes par le numéro sans zéros de tête.
+    L'API renvoie désormais les extensions récentes vers images.scrydex.com : la table
+    garde l'URL exacte quand elle n'est pas au chemin attendu. Chargée À LA DEMANDE, en
+    anglais seulement ; l'appli n'interroge pas leur API, elle ne charge que les images
+    (`img-src` ouvert à images.scrydex.com). Une carte inconnue garde l'image anglaise de
+    TCGdex, qui sert aussi de repli (`api.repli`) ; les visuels embarqués de Pokécardex
+    (français) ne servent qu'en français. Collection : `IMAGE` accepte ces deux hôtes.
+  - En anglais, TCGdex a deux séries absentes en français : Gym et Legendary
+    Collection, rangées dans le bloc Wizards.
+  - Le japonais de TCGdex décrit d'autres extensions sous d'autres identifiants ; les
+    identifiants des cartes internationales, eux, sont les mêmes en français et en
+    anglais.
 - **Sauvegarde et compte** : la collection part dans l'export (`cartes`) et dans la
   synchronisation ; `rempli` et le résumé de l'arbitrage comptent les cartes. À
   l'import, `assainit()` reprend chaque carte champ par champ — identifiant TCGdex,
@@ -545,7 +576,8 @@ dresseurs l'ont en favori.
 de confidentialité dit qu'« en l'absence de compte, aucune requête réseau n'est
 émise ». Ce n'est plus vrai de l'univers Cartes, qui interroge TCGdex (catalogue et
 images), ni de PokéAdvisor, qui envoie questions et résumé à Mistral AI avec la clé de
-l'utilisateur. Le compteur des favoris, lui, est un agrégat de collections déjà
+l'utilisateur. Ni des cartes anglaises, dont les images viennent de images.pokemontcg.io et
+images.scrydex.com (28/10/2026). Le compteur des favoris, lui, est un agrégat de collections déjà
 hébergées. Le dossier `legal/` (politique fr / en, registre, étiquette App Privacy) doit
 suivre, comme pour les publicités.
 
@@ -925,6 +957,8 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `scripts/visuels-cartes.mjs` | Visuels absents de TCGdex, d'après les relevés Pokécardex de l'utilisateur (Excel dans `reference/visuels-cartes/excel/`, hors git) |
 | `public/visuels-cartes/` | Ces visuels, nommés par identifiant TCGdex (`30th-c-014.webp`), **générés** |
 | `src/data/visuels-cartes.json` | Leur liste, lue par `api.js`, **générée** |
+| `scripts/images-anglaises.mjs` | Image de chaque carte ANGLAISE dans la base Pokémon TCG (`npm run images-anglaises`, `SEULEMENT=` pour refaire quelques extensions) |
+| `src/data/images-anglaises.json` | Cette table (18 700+ cartes, 171 extensions), **générée**, chargée en anglais seulement |
 | `ml/noms-cartes.mjs` | Noms des cartes du scan en fr / en / ja dans `index.json`, à relancer après chaque export |
 
 ## Données

@@ -20,6 +20,7 @@
     "fetch-moves-gen": "node scripts/fetch-moves-gen.mjs",
     "fetch-elevage": "node scripts/fetch-elevage.mjs",
     "fetch-logos-cartes": "node scripts/fetch-logos-cartes.mjs",
+    "images-anglaises": "node scripts/images-anglaises.mjs",
     "predev": "node scripts/assemble-modeles.mjs",
     "fetch-i18n": "node scripts/fetch-i18n.mjs"
   },

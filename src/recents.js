@@ -32,7 +32,8 @@ export function brancheEcriture(f) { surEcriture = f; }
 // repris champ par champ — l'identifiant finit dans une URL d'image ; l'accueil, lui,
 // n'affiche de toute façon que ce qui est encore possédé.
 export const tous = () => lire();
-const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+// Comme collection.js : `!` et `%` pour les Zarbi `exu-!` et `exu-%3F`.
+const ID = /^[A-Za-z0-9][A-Za-z0-9._!%-]{0,63}$/;
 export function remet(v) {
   if (!Array.isArray(v)) return;
   const l = v.filter((x) => x && (x.type === 'pokemon' || x.type === 'carte') && ID.test(String(x.id)) && Number(x.t) > 0)

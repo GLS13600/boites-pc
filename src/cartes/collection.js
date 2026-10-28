@@ -193,7 +193,10 @@ export function fusionne(v) {
 // pas la forme d'un identifiant TCGdex est écartée, une image qui ne vient pas de
 // TCGdex aussi — elles finissent dans des attributs HTML et des URL. Même règle que
 // `cleAdmise` pour les Pokémon.
-const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+// `!` et `%` : les Zarbi « ! » et « ? » de la Collection Zarbi s'appellent `exu-!` et
+// `exu-%3F` chez TCGdex. Ni l'un ni l'autre ne sort d'un attribut HTML ; refusés, ces
+// deux cartes ne pouvaient être ni sauvegardées ni rangées dans un classeur.
+const ID = /^[A-Za-z0-9][A-Za-z0-9._!%-]{0,63}$/;
 // L'image vient de TCGdex, ou des visuels embarqués (public/visuels-cartes/, chemin relatif).
 const IMAGE = /^(https:\/\/assets\.tcgdex\.net\/[A-Za-z0-9._/-]+|visuels-cartes\/[A-Za-z0-9._-]+)$/;
 const VARIANTE = /^[a-z_]{1,24}$/;

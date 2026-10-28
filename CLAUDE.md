@@ -337,6 +337,21 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
     libère sans rien tasser. `restaure` et `remetCartes` servent les « Annuler ».
   - À l'import, `assainit()` reprend chaque classeur champ par champ (identifiants de
     carte et d'extension, variante, nombre de pochettes, teinte).
+  - **Les classeurs disparaissaient à chaque lancement** (de l'étape 4 au 28/10/2026) :
+    `lire()`, appelée au chargement du module, passe par `assainit()`, dont le filtre
+    (`ID_CARTE`, `pocheSure`…) était déclaré EN FIN de fichier — encore inexistant à
+    ce moment-là (zone morte temporelle d'un `const`). L'erreur était avalée par le
+    `try` de `lire()`, la liste repartait vide, et la modification suivante — ou la
+    synchronisation, qui envoyait `classeurs: []` — l'effaçait pour de bon, sur
+    l'appareil comme dans le compte. Signalé comme « je veux aussi sauvegarder les
+    classeurs dans le compte » : ils y étaient, mais vides. Le filtre est désormais
+    déclaré AVANT `let liste = lire()`, et une lecture illisible garde une copie dans
+    `pcbox.classeurs.secours` et le dit en console au lieu de se taire.
+    **Règle** : un module qui lit son stockage au chargement ne doit appeler que ce qui
+    est déclaré au-dessus de cette lecture — et un test de persistance passe par un
+    RECHARGEMENT de la page, pas seulement par l'état en mémoire.
+  - Identifiants de carte : `!` et `%` admis (collection, classeurs, journal), pour les
+    Zarbi `exu-!` et `exu-%3F` de TCGdex, jusque-là impossibles à sauvegarder.
 - **La liste** : des couvertures deux par deux, à la teinte du classeur (six, `.c-*`),
   anneaux sur la tranche, logo de l'extension ou initiale, « 6 / 207 cartes », barre et
   valeur possédée. Le logo vient de la liste des extensions (`/sets`, lue une fois).

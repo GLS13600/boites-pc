@@ -24,15 +24,44 @@ const CLE = 'pcbox.classeurs';
 export const POCHES = [4, 9, 12];
 export const COULEURS = ['nuit', 'rouge', 'vert', 'bleu', 'violet', 'or'];
 
+// Le filtre de ce qui vient de l'extérieur (voir `assainit`), déclaré AVANT la lecture
+// du stockage : `lire()` s'en sert dès le chargement du module. Déclaré en fin de
+// fichier, il n'existait pas encore à ce moment-là — `assainit` levait une erreur que
+// `lire()` avalait, et la liste repartait VIDE à chaque lancement (corrigé le
+// 28/10/2026). La modification suivante écrasait alors les classeurs pour de bon, sur
+// l'appareil comme dans le compte.
+// Une carte : `!` et `%` compris, pour `exu-!` et `exu-%3F` (Zarbi « ! » et « ? »),
+// comme dans collection.js. Une extension n'en a jamais.
+const ID = /^[A-Za-z0-9][A-Za-z0-9._!%-]{0,63}$/;
+const ID_CARTE = /^[A-Za-z0-9][A-Za-z0-9._!%-]{0,63}(\|[a-z_]{1,24})?$/;
+const ID_SET = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+const pocheSure = (p) => {
+  if (p == null) return null;
+  if (Array.isArray(p)) {
+    const l = p.filter((x) => typeof x === 'string' && ID_CARTE.test(x)).slice(0, 8);
+    return l.length ? l : null;
+  }
+  return typeof p === 'string' && ID_CARTE.test(p) ? p : null;
+};
+
 let liste = lire();
 let surEcriture = () => {};
 const ecouteurs = new Set();
 
 function lire() {
+  let brut = null;
   try {
-    const v = JSON.parse(localStorage.getItem(CLE));
+    brut = localStorage.getItem(CLE);
+    const v = JSON.parse(brut);
     return Array.isArray(v) ? (assainit(v) || []) : [];
-  } catch { return []; }
+  } catch (e) {
+    // Illisible : la prochaine écriture remplacerait le stockage. On met le contenu de
+    // côté (`pcbox.classeurs.secours`) et on le DIT, plutôt que de repartir à vide en
+    // silence — c'est ce silence qui a fait perdre des classeurs.
+    console.error('classeurs illisibles, copie gardée dans pcbox.classeurs.secours', e);
+    try { if (brut) localStorage.setItem(`${CLE}.secours`, brut); } catch { /* quota */ }
+    return [];
+  }
 }
 function ecrire() {
   try { localStorage.setItem(CLE, JSON.stringify(liste)); } catch { /* quota */ }
@@ -173,17 +202,8 @@ export function remplace(v) {
 }
 
 // Repris champ par champ : ce qui vient d'un fichier ou du compte finit dans des
-// attributs HTML et des URL. Même règle que la collection.
-const ID_CARTE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}(\|[a-z_]{1,24})?$/;
-const ID_SET = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-const pocheSure = (p) => {
-  if (p == null) return null;
-  if (Array.isArray(p)) {
-    const l = p.filter((x) => typeof x === 'string' && ID_CARTE.test(x)).slice(0, 8);
-    return l.length ? l : null;
-  }
-  return typeof p === 'string' && ID_CARTE.test(p) ? p : null;
-};
+// attributs HTML et des URL. Même règle que la collection. (Le filtre est déclaré en
+// tête du module : `lire()` s'en sert dès le chargement.)
 export function assainit(v) {
   if (!Array.isArray(v)) return null;
   const vus = new Set();
@@ -193,7 +213,7 @@ export function assainit(v) {
     vus.add(c.id);
     const prix = {};
     if (c.prix && typeof c.prix === 'object') {
-      for (const [k, p] of Object.entries(c.prix)) if (ID_SET.test(k) && p > 0 && p < 1e6) prix[k] = Math.round(p * 100) / 100;
+      for (const [k, p] of Object.entries(c.prix)) if (ID.test(k) && p > 0 && p < 1e6) prix[k] = Math.round(p * 100) / 100;
     }
     sortie.push({
       id: c.id,

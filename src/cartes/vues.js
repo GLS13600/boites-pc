@@ -557,7 +557,7 @@ export function creeCartes(ctx) {
     let l = (s.cards || []).map((c, rang) => ({ id: c.id, num: c.localId, nom: c.name, img: c.image, d: detail(c.id), rang }));
     if (etat.rarete) l = l.filter((c) => c.d && categorie(c.d) === etat.rarete);
     let v = etat.master
-      ? l.flatMap((c) => variantes(c.d || { name: c.nom, localId: c.num, id: c.id }, s.id, s.name).map((va) => ({ ...c, va })))
+      ? l.flatMap((c) => variantes(c.d || { name: c.nom, localId: c.num, id: c.id }, s.id).map((va) => ({ ...c, va })))
       : l;
     const possede = (x) => (x.va ? coll.possedeVariante(x.id, x.va) : coll.possede(x.id));
     const comptes = { toutes: v.length, possedees: v.filter(possede).length };
@@ -729,7 +729,7 @@ export function creeCartes(ctx) {
       for (const cle of etat.selection) {
         const [id, va] = cle.split('|');
         const d = detail(id);
-        const v = va || variantes(d || { id }, s.id, s.name)[0];
+        const v = va || variantes(d || { id }, s.id)[0];
         if (ajoute) { coll.ajoute(ficheDe(id, d), v, { langue: langueExemplaire(), etat: etat.ajout.e }); ctx.noteRecent(id); n++; }
         else if (coll.exemplairesVariante(id, v) || (!va && coll.exemplaires(id))) { coll.retire(id, va ? v : null); n++; }
       }
@@ -1773,7 +1773,7 @@ export function creeCartes(ctx) {
           const d = details[k];
           const p = prixDe(d);
           if (p) prixCartes[id] = Math.round(p * 100) / 100;
-          if (e.mise === 'master') for (const v of variantes(d || { id }, s.id, s.name)) cartes.push(`${id}|${v}`);
+          if (e.mise === 'master') for (const v of variantes(d || { id }, s.id)) cartes.push(`${id}|${v}`);
           else cartes.push(id);
         });
         chercheImages(s.cards || []);
@@ -1892,7 +1892,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
           const k = id(x);
           const d = await api.carte(k).catch(() => null);
           if (!d) return `Carte ${k} introuvable.`;
-          const vars = variantes(d, d.set?.id, d.set?.name);
+          const vars = variantes(d, d.set?.id);
           const v = vars.includes(variante) ? variante : vars[0];
           const avant = JSON.parse(JSON.stringify(coll.toutes()));
           coll.ajoute(ficheDe(k, d), v, { langue: langueExemplaire(), etat: ETATS.includes(e) ? e : 'neuf' });
@@ -2235,7 +2235,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     const c = coll.carte(id);
     const n = c?.ex?.length || 0;
     const cat = d ? categorie(d) : null;
-    const vars = variantes(d || { name: i.nom, localId: i.num, id }, i.setId, i.setNom);
+    const vars = variantes(d || { name: i.nom, localId: i.num, id }, i.setId);
     if (!etat.ajout.v || !vars.includes(etat.ajout.v)) etat.ajout.v = vars[0];
     return `
       <div class="cx-fiche-haut">

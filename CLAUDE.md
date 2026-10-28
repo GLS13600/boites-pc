@@ -235,6 +235,22 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
     - Une règle plus complète (rareté et version séparées, « Unique », table Poké Ball /
       Master Ball par extension) a été discutée le 28/10/2026 puis ÉCARTÉE par
       l'utilisateur : ne pas la coder sans nouvelle demande.
+  - **Reverse, Poké Ball, Master Ball** (29/10/2026, à la demande) — `variantes()` de
+    regles.js :
+    - toute COMMUNE, PEU COMMUNE ou RARE (catégories de `categorie()`) a sa reverse, que
+      TCGdex l'annonce ou non, Set de Base compris ; sauf Pocket, numérique. Placée avant
+      la première édition (« normale · reverse · 1ʳᵉ édition »).
+    - reverse Poké Ball et Master Ball : Évolutions Prismatiques, Flamme Blanche, Foudre
+      Noire SEULEMENT (`EXTENSIONS_BALL` : `sv08.5`, `sv10.5w`, `sv10.5b`), communes à
+      rares. La règle de Cartodex les donnait aussi à Couronne Stellaire et Étincelles
+      Déferlantes (sv07, sv08), et par le NOM à Flammes Obsidiennes et Flammes
+      Fantasmagoriques (« flamme »).
+    - Les exemplaires et pochettes déjà rangés en Poké Ball / Master Ball ailleurs ne
+      sont PAS convertis : la fiche les montre toujours (elle liste les exemplaires, pas
+      la règle), et on les retire au « − ». Aucun n'existait dans l'aperçu.
+    - Vérifié sur 14 cartes réelles de TCGdex (les trois extensions, sv03, sv07, sv08,
+      me02, 151, swsh9, Set de Base, Pocket, une illustration spéciale) et dans la fiche
+      (Flammes Obsidiennes : Normale, Reverse ; Évolutions Prismatiques : les quatre).
   - **Sélection multiple** (icône coche) : toucher choisit, une barre collée en bas
     propose Tout / Retirer / Ajouter ; une seule écriture pour tout le lot
     (`coll.lot`), et « Annuler » rend la collection d'avant.

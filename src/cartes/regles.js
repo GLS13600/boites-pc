@@ -39,22 +39,21 @@ export function categorie(c) {
 }
 
 // ---------------------------------------------------------------- variantes
-// Les reverse « Poké Ball » et « Master Ball » n'existent que dans quelques
-// extensions d'Écarlate et Violet (Évolutions Prismatiques, Mascarade
-// Crépusculaire, Étincelles Déferlantes…), et seulement sur les cartes communes à
-// rares. Règle de Cartodex, gardée telle quelle.
-export function extensionABall(setId, setNom) {
-  const id = String(setId || '').toLowerCase();
-  const n = String(setNom || '').toLowerCase();
-  return id.includes('sv07') || id.includes('sv7') || id.includes('sv08') || id.includes('sv8')
-    || id.includes('sv85') || id.includes('sv085')
-    || n.includes('flamme') || n.includes('foudre') || n.includes('prismatique');
-}
+// Les reverse « Poké Ball » et « Master Ball » : Évolutions Prismatiques, Flamme
+// Blanche et Foudre Noire SEULEMENT (29/10/2026, à la demande), sur les cartes communes
+// à rares. La règle de Cartodex reconnaissait aussi Couronne Stellaire et Étincelles
+// Déferlantes (sv07, sv08) et, par le NOM, toute extension où paraît « flamme » ou
+// « foudre » — Flammes Obsidiennes, Flammes Fantasmagoriques… D'où la liste exacte des
+// identifiants, les mêmes chez TCGdex en français et en anglais.
+const EXTENSIONS_BALL = new Set(['sv08.5', 'sv10.5w', 'sv10.5b']);
+export const extensionABall = (setId) => EXTENSIONS_BALL.has(String(setId || '').toLowerCase());
+// TCG Pocket est un jeu numérique : ses cartes n'ont pas de reverse.
+const POCKET = /^(a\d|b\d|p-[ab])/i;
 
 // Les variantes qu'une carte peut prendre, dans l'ordre d'affichage. TCGdex les
 // publie désormais carte par carte (`variants`) : on les suit quand on les a, et l'on
-// retombe sur la règle de Cartodex sinon (normale + reverse pour les cartes
-// courantes, une seule version pour les cartes rares).
+// retombe sinon sur une seule version. Toute commune, peu commune ou rare a sa REVERSE
+// (29/10/2026, à la demande), que TCGdex l'annonce ou non — sauf dans Pocket.
 //
 // « Holo », c'est la RARE HOLOGRAPHIQUE classique de chaque série, et elle seule
 // (28/10/2026, à la demande, convention de Pokécardex). Une carte spéciale toute brillante
@@ -93,9 +92,10 @@ export function varianteReelle(c, v) {
   return rareToutHolo(c) ? 'holo' : v;
 }
 
-export function variantes(c, setId, setNom) {
+export function variantes(c, setId) {
   const cat = categorie(c);
   const courante = cat === 'commune' || cat === 'peu_commune' || cat === 'rare';
+  const ext = String(setId || extensionDe(c));
   const v = c?.variants;
   const liste = [];
   if (v && typeof v === 'object') {
@@ -106,11 +106,13 @@ export function variantes(c, setId, setNom) {
     if (v.reverse) liste.push('reverse');
     if (v.firstEdition) liste.push('premiere');
   }
-  if (!liste.length) {
-    liste.push(rareToutHolo(c) ? 'holo' : 'normal');
-    if (courante) liste.push('reverse');
+  if (!liste.length) liste.push(rareToutHolo(c) ? 'holo' : 'normal');
+  // La reverse prend sa place d'affichage : avant la première édition.
+  if (courante && !liste.includes('reverse') && !POCKET.test(ext)) {
+    const p = liste.indexOf('premiere');
+    liste.splice(p < 0 ? liste.length : p, 0, 'reverse');
   }
-  if (courante && extensionABall(setId, setNom)) liste.push('reverse_pokeball', 'reverse_masterball');
+  if (courante && extensionABall(ext)) liste.push('reverse_pokeball', 'reverse_masterball');
   return liste;
 }
 

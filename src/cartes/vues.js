@@ -131,6 +131,7 @@ export function creeCartes(ctx) {
 
   // Le nom d'une extension, si on l'a déjà croisée dans une série chargée.
   function nomSetConnu(id) {
+    id = api.hote(id);
     if (extensions.has(id)) return extensions.get(id).name;
     if (toutesExt?.has(id)) return toutesExt.get(id).nom;
     for (const s of detailsSerie.values()) {
@@ -954,7 +955,7 @@ export function creeCartes(ctx) {
   };
   const LETTRE_VAR = { normal: 'N', holo: 'H', reverse: 'R', premiere: '1', reverse_pokeball: 'PB', reverse_masterball: 'MB' };
   const reduit = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  const logoSet = (id) => extensions.get(id)?.logo || toutesExt?.get(id)?.logo || '';
+  const logoSet = (id) => extensions.get(api.hote(id))?.logo || extensions.get(id)?.logo || toutesExt?.get(api.hote(id))?.logo || '';
 
   // La valeur d'un classeur, comme dans Cartodex : ce que valent les cartes qu'on y a,
   // et ce que vaudrait le classeur complet. Le prix d'une pochette est celui de sa

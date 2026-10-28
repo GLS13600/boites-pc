@@ -181,12 +181,16 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   Entrer dans la vue ramène à la liste (`cartes.entre`).
   - **Extensions fusionnées** (28/10/2026, à la demande) : TCGdex sépare la Collection
     Classique du 30ᵉ anniversaire (`30th-c`, 30 cartes) du 30ᵉ Anniversaire (`30th`,
-    161) ; l'appli n'en fait qu'UNE, de 191 cartes, les Classiques à la suite. Tout est
+    161) ; l'appli n'en fait qu'UNE, de 191 cartes, les Classiques à la suite. De même,
+    chaque **Galerie de Dresseurs** d'Épée et Bouclier suit son extension (Stars
+    Étincelantes, Astres Radieux, Origine Perdue, Tempête Argentée : +30 cartes TG ;
+    Zénith Suprême : +70 GG, Galerie Galaroise). Tout est
     dans api.js (`FUSIONS`) : l'absorbée disparaît de `/sets` et des séries, son compte
     rejoint l'hôte, `extension('30th')` rend les deux listes bout à bout (une absorbée
     illisible ne prive pas de l'hôte). Les cartes gardent leurs identifiants
-    (`30th-c-001`) : `setDe` et les regroupements de la collection passent par
-    `api.hote()`. Les Classiques n'ont pas d'image chez TCGdex : dos de carte.
+    (`30th-c-001`, `swsh12.5gg-GG01`) : `setDe`, les regroupements de la collection, le
+    nom et le logo d'une extension passent par `api.hote()`. Ni les Classiques ni les
+    galeries n'ont d'image chez TCGdex, dans aucune langue : dos de carte.
   - **Seul l'ORDRE vient de Pokécardex**, relevé à la main sur leur page des séries. Ni
     leurs images ni leurs fiches ne sont reprises : demandé, et refusé — leur base est
     leur travail, les scans appartiennent à The Pokémon Company. Les données restent

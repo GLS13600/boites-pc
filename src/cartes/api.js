@@ -113,10 +113,14 @@ function completeLogo(x) {
 // ---------------------------------------------------------------- extensions fusionnées
 // TCGdex sépare ce qui ne fait qu'UNE extension en main (demandé) : la Collection
 // Classique du 30ᵉ anniversaire est rangée à la suite des cartes du 30ᵉ Anniversaire,
-// sous son nom. L'extension absorbée disparaît des listes, son compte rejoint celui de
+// sous son nom, et chaque Galerie de Dresseurs d'Épée et Bouclier (Galerie Galaroise
+// pour Zénith Suprême) à la suite de son extension. L'extension absorbée disparaît des listes, son compte rejoint celui de
 // l'hôte, et ses cartes — qui gardent leurs identifiants — sont rattachées à l'hôte
 // partout où l'appli range par extension (`hote`).
-const FUSIONS = { '30th-c': '30th' };
+const FUSIONS = {
+  '30th-c': '30th',
+  swsh9tg: 'swsh9', swsh10tg: 'swsh10', swsh11tg: 'swsh11', swsh12tg: 'swsh12', 'swsh12.5gg': 'swsh12.5',
+};
 const ABSORBEES = Object.entries(FUSIONS).reduce((m, [a, h]) => m.set(h, [...(m.get(h) || []), a]), new Map());
 export const hote = (setId) => FUSIONS[setId] ?? setId;
 const somme = (a = {}, b = {}) => Object.fromEntries([...new Set([...Object.keys(a), ...Object.keys(b)])]

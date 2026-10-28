@@ -198,9 +198,13 @@ async function traite(fichier) {
 
   fs.mkdirSync(IMAGES, { recursive: true });
   let faits = 0, deja = 0, echecs = 0;
+  const sansUrl = [];
   for (const [i, c] of aTelecharger) {
     const sortie = new URL(`${c.id}.webp`, IMAGES);
     if (fs.existsSync(sortie)) { deja++; continue; }
+    // Une ligne sans URL (image pas encore chargée au moment du relevé) est sautée : levée
+    // ici, hors du `try`, l'erreur abandonnait tout le reste de la série (SV51, GG51).
+    if (!lignes[i][colUrl]) { sansUrl.push(lignes[i][colNum]); continue; }
     const url = new URL(lignes[i][colUrl]);
     url.searchParams.set('class', TAILLE);
     try {
@@ -212,6 +216,7 @@ async function traite(fichier) {
     await new Promise((ok) => setTimeout(ok, PAUSE_MS));
   }
   console.log(`  images : ${faits} téléchargées, ${deja} déjà là, ${echecs} échecs`);
+  if (sansUrl.length) console.log(`  sans URL dans le relevé : ${sansUrl.join(', ')}`);
 }
 
 // La liste des visuels embarqués, refaite d'après le dossier : ce qui est sur le disque fait foi.

@@ -296,6 +296,11 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
       rattachent pas par le nom : `FORCES` du script les donne, vérifiées à la main. La
       vérification de l'image TCGdex est RELANCÉE sur une erreur passagère : sans ça, 115
       promos qui ont leur image passaient pour en manquer.
+      Lancé par l'utilisateur : **882 téléchargés, 1 105 visuels en tout** (54 Mo). Il en
+      manque 64 : SV51 (Reshiram-GX) et GG51 (Clamiral de Hisui V) n'ont pas d'URL dans le
+      relevé, et la ligne vide faisait planter la boucle HORS de son `try` — tout le reste
+      de la série était abandonné (SV52–SV94, GG52–GG70). Corrigé : la ligne est sautée et
+      signalée (« sans URL dans le relevé »). Relancer le script récupère les 62 autres.
     - **Les visuels ne servent qu'à la collection française** (`visuel` dans api.js), et
       une carte déjà possédée prend le sien au chargement (`prendVisuels` dans
       collection.js) au lieu de garder l'image anglaise recopiée à l'ajout. `VISUELS` y est

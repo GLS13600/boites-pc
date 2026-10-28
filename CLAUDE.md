@@ -208,6 +208,22 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
     les 207 cartes de « 151 » en ~4 s, puis gardées trente jours sur l'appareil.
   - **Master set** (icône calques) : une vignette par variante, étiquetée et prix de la
     variante (champs « -holo » de Cardmarket pour une reverse).
+  - **« Holo » = la rare holographique classique, et elle seule** (28/10/2026, à la
+    demande, convention de Pokécardex — appliquée d'après la rareté de TCGdex, sans rien
+    lire chez Pokécardex). TCGdex publie les cartes spéciales toutes brillantes (ex, V,
+    VSTAR, GX, illustrations, hyper rares, Radieux, promos…) en `holo` seul : elles n'ont
+    que leur version NORMALE (et la reverse quand TCGdex en donne une). `holoClassique()`
+    et `varianteReelle()` dans regles.js : holo seulement pour la catégorie « rare » (Rare,
+    Holo Rare, Rare Holo), hors Radieux et hors nom de carte spéciale. Vérifié :
+    Florizarre-ex, Dracaufeu VSTAR, illustrations, Mew-ex hyper rare → normale ;
+    Dracaufeu du Set de Base, Ho-Oh de Célébrations, Pingoléon → holo (+ reverse).
+    - Les exemplaires DÉJÀ rangés en « holo » sur une carte spéciale passent en
+      « normal » : au chargement, à l'import et à la reprise du compte, et dès que la
+      rareté d'une carte arrive (`normalise` dans collection.js ; il faut `rar`).
+    - Les pochettes `id|holo` des classeurs aussi (`rangeVariantesClasseurs`, à
+      l'ouverture de la liste ou d'un classeur ; détail demandé une fois s'il manque).
+      Signalé : « Florizarre est dans ma collection et grisé dans le classeur 151 » — la
+      pochette attendait `holo`, l'exemplaire était en `normal`.
   - **Sélection multiple** (icône coche) : toucher choisit, une barre collée en bas
     propose Tout / Retirer / Ajouter ; une seule écriture pour tout le lot
     (`coll.lot`), et « Annuler » rend la collection d'avant.

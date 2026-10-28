@@ -174,6 +174,22 @@ export function echange(id, i, j) {
   ecrire();
 }
 
+// Renomme des clés de pochette dans tous les classeurs (`fn` rend la clé neuve, ou la
+// même) : une seule écriture pour tout. Sert à ranger les variantes (« holo » d'une
+// carte spéciale → « normal », voir regles.js). Rend vrai si quelque chose a changé.
+export function renommeCles(fn) {
+  let change = false;
+  for (const c of liste) {
+    c.cartes = c.cartes.map((p) => {
+      if (p == null) return p;
+      const cles = clesPoche(p).map((k) => { const n = fn(k); if (n !== k) change = true; return n; });
+      return Array.isArray(p) ? cles : cles[0];
+    });
+  }
+  if (change) ecrire();
+  return change;
+}
+
 // Vide des pochettes : elles restent à leur place, libres.
 export function vide(id, indices) {
   const c = classeur(id);

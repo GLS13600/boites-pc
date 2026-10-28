@@ -55,14 +55,35 @@ export function extensionABall(setId, setNom) {
 // publie désormais carte par carte (`variants`) : on les suit quand on les a, et l'on
 // retombe sur la règle de Cartodex sinon (normale + reverse pour les cartes
 // courantes, une seule version pour les cartes rares).
+//
+// « Holo », c'est la RARE HOLOGRAPHIQUE classique de chaque série, et elle seule
+// (28/10/2026, à la demande, convention de Pokécardex). Une carte spéciale toute brillante
+// — ex, EX, GX, V, VMAX, VSTAR, TURBO, Prime, LÉGENDE, Radieux, illustrations, hyper
+// rares, promos… — n'a pas de version « holo » : sa version NORMALE est celle-là. TCGdex,
+// lui, la publie en `holo` seul ; on la range en `normal`.
+const SPECIALE = /(^|[\s-])(ex|gx|v|vmax|vstar|vunion|break|turbo|lv\.?\s?x|prime|légende|legend)$|[★☆]/i;
+export function holoClassique(c) {
+  const r = String(c?.rarity ?? c?.rar ?? '').toLowerCase().trim();
+  const nom = String(c?.name ?? c?.n ?? '').trim();
+  return categorie(c) === 'rare' && !r.startsWith('radi') && !SPECIALE.test(nom);
+}
+// La variante telle qu'on la range : un « holo » sur une carte qui n'est pas une rare
+// holographique classique est sa version normale. Rareté inconnue : on ne tranche pas.
+export function varianteReelle(c, v) {
+  if (v !== 'holo') return v;
+  const r = String(c?.rarity ?? c?.rar ?? '').trim();
+  return r && !holoClassique(c) ? 'normal' : v;
+}
+
 export function variantes(c, setId, setNom) {
   const cat = categorie(c);
   const courante = cat === 'commune' || cat === 'peu_commune' || cat === 'rare';
   const v = c?.variants;
   const liste = [];
   if (v && typeof v === 'object') {
-    if (v.normal) liste.push('normal');
-    if (v.holo) liste.push('holo');
+    const holo = !!v.holo && holoClassique(c);
+    if (v.normal || (v.holo && !holo)) liste.push('normal');
+    if (holo) liste.push('holo');
     if (v.reverse) liste.push('reverse');
     if (v.firstEdition) liste.push('premiere');
   }

@@ -24,7 +24,7 @@
 // `localStorage` est la source de vérité, comme pour le Living Dex ; le compte n'en
 // est qu'une copie (sync.js), et l'écriture prévient la synchronisation.
 
-import { cleEtat } from './regles.js';
+import { cleEtat, varianteReelle } from './regles.js';
 
 const CLE = 'pcbox.cartes';
 const CLE_VALEURS = 'pcbox.cartes.valeurs';
@@ -40,8 +40,30 @@ let sale = false;
 function lire() {
   try {
     const v = JSON.parse(localStorage.getItem(CLE));
-    return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+    // Les exemplaires rangés en « holo » sur une carte spéciale (ex, V, illustrations…)
+    // passent en « normal » dès le chargement, et le stockage suit.
+    let n = 0;
+    for (const [id, c] of Object.entries(v)) n += normalise(id, c);
+    if (n) { try { localStorage.setItem(CLE, JSON.stringify(v)); } catch { /* quota */ } }
+    return v;
   } catch { return {}; }
+}
+
+// « Holo » n'est que la rare holographique classique (regles.js, `varianteReelle`) :
+// TCGdex publie les cartes spéciales en `holo` seul, et des exemplaires ont été rangés
+// ainsi avant le 28/10/2026. Il faut la rareté de la carte pour trancher — recopiée à
+// l'ajout et complétée ensuite : une carte dont on ne la connaît pas encore attend.
+// Rend le nombre d'exemplaires corrigés.
+function normalise(id, c) {
+  let n = 0;
+  if (!c || !Array.isArray(c.ex) || !c.rar) return 0;
+  const carte = { id, rar: c.rar, n: c.n, num: c.num };
+  for (const x of c.ex) {
+    const v = varianteReelle(carte, x?.v);
+    if (x && v !== x.v) { x.v = v; n++; }
+  }
+  return n;
 }
 
 function ecrire() {
@@ -84,6 +106,7 @@ export function ajoute(fiche, variante = 'normal', { langue = 'FR', etat = 'neuf
     if (fiche[k] != null) c[k] = fiche[k];
   }
   c.ex.push({ v: variante, l: langue, e: etat, d: aujourdhui() });
+  normalise(id, c);
   ecrire();
   return c;
 }
@@ -138,6 +161,8 @@ export function complete(id, fiche) {
   for (const k of ['n', 'img', 'set', 'setN', 'serie', 'num', 'rar', 'typ', 'dex']) {
     if (fiche[k] != null && JSON.stringify(c[k]) !== JSON.stringify(fiche[k])) { c[k] = fiche[k]; change = true; }
   }
+  // La rareté vient peut-être d'arriver : c'est le moment de ranger les variantes.
+  if (normalise(id, c)) change = true;
   if (change) ecrire();
 }
 
@@ -223,6 +248,7 @@ export function assainit(v) {
     if (typeof c.img === 'string' && IMAGE.test(c.img)) e.img = c.img;
     if (Array.isArray(c.dex)) e.dex = c.dex.filter((n) => Number.isInteger(n) && n > 0 && n <= 1025).slice(0, 4);
     if (Array.isArray(c.typ)) e.typ = c.typ.filter((x) => typeof x === 'string' && x.length <= 24).slice(0, 3);
+    normalise(id, e);
     if (c.prix && c.prix.t > 0 && c.prix.t < 1e6) e.prix = { t: Math.round(c.prix.t * 100) / 100, maj: texte(c.prix.maj, 40) || new Date().toISOString() };
     sortie[id] = e;
   }

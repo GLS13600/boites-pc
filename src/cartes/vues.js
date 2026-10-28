@@ -18,7 +18,7 @@ import * as cls from './classeurs.js';
 import * as advisor from './advisor.js';
 import * as favoris from './favoris.js';
 import * as couleurs from './couleurs.js';
-import { categorie, variantes, CATEGORIES, LANGUES_CARTE, ETATS, VARIANTES, cleEtat, distance } from './regles.js';
+import { categorie, variantes, varianteReelle, CATEGORIES, LANGUES_CARTE, ETATS, VARIANTES, cleEtat, distance } from './regles.js';
 
 const BLOCS_KEY = 'pcbox.cartes.blocs';
 // Les blocs, dans l'ordre de Pokécardex : du plus récent au plus ancien, puis les
@@ -1055,8 +1055,35 @@ export function creeCartes(ctx) {
       </button>`;
   }
 
+  // Les pochettes « holo » d'une carte spéciale (ex, V, illustrations…) deviennent
+  // « normal », comme les exemplaires de la collection (regles.js, `varianteReelle`) :
+  // sans cela, un classeur master set préparé avant le 28/10/2026 attendrait une
+  // variante holo qui n'existe pas, et la carte possédée y resterait grise. Il faut la
+  // rareté : celle du détail, sinon celle recopiée dans la collection ; une carte dont
+  // on ne sait rien est demandée, puis le rangement repasse.
+  let rangementDemande = false;
+  function rangeVariantesClasseurs(demander = true) {
+    const inconnues = new Set();
+    cls.renommeCles((k) => {
+      if (cls.varianteDe(k) !== 'holo') return k;
+      const id = cls.idDe(k);
+      const d = detail(id), co = coll.carte(id);
+      const carte = d?.rarity ? d : co?.rar ? { id, rar: co.rar, n: co.n, num: co.num } : null;
+      if (!carte) { inconnues.add(id); return k; }
+      const v = varianteReelle(carte, 'holo');
+      return v === 'holo' ? k : `${id}|${v}`;
+    });
+    // Une seule demande, puis une seule passe : hors ligne, elle échouerait sans fin.
+    if (demander && inconnues.size && !rangementDemande) {
+      rangementDemande = true;
+      Promise.allSettled([...inconnues].map((id) => api.carteEnFile(id)))
+        .then(() => { rangementDemande = false; rangeVariantesClasseurs(false); });
+    }
+  }
+
   function vueClasseurs() {
     veilleLogos();
+    setTimeout(() => rangeVariantesClasseurs(), 0);
     const liste = cls.tous();
     const actions = `<button class="tete-btn" data-cl-nouveau title="${t('clNouveau')}" aria-label="${t('clNouveau')}">${ICO.plus}</button>`;
     if (!liste.length) {
@@ -1177,6 +1204,7 @@ export function creeCartes(ctx) {
     if (c.set && !extensions.has(c.set)) charge(`set:${c.set}`, () => api.extension(c.set), (d) => extensions.set(c.set, d));
     if (!toutesExt) veilleLogos();
     etat.clsPage = Math.min(Math.max(0, etat.clsPage), pagesDe(c) - 1);
+    setTimeout(() => rangeVariantesClasseurs(), 0);
     const actions = `
       <button class="tete-btn ${etat.clsSel ? 'on' : ''}" data-cl-selection aria-pressed="${!!etat.clsSel}"
               title="${t('cxSelection')}" aria-label="${t('cxSelection')}">${ICO.selection}</button>

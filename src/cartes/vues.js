@@ -65,6 +65,11 @@ export function prixDe(d, variante) {
 // Une extension que l'appli fusionne à une autre (api.hote) compte pour son hôte.
 const setDe = (id) => api.hote(String(id).slice(0, Math.max(0, String(id).lastIndexOf('-'))) || String(id));
 const lit = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+// Ma collection classée par collection ou non : une préférence d'affichage, gardée sur
+// l'appareil (comme la vue liste du Pokédex), classée par défaut.
+const GROUPE_KEY = 'pcbox.cartes.colgroupe';
+const litGroupe = () => lit(GROUPE_KEY) !== 'non';
+const ecritGroupe = (oui) => { try { localStorage.setItem(GROUPE_KEY, oui ? 'oui' : 'non'); } catch { /* sans mémoire, défaut */ } };
 function blocsGardes() {
   try {
     const v = JSON.parse(lit(BLOCS_KEY));
@@ -91,7 +96,9 @@ export function creeCartes(ctx) {
     fiche: null,                // { id, liste } : la carte ouverte et sa liste
     ficheEchec: null,           // carte dont le détail n'a pas pu être lu
     ajout: { v: null, l: 'FR', e: 'neuf' },
-    colQ: '', colTri: 'extension', colFiltre: 'toutes', colRarete: '', colType: '',
+    // Ma collection : classée par collection ou non (préférence gardée), et un tri avec
+    // son sens, indépendants l'un de l'autre (28/10/2026, à la demande).
+    colQ: '', colTri: 'numero', colSens: 'asc', colGroupe: litGroupe(), colFiltre: 'toutes', colRarete: '', colType: '',
     majPrix: null,              // { fait, total } pendant l'actualisation des prix
     cls: null,                  // classeur ouvert (son livre), ou null (la liste)
     clsPage: 0,                 // page affichée du classeur
@@ -707,11 +714,10 @@ export function creeCartes(ctx) {
     // Le tri vit dans l'en-tête, en icône — comme dans Cartodex — : une liste native
     // posée invisible sur le bouton ouvre le sélecteur du système au toucher.
     const tri = `
-      <label class="tete-btn tete-select ${etat.colTri !== 'extension' ? 'on' : ''}" title="${t('cxTri')}">
+      <label class="tete-btn tete-select ${etat.colTri !== 'numero' ? 'on' : ''}" title="${t('cxTri')}">
         ${ICO.trier}
         <select data-cx-coltri aria-label="${t('cxTri')}">
-          ${option('extension', t('colTriExtension'), etat.colTri)}${option('recent', t('colTriRecent'), etat.colTri)}
-          ${option('nom', t('cxTriNom'), etat.colTri)}${option('valeur', t('colTriValeur'), etat.colTri)}
+          ${optionsTri()}
         </select>
       </label>`;
     rafraichitSiVieux();
@@ -731,6 +737,7 @@ export function creeCartes(ctx) {
         ${st.distinctes || favoris ? `
           ${champ('data-cx-colq', etat.colQ, t('colChercher'))}
           <div class="puces">${filtresCollection()}</div>
+          <div class="puces col-classement" data-cx-colclasse>${htmlClassement()}</div>
           ${rail([['toutes', t('cxToutes'), st.distinctes], ['favoris', t('colFavoris'), favoris]], etat.colFiltre, 'data-cx-colfiltre', t('cxFiltreAria'))}
           <div data-cx-col>${htmlCollection()}</div>`
         : `<div class="cx-vide">
@@ -763,6 +770,25 @@ export function creeCartes(ctx) {
         ${types.map((ty) => option(ty, `${ty} · ${nTyp.get(ty)}`, etat.colType)).join('')}
       </select>`;
   }
+  // Classée par collection (blocs puis extensions, comme Pokécardex) ou en une seule
+  // grille ; le tri choisi — numéro, ajout récent, nom, prix —, croissant ou décroissant,
+  // s'applique DANS chaque extension quand on classe, à toute la liste sinon.
+  const optionsTri = () => option('numero', t('cxTriNumero'), etat.colTri) + option('recent', t('colTriRecent'), etat.colTri)
+    + option('nom', t('cxTriNom'), etat.colTri) + option('prix', t('cxTriPrix'), etat.colTri);
+  function htmlClassement() {
+    const desc = etat.colSens === 'desc';
+    return `
+      <button class="puce ${etat.colGroupe ? 'on' : ''}" data-cx-colgroupe aria-pressed="${etat.colGroupe}">
+        ${ICO.calques}<span>${t('colParCollection')}</span>
+      </button>
+      <select class="puce-select ${etat.colTri !== 'numero' ? 'actif' : ''}" data-cx-coltri aria-label="${t('cxTri')}">
+        ${optionsTri()}
+      </select>
+      <button class="puce" data-cx-colsens>
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${desc ? 'M12 4.5v15M12 19.5l-5-5M12 19.5l5-5' : 'M12 19.5v-15M12 4.5l-5 5M12 4.5l5 5'}"/></svg>
+        <span>${desc ? t('colDecroissant') : t('colCroissant')}</span>
+      </button>`;
+  }
   function htmlCollection() {
     if (!listeSeries) charge('series', api.series, (l) => { listeSeries = Array.isArray(l) ? l : []; });
     if (!toutesExt) charge('toutesExt', chargeToutesExt, () => {});
@@ -773,30 +799,41 @@ export function creeCartes(ctx) {
     if (etat.colType) l = l.filter(([, c]) => (c.typ || []).includes(etat.colType));
     const lg = ctx.langue();
     const dernier = (c) => c.ex?.[c.ex.length - 1]?.d || '';
-    if (etat.colTri === 'nom') l.sort(([, a], [, b]) => (a.n || '').localeCompare(b.n || '', lg));
-    else if (etat.colTri === 'valeur') l.sort(([a, ca], [b, cb]) => (prixUnitaire(b) || 0) * (cb.ex?.length || 0) - (prixUnitaire(a) || 0) * (ca.ex?.length || 0));
-    else if (etat.colTri === 'extension') {
-      // Comme Pokécardex : bloc (ordre de BLOCS), puis extensions de la plus récente à la
-      // plus ancienne, Énergies et Promos en fin de bloc, puis le numéro de la carte.
-      const cle = new Map();
-      for (const [id, c] of l) {
-        const set = api.hote(c.set || setDe(id));
-        const serie = c.serie || serieDuSet(set);
-        const bi = BLOCS.findIndex((b) => b.series.includes(serie));
-        cle.set(id, { set, bi: bi < 0 ? BLOCS.length : bi, g: genreSet(set, c.setN || nomSetConnu(set)), r: toutesExt?.get(set)?.rang ?? -1 });
-      }
-      l.sort(([a, ca], [b, cb]) => {
-        const x = cle.get(a), y = cle.get(b);
-        return x.bi - y.bi || x.g - y.g || y.r - x.r || x.set.localeCompare(y.set)
-          || String(ca.num || '').localeCompare(String(cb.num || ''), undefined, { numeric: true });
-      });
-      etat.colBlocs = cle;
+    // L'ordre des extensions, comme Pokécardex : bloc (ordre de BLOCS), puis extensions
+    // de la plus récente à la plus ancienne, Énergies et Promos en fin de bloc.
+    const cle = new Map();
+    for (const [id, c] of l) {
+      const set = api.hote(c.set || setDe(id));
+      const serie = c.serie || serieDuSet(set);
+      const bi = BLOCS.findIndex((b) => b.series.includes(serie));
+      cle.set(id, { set, bi: bi < 0 ? BLOCS.length : bi, g: genreSet(set, c.setN || nomSetConnu(set)), r: toutesExt?.get(set)?.rang ?? -1 });
     }
-    else l.sort(([, a], [, b]) => (dernier(a) < dernier(b) ? 1 : dernier(a) > dernier(b) ? -1 : 0));
+    etat.colBlocs = cle;
+    const ordreSets = ([a], [b]) => {
+      const x = cle.get(a), y = cle.get(b);
+      return x.bi - y.bi || x.g - y.g || y.r - x.r || x.set.localeCompare(y.set);
+    };
+    const numero = ([, a], [, b]) => String(a.num || '').localeCompare(String(b.num || ''), undefined, { numeric: true });
+    const s = etat.colSens === 'desc' ? -1 : 1;
+    let critere;
+    if (etat.colTri === 'nom') critere = ([, a], [, b]) => s * (a.n || '').localeCompare(b.n || '', lg);
+    else if (etat.colTri === 'recent') critere = ([, a], [, b]) => s * (dernier(a) < dernier(b) ? -1 : dernier(a) > dernier(b) ? 1 : 0);
+    else if (etat.colTri === 'prix') {
+      // Le prix d'UN exemplaire. Une carte sans prix connu va en fin de liste, dans un
+      // sens comme dans l'autre : elle n'est ni la moins chère ni la plus chère.
+      critere = ([a], [b]) => {
+        const pa = prixUnitaire(a), pb = prixUnitaire(b);
+        if (pa == null || pb == null) return (pa == null) - (pb == null);
+        return s * (pa - pb);
+      };
+    }
+    // Numéro : dans l'extension quand on classe, dans l'ordre des extensions sinon.
+    else critere = (a, b) => s * ((etat.colGroupe ? 0 : ordreSets(a, b)) || numero(a, b));
+    l.sort((a, b) => (etat.colGroupe ? ordreSets(a, b) : 0) || critere(a, b) || numero(a, b));
     etat.liste = l.map(([id]) => id);
     if (!l.length) return `<p class="dex-vide">${q || etat.colRarete || etat.colType ? t('colAucuneTrouvee') : t('colAucunFavori')}</p>`;
     const tuile = ([id, c]) => vignette({ id, num: c.num || '', nom: c.n || id, img: c.img, d: detail(id) });
-    if (etat.colTri !== 'extension') return `<div class="cx-grille">${l.map(tuile).join('')}</div>`;
+    if (!etat.colGroupe) return `<div class="cx-grille">${l.map(tuile).join('')}</div>`;
     // Groupée comme Pokécardex : un en-tête par BLOC, puis un par extension.
     const groupes = new Map();
     for (const e of l) { const k = api.hote(e[1].set || setDe(e[0])); if (!groupes.has(k)) groupes.set(k, []); groupes.get(k).push(e); }
@@ -826,6 +863,8 @@ export function creeCartes(ctx) {
   function majCollection() {
     const zone = document.querySelector('[data-cx-col]');
     if (zone) zone.innerHTML = htmlCollection();
+    const classe = document.querySelector('[data-cx-colclasse]');
+    if (classe) classe.innerHTML = htmlClassement();
     const neuf = document.querySelector('.cx-page .dex-filtre');
     if (neuf) {
       const st = coll.stats();
@@ -2128,7 +2167,16 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       const el = e.target;
       if (el.matches('[data-cx-rarete]')) { etat.rarete = el.value; el.classList.toggle('actif', !!el.value); majGrille(); }
       else if (el.matches('[data-cx-tri]')) { etat.tri = el.value; el.classList.toggle('actif', el.value !== 'num'); majGrille(); }
-      else if (el.matches('[data-cx-coltri]')) { etat.colTri = el.value; el.closest('.tete-select')?.classList.toggle('on', el.value !== 'extension'); majCollection(); }
+      else if (el.matches('[data-cx-coltri]')) {
+        // Deux listes portent ce tri (l'icône de l'en-tête et la rangée) : on aligne
+        // l'autre. Changer de tri reprend son sens naturel — numéro et nom croissants, prix
+        // et ajout récent du plus grand au plus petit.
+        etat.colTri = el.value;
+        etat.colSens = el.value === 'prix' || el.value === 'recent' ? 'desc' : 'asc';
+        for (const autre of document.querySelectorAll('[data-cx-coltri]')) autre.value = el.value;
+        document.querySelector('.tete-select [data-cx-coltri]')?.closest('.tete-select')?.classList.toggle('on', el.value !== 'numero');
+        majCollection();
+      }
       else if (el.matches('[data-cx-colrarete]')) { etat.colRarete = el.value; el.classList.toggle('actif', !!el.value); majCollection(); }
       else if (el.matches('[data-cx-coltype]')) { etat.colType = el.value; el.classList.toggle('actif', !!el.value); majCollection(); }
     });
@@ -2249,6 +2297,8 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       if (q('[data-cx-selection]')) { etat.selection = etat.selection ? null : new Set(); ctx.haptique(); rend('extensions'); return; }
       if ((x = q('[data-cx-filtre]'))) { etat.filtre = x.dataset.cxFiltre; ctx.haptique(); majGrille(); return; }
       if ((x = q('[data-cx-colfiltre]'))) { etat.colFiltre = x.dataset.cxColfiltre; ctx.haptique(); majCollection(); return; }
+      if (q('[data-cx-colgroupe]')) { etat.colGroupe = !etat.colGroupe; ecritGroupe(etat.colGroupe); ctx.haptique(); majCollection(); return; }
+      if (q('[data-cx-colsens]')) { etat.colSens = etat.colSens === 'desc' ? 'asc' : 'desc'; ctx.haptique(); majCollection(); return; }
       if ((x = q('[data-cx-suggestion]'))) {
         const champQ = document.querySelector('[data-cx-q]');
         if (champQ) champQ.value = x.dataset.cxSuggestion;

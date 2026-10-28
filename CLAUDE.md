@@ -227,8 +227,18 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   Ouvrir la fiche relève le prix du jour ; une carte possédée le recopie
   (`notePrix`, qui n'écrit que si le prix a changé ou date de plus d'un jour).
 - **Ma collection** : bandeau (éventail des trois plus chères, valeur, nombre), recherche,
-  tri (extension, ajout récent, nom, valeur), Toutes / Favoris.
-  - **Le tri par défaut est celui de Pokécardex** (28/10/2026, à la demande) : un
+  filtres, puis la rangée du classement, Toutes / Favoris.
+  - **Classement et tri séparés** (28/10/2026, à la demande) : une puce « Par
+    collection » (`etat.colGroupe`, gardée sur l'appareil, `pcbox.cartes.colgroupe`,
+    classée par défaut), le tri (numéro, ajout récent, nom, prix — aussi dans l'icône de
+    l'en-tête, les deux listes alignées) et son sens (« Croissant » / « Décroissant »).
+    Classée : les extensions restent dans l'ordre de Pokécardex et le tri s'applique DANS
+    chacune ; non classée : une seule grille, triée en entier (au numéro, dans l'ordre
+    des extensions). Prix = celui d'UN exemplaire ; une carte sans prix connu finit en
+    bas dans les deux sens. Changer de tri reprend son sens naturel (numéro et nom
+    croissants, prix et ajout récent décroissants). Vérifié dans l'aperçu sur six cartes
+    de deux extensions : classée et non classée, prix croissant et décroissant.
+  - **L'ordre des extensions est celui de Pokécardex** (28/10/2026, à la demande) : un
     bandeau par BLOC (`.groupe-bloc`, ordre de `BLOCS`, « 2 extensions · 2 cartes »),
     puis ses extensions de la plus récente à la plus ancienne, Énergies puis Promos en
     fin de bloc (`genreSet`, partagé avec la vue Extensions), puis le numéro.

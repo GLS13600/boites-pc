@@ -156,7 +156,8 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
 
 - **Extensions** (refait le 28/10/2026, à la demande) : un **bloc dépliant par série**,
   dans l'**ordre de Pokécardex** (`BLOCS` dans vues.js) — Méga-Évolution, Écarlate et
-  Violet … EX, puis Wizards (Base + Neo + e-cards de TCGdex réunis, comme chez eux),
+  Violet … EX (L'appel des Légendes, seule extension de la série `col` de TCGdex, est
+  rangée dans le bloc HeartGold SoulSilver, à la demande), puis Wizards (Base + Neo + e-cards de TCGdex réunis, comme chez eux),
   Ligue Pokémon, Kits, McDonald's, Promos et divers, Pocket en dernier. Une série que
   `BLOCS` ignore (bloc à venir) se place en tête. Déplier un bloc montre ses extensions
   de la plus récente à la plus ancienne (rang de sortie de `/sets`), puis les Énergies,
@@ -184,7 +185,9 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
     161) ; l'appli n'en fait qu'UNE, de 191 cartes, les Classiques à la suite. De même,
     chaque **Galerie de Dresseurs** d'Épée et Bouclier suit son extension (Stars
     Étincelantes, Astres Radieux, Origine Perdue, Tempête Argentée : +30 cartes TG ;
-    Zénith Suprême : +70 GG, Galerie Galaroise). Tout est
+    Zénith Suprême : +70 GG, Galerie Galaroise), ainsi que la Collection Classique de
+    Célébrations (+25 CC), le Coffre Étincelant de Destinées Radieuses (+122 SV) et celui
+    de Destinées Occultes (`sma`, +94 SV). Tout est
     dans api.js (`FUSIONS`) : l'absorbée disparaît de `/sets` et des séries, son compte
     rejoint l'hôte, `extension('30th')` rend les deux listes bout à bout (une absorbée
     illisible ne prive pas de l'hôte). Les cartes gardent leurs identifiants

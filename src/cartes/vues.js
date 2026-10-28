@@ -22,13 +22,14 @@ import { categorie, variantes, CATEGORIES, LANGUES_CARTE, ETATS, VARIANTES, cleE
 const BLOCS_KEY = 'pcbox.cartes.blocs';
 // Les blocs, dans l'ordre de Pokécardex : du plus récent au plus ancien, puis les
 // ensembles hors blocs. Un bloc regroupe une ou plusieurs séries de TCGdex — Base, Neo
-// et e-cards forment « Wizards », comme chez Pokécardex. Pokémon Pocket, numérique et
+// et e-cards forment « Wizards », comme chez Pokécardex ; L'appel des Légendes (série `col`
+// de TCGdex, une seule extension) rejoint HeartGold SoulSilver, dont elle clôt l'ère (demandé). Pokémon Pocket, numérique et
 // absent de Pokécardex, ferme la liste. Une série inconnue d'ici (un bloc à venir) se
 // place en tête : ce sera la plus récente.
 const BLOCS = [
   { id: 'me', series: ['me'] }, { id: 'sv', series: ['sv'] }, { id: 'swsh', series: ['swsh'] },
   { id: 'sm', series: ['sm'] }, { id: 'xy', series: ['xy'] }, { id: 'bw', series: ['bw'] },
-  { id: 'col', series: ['col'] }, { id: 'hgss', series: ['hgss'] }, { id: 'pl', series: ['pl'] },
+  { id: 'hgss', series: ['hgss', 'col'] }, { id: 'pl', series: ['pl'] },
   { id: 'dp', series: ['dp'] }, { id: 'ex', series: ['ex'] },
   { id: 'wizards', series: ['ecard', 'neo', 'base'], nom: 'cxBlocWizards' },
   { id: 'pop', series: ['pop'], nom: 'cxBlocPop' }, { id: 'tk', series: ['tk'] },

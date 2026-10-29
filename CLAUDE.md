@@ -325,6 +325,12 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
       de la série était abandonné (SV52–SV94, GG52–GG70). Corrigé : la ligne est sautée et
       signalée (« sans URL dans le relevé »). Relancé : les 62 autres sont arrivés,
       **1 167 visuels en tout**. Restent SV51 et GG51, faute d'URL dans le relevé.
+    - **Troisième lot (29/10/2026) : les promos Méga-Évolution** (`MEP` → `mep`), numérotées
+      sans total ni préfixe (« 001 ») — la colonne du numéro les accepte désormais. 111
+      lignes sur 116 rattachées (111 à 114 et 131 pas encore chez TCGdex), aucune avec
+      image française chez TCGdex : **111 téléchargés, 1 278 visuels en tout** (65 Mo).
+      Un second relevé de Destinées Occultes et de Zénith Suprême n'a toujours pas d'URL
+      pour SV51 ni GG51, au même rang : Pokécardex n'en a probablement pas le scan.
     - **Les visuels ne servent qu'à la collection française** (`visuel` dans api.js), et
       une carte déjà possédée prend le sien au chargement (`prendVisuels` dans
       collection.js) au lieu de garder l'image anglaise recopiée à l'ajout. `VISUELS` y est

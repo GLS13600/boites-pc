@@ -53,6 +53,9 @@ const SERIES = {
   SLE: ['sm3.5'], SM75: ['sm7.5'], SM115: ['sm115', 'sma'], DPK: ['det1'], PRSM: ['smp'],
   // Méga-Évolution : les promos, numérotées sans total ni préfixe (« 001 »).
   MEP: ['mep'],
+  // Diamant et Perle, Platine-HeartGold : L'appel des Légendes (seule extension `col1`).
+  DP: ['dp1'], MT: ['dp2'], SW: ['dp3'], GE: ['dp4'], MD: ['dp5'], LA: ['dp6'], SF: ['dp7'],
+  PRDP: ['dpp'], CL: ['col1'],
 };
 
 // Les rééditions que le nom ne rattache pas, vérifiées à la main : le Faux Professeur Chen

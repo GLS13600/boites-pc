@@ -1371,6 +1371,12 @@ export function creeCartes(ctx) {
     const barre = section.querySelector(':scope > .lot');
     if (barre) barre.__src = lot;
     setTimeout(chargePoches, 0);
+    // Les cartes brillantes suivent l'inclinaison du téléphone : l'écoute part si la
+    // permission est déjà là ; sinon une ligne invite à toucher le livre, qui la demande.
+    setTimeout(ecouteGyroLivre, 0);
+    if (gyroPossible() && !gyro.accorde && !gyro.refuse && section.querySelector('.cl-brille')) {
+      section.insertAdjacentHTML('beforeend', `<p class="cx-gyro-aide">${t('clGyroAide')}</p>`);
+    }
     return [ctx.tete(c.nom, actions), section];
   }
 
@@ -2624,17 +2630,22 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     el.style.setProperty('--my', `${(50 + rx * 3).toFixed(1)}%`);
     el.classList.add('incline', 'gyro');
   }
+  // La permission, demandée dans un geste : toucher la carte d'une fiche, ou le livre d'un
+  // classeur. Une fois accordée, elle sert aux deux.
   async function activeGyro() {
-    if (gyro.actif || gyro.refuse || !gyroPossible()) return;
-    try {
-      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-        const r = await DeviceOrientationEvent.requestPermission();
-        if (r !== 'granted') { gyro.refuse = true; return; }
-      }
-      gyro.accorde = true;
-      ecouteGyro();
-      panneau.corps.querySelector('.cx-gyro-aide')?.remove();
-    } catch { gyro.refuse = true; }
+    if (gyro.refuse || !gyroPossible()) return;
+    if (!gyro.accorde) {
+      try {
+        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+          const r = await DeviceOrientationEvent.requestPermission();
+          if (r !== 'granted') { gyro.refuse = true; return; }
+        }
+        gyro.accorde = true;
+      } catch { gyro.refuse = true; return; }
+    }
+    if (panneau.ouvert() && panneau.corps.querySelector('[data-cx-incline]')) ecouteGyro();
+    if (document.querySelector('[data-cl-livre]')) ecouteGyroLivre();
+    document.querySelectorAll('.cx-gyro-aide').forEach((x) => x.remove());
   }
   function ecouteGyro() {
     if (gyro.actif) return;
@@ -2647,6 +2658,39 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     window.removeEventListener('deviceorientation', surOrientation);
     gyro.actif = false;
     gyro.base = null;
+  }
+
+  // ---- Le classeur suit l'inclinaison du téléphone (29/10/2026, à la demande) ----
+  // La feuille holographique des cartes brillantes glisse quand on incline le téléphone,
+  // comme une vraie carte qu'on fait miroiter : `--tx` et `--ty` (−1 à 1) sur la page du
+  // classeur, que lisent les `.cl-brille`. Seul le MOUVEMENT compte : la position de
+  // référence revient doucement vers celle du moment (≈ 3 s), on tient le téléphone comme
+  // on veut. L'écoute se coupe d'elle-même quand le livre n'est plus affiché.
+  const gyroLivre = { actif: false, base: null, x: 0, y: 0 };
+  function surOrientationLivre(e) {
+    const vue = document.querySelector('.cl-vue');
+    if (!vue || !vue.querySelector('[data-cl-livre]')) { coupeGyroLivre(); return; }
+    if (e.beta == null || e.gamma == null) return;
+    const b = gyroLivre.base || (gyroLivre.base = { b: e.beta, g: e.gamma });
+    const borne = (v) => Math.max(-1, Math.min(1, v));
+    // L'écart à la référence, rapporté à ±25° d'inclinaison, lissé.
+    gyroLivre.x += (borne((e.gamma - b.g) / 25) - gyroLivre.x) * 0.3;
+    gyroLivre.y += (borne((e.beta - b.b) / 25) - gyroLivre.y) * 0.3;
+    b.g += (e.gamma - b.g) * 0.005;
+    b.b += (e.beta - b.b) * 0.005;
+    vue.style.setProperty('--tx', gyroLivre.x.toFixed(3));
+    vue.style.setProperty('--ty', gyroLivre.y.toFixed(3));
+    vue.classList.add('gyro');
+  }
+  function ecouteGyroLivre() {
+    if (gyroLivre.actif || !gyro.accorde || !gyroPossible()) return;
+    Object.assign(gyroLivre, { actif: true, base: null, x: 0, y: 0 });
+    window.addEventListener('deviceorientation', surOrientationLivre);
+  }
+  function coupeGyroLivre() {
+    if (!gyroLivre.actif) return;
+    window.removeEventListener('deviceorientation', surOrientationLivre);
+    Object.assign(gyroLivre, { actif: false, base: null });
   }
 
   // Inclinaison de la carte sous la souris, sur un ordinateur.
@@ -3197,6 +3241,9 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     // Le toucher qui suit un relâchement n'est pas un toucher : il ouvrirait la fiche de
     // la carte qu'on vient de poser.
     app.addEventListener('click', (e) => {
+      // Le premier toucher du livre demande à iOS de suivre l'inclinaison (il ne l'accorde
+      // que dans un geste) ; le toucher fait aussi ce qu'il fait d'habitude.
+      if (!gyro.accorde && !gyro.refuse && e.target.closest('[data-cl-livre], .cl-vue .cx-gyro-aide')) activeGyro();
       if (Date.now() - finGlisse < 450 && e.target.closest('[data-cl-livre]')) { e.stopPropagation(); e.preventDefault(); }
     }, true);
     // Un appui long sur une image ouvrirait le menu du système (ordinateur).

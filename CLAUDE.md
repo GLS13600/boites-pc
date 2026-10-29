@@ -528,6 +528,23 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
         invisible. Le reflet ne repassait que toutes les 5 s : demandé plus souvent.
       - Vérifié dans l'aperçu en figeant les animations à 0 puis 1,8 s : les bandes ont
         bougé, sur le cadre des reverses comme sur les ultra rares.
+    - **La feuille suit l'INCLINAISON du téléphone** (29/10/2026, à la demande : « quand
+      je bouge le téléphone, ça doit faire bouger l'effet ») — `surOrientationLivre` :
+      `--tx` et `--ty` (−1 à 1, l'écart à ±25°, lissé) posés sur `.cl-vue`, lus par le
+      `translate` de la feuille (±14 % et ±9 % de la couche, soit ~±30 % de la carte). Dès
+      qu'une mesure arrive (`.cl-vue.gyro`), la feuille ne bouge plus d'elle-même : seul le
+      téléphone la mène. La référence revient doucement vers la position du moment (≈ 3 s) :
+      seul le MOUVEMENT compte. L'écoute se coupe d'elle-même hors du livre.
+      - Même permission que la fiche d'une carte (`gyro.accorde`, `activeGyro`, qui sert
+        désormais aux deux) : iOS ne l'accorde que dans un geste — le premier toucher du
+        livre la demande, une ligne d'aide le dit sous le livre (`clGyroAide`) tant que ce
+        n'est pas fait. Sans gyroscope (ordinateur) ou refusée : la feuille ondule seule.
+      - Opacité de l'arc-en-ciel baissée de 20 % à la demande : reverse 38 → 30 %, ultra
+        rare 50 → 40 %.
+      - Vérifié dans l'aperçu (`requestPermission` remplacée, `deviceorientation`
+        simulés) : toucher le livre → permission, aide retirée ; 15° à droite → bandes
+        décalées de 6,9 % de la couche ; avant-gauche → −7,2 % / +7,7 % ; ondulation
+        coupée pendant le suivi. Le vrai rendu ne se juge que sur l'iPhone.
     - **La brillance d'une reverse n'entre JAMAIS dans l'illustration** (demandé ensuite) :
       la fenêtre de l'illustration est découpée par `clip-path: polygon(evenodd, …)`, ses
       bords passés en variables (`--x1 --x2 --y1 --y2`) par pochette. Elle dépend de

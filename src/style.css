@@ -4622,7 +4622,7 @@ img {
 }
 /* « hard-light » : la teinte de la feuille se voit sur un cadre clair comme sur un sombre. */
 .cl-brille.rev {
-  --holo: 38%;
+  --holo: 30%;
   mix-blend-mode: hard-light;
   /* Le cadre seul : la fenêtre de l'illustration, propre à l'époque et au genre de la carte
      (vues.js, FENETRES), est découpée — un trou dans le rectangle, règle « evenodd ». */
@@ -4631,7 +4631,7 @@ img {
 }
 /* En « overlay » : l'illustration garde son contraste et prend les teintes de l'arc-en-ciel.
    « color-dodge », essayé d'abord, la délavait (surexposée). */
-.cl-brille.ultra { --holo: 50%; mix-blend-mode: overlay; }
+.cl-brille.ultra { --holo: 40%; mix-blend-mode: overlay; }
 .cl-brille::after {
   content: "";
   position: absolute;
@@ -4640,7 +4640,8 @@ img {
     hsl(350 100% 62% / var(--holo)) 0%, hsl(45 100% 58% / var(--holo)) 4%, hsl(110 90% 52% / var(--holo)) 8%,
     hsl(185 100% 55% / var(--holo)) 12%, hsl(250 100% 66% / var(--holo)) 16%, hsl(310 100% 62% / var(--holo)) 20%,
     hsl(350 100% 62% / var(--holo)) 24%);
-  translate: calc(var(--r, 0) * 25%) 0;
+  /* --tx, --ty : l'inclinaison du téléphone (vues.js, surOrientationLivre). */
+  translate: calc(var(--r, 0) * 25% + var(--tx, 0) * 14%) calc(var(--ty, 0) * 9%);
   animation: clHolo 3.6s ease-in-out infinite alternate;
   animation-delay: calc(var(--k, 0) * -450ms);
   will-change: transform;
@@ -4671,6 +4672,8 @@ img {
 /* Les pages voisines ne s'animent pas : la batterie n'éclaire que ce qu'on regarde. */
 .cl-feuille:not(.cour) .cl-brille::before { animation: none; opacity: 0; }
 .cl-feuille:not(.cour) .cl-brille::after { animation: none; }
+/* Le téléphone mène : la feuille ne bouge plus d'elle-même, elle suit l'inclinaison. */
+.cl-vue.gyro .cl-brille::after { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .cl-brille::before { animation: none; transform: translateX(35%); opacity: 0.45; }
   .cl-brille::after { animation: none; }

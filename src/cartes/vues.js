@@ -72,6 +72,16 @@ const lit = (k) => { try { return localStorage.getItem(k); } catch { return null
 const GROUPE_KEY = 'pcbox.cartes.colgroupe';
 const litGroupe = () => lit(GROUPE_KEY) !== 'non';
 const ecritGroupe = (oui) => { try { localStorage.setItem(GROUPE_KEY, oui ? 'oui' : 'non'); } catch { /* sans mémoire, défaut */ } };
+// Les menus REPLIÉS de Ma collection (« b:sv » un bloc, « s:sv08.5 » une extension) : tout
+// est déplié par défaut — on vient voir ses cartes —, et ce qu'on replie le reste.
+const FERMES_KEY = 'pcbox.cartes.colfermes';
+function fermesGardes() {
+  try {
+    const v = JSON.parse(lit(FERMES_KEY));
+    if (Array.isArray(v)) return new Set(v.filter((x) => typeof x === 'string' && /^[bs]:[a-z0-9.!%-]{1,32}$/i.test(x)));
+  } catch { /* illisible : tout déplié */ }
+  return new Set();
+}
 function blocsGardes() {
   try {
     const v = JSON.parse(lit(BLOCS_KEY));
@@ -130,7 +140,7 @@ export function creeCartes(ctx) {
     ajout: { v: null, e: 'neuf' },
     // Ma collection : classée par collection ou non (préférence gardée), et un tri avec
     // son sens, indépendants l'un de l'autre (28/10/2026, à la demande).
-    colQ: '', colTri: 'numero', colSens: 'asc', colGroupe: litGroupe(), colFiltre: 'toutes', colRarete: '', colType: '',
+    colQ: '', colTri: 'numero', colSens: 'asc', colGroupe: litGroupe(), colFermes: fermesGardes(), colFermesForce: new Set(), colForce: false, colFiltre: 'toutes', colRarete: '', colType: '',
     majPrix: null,              // { fait, total } pendant l'actualisation des prix
     cls: null,                  // classeur ouvert (son livre), ou null (la liste)
     clsPage: 0,                 // page affichée du classeur
@@ -878,26 +888,69 @@ export function creeCartes(ctx) {
     if (!l.length) return `<p class="dex-vide">${q || etat.colRarete || etat.colType ? t('colAucuneTrouvee') : t('colAucunFavori')}</p>`;
     const tuile = ([id, c]) => vignette({ id, num: c.num || '', nom: c.n || id, img: c.img, d: detail(id) });
     if (!etat.colGroupe) return `<div class="cx-grille">${l.map(tuile).join('')}</div>`;
-    // Groupée comme Pokécardex : un en-tête par BLOC, puis un par extension.
+    // Groupée comme la page Extensions : un BLOC (couverture, logo, menu déroulant), puis
+    // ses extensions sur le rail — logo, avancement, sceau —, chacune dépliant ses cartes.
     const groupes = new Map();
     for (const e of l) { const k = api.hote(e[1].set || setDe(e[0])); if (!groupes.has(k)) groupes.set(k, []); groupes.get(k).push(e); }
     const parBloc = new Map();
     for (const [sid, cartes] of groupes) {
       const bi = etat.colBlocs?.get(cartes[0][0])?.bi ?? BLOCS.length;
       if (!parBloc.has(bi)) parBloc.set(bi, []);
-      parBloc.get(bi).push([sid, cartes]);
+      parBloc.get(bi).push({ sid, cartes });
     }
-    return [...parBloc].map(([bi, sets]) => `
-      <div class="groupe-bloc">
-        <b>${esc(nomBloc(bi))}</b>
-        <span>${t('cxNbExtensions', sets.length)} · ${t('cxNbCartes', sets.reduce((k, [, c]) => k + c.length, 0))}</span>
-      </div>
-      ${sets.map(([sid, cartes]) => `
-        <div class="groupe-tete">
-          <b class="groupe-nom">${esc(cartes[0][1].setN || nomSetConnu(sid) || sid)}</b>
-          <span class="groupe-cpt">${cartes.length}</span>
-        </div>
-        <div class="cx-grille">${cartes.map(tuile).join('')}</div>`).join('')}`).join('');
+    // Une recherche ou un filtre déplie tout : on vient de dire ce qu'on cherche. Ce qu'on
+    // replie pendant ce temps ne touche pas aux menus retenus (`colFermesForce`, oublié
+    // avec la recherche).
+    const force = !!(q || etat.colRarete || etat.colType);
+    etat.colForce = force;
+    if (!force) etat.colFermesForce = new Set();
+    const ouvert = (cle) => !(force ? etat.colFermesForce : etat.colFermes).has(cle);
+    const possedees = parSet();
+    // Le menu qu'on vient d'ouvrir, seul à jouer son entrée.
+    const anime = etat.colAnime;
+    etat.colAnime = null;
+    return `<div class="cx-blocs col-blocs">${[...parBloc].map(([bi, sets]) => {
+      const cleB = `b:${BLOCS[bi]?.id || 'divers'}`;
+      const nom = nomBloc(bi);
+      const n = sets.reduce((k, s) => k + s.cartes.length, 0);
+      const logo = logoBloc(bi, sets);
+      const o = ouvert(cleB);
+      return `
+        <section class="cx-bloc ${o ? 'ouvert' : ''}">
+          <button class="pilule ${o ? 'ouverte' : ''}" data-cx-colmenu="${esc(cleB)}" aria-expanded="${o}"
+                  aria-label="${esc(nom)}, ${esc(t('cxNbCartes', n))}">
+            <span class="pilule-logo">${logo ? `<img class="pilule-img" src="${esc(api.logo(logo))}" alt="" loading="lazy" />` : ''}</span>
+            <span class="pilule-txt"><small>${t('cxBloc')} · ${t('cxNbExtensions', sets.length)}</small><b>${esc(nom)}</b></span>
+            <span class="pilule-cpt"><b>${n}</b></span>
+            ${ICO.bas}
+          </button>
+          ${o ? `<div class="avances ${anime === cleB ? 'entre' : ''}">${sets.map((s) => htmlSetCollection(s, possedees.get(s.sid) || 0, ouvert(`s:${s.sid}`), tuile, anime === `s:${s.sid}`)).join('')}</div>` : ''}
+        </section>`;
+    }).join('')}</div>`;
+  }
+  // Une extension de Ma collection : la ligne d'avancement de la page Extensions — logo,
+  // « possédées / total », barre, sceau —, qui déplie ses cartes au lieu d'ouvrir la page.
+  function htmlSetCollection({ sid, cartes }, n, ouvert, tuile, entre) {
+    const nom = cartes[0][1].setN || nomSetConnu(sid) || sid;
+    const total = toutesExt?.get(sid)?.total || 0;
+    const fini = total > 0 && n >= total;
+    const pc = total ? Math.min(100, (100 * n) / total) : 0;
+    const logo = logoSet(sid);
+    const art = logo ? `<img src="${esc(api.logo(logo))}" alt="" loading="lazy" />`
+      : `<span class="avance-sigle">${esc(String(sid).toUpperCase())}</span>`;
+    return `
+      <div class="col-set ${ouvert ? 'ouvert' : ''}">
+        <button class="avance ${fini ? 'complet' : ''}" data-cx-colmenu="s:${esc(sid)}" aria-expanded="${ouvert}"
+                aria-label="${esc(nom)}, ${n}${total ? ' / ' + total : ''}">
+          <span class="avance-art logo">${art}</span>
+          <span class="avance-txt">
+            <span class="avance-haut"><b class="avance-nom">${esc(nom)}</b><span class="avance-cpt"><b>${n}</b>${total ? `/${total}` : ''}</span></span>
+            <span class="avance-bas"><span class="avance-barre"><i style="width:${pc}%"></i></span>${fini ? ctx.sceau() : ''}</span>
+          </span>
+          ${ICO.bas}
+        </button>
+        ${ouvert ? `<div class="cx-grille ${entre ? 'entre' : ''}">${cartes.map(tuile).join('')}</div>` : ''}
+      </div>`;
   }
   function majCollection() {
     const zone = document.querySelector('[data-cx-col]');
@@ -2969,6 +3022,15 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       if (q('[data-cx-selection]')) { etat.selection = etat.selection ? null : new Set(); ctx.haptique(); rend('extensions'); return; }
       if ((x = q('[data-cx-filtre]'))) { etat.filtre = x.dataset.cxFiltre; ctx.haptique(); majGrille(); return; }
       if ((x = q('[data-cx-colfiltre]'))) { etat.colFiltre = x.dataset.cxColfiltre; ctx.haptique(); majCollection(); return; }
+      if ((x = q('[data-cx-colmenu]'))) {
+        const cle = x.dataset.cxColmenu;
+        const fermes = etat.colForce ? etat.colFermesForce : etat.colFermes;
+        if (fermes.has(cle)) { fermes.delete(cle); etat.colAnime = cle; } else fermes.add(cle);
+        if (!etat.colForce) try { localStorage.setItem(FERMES_KEY, JSON.stringify([...etat.colFermes])); } catch { /* préférence perdue, sans gravité */ }
+        ctx.haptique();
+        majCollection();
+        return;
+      }
       if (q('[data-cx-colgroupe]')) { etat.colGroupe = !etat.colGroupe; ecritGroupe(etat.colGroupe); ctx.haptique(); majCollection(); return; }
       if (q('[data-cx-colsens]')) { etat.colSens = etat.colSens === 'desc' ? 'asc' : 'desc'; ctx.haptique(); majCollection(); return; }
       if ((x = q('[data-cx-suggestion]'))) {

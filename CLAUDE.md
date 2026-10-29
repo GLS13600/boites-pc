@@ -288,10 +288,26 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
     bas dans les deux sens. Changer de tri reprend son sens naturel (numéro et nom
     croissants, prix et ajout récent décroissants). Vérifié dans l'aperçu sur six cartes
     de deux extensions : classée et non classée, prix croissant et décroissant.
-  - **L'ordre des extensions est celui de Pokécardex** (28/10/2026, à la demande) : un
-    bandeau par BLOC (`.groupe-bloc`, ordre de `BLOCS`, « 2 extensions · 2 cartes »),
-    puis ses extensions de la plus récente à la plus ancienne, Énergies puis Promos en
-    fin de bloc (`genreSet`, partagé avec la vue Extensions), puis le numéro.
+  - **L'ordre des extensions est celui de Pokécardex** (28/10/2026, à la demande) : par
+    BLOC (ordre de `BLOCS`), puis ses extensions de la plus récente à la plus ancienne,
+    Énergies puis Promos en fin de bloc (`genreSet`, partagé avec la vue Extensions),
+    puis le numéro.
+  - **Blocs et extensions au design de la page Extensions, avec leur logo** (29/10/2026,
+    à la demande) : le bloc est la même couverture dépliante (`.cx-bloc` + `.pilule`,
+    logo de 96 px, « Bloc · 2 extensions », nombre de cartes), ses extensions les mêmes
+    lignes d'avancement sur le rail (`htmlSetCollection` : logo, « possédées / total »,
+    barre, sceau) — mais une extension DÉPLIE ses cartes au lieu d'ouvrir sa page. Les
+    deux niveaux sont des menus déroulants (`data-cx-colmenu`, clés `b:sv` / `s:sv08.5`).
+    - Tout est déplié par défaut (on vient voir ses cartes) ; ce qu'on replie est retenu
+      sur l'appareil (`pcbox.cartes.colfermes`).
+    - Une recherche ou un filtre (rareté, énergie) déplie tout ; ce qu'on replie pendant
+      ce temps (`colFermesForce`) est oublié avec la recherche, sans toucher aux menus
+      retenus.
+    - La liste est refaite à chaque menu touché (`majCollection`) : l'entrée animée ne
+      joue que sur le menu qu'on vient d'ouvrir (`etat.colAnime`, classe `.entre`).
+    - Vérifié dans l'aperçu, clair et sombre, sur sept cartes de quatre blocs : logos des
+      blocs et des extensions, « 3/207 » pour 151, repli d'une extension et d'un bloc
+      retenu au rechargement, recherche qui déplie tout puis rend les menus retenus.
   - **Visuels manquants, relevés par l'utilisateur** (28/10/2026) : il a relevé lui-même sur
     Pokécardex les URL des scans (un Excel par série : numéro imprimé, URL), et demandé de
     les embarquer dans le site ET l'IPA. `scripts/visuels-cartes.mjs` rattache chaque ligne à

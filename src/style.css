@@ -4081,33 +4081,20 @@ img {
 .cx-note { margin: 0; font-size: var(--t-mini); line-height: 1.45; color: var(--muted); }
 .cx-titre { margin: var(--e-2) 0 0; font-size: var(--t-petit); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 
-/* ---- Les séries, dépliées sous la pilule ---- */
-.groupe-cpt {
-  flex: 0 0 auto;
-  padding: 2px 9px;
-  border-radius: var(--r-rond);
-  background: var(--caught-tint);
-  border: 1px solid var(--caught-edge);
-  color: var(--ball-texte);
-  font-size: var(--t-mini);
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
+/* ---- Ma collection classée : les blocs et les extensions de la page Extensions ----
+   Mêmes couverture de bloc et lignes d'avancement (`.cx-bloc`, `.avance`), qui déplient
+   ici les cartes au lieu d'ouvrir l'extension. Toute la liste est refaite à chaque menu
+   touché : l'entrée animée ne joue que sur celui qu'on vient d'ouvrir (`.entre`). */
+.col-blocs .cx-bloc .avances { animation: none; }
+.col-blocs .cx-bloc .avances.entre, .col-set .cx-grille.entre { animation: cx-bloc-ouvre var(--d-moyen) var(--c-entree); }
+.col-set { display: grid; gap: var(--e-2); }
+.col-set > .avance > .ico { flex: 0 0 auto; color: var(--muted); transition: transform var(--d-moyen) var(--c-entree); }
+.col-set.ouvert > .avance > .ico { transform: rotate(180deg); }
+.col-set.ouvert > .avance { border-color: color-mix(in srgb, var(--ball) 35%, var(--rule-soft)); }
+.col-set > .cx-grille { margin-bottom: var(--e-2); }
+@media (prefers-reduced-motion: reduce) {
+  .col-blocs .cx-bloc .avances.entre, .col-set .cx-grille.entre { animation: none; }
 }
-.groupe-tete { display: flex; align-items: center; gap: var(--e-3); margin-top: var(--e-2); }
-/* Ma collection classée par bloc : un bandeau au-dessus des extensions du bloc. */
-.groupe-bloc {
-  display: grid;
-  gap: 2px;
-  margin-top: var(--e-4);
-  padding: var(--e-2) var(--e-3);
-  border-left: 4px solid var(--ball);
-  border-radius: var(--r-sm);
-  background: color-mix(in srgb, var(--ball) 7%, var(--panel));
-}
-.groupe-bloc:first-child { margin-top: 0; }
-.groupe-bloc b { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; }
-.groupe-bloc span { font-size: var(--t-petit); color: var(--muted); }
-.groupe-nom { flex: 1 1 auto; min-width: 0; font-size: 17px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---- La grille des cartes ----
    Trois par ligne, comme la grille du Pokédex. Possédée en couleur, manquante en gris :

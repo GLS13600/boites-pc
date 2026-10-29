@@ -174,7 +174,7 @@ export function deplace(id, dir) {
 // Range des cartes à partir d'une pochette : chacune prend la première pochette VIDE à
 // partir de là, et le classeur s'allonge au besoin. On ne pousse jamais une carte déjà
 // rangée — dans un vrai classeur, on ne décale pas toutes les pages pour en glisser une.
-export function range(id, depuis, cles) {
+export function range(id, depuis, cles, prix = null) {
   const c = classeur(id);
   if (!c || !cles.length) return;
   let i = Math.max(0, depuis);
@@ -183,6 +183,12 @@ export function range(id, depuis, cles) {
     while (c.cartes.length < i) c.cartes.push(null);
     c.cartes[i] = cle;
     i++;
+  }
+  // Une extension rangée dans un classeur déjà commencé apporte ses prix : la valeur
+  // « complète » les compte, comme ceux relevés à la création.
+  if (prix) {
+    c.prix ||= {};
+    for (const [k, p] of Object.entries(prix)) if (ID.test(k) && p > 0 && p < 1e6) c.prix[k] = Math.round(p * 100) / 100;
   }
   ecrire();
 }

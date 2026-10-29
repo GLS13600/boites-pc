@@ -436,6 +436,18 @@ export function creeCartes(ctx) {
     }).catch(() => {});
   }
 
+  // Toutes les séries et leurs extensions (le sélecteur d'un classeur range ses cartes et
+  // ses extensions par bloc) : lues une fois, gardées sept jours par api.js.
+  let seriesPretes = null;
+  function chargeToutesSeries() {
+    if (!seriesPretes) {
+      seriesPretes = (listeSeries ? Promise.resolve(listeSeries) : api.series().then((l) => (listeSeries = Array.isArray(l) ? l : [])))
+        .then((l) => Promise.allSettled(l.filter((s) => !detailsSerie.has(s.id)).map((s) => api.serie(s.id).then((d) => detailsSerie.set(s.id, d)))))
+        .catch(() => { seriesPretes = null; });
+    }
+    return seriesPretes;
+  }
+
   let minuterie = null, numRecherche = 0;
   function surSaisie(v) {
     etat.q = v;
@@ -875,11 +887,6 @@ export function creeCartes(ctx) {
       if (!parBloc.has(bi)) parBloc.set(bi, []);
       parBloc.get(bi).push([sid, cartes]);
     }
-    const nomBloc = (bi) => {
-      const b = BLOCS[bi];
-      if (!b) return t('cxBlocMisc');
-      return b.nom ? t(b.nom) : (listeSeries?.find((x) => x.id === b.series[0])?.name || b.id);
-    };
     return [...parBloc].map(([bi, sets]) => `
       <div class="groupe-bloc">
         <b>${esc(nomBloc(bi))}</b>
@@ -1478,9 +1485,100 @@ export function creeCartes(ctx) {
   }
 
   // ---- Ranger des cartes : le sélecteur ----
+  // Trois sources (29/10/2026, à la demande) : les cartes de Ma collection, une EXTENSION
+  // entière — comme à la création, pour faire un classeur de plusieurs extensions (Flamme
+  // Blanche puis Foudre Noire) —, ou toutes les cartes de TCGdex par la recherche. Les
+  // cartes sont rangées par BLOC puis par extension, dans des menus déroulants, et se
+  // choisissent au toucher ou en glissant le doigt sur plusieurs (voir « Choisir en
+  // glissant »). Les menus ouverts sont retenus le temps de la session.
+  const groupesOuverts = new Set();
   function ouvreAjout(depuis) {
-    etat.clsAjout = { depuis, choix: new Set(), source: 'collection', q: '', res: null };
+    const c = cls.classeur(etat.cls);
+    // Le bloc de la carte qui précède la pochette touchée s'ouvre : c'est là qu'on cherche
+    // d'abord (la suite de la même extension, ou sa voisine).
+    const avant = c?.cartes.slice(0, depuis).reverse().find((p) => p != null);
+    const sid = avant != null ? setDe(cls.idDe(cls.clesPoche(avant)[0])) : c?.set ? api.hote(c.set) : '';
+    const ouvreBloc = () => {
+      const bi = sid ? blocDuSet(sid, extensions.get(sid)?.serie?.id) : BLOCS.length;
+      if (bi < BLOCS.length) { groupesOuverts.add(`b:${bi}`); groupesOuverts.add(`e:${BLOCS[bi].id}`); }
+    };
+    ouvreBloc();
+    etat.clsEdition = null;
+    etat.clsAjout = { depuis, choix: new Set(), source: 'collection', q: '', res: null, ouverts: groupesOuverts,
+      qSet: '', set: '', mise: 'simple', prepa: null, erreur: '' };
     ctx.panneau2.ouvre(htmlAjout());
+    // Les séries de TCGdex disent à quel bloc appartient chaque extension.
+    Promise.all([chargeToutesExt(), chargeToutesSeries()]).then(() => { if (etat.clsAjout) { ouvreBloc(); majAjout(); } });
+  }
+
+  // Le bloc d'une extension (index dans BLOCS) d'après sa série ; inconnu : en fin de liste.
+  function blocDuSet(sid, serie) {
+    const s = serie || serieDuSet(sid);
+    const bi = BLOCS.findIndex((b) => b.series.includes(s));
+    return bi < 0 ? BLOCS.length : bi;
+  }
+  function nomBloc(bi) {
+    const b = BLOCS[bi];
+    if (!b) return t('cxBlocMisc');
+    return b.nom ? t(b.nom) : (listeSeries?.find((x) => x.id === b.series[0])?.name || b.id);
+  }
+  // Des cartes rangées comme chez Pokécardex : par BLOC (ordre de BLOCS), puis par
+  // extension — la plus récente d'abord, Énergies et Promos en fin de bloc —, puis par
+  // numéro, les cartes d'une extension fusionnée à la suite de celles de son hôte.
+  function parBlocEtSet(items) {
+    const sets = new Map();
+    for (const x of items) {
+      const sid = api.hote(typeof x.set === 'string' && x.set ? x.set : setDe(x.id));
+      if (!sets.has(sid)) {
+        const nom = x.setN || nomSetConnu(sid) || sid;
+        sets.set(sid, { sid, nom, bi: blocDuSet(sid, x.serie), g: genreSet(sid, nom), r: toutesExt?.get(sid)?.rang ?? -1, cartes: [] });
+      }
+      sets.get(sid).cartes.push(x);
+    }
+    const brut = (id) => String(id).slice(0, Math.max(0, String(id).lastIndexOf('-')));
+    const blocs = new Map();
+    for (const s of [...sets.values()].sort((a, b) => a.bi - b.bi || a.g - b.g || b.r - a.r || a.sid.localeCompare(b.sid))) {
+      s.cartes.sort((a, b) => (brut(a.id) !== s.sid) - (brut(b.id) !== s.sid)
+        || String(a.num).localeCompare(String(b.num), undefined, { numeric: true }));
+      if (!blocs.has(s.bi)) blocs.set(s.bi, []);
+      blocs.get(s.bi).push(s);
+    }
+    return blocs;
+  }
+  const logoBloc = (bi, sets) => listeSeries?.find((x) => x.id === BLOCS[bi]?.series[0])?.logo
+    || sets.map((s) => logoSet(s.sid)).find(Boolean) || '';
+  const logoG = (logo) => `<span class="cl-g-logo">${logo ? `<img src="${esc(api.logo(logo))}" alt="" loading="lazy" />` : ''}</span>`;
+  // Un menu déroulant : le bloc, puis ses extensions, chacune avec sa grille. Le nombre de
+  // cartes choisies s'affiche sur chaque menu, même replié.
+  // Ouvert : par la mémoire de la session, ou forcé (une recherche, un seul choix possible)
+  // — un menu forcé ne s'inscrit pas dans la mémoire (`data-cl-force`).
+  const ouvert = (memoire, force) => (force ? 'open data-cl-force' : memoire ? 'open' : '');
+  function htmlGroupes(items, toutOuvert) {
+    const a = etat.clsAjout;
+    const n = (l) => l.reduce((k, x) => k + (a.choix.has(x.id) ? 1 : 0), 0);
+    const badge = (k) => `<span class="cl-g-choix" ${k ? '' : 'hidden'}>${k}</span>`;
+    const blocs = parBlocEtSet(items);
+    return [...blocs].map(([bi, sets]) => {
+      const toutes = sets.flatMap((s) => s.cartes);
+      return `
+        <details class="cl-g cl-gbloc" data-cl-g="b:${bi}" ${ouvert(a.ouverts.has(`b:${bi}`), toutOuvert || blocs.size === 1)}>
+          <summary>
+            ${logoG(logoBloc(bi, sets))}
+            <span class="cl-g-txt"><b>${esc(nomBloc(bi))}</b><small>${t('cxNbExtensions', sets.length)} · ${t('cxNbCartes', toutes.length)}</small></span>
+            ${badge(n(toutes))}${ICO.bas}
+          </summary>
+          <div class="cl-g-corps">${sets.map((s) => `
+            <details class="cl-g cl-gset" data-cl-g="s:${esc(s.sid)}" ${ouvert(a.ouverts.has(`s:${s.sid}`), toutOuvert || sets.length === 1)}>
+              <summary>
+                ${logoG(logoSet(s.sid))}
+                <span class="cl-g-txt"><b>${esc(s.nom)}</b><small>${t('cxNbCartes', s.cartes.length)}</small></span>
+                ${badge(n(s.cartes))}${ICO.bas}
+              </summary>
+              <div class="cx-grille" data-cl-selgrille data-geste-local>${s.cartes.map((x) => vignette(x, { choix: a.choix })).join('')}</div>
+            </details>`).join('')}
+          </div>
+        </details>`;
+    }).join('');
   }
   function grilleAjout() {
     const a = etat.clsAjout;
@@ -1489,8 +1587,7 @@ export function creeCartes(ctx) {
     if (a.source === 'collection') {
       l = Object.entries(coll.toutes()).filter(([, c]) => c.ex?.length)
         .filter(([id, c]) => !q || fold(c.n || '').includes(q) || fold(c.setN || '').includes(q) || id.toLowerCase().includes(q))
-        .sort(([a1, c1], [a2, c2]) => (c1.set || '').localeCompare(c2.set || '') || String(c1.num || '').localeCompare(String(c2.num || ''), undefined, { numeric: true }))
-        .map(([id, c]) => ({ id, nom: c.n || id, num: c.num || '', img: c.img, d: detail(id) }));
+        .map(([id, c]) => ({ id, nom: c.n || id, num: c.num || '', img: c.img, d: detail(id), set: c.set, serie: c.serie, setN: c.setN }));
       if (!l.length) return `<p class="dex-vide">${q ? t('colAucuneTrouvee') : t('colVide')}</p>`;
     } else {
       if (a.q.trim().length < 2) return `<p class="dex-res">${t('cxRechercheCourte')}</p>`;
@@ -1498,28 +1595,116 @@ export function creeCartes(ctx) {
       l = a.res.map((c) => ({ id: c.id, nom: c.name, num: c.localId, img: c.image, d: detail(c.id) }));
       if (!l.length) return `<p class="dex-vide">${t('cxAucuneCarte')}</p>`;
     }
-    return `<div class="cx-grille">${l.map((x) => vignette(x, { avecSet: a.source !== 'collection', choix: a.choix })).join('')}</div>`;
+    // Une recherche déplie tout : on vient de dire ce qu'on cherche.
+    return `<p class="cx-note cl-aide-glisse">${t('clAideGlisse')}</p>${htmlGroupes(l, !!q)}`;
   }
+
+  // Le choix d'une extension, à la création comme à l'ajout : les extensions par bloc,
+  // dans des menus déroulants (à plat pendant une recherche) ; le bloc de l'extension
+  // choisie s'ouvre, et sans rien en mémoire, le plus récent. Puis la disposition.
+  // Avant de connaître le nombre de cartes (l'extension se lit encore) : « Chargement… ».
+  const textePrepa = (p) => (p.total ? t('clPreparation', p.fait, p.total) : t('cxChargement'));
+  function ligneSetChoix(x, choisi) {
+    return `
+      <button class="avance cl-set ${choisi ? 'complet' : ''}" data-cl-set="${esc(x.id)}" aria-pressed="${choisi}">
+        <span class="avance-art logo">${x.logo ? `<img src="${esc(api.logo(x.logo))}" alt="" loading="lazy" />`
+          : `<span class="avance-sigle">${esc(x.id.toUpperCase())}</span>`}</span>
+        <span class="avance-txt">
+          <span class="avance-haut"><b class="avance-nom">${esc(x.nom)}</b>${x.total ? `<span class="avance-cpt">${t('cxResultats', x.total)}</span>` : ''}</span>
+        </span>
+        ${choisi ? `<span class="cl-coche" aria-hidden="true">${ICO.coche}</span>` : ''}
+      </button>`;
+  }
+  function htmlSetsGroupes(e) {
+    if (!toutesExt || !listeSeries) return squeletteSets(3);
+    const q = fold(e.qSet.trim());
+    if (q) {
+      const l = [...toutesExt.entries()].map(([id, x]) => ({ id, ...x })).sort((x, y) => y.rang - x.rang)
+        .filter((x) => fold(x.nom).includes(q) || x.id.toLowerCase().includes(q)).slice(0, 40);
+      return l.length ? `<div class="avances cl-sets-plats">${l.map((x) => ligneSetChoix(x, x.id === e.set)).join('')}</div>`
+        : `<p class="dex-vide">${t('clAucuneExtension')}</p>`;
+    }
+    const blocs = blocsAffiches();
+    const aucun = !blocs.some((b) => e.ouverts.has(`e:${b.id}`));
+    return blocs.map((b, rang) => {
+      const sets = setsDuBloc(b).map((x) => ({ id: x.id, nom: x.name, logo: x.logo || logoSet(x.id), total: x.cardCount?.total || toutesExt.get(x.id)?.total || 0 }));
+      if (!sets.length) return '';
+      const bi = BLOCS.findIndex((x) => x.id === b.id);
+      const cle = `e:${b.id}`;
+      const choisi = sets.some((x) => x.id === e.set);
+      return `
+        <details class="cl-g cl-gbloc" data-cl-g="${esc(cle)}" ${ouvert(e.ouverts.has(cle), choisi || (aucun && rang === 0))}>
+          <summary>
+            ${logoG(logoBloc(bi < 0 ? BLOCS.length : bi, sets.map((x) => ({ sid: x.id }))))}
+            <span class="cl-g-txt"><b>${esc(b.nom ? t(b.nom) : (listeSeries.find((x) => x.id === b.series[0])?.name || b.id))}</b><small>${t('cxNbExtensions', sets.length)}</small></span>
+            ${choisi ? `<span class="cl-g-choix">1</span>` : ''}${ICO.bas}
+          </summary>
+          <div class="avances cl-g-corps">${sets.map((x) => ligneSetChoix(x, x.id === e.set)).join('')}</div>
+        </details>`;
+    }).join('');
+  }
+  function htmlAjoutExtension() {
+    const a = etat.clsAjout;
+    const nom = a.set ? (nomSetConnu(a.set) || toutesExt?.get(a.set)?.nom || a.set) : '';
+    return `
+      ${champ('data-cl-qset', a.qSet, t('clChercherExtension'))}
+      <div class="cl-sets-ajout" data-cl-sets-ajout>${htmlSetsGroupes(a)}</div>
+      <div class="cx-choix">
+        <span class="cx-choix-lib">${t('clDisposition')}</span>
+        <div class="cx-choix-puces">
+          <button class="puce ${a.mise === 'simple' ? 'on' : ''}" data-cl-mise="simple" aria-pressed="${a.mise === 'simple'}">${t('clMiseSimple')}</button>
+          <button class="puce ${a.mise === 'master' ? 'on' : ''}" data-cl-mise="master" aria-pressed="${a.mise === 'master'}">${t('clMiseMaster')}</button>
+        </div>
+      </div>
+      <p class="cx-note">${a.mise === 'master' ? t('clMiseMasterAide') : t('clMiseSimpleAide')}</p>
+      ${a.erreur ? `<p class="sd-erreur">${esc(a.erreur)}</p>` : ''}
+      <button class="catch-btn" data-cl-ajoute-set ${a.set && !a.prepa ? '' : 'disabled'}>${a.prepa
+        ? textePrepa(a.prepa) : a.set ? t('clAjouterExtension', nom) : t('clChoisirExtension')}</button>`;
+  }
+
   function htmlAjout() {
     const a = etat.clsAjout;
     return `
       <h2 class="bs-title">${t('clAjouterTitre')}</h2>
-      ${rail([['collection', t('clSourceCollection'), coll.stats().distinctes], ['recherche', t('clSourceRecherche'), '']],
-        a.source, 'data-cl-source', t('clAjouterTitre'))}
-      ${champ('data-cl-q', a.q, a.source === 'collection' ? t('colChercher') : t('cxChercher'))}
-      <div class="cl-choix" data-cl-choix>${grilleAjout()}</div>
-      <div class="lot cl-lot-ajout">
-        <b data-cl-choix-n>${t('cxSelectionN', a.choix.size)}</b>
-        <button class="primaire" data-cl-ajoute ${a.choix.size ? '' : 'disabled'}>${t('cxAjouterSel')}</button>
-      </div>`;
+      ${rail([['collection', t('clSourceCollection'), coll.stats().distinctes], ['extension', t('clSourceExtension'), ''],
+        ['recherche', t('clSourceRecherche'), '']], a.source, 'data-cl-source', t('clAjouterTitre'))}
+      ${a.source === 'extension' ? `<div data-cl-ajout-ext>${htmlAjoutExtension()}</div>` : `
+        ${champ('data-cl-q', a.q, a.source === 'collection' ? t('colChercher') : t('cxChercher'))}
+        <div class="cl-choix" data-cl-choix>${grilleAjout()}</div>
+        <div class="lot cl-lot-ajout">
+          <b data-cl-choix-n>${t('cxSelectionN', a.choix.size)}</b>
+          <button class="primaire" data-cl-ajoute ${a.choix.size ? '' : 'disabled'}>${t('cxAjouterSel')}</button>
+        </div>`}`;
   }
   function majAjout() {
-    const zone = ctx.panneau2.corps.querySelector('[data-cl-choix]');
+    const a = etat.clsAjout;
+    if (!a || !ctx.panneau2.ouvert()) return;
+    const corps = ctx.panneau2.corps;
+    if (a.source === 'extension') {
+      const z = corps.querySelector('[data-cl-ajout-ext]');
+      if (z) { const champ = corps.querySelector('[data-cl-qset]'); const focus = document.activeElement === champ;
+        const sets = corps.querySelector('[data-cl-sets-ajout]');
+        // Pendant la frappe, seule la liste change : le champ garde le focus.
+        if (focus && sets) sets.innerHTML = htmlSetsGroupes(a); else z.innerHTML = htmlAjoutExtension(); }
+      return;
+    }
+    const zone = corps.querySelector('[data-cl-choix]');
     if (zone) zone.innerHTML = grilleAjout();
-    const n = ctx.panneau2.corps.querySelector('[data-cl-choix-n]');
-    if (n) n.textContent = t('cxSelectionN', etat.clsAjout.choix.size);
-    const b = ctx.panneau2.corps.querySelector('[data-cl-ajoute]');
-    if (b) b.disabled = !etat.clsAjout.choix.size;
+    majCompteAjout();
+  }
+  // Le compteur du bas et ceux des menus, sans refaire la grille.
+  function majCompteAjout() {
+    const a = etat.clsAjout;
+    const corps = ctx.panneau2.corps;
+    const n = corps.querySelector('[data-cl-choix-n]');
+    if (n) n.textContent = t('cxSelectionN', a.choix.size);
+    const b = corps.querySelector('[data-cl-ajoute]');
+    if (b) b.disabled = !a.choix.size;
+    for (const g of corps.querySelectorAll('details[data-cl-g]')) {
+      const k = [...g.querySelectorAll('[data-cl-selgrille] .cx-v[data-cx-carte]')].filter((v) => a.choix.has(v.dataset.cxCarte)).length;
+      const badge = g.querySelector(':scope > summary .cl-g-choix');
+      if (badge) { badge.textContent = k; badge.hidden = !k; }
+    }
   }
   let minuterieAjout = null, numAjout = 0;
   function chercheAjout() {
@@ -1532,43 +1717,80 @@ export function creeCartes(ctx) {
     const mon = ++numAjout;
     minuterieAjout = setTimeout(async () => {
       try {
-        const [res] = await Promise.all([api.cherche(requete(q)), chargeToutesExt()]);
+        const [res] = await Promise.all([api.cherche(requete(q)), chargeToutesExt(), chargeToutesSeries()]);
         if (mon !== numAjout || !etat.clsAjout) return;
-        const rang = (id) => toutesExt?.get(setDe(id))?.rang ?? -1;
-        etat.clsAjout.res = (Array.isArray(res) ? res : []).slice().sort((x, y) => rang(y.id) - rang(x.id));
+        etat.clsAjout.res = Array.isArray(res) ? res : [];
         chercheImages(etat.clsAjout.res);
       } catch { if (etat.clsAjout) etat.clsAjout.res = []; }
       majAjout();
     }, 350);
   }
+  // Range ce qu'on a choisi à partir de la pochette touchée, avec « Annuler ».
+  function rangeDansClasseur(c, cles, prix) {
+    const avant = c.cartes.slice();
+    cls.range(c.id, etat.clsAjout.depuis, cles, prix);
+    etat.clsAjout = null;
+    ctx.panneau2.ferme();
+    ctx.haptique();
+    majClasseurs();
+    ctx.annonce(t('clRanges', cles.length), () => cls.remetCartes(c.id, avant));
+  }
+  // Une extension entière dans un classeur déjà commencé : la même préparation qu'à la
+  // création (`pochettesDe`), puis ses pochettes à la suite de celle qu'on a touchée.
+  async function ajouteExtension() {
+    const a = etat.clsAjout;
+    const c = cls.classeur(etat.cls);
+    if (!a || !c || !a.set || a.prepa) return;
+    a.prepa = { fait: 0, total: 0 };
+    a.erreur = '';
+    majAjout();
+    try {
+      const { cartes, prix } = await pochettesDe(a.set, a.mise, (fait, total) => {
+        a.prepa = { fait, total };
+        const b = ctx.panneau2.corps.querySelector('[data-cl-ajoute-set]');
+        if (b && etat.clsAjout === a) b.textContent = textePrepa(a.prepa);
+      });
+      if (etat.clsAjout !== a) return;   // le panneau a été refermé entre-temps
+      rangeDansClasseur(c, cartes, prix);
+    } catch {
+      a.prepa = null;
+      a.erreur = t('clErreurPrepa');
+      majAjout();
+    }
+  }
+
+  // Les pochettes d'une extension : une par carte, ou une par variante (master set), et
+  // le prix de chacune — la valeur « complète » du classeur. Le détail de chaque carte
+  // est gardé trente jours : il ne coûte qu'une fois. Sert à la création et à l'ajout.
+  async function pochettesDe(setId, mise, avance) {
+    const s = extensions.get(setId) || await api.extension(setId);
+    extensions.set(setId, s);
+    const ids = (s.cards || []).map((x) => x.id);
+    let fait = 0;
+    avance?.(0, ids.length);
+    const details = await Promise.all(ids.map((id) => api.carteEnFile(id).then((d) => d, () => null)
+      .finally(() => avance?.(++fait, ids.length))));
+    const cartes = [], prix = {};
+    ids.forEach((id, k) => {
+      const d = details[k];
+      const p = prixDe(d);
+      if (p) prix[id] = Math.round(p * 100) / 100;
+      if (mise === 'master') for (const v of variantes(d || { id }, s.id)) cartes.push(`${id}|${v}`);
+      else cartes.push(id);
+    });
+    chercheImages(s.cards || []);
+    return { cartes, prix };
+  }
 
   // ---- Créer un classeur, ou en changer les réglages ----
   function ouvreEdition(id) {
     const c = id ? cls.classeur(id) : null;
+    etat.clsAjout = null;
     etat.clsEdition = c
       ? { id: c.id, nom: c.nom, poches: c.poches, couleur: c.couleur, pages: c.pages || '', roue: null }
-      : { nom: '', poches: 9, couleur: 'nuit', pages: '', roue: null, contenu: 'vide', set: '', mise: 'simple', qSet: '', prepa: null, erreur: '' };
-    if (!c) chargeToutesExt().then(majEdition);
+      : { nom: '', poches: 9, couleur: 'nuit', pages: '', roue: null, contenu: 'vide', set: '', mise: 'simple', qSet: '', prepa: null, erreur: '', ouverts: groupesOuverts };
+    if (!c) Promise.all([chargeToutesExt(), chargeToutesSeries()]).then(majEdition);
     ctx.panneau2.ouvre(htmlEdition());
-  }
-  function htmlSetsChoix(e) {
-    if (!toutesExt) return squeletteSets(3);
-    const q = fold(e.qSet.trim());
-    let l = [...toutesExt.entries()].map(([id, x]) => ({ id, ...x })).sort((a, b) => b.rang - a.rang);
-    if (q) l = l.filter((x) => fold(x.nom).includes(q) || x.id.toLowerCase().includes(q));
-    const choisi = e.set ? [...toutesExt.entries()].map(([id, x]) => ({ id, ...x })).find((x) => x.id === e.set) : null;
-    l = l.slice(0, q ? 40 : 8);
-    if (choisi && !l.some((x) => x.id === choisi.id)) l.unshift(choisi);
-    if (!l.length) return `<p class="dex-vide">${t('clAucuneExtension')}</p>`;
-    return l.map((x) => `
-      <button class="avance cl-set ${x.id === e.set ? 'complet' : ''}" data-cl-set="${esc(x.id)}" aria-pressed="${x.id === e.set}">
-        <span class="avance-art logo">${x.logo ? `<img src="${esc(api.logo(x.logo))}" alt="" loading="lazy" />`
-          : `<span class="avance-sigle">${esc(x.id.toUpperCase())}</span>`}</span>
-        <span class="avance-txt">
-          <span class="avance-haut"><b class="avance-nom">${esc(x.nom)}</b>${x.total ? `<span class="avance-cpt">${t('cxResultats', x.total)}</span>` : ''}</span>
-        </span>
-        ${x.id === e.set ? `<span class="cl-coche" aria-hidden="true">${ICO.coche}</span>` : ''}
-      </button>`).join('');
   }
   function htmlEdition() {
     const e = etat.clsEdition;
@@ -1595,7 +1817,7 @@ export function creeCartes(ctx) {
         </div>
         ${e.contenu === 'set' ? `
           ${champ('data-cl-qset', e.qSet, t('clChercherExtension'))}
-          <div class="avances cl-sets" data-cl-sets>${htmlSetsChoix(e)}</div>
+          <div class="cl-sets-ajout" data-cl-sets>${htmlSetsGroupes(e)}</div>
           <div class="cx-choix">
             <span class="cx-choix-lib">${t('clDisposition')}</span>
             <div class="cx-choix-puces">
@@ -1611,7 +1833,7 @@ export function creeCartes(ctx) {
         </div>`}
       ${e.erreur ? `<p class="sd-erreur">${esc(e.erreur)}</p>` : ''}
       <button class="catch-btn" data-cl-valide ${e.prepa ? 'disabled' : ''}>${e.prepa
-        ? t('clPreparation', e.prepa.fait, e.prepa.total) : creation ? t('clCreer') : t('clEnregistrer')}</button>`;
+        ? textePrepa(e.prepa) : creation ? t('clCreer') : t('clEnregistrer')}</button>`;
   }
   // ---- Couleurs du classeur : nuanciers, favoris et roue chromatique ----
   //
@@ -1756,27 +1978,15 @@ export function creeCartes(ctx) {
       e.nom = nom;
       e.erreur = '';
       try {
-        const s = extensions.get(e.set) || await api.extension(e.set);
-        extensions.set(e.set, s);
-        const ids = (s.cards || []).map((x) => x.id);
-        // Le détail de chaque carte donne ses variantes (master set) et son prix (la
-        // valeur « complète » du classeur) ; gardé trente jours, il ne coûte qu'une fois.
-        e.prepa = { fait: 0, total: ids.length };
+        e.prepa = { fait: 0, total: 0 };
         majEdition();
-        const fin = () => {
-          e.prepa.fait++;
+        const r = await pochettesDe(e.set, e.mise, (fait, total) => {
+          e.prepa = { fait, total };
           const b = ctx.panneau2.corps.querySelector('[data-cl-valide]');
-          if (b) b.textContent = t('clPreparation', e.prepa.fait, e.prepa.total);
-        };
-        const details = await Promise.all(ids.map((id) => api.carteEnFile(id).then((d) => { fin(); return d; }, () => { fin(); return null; })));
-        ids.forEach((id, k) => {
-          const d = details[k];
-          const p = prixDe(d);
-          if (p) prixCartes[id] = Math.round(p * 100) / 100;
-          if (e.mise === 'master') for (const v of variantes(d || { id }, s.id)) cartes.push(`${id}|${v}`);
-          else cartes.push(id);
+          if (b) b.textContent = textePrepa(e.prepa);
         });
-        chercheImages(s.cards || []);
+        cartes = r.cartes;
+        Object.assign(prixCartes, r.prix);
       } catch {
         e.prepa = null;
         e.erreur = t('clErreurPrepa');
@@ -2923,12 +3133,94 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
 
     // ---- Le second panneau : créer un classeur, le régler, y ranger des cartes ----
     const corps2 = ctx.panneau2.corps;
-    const majAjoutBarre = () => {
-      const n = corps2.querySelector('[data-cl-choix-n]');
-      if (n) n.textContent = t('cxSelectionN', etat.clsAjout.choix.size);
-      const b = corps2.querySelector('[data-cl-ajoute]');
-      if (b) b.disabled = !etat.clsAjout.choix.size;
+    // ---- Choisir en glissant (sélecteur d'ajout d'un classeur) ----
+    // Appuyer sur une carte puis glisser sur les autres les choisit toutes, comme dans
+    // Photos : la PLAGE parcourue, dans l'ordre de lecture, prend l'état contraire de la
+    // première carte touchée (libre → on ajoute, choisie → on retire), et revenir en arrière
+    // rend leur état aux cartes qu'on quitte. Le geste part dès qu'on glisse de côté, ou
+    // après un appui de 300 ms dans n'importe quel sens ; un glissement vertical franc, lui,
+    // fait défiler la liste. Près du haut ou du bas du panneau, la liste défile d'elle-même.
+    const BALAYAGE_MS = 300, BORD_DEFILE = 64;
+    let balayage = null, finBalayage = 0;
+    const vignettesChoix = () => [...corps2.querySelectorAll('[data-cl-selgrille] .cx-v[data-cx-carte]')]
+      .filter((v) => !v.parentElement.closest('details:not([open])'));
+    const carteSous = (x, y) => {
+      const el = document.elementFromPoint(x, y)?.closest?.('[data-cl-selgrille] .cx-v[data-cx-carte]');
+      return el ? balayage.liste.indexOf(el) : -1;
     };
+    function appliqueBalayage(k) {
+      const b = balayage, a = etat.clsAjout;
+      if (!b?.actif || !a || k < 0 || k === b.dernier) return;
+      b.dernier = k;
+      const [i, j] = k < b.debut ? [k, b.debut] : [b.debut, k];
+      const plage = new Set(b.liste.slice(i, j + 1).map((v) => v.dataset.cxCarte));
+      // Les cartes choisies avant le geste gardent leur rang ; la plage suit, dans l'ordre
+      // de lecture — c'est l'ordre dans lequel elles iront dans le classeur.
+      a.choix = new Set(b.ajoute ? [...b.base, ...plage] : b.base.filter((id) => !plage.has(id)));
+      for (const v of b.liste) v.classList.toggle('choisie', a.choix.has(v.dataset.cxCarte));
+      majCompteAjout();
+    }
+    function demarreBalayage() {
+      const b = balayage, a = etat.clsAjout;
+      if (!b || b.actif || !a) return;
+      clearTimeout(b.minuteur);
+      b.liste = vignettesChoix();
+      b.debut = b.liste.indexOf(b.v);
+      if (b.debut < 0) { balayage = null; return; }
+      b.actif = true;
+      b.ajoute = !a.choix.has(b.v.dataset.cxCarte);
+      b.base = [...a.choix];
+      ctx.haptique();
+      appliqueBalayage(b.debut);
+      b.defile = setInterval(() => {
+        const r = corps2.getBoundingClientRect();
+        const v = b.y < r.top + BORD_DEFILE ? -(r.top + BORD_DEFILE - b.y) : b.y > r.bottom - BORD_DEFILE ? b.y - (r.bottom - BORD_DEFILE) : 0;
+        if (!v) return;
+        const avant = corps2.scrollTop;
+        corps2.scrollTop += Math.round((v / BORD_DEFILE) * 14);
+        if (corps2.scrollTop !== avant) appliqueBalayage(carteSous(b.x, b.y));
+      }, 16);
+    }
+    corps2.addEventListener('pointerdown', (e) => {
+      const v = e.target.closest('[data-cl-selgrille] .cx-v[data-cx-carte]');
+      if (!etat.clsAjout || !v || e.button > 0 || balayage) return;
+      balayage = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, v, actif: false, dernier: null };
+      balayage.minuteur = setTimeout(demarreBalayage, BALAYAGE_MS);
+    });
+    window.addEventListener('pointermove', (e) => {
+      const b = balayage;
+      if (!b || e.pointerId !== b.id) return;
+      b.x = e.clientX;
+      b.y = e.clientY;
+      if (!b.actif) {
+        const dx = e.clientX - b.x0, dy = e.clientY - b.y0;
+        if (Math.hypot(dx, dy) < 8) return;
+        if (Math.abs(dx) <= Math.abs(dy)) { clearTimeout(b.minuteur); balayage = null; return; }   // la liste défile
+        demarreBalayage();
+      }
+      appliqueBalayage(carteSous(e.clientX, e.clientY));
+    });
+    const finDuBalayage = (e) => {
+      const b = balayage;
+      if (!b || e.pointerId !== b.id) return;
+      clearTimeout(b.minuteur);
+      clearInterval(b.defile);
+      if (b.actif) finBalayage = Date.now();
+      balayage = null;
+    };
+    window.addEventListener('pointerup', finDuBalayage);
+    window.addEventListener('pointercancel', finDuBalayage);
+    // Pendant le geste, la liste ne défile que d'elle-même, près des bords.
+    corps2.addEventListener('touchmove', (e) => { if (balayage?.actif) e.preventDefault(); }, { passive: false });
+    corps2.addEventListener('contextmenu', (e) => { if (e.target.closest('[data-cl-selgrille]')) e.preventDefault(); });
+    // Les menus déroulants retenus le temps de la session — sauf ceux qu'une recherche
+    // ouvre d'office. `toggle` ne remonte pas : écouté en capture.
+    corps2.addEventListener('toggle', (e) => {
+      const d = e.target;
+      if (!d.matches?.('details[data-cl-g]') || d.hasAttribute('data-cl-force')) return;
+      if (d.open) groupesOuverts.add(d.dataset.clG); else groupesOuverts.delete(d.dataset.clG);
+    }, true);
+
     // La roue chromatique suit le doigt (souris comme toucher) ; le panneau est refait au
     // relâchement, une fois la couleur posée.
     let roueTenue = null;
@@ -3039,29 +3331,33 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
           return;
         }
         if ((x = q('[data-cx-carte]'))) {
+          // Le toucher qui termine un glissé n'est pas un toucher : la carte est déjà prise.
+          if (Date.now() - finBalayage < 400) return;
           const id = x.dataset.cxCarte;
           if (a.choix.has(id)) a.choix.delete(id); else a.choix.add(id);
           x.classList.toggle('choisie', a.choix.has(id));
           ctx.haptique();
-          majAjoutBarre();
+          majCompteAjout();
           return;
         }
         if (q('[data-cl-ajoute]')) {
           const c = cls.classeur(etat.cls);
-          if (!c || !a.choix.size) return;
-          cls.range(c.id, a.depuis, [...a.choix]);
-          etat.clsAjout = null;
-          ctx.panneau2.ferme();
-          ctx.haptique();
-          majClasseurs();
+          if (c && a.choix.size) rangeDansClasseur(c, [...a.choix]);
+          return;
         }
+        if ((x = q('[data-cl-set]'))) { a.set = x.dataset.clSet; a.erreur = ''; ctx.haptique(); majAjout(); return; }
+        if ((x = q('[data-cl-mise]'))) { a.mise = x.dataset.clMise; majAjout(); return; }
+        if (q('[data-cl-ajoute-set]')) { ajouteExtension(); return; }
       }
     });
     corps2.addEventListener('input', (e) => {
       if (e.target.matches('[data-cl-qset]') && etat.clsEdition) {
         etat.clsEdition.qSet = e.target.value;
         const z = corps2.querySelector('[data-cl-sets]');
-        if (z) z.innerHTML = htmlSetsChoix(etat.clsEdition);
+        if (z) z.innerHTML = htmlSetsGroupes(etat.clsEdition);
+      } else if (e.target.matches('[data-cl-qset]') && etat.clsAjout) {
+        etat.clsAjout.qSet = e.target.value;
+        majAjout();
       } else if (e.target.matches('[data-cl-nom]') && etat.clsEdition) {
         etat.clsEdition.nom = e.target.value;
       } else if (e.target.matches('[data-cl-q]') && etat.clsAjout) {
@@ -3129,6 +3425,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     api.videFile();
     listeSeries = null;
     toutesExt = null;
+    seriesPretes = null;
     imagesAutres.clear();
     detailsSerie.clear();
     extensions.clear();
@@ -3189,6 +3486,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     retraduit() {
       listeSeries = null;
       toutesExt = null;
+      seriesPretes = null;
       imagesAutres.clear();
       detailsSerie.clear();
       extensions.clear();

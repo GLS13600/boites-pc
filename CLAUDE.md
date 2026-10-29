@@ -569,9 +569,41 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   détail de chaque carte (variantes, prix de la valeur « complète »), gardé trente jours.
   Réglages : renommer, changer de format ou de teinte, avancer dans la liste, supprimer
   (« Annuler » le remet à sa place).
-- **Ranger des cartes** : le sélecteur part de la pochette touchée, sur Ma collection ou
-  sur toutes les cartes (recherche TCGdex, accents rendus, plus récentes d'abord) ;
-  toucher choisit, « Ajouter » range dans l'ordre des choix.
+- **Ranger des cartes** (refait le 29/10/2026, à la demande) : le sélecteur part de la
+  pochette touchée. Trois sources : **Ma collection**, **Une extension**, **Toutes les
+  cartes** (recherche TCGdex, accents rendus). « Ajouter » range dans l'ordre des choix,
+  à partir de la pochette touchée (premières LIBRES, `cls.range`), avec « Annuler ».
+  - **Menus déroulants par BLOC puis par EXTENSION** (`htmlGroupes`, `parBlocEtSet`) :
+    l'ordre de Pokécardex (`BLOCS`, extensions de la plus récente à la plus ancienne,
+    Énergies et Promos en fin de bloc), cartes au numéro, une extension fusionnée à la
+    suite de son hôte. Chaque menu dit ses extensions, ses cartes, et le nombre de cartes
+    CHOISIES, même replié. Le bloc de la carte qui précède la pochette touchée s'ouvre ;
+    une recherche déplie tout ; un bloc ou une extension seuls de leur niveau s'ouvrent.
+    Les menus ouverts sont retenus le temps de la session (`groupesOuverts`, écoute
+    `toggle` en capture) — sauf ceux ouverts d'office (`data-cl-force`).
+  - Le bloc d'une extension vient de sa SÉRIE : `chargeToutesSeries()` lit toutes les
+    séries de TCGdex et leurs extensions à l'ouverture du sélecteur (gardées sept jours
+    par api.js ; oubliées au changement de langue des cartes).
+  - **Choisir en glissant**, comme dans Photos : appuyer sur une carte puis glisser sur
+    les autres choisit toute la PLAGE parcourue, dans l'ordre de lecture ; partir d'une
+    carte déjà choisie retire ; revenir en arrière rend leur état aux cartes quittées. Le
+    geste part dès qu'on glisse de côté, ou après 300 ms d'appui dans n'importe quel
+    sens ; un glissement vertical franc fait défiler la liste ; près du haut ou du bas du
+    panneau, elle défile d'elle-même. Grille en `touch-action: pan-y`, sans loupe ni menu
+    d'image ; `data-geste-local` écarte le glissement qui ferme le panneau. Le toucher
+    qui termine un glissé est absorbé (`finBalayage`).
+  - **Une extension** : la même liste par bloc qu'à la création (`htmlSetsGroupes`,
+    commune aux deux), la disposition (une pochette par carte ou master set), puis
+    « Ranger « Foudre Noire » ». La préparation est celle de la création (`pochettesDe`) ;
+    ses prix rejoignent ceux du classeur (`range(id, depuis, clés, prix)`). C'est ce qui
+    fait un classeur de PLUSIEURS extensions : créer Flamme Blanche, aller au bout,
+    toucher une pochette libre, ranger Foudre Noire.
+  - Vérifié dans l'aperçu : classeur Flamme Blanche créé (173 pochettes), pochette 174 →
+    collection rangée par bloc (le bloc Écarlate et Violet ouvert), glissé sur 5 cartes
+    (deux rangées), retour en arrière, retrait, appui long puis vertical, glissement
+    vertical sans effet ; « Ajouter » → 5 pochettes et « Annuler » ; « Une extension » →
+    Foudre Noire entière (172 pochettes, 345 prix, 40 pages) ; « Annuler » rend le
+    classeur à l'identique ; recherche « pikachu » → 221 cartes en 15 blocs.
 - Pas de bannière de pub sur les classeurs : on y glisse d'une page à l'autre.
 
 ### PokéAdvisor, reprise de Cartodex, 3D et favoris partagés (étape 5)

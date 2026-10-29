@@ -347,6 +347,14 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
       image française chez TCGdex : **111 téléchargés, 1 278 visuels en tout** (65 Mo).
       Un second relevé de Destinées Occultes et de Zénith Suprême n'a toujours pas d'URL
       pour SV51 ni GG51, au même rang : Pokécardex n'en a probablement pas le scan.
+    - **Quatrième lot (29/10/2026) : Diamant et Perle, ses promos, L'appel des Légendes**
+      (`DP`, `MT`, `SW`, `GE`, `MD`, `LA`, `SF` → `dp1`–`dp7`, `PRDP` → `dpp`, `CL` →
+      `col1`) : toutes les lignes rattachées, secrètes SH et SL comprises. Merveilles
+      Secrètes (`dp3`) a déjà toutes ses images françaises chez TCGdex : rien à prendre.
+      **874 téléchargés, 2 152 visuels en tout** (102 Mo).
+    - Un relevé d'**ex Forces Cachées** venait de **mypokevault.fr**, un autre site :
+      non pris en charge. TCGdex a déjà ses 117 images françaises, et son `robots.txt`
+      interdit `/app` à tous et bloque nommément les agents d'IA.
     - **Les visuels ne servent qu'à la collection française** (`visuel` dans api.js), et
       une carte déjà possédée prend le sien au chargement (`prendVisuels` dans
       collection.js) au lieu de garder l'image anglaise recopiée à l'ajout. `VISUELS` y est

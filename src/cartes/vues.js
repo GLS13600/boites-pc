@@ -1158,16 +1158,57 @@ export function creeCartes(ctx) {
   // celle de la pochette (master set), sinon celle des exemplaires quand on n'a QUE des
   // reverses — avec une normale en main, c'est elle qu'on range.
   const ULTRA = new Set(['ultra_rare', 'ar', 'alternative']);
+  // La fenêtre de l'ILLUSTRATION, en % de la carte (gauche, droite, haut, bas) : la
+  // brillance d'une reverse ne doit JAMAIS y entrer (29/10/2026, à la demande). Relevée sur
+  // des communes et peu communes de chaque époque — aux lignes droites du cadre, puis à
+  // l'œil, avec une petite marge. Pokémon (P) et Dresseur (T) n'ont pas le même cadre ;
+  // une Énergie spéciale a une illustration pleine largeur, jusqu'au milieu de la carte.
+  const FENETRES = {
+    sv: { P: [7.4, 93.0, 9.3, 50.9], T: [7.4, 93.4, 13.7, 52.9] },     // Écarlate et Violet, Méga-Évolution, Épée et Bouclier
+    sm: { P: [6.8, 92.7, 9.3, 50.8], T: [7.2, 93.2, 13.1, 52.3] },     // Soleil et Lune
+    xy: { P: [6.8, 93.0, 9.0, 52.4], T: [9.2, 90.6, 15.7, 52.8] },     // XY, Noir & Blanc
+    hgss: { P: [6.8, 93.2, 9.2, 52.6], T: [8.0, 92.0, 14.5, 53.5] },   // HeartGold SoulSilver, L'appel des Légendes
+    dp: { P: [5.8, 94.4, 8.0, 53.2], T: [8.0, 92.0, 14.0, 50.0] },     // Diamant & Perle, Platine
+    ex: { P: [6.6, 93.0, 9.5, 49.6], T: [8.8, 91.0, 14.4, 48.8] },     // EX
+    ecard: { P: [10.8, 93.0, 9.6, 49.0], T: [9.6, 94.4, 9.4, 51.0] },  // Expedition, Aquapolis, Skyridge
+    lc: { P: [8.8, 91.4, 9.2, 53.0], T: [9.0, 91.0, 14.6, 55.8] },     // Legendary Collection
+  };
+  const FENETRE_ENERGIE = [0, 100, 10, 58];
+  function epoque(id) {
+    const s = String(id).slice(0, Math.max(0, String(id).lastIndexOf('-'))).toLowerCase();
+    if (/^(sm|det)/.test(s)) return 'sm';
+    if (/^(xy|g1|dc1|bw|dv1)/.test(s)) return 'xy';
+    if (/^(hgss|col)/.test(s)) return 'hgss';
+    if (/^(dp|pl|pop[6-9])/.test(s)) return 'dp';
+    if (/^(ex|pop[1-5]|np)/.test(s)) return 'ex';
+    if (/^ecard/.test(s)) return 'ecard';
+    if (/^lc/.test(s)) return 'lc';
+    return 'sv';
+  }
+  // Pokémon, Dresseur ou Énergie : la catégorie de TCGdex, sinon les types recopiés dans la
+  // collection (liste vide pour un Dresseur ou une Énergie), sinon le nom — « Énergie » en
+  // MOT ENTIER : Lainergie est un Pokémon, et passait pour une Énergie au premier essai.
+  function genreCarte(d, co) {
+    const cat = String(d?.category || '');
+    if (/pok/i.test(cat)) return 'P';
+    if (/nergi|energy/i.test(cat)) return 'E';
+    if (cat) return 'T';
+    if (co?.typ?.length > 0) return 'P';
+    if (/(^|[\s'’-])[ée]nergie([\s'’-]|$)|\benergy\b/i.test(String(co?.n || ''))) return 'E';
+    return Array.isArray(co?.typ) ? 'T' : 'P';
+  }
   function brillance(cle) {
     const id = cls.idDe(cle), v = cls.varianteDe(cle);
     const co = coll.carte(id), d = detail(id);
     const carte = d?.rarity ? d : co?.rar ? { id, rarity: co.rar, name: co.n, localId: co.num } : null;
     if (carte) {
       const cat = categorie(carte);
-      if (ULTRA.has(cat) || (cat === 'autre' && /hyper|noir blanc|chromatique|brillant|shiny|secr/i.test(`${carte.rarity} ${carte.name}`))) return 'ultra';
+      if (ULTRA.has(cat) || (cat === 'autre' && /hyper|noir blanc|chromatique|brillant|shiny|secr/i.test(`${carte.rarity} ${carte.name}`))) return { genre: 'ultra' };
     }
     const vs = v ? [v] : (co?.ex || []).map((x) => x.v);
-    return vs.length && vs.every((x) => String(x).startsWith('reverse')) ? 'rev' : '';
+    if (!vs.length || !vs.every((x) => String(x).startsWith('reverse'))) return null;
+    const g = genreCarte(d, co);
+    return { genre: 'rev', fenetre: g === 'E' ? FENETRE_ENERGIE : FENETRES[epoque(id)][g] };
   }
   // Le rang en diagonale d'une pochette dans sa page (colonne + rangée) : le reflet passe
   // d'une carte à l'autre comme une lumière qui balaie la page.
@@ -1190,13 +1231,14 @@ export function creeCartes(ctx) {
     if (!info.img && !detail(id)) aCharger.add(id);
     const a = cles.some(possedeCle);
     const n = cles.length === 1 ? exemplairesCle(cle) : 0;
-    const brille = a ? brillance(cle) : '';
+    const brille = a ? brillance(cle) : null;
+    const fenetre = brille?.fenetre ? ` style="--x1:${brille.fenetre[0]}%;--x2:${brille.fenetre[1]}%;--y1:${brille.fenetre[2]}%;--y2:${brille.fenetre[3]}%"` : '';
     return `
       <button class="cl-poche pleine ${a ? '' : 'manque'} ${sel ? 'choisie' : ''}" data-cl-poche="${i}"
               ${brille ? `style="--k:${diagonale(c, i)}"` : ''}
               aria-label="${esc(info.nom)} ${esc(info.num)}${v ? ', ' + esc(nomVariante(v)) : ''}${a ? '' : ', ' + esc(t('cxManquantes'))}">
         <img src="${esc(api.image(info.img, 'low'))}" alt="" loading="lazy" decoding="async" />
-        ${brille ? `<span class="cl-brille ${brille}" aria-hidden="true"></span>` : ''}
+        ${brille ? `<span class="cl-brille ${brille.genre}"${fenetre} aria-hidden="true"></span>` : ''}
         ${v ? `<span class="cl-var v-${esc(v)}">${LETTRE_VAR[v] || esc(v.slice(0, 2).toUpperCase())}</span>` : ''}
         ${cles.length > 1 ? `<span class="cl-qte">▦ ${cles.length}</span>` : n > 1 ? `<span class="cl-qte">×${n}</span>` : ''}
         ${etat.clsSel ? `<span class="cx-v-coche" aria-hidden="true">${ICO.coche}</span>` : ''}

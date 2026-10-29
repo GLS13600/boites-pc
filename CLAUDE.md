@@ -514,9 +514,28 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
       en `mix-blend-mode: overlay` qui GLISSE quand on tourne la page (`--r`, l'écart de la
       feuille, posé par `styleFeuille`). `color-dodge`, essayé d'abord, délavait
       l'illustration.
-    - **rev** (reverse, Poké Ball, Master Ball) : le CADRE seul, en `screen`, l'illustration
-      découpée par un masque (8–92 % × 10–55 % de la carte). Variante de la pochette (master
-      set), sinon celle des exemplaires quand on n'a QUE des reverses.
+    - **rev** (reverse, Poké Ball, Master Ball) : le CADRE seul, en `screen`. Variante de la
+      pochette (master set), sinon celle des exemplaires quand on n'a QUE des reverses.
+    - **La brillance d'une reverse n'entre JAMAIS dans l'illustration** (demandé ensuite) :
+      la fenêtre de l'illustration est découpée par `clip-path: polygon(evenodd, …)`, ses
+      bords passés en variables (`--x1 --x2 --y1 --y2`) par pochette. Elle dépend de
+      l'ÉPOQUE (`epoque(id)`, d'après l'extension) et du GENRE de la carte (`genreCarte` :
+      Pokémon, Dresseur, Énergie) — `FENETRES` dans vues.js. Le premier masque, unique
+      (8–92 % × 10–55 %), passait dans le haut de l'illustration des Dresseurs (elle commence
+      à 14 %) et sur toute la largeur de celle des Énergies.
+      - Relevé sur des communes et peu communes : lignes droites du cadre mesurées sur les
+        images de TCGdex (sharp, script jetable), puis chaque fenêtre posée en rouge sur 28
+        cartes et ajustée à l'œil, avec une petite marge — de Legendary Collection à
+        Méga-Évolution, Pokémon et Dresseurs. SV, ME et EB partagent un gabarit ; NB et XY
+        aussi ; HGSS et L'appel des Légendes aussi ; DP et Platine aussi. Les cartes
+        e-card ont l'illustration décalée (code-barres à gauche), et le Dresseur e-card la
+        prolonge jusqu'au bord droit (94 %).
+      - Une Énergie spéciale : illustration pleine largeur, jusqu'à 44–57 % selon l'époque :
+        `FENETRE_ENERGIE` (0–100 % × 10–58 %).
+      - `genreCarte` lit la catégorie de TCGdex d'abord, et le nom seulement en dernier
+        recours, « Énergie » en MOT ENTIER : Lainergie (un Pokémon) passait pour une Énergie.
+      - Vérifié dans l'aperçu, brillance teintée en rouge plein : neuf reverses de six
+        époques (Pokémon, Dresseurs, une Énergie), illustration intacte jusqu'aux bords.
     - Un reflet passe toutes les cinq secondes, décalé de pochette en pochette en diagonale
       (`--k`, colonne + rangée) : une lumière qui balaie la page. Seule la page d'en face
       s'anime ; carte manquante (grise) : rien ; mouvement réduit : reflet immobile.

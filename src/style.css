@@ -2533,21 +2533,24 @@ img {
   z-index: 4;
   pointer-events: none;
 }
+/* Le dessin REMPLIT sa coque, rogné (`preserveAspectRatio="xMidYMax slice"`) : il n'en
+   déborde plus. La coque du haut débordait de ~370 px au-dessus de l'écran, et Safari
+   iOS la laissait vide pendant l'ouverture — il décide d'après ces limites quoi peindre
+   d'un calque animé. Même raison pour `backface-visibility`, retiré : une cause connue
+   de calques qui s'effacent sous Safari, inutile pour une simple translation. */
 .pdx-haut svg, .pdx-bas svg {
   position: absolute;
-  left: 0;
+  inset: 0;
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
 }
 /* Position ouverte : --haut-ouvert et --bas-ouvert sont posés EN PIXELS par scan.js
-   (majCoques). Le repli en calc ne sert qu'avant le premier calcul ; ne pas animer de
-   calc mêlant %, cqw et env() : Safari iOS y faisait disparaître la coque du haut. */
+   (majCoques). Le repli en calc ne sert qu'avant le premier calcul. */
 .pdx-haut { top: 0; transform: translate3d(0, var(--haut-ouvert, calc(-100% + var(--cap-haut) + var(--safe-top))), 0); }
-.pdx-haut svg { bottom: 0; }
 .pdx-bas { bottom: 0; transform: translate3d(0, var(--bas-ouvert, calc(100% - var(--cap-h))), 0); }
-.pdx-bas svg { top: 0; transform: scaleY(-1); }
-.pdx-haut, .pdx-bas { will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+.pdx-bas svg { transform: scaleY(-1); }
+.pdx-haut, .pdx-bas { will-change: transform; }
 /* Ombre des coques sur l'écran : un dégradé, pas un filtre drop-shadow — calculé sur
    un dessin de 800 unités de haut à chaque image de l'animation, il pesait lourd. */
 .pdx-haut::before, .pdx-bas::before {

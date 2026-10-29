@@ -102,8 +102,14 @@ CLASSES.forEach(([, groupe], i) => {
 // L'échancrure centrale (rayon 46) est laissée TRANSPARENTE : fermée, les deux
 // échancrures forment la lentille ; ouverte, l'écran — la caméra — y déborde.
 // Le suffixe distingue les identifiants de dégradés des deux moitiés.
+//
+// Le dessin est ROGNÉ à la boîte de sa coque (`slice`, calé sur le bord de la lentille)
+// au lieu d'en déborder : la coque du haut débordait de ~370 px AU-DESSUS de l'écran, et
+// Safari sur iPhone, qui décide d'après ces limites quoi peindre pendant une animation
+// de transformation, la laissait vide le temps de l'ouverture. Ce qui dépassait n'était
+// jamais visible.
 const coque = (x) => `
-  <svg viewBox="0 0 400 800" aria-hidden="true">
+  <svg viewBox="0 0 400 800" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
     <defs>
       <linearGradient id="pdx-rouge-${x}" gradientUnits="userSpaceOnUse" x1="0" y1="380" x2="0" y2="800">
         <stop offset="0" stop-color="#e63a42"/><stop offset=".62" stop-color="#cf1d28"/><stop offset="1" stop-color="#a50f19"/>
@@ -311,12 +317,10 @@ export function creeScan({ t, langue = () => 'fr', ouvrirFiche, ouvrirCarte = ()
   // pas : seule une entrée réelle, `actif` passant de faux à vrai, le fait.
   let minuteOuverture = 0;
 
-  // Positions des coques ouvertes, en PIXELS. Safari sur iPhone faisait disparaître la
-  // coque du haut pendant l'ouverture : sa position finale mêlait %, unités de
-  // conteneur (cqw) et zone sûre (env()), un mélange que WebKit n'interpole pas dans
-  // une transformation animée. La coque du bas, sans zone sûre, restait visible. On
-  // relève donc les distances sur l'écran réellement posé (`.scan-ecran`), et
-  // l'animation ne manipule plus que des pixels.
+  // Positions des coques ouvertes, en PIXELS, relevées sur l'écran réellement posé
+  // (`.scan-ecran`) : l'animation ne manipule que des pixels, jamais un calc mêlant %,
+  // unités de conteneur (cqw) et zone sûre (env()). Ce n'était pas la cause de la coque
+  // du haut qui disparaissait sur iPhone (voir `coque`), mais ça reste plus sûr.
   function majCoques() {
     const h = el.clientHeight;
     if (!h) return;

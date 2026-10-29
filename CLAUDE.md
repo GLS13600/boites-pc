@@ -1467,6 +1467,18 @@ reconnaît le Pokémon : sa fiche Pokédex s'ouvre, sinon « Pokémon non trouv�
     fermé — refusé, ne pas y revenir.
   - L'échancrure est laissée **transparente** : fermé, les deux forment la lentille ;
     ouvert, l'écran y déborde.
+  - **Le dessin est ROGNÉ à la boîte de sa coque** (`preserveAspectRatio="xMidYMax
+    slice"`, SVG en `inset: 0`, 100 % × 100 %), il n'en déborde plus (29/10/2026).
+    Signalé deux fois : sur iPhone, **la coque du HAUT disparaissait pendant
+    l'ouverture** et ne revenait qu'une fois ouverte. Le premier correctif (positions en
+    pixels au lieu d'un calc mêlant %, cqw et env(), 11/09/2026) n'y suffisait pas. La
+    différence entre les deux coques : celle du haut débordait de ~370 px AU-DESSUS de
+    l'écran (coordonnées négatives), celle du bas en dessous. Safari décide d'après les
+    limites d'un calque animé ce qu'il en peint, et le premier cas est le piège connu.
+    `backface-visibility: hidden`, autre cause connue de calques effacés sous Safari,
+    est retiré. Rien de ce qui dépassait n'était visible : mêmes images fermé, à
+    mi-course et ouvert (vérifié dans l'aperçu). Chrome n'a jamais montré le défaut —
+    seul l'iPhone confirme. Ne pas refaire déborder le dessin de sa coque.
 - `.scan` est un **conteneur de taille** (`container-type: size`) : `--cap-h` vaut
   `100cqw × 150/400`, la hauteur réelle de la bande du dessin à la largeur de l'écran.
   Déclarée sur `.scan` mais résolue chez ses enfants, qui ont bien `.scan` pour

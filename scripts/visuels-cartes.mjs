@@ -51,6 +51,8 @@ const SERIES = {
   SIT: ['swsh12', 'swsh12tg'], CRZ: ['swsh12.5', 'swsh12.5gg'], CEL: ['cel25', 'cel25cc'],
   SWSH45: ['swsh4.5', 'swsh4.5sv'], PRSWSH: ['swshp'],
   SLE: ['sm3.5'], SM75: ['sm7.5'], SM115: ['sm115', 'sma'], DPK: ['det1'], PRSM: ['smp'],
+  // Méga-Évolution : les promos, numérotées sans total ni préfixe (« 001 »).
+  MEP: ['mep'],
 };
 
 // Les rééditions que le nom ne rattache pas, vérifiées à la main : le Faux Professeur Chen
@@ -121,9 +123,10 @@ async function traite(fichier) {
   const lignes = lisExcel(fichier);
   const entete = lignes.shift();
   const colUrl = Object.keys(entete).find((k) => lignes.some((l) => /pokecardex-scans[^/]*\/sets\//.test(l[k] ?? '')));
-  // Le numéro imprimé : « 001/128 », ou celui d'une promo, sans total (« SM01 », « SWSH001 »).
-  const colNum = Object.keys(entete).find((k) => k !== colUrl && lignes.filter((l) => /^[A-Z0-9]+\/[A-Z0-9]+$|^[A-Z]+\d+[A-Z]?$/i.test(l[k] ?? '')).length > lignes.length / 2);
-  if (!colUrl || !colNum) throw new Error('colonnes introuvables (numéro « 001/128 » ou « SM01 », URL pokecardex-scans)');
+  // Le numéro imprimé : « 001/128 », ou celui d'une promo, sans total (« SM01 », « SWSH001 »,
+  // ou nu chez les promos Méga-Évolution : « 001 »).
+  const colNum = Object.keys(entete).find((k) => k !== colUrl && lignes.filter((l) => /^[A-Z0-9]+\/[A-Z0-9]+$|^[A-Z]*\d+[A-Z]?$/i.test(l[k] ?? '')).length > lignes.length / 2);
+  if (!colUrl || !colNum) throw new Error('colonnes introuvables (numéro « 001/128 », « SM01 » ou « 001 », URL pokecardex-scans)');
   const code = /\/sets\/([^/]+)\//.exec(lignes.find((l) => l[colUrl])[colUrl])[1];
   const ids = SERIES[code];
   if (!ids) throw new Error(`série Pokécardex « ${code} » inconnue : l'ajouter à SERIES`);

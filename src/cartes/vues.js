@@ -1152,6 +1152,30 @@ export function creeCartes(ctx) {
     }
   }
 
+  // La brillance d'une pochette POSSÉDÉE, en vue page (29/10/2026, à la demande) :
+  // « ultra » pour une ultra rare et au-delà (illustrations, hyper rares, chromatiques), toute
+  // la carte holographique ; « rev » pour une reverse, le cadre seul brille. La variante est
+  // celle de la pochette (master set), sinon celle des exemplaires quand on n'a QUE des
+  // reverses — avec une normale en main, c'est elle qu'on range.
+  const ULTRA = new Set(['ultra_rare', 'ar', 'alternative']);
+  function brillance(cle) {
+    const id = cls.idDe(cle), v = cls.varianteDe(cle);
+    const co = coll.carte(id), d = detail(id);
+    const carte = d?.rarity ? d : co?.rar ? { id, rarity: co.rar, name: co.n, localId: co.num } : null;
+    if (carte) {
+      const cat = categorie(carte);
+      if (ULTRA.has(cat) || (cat === 'autre' && /hyper|noir blanc|chromatique|brillant|shiny|secr/i.test(`${carte.rarity} ${carte.name}`))) return 'ultra';
+    }
+    const vs = v ? [v] : (co?.ex || []).map((x) => x.v);
+    return vs.length && vs.every((x) => String(x).startsWith('reverse')) ? 'rev' : '';
+  }
+  // Le rang en diagonale d'une pochette dans sa page (colonne + rangée) : le reflet passe
+  // d'une carte à l'autre comme une lumière qui balaie la page.
+  const diagonale = (c, i) => {
+    const k = i % c.poches, col = c.poches === 4 ? 2 : c.poches === 9 ? 3 : 4;
+    return (k % col) + Math.floor(k / col);
+  };
+
   function poche(c, i) {
     const cles = cls.clesPoche(c.cartes[i]);
     const sel = !!etat.clsSel?.has(i);
@@ -1166,10 +1190,13 @@ export function creeCartes(ctx) {
     if (!info.img && !detail(id)) aCharger.add(id);
     const a = cles.some(possedeCle);
     const n = cles.length === 1 ? exemplairesCle(cle) : 0;
+    const brille = a ? brillance(cle) : '';
     return `
       <button class="cl-poche pleine ${a ? '' : 'manque'} ${sel ? 'choisie' : ''}" data-cl-poche="${i}"
+              ${brille ? `style="--k:${diagonale(c, i)}"` : ''}
               aria-label="${esc(info.nom)} ${esc(info.num)}${v ? ', ' + esc(nomVariante(v)) : ''}${a ? '' : ', ' + esc(t('cxManquantes'))}">
         <img src="${esc(api.image(info.img, 'low'))}" alt="" loading="lazy" decoding="async" />
+        ${brille ? `<span class="cl-brille ${brille}" aria-hidden="true"></span>` : ''}
         ${v ? `<span class="cl-var v-${esc(v)}">${LETTRE_VAR[v] || esc(v.slice(0, 2).toUpperCase())}</span>` : ''}
         ${cles.length > 1 ? `<span class="cl-qte">▦ ${cles.length}</span>` : n > 1 ? `<span class="cl-qte">×${n}</span>` : ''}
         ${etat.clsSel ? `<span class="cx-v-coche" aria-hidden="true">${ICO.coche}</span>` : ''}
@@ -1194,7 +1221,9 @@ export function creeCartes(ctx) {
     const opacite = a <= 1 ? 1 - 0.4 * pres : 0.6 * (2 - a);
     return {
       feuille: `transform: translateX(calc(${(r * 100).toFixed(3)}% + ${(r * ECART_FEUILLES).toFixed(2)}px)) `
-        + `rotateY(${(-sens * 8).toFixed(2)}deg) scale(${echelle.toFixed(4)}); opacity: ${opacite.toFixed(3)}; z-index: ${10 - Math.round(a * 4)}`,
+        + `rotateY(${(-sens * 8).toFixed(2)}deg) scale(${echelle.toFixed(4)}); opacity: ${opacite.toFixed(3)}; z-index: ${10 - Math.round(a * 4)}; `
+        // L'écart de la feuille : l'arc-en-ciel des ultra rares glisse quand la page tourne.
+        + `--r: ${r.toFixed(3)}`,
       voile: `opacity: ${(0.3 * pres).toFixed(3)}`,
     };
   }

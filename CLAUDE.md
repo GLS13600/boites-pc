@@ -507,6 +507,23 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
     appareil) demandent leur détail ; la page suit.
   - Au moins 10 pages, et toujours une de plus que le contenu : on feuillette des pages
     libres comme dans un vrai classeur (Cartodex en imposait 60).
+  - **Brillance des cartes possédées** (29/10/2026, à la demande : « sur une carte reverse
+    ou une ultra rare, un effet de brillance en vue page ») — `brillance()` et `.cl-brille` :
+    - **ultra** (ultra rare, illustration rare, illustration spéciale, hyper rare,
+      chromatique — `ULTRA` + `categorie()`) : toute la carte holographique, un arc-en-ciel
+      en `mix-blend-mode: overlay` qui GLISSE quand on tourne la page (`--r`, l'écart de la
+      feuille, posé par `styleFeuille`). `color-dodge`, essayé d'abord, délavait
+      l'illustration.
+    - **rev** (reverse, Poké Ball, Master Ball) : le CADRE seul, en `screen`, l'illustration
+      découpée par un masque (8–92 % × 10–55 % de la carte). Variante de la pochette (master
+      set), sinon celle des exemplaires quand on n'a QUE des reverses.
+    - Un reflet passe toutes les cinq secondes, décalé de pochette en pochette en diagonale
+      (`--k`, colonne + rangée) : une lumière qui balaie la page. Seule la page d'en face
+      s'anime ; carte manquante (grise) : rien ; mouvement réduit : reflet immobile.
+    - Vérifié dans l'aperçu (animations figées à mi-course pour la capture) : Bulbizarre
+      reverse (par la pochette et par les exemplaires) → cadre ; Dracaufeu-ex et son
+      illustration spéciale → holographiques ; Salamèche, Carapuce (normale en main) et les
+      cartes manquantes → rien ; arc-en-ciel de 35 % à 16 % pendant le glissé.
 - **Couleurs libres, roue chromatique et favoris** (28/10/2026, à la demande) : dans le
   panneau de création et de réglage, la couleur du classeur (couverture) ET celle des
   pages se choisissent parmi les teintes proposées (les six dessinées ; « comme le

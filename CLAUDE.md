@@ -510,12 +510,24 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   - **Brillance des cartes possédées** (29/10/2026, à la demande : « sur une carte reverse
     ou une ultra rare, un effet de brillance en vue page ») — `brillance()` et `.cl-brille` :
     - **ultra** (ultra rare, illustration rare, illustration spéciale, hyper rare,
-      chromatique — `ULTRA` + `categorie()`) : toute la carte holographique, un arc-en-ciel
-      en `mix-blend-mode: overlay` qui GLISSE quand on tourne la page (`--r`, l'écart de la
-      feuille, posé par `styleFeuille`). `color-dodge`, essayé d'abord, délavait
+      chromatique — `ULTRA` + `categorie()`) : toute la carte holographique, en
+      `mix-blend-mode: overlay` (`--holo` 50 %). `color-dodge`, essayé d'abord, délavait
       l'illustration.
-    - **rev** (reverse, Poké Ball, Master Ball) : le CADRE seul, en `screen`. Variante de la
-      pochette (master set), sinon celle des exemplaires quand on n'a QUE des reverses.
+    - **rev** (reverse, Poké Ball, Master Ball) : le CADRE seul, en `hard-light` (`--holo`
+      38 %) — la teinte se voit sur un cadre clair comme sombre. Variante de la pochette
+      (master set), sinon celle des exemplaires quand on n'a QUE des reverses.
+    - **La feuille BOUGE d'elle-même** (`::after`, `clHolo`) : des bandes d'arc-en-ciel en
+      diagonale (`repeating-linear-gradient`, deux arcs-en-ciel par carte) qui ondulent d'un
+      coin à l'autre en 3,6 s, décalées d'une pochette à l'autre ; tourner la page les fait
+      glisser en plus (`--r`, l'écart de la feuille, posé par `styleFeuille`). Le reflet
+      blanc (`::before`, `clReflet`) repasse toutes les 2,4 s.
+      - Retour sur l'iPhone de la première version : « le reflet blanc marche, la
+        brillance est figée ; une marque verte fixe sur les ultra rares ; le cadre des
+        reverses ne brille pas » — un simple dégradé immobile (sauf en tournant la page),
+        dont le milieu vert restait sur la carte, et une reverse en `screen` à 22 %,
+        invisible. Le reflet ne repassait que toutes les 5 s : demandé plus souvent.
+      - Vérifié dans l'aperçu en figeant les animations à 0 puis 1,8 s : les bandes ont
+        bougé, sur le cadre des reverses comme sur les ultra rares.
     - **La brillance d'une reverse n'entre JAMAIS dans l'illustration** (demandé ensuite) :
       la fenêtre de l'illustration est découpée par `clip-path: polygon(evenodd, …)`, ses
       bords passés en variables (`--x1 --x2 --y1 --y2`) par pochette. Elle dépend de

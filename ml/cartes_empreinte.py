@@ -48,6 +48,14 @@ def charge_catalogue(racine):
     cat = json.loads((racine / 'catalogue.json').read_text('utf8'))
     cartes = [dict(c, chemin=racine / 'catalogue' / c['lg'] / f"{c['id']}.webp") for c in cat]
     cartes = [c for c in cartes if c['chemin'].exists()]
+    # Les visuels embarqués dans l'appli (public/visuels-cartes, d'après les relevés
+    # Pokécardex de l'utilisateur), copiés dans <données>/catalogue/visuels par le
+    # lanceur : l'image FRANÇAISE des cartes que TCGdex n'a pas. Certaines n'avaient
+    # aucune image, donc aucune empreinte : le scan ne pouvait pas les reconnaître.
+    francais = {c['id'] for c in cartes if c['lg'] == 'fr'}
+    for f in sorted((racine / 'catalogue' / 'visuels').glob('*.webp')):
+        if f.stem not in francais:
+            cartes.append({'id': f.stem, 'lg': 'fr', 'set': f.stem.rsplit('-', 1)[0], 'chemin': f})
     ids = sorted({c['id'] for c in cartes})
     classe = {i: k for k, i in enumerate(ids)}
     for c in cartes:
@@ -403,6 +411,11 @@ def entraine(args):
         journal, meilleur, debut = st['journal'], st['meilleur'], st['epoque']
         print(f"reprise après l'époque {debut} (meilleur top1 {meilleur})", flush=True)
     else:
+        # Repartir d'un modèle déjà appris (--depart) : l'apprentissage par paires n'a pas
+        # de tête par classe, les cartes nouvelles ne demandent rien de plus.
+        if args.depart:
+            modele.load_state_dict(torch.load(Path(args.depart) / 'meilleur.pt', map_location='cpu'))
+            print(f'départ : {args.depart}', flush=True)
         depart, _ = mesure(modele, cartes, eval_imgs, eval_y, dev)
         print(json.dumps(dict(depart, epoque=0)), flush=True)
     for ep in range(debut, args.epoques):
@@ -544,6 +557,7 @@ if __name__ == '__main__':
     e.add_argument('--ouvriers', type=int, default=12)
     e.add_argument('--par-epoque', type=int, default=0)
     e.add_argument('--n-eval', type=int, default=3000)
+    e.add_argument('--depart', default='', help="dossier d'un run dont on reprend meilleur.pt")
     v = sp.add_parser('evalue')
     v.add_argument('donnees')
     v.add_argument('run')

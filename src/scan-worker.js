@@ -93,7 +93,7 @@ let index = null;
 // Les cartes les plus proches de l'image : moyenne des empreintes des cadrages,
 // renormalisée, puis ressemblance (cosinus) avec chaque carte de l'index. Une carte a
 // souvent DEUX images (française et anglaise) : on garde la meilleure par identifiant.
-// ~9,4 millions de multiplications pour 36 772 cartes : une vingtaine de millisecondes.
+// ~10 millions de multiplications pour 38 924 images : une vingtaine de millisecondes.
 // Le nom est rendu dans la langue demandée : fr et ja ne portent que ce qui diffère de en.
 function cherche(e, n, langue) {
   const { vecteurs: V, dim: D, ids, noms } = index;

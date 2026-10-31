@@ -51,7 +51,7 @@ const MANQUES_MAX = 4;
 const REVERIFIE_MS = 3000;
 
 // ---- Scan des CARTES : l'empreinte visuelle (ml/cartes_empreinte.py) ----
-// La carte vue par la caméra est comparée aux 36 772 images du catalogue (scan-worker.js,
+// La carte vue par la caméra est comparée aux 38 924 images du catalogue (scan-worker.js,
 // `cherche`). C'est une carte si la plus proche lui ressemble à CARTE_SIM au moins ET
 // devance d'au moins CARTE_ECART la première carte d'une autre image. Seuils fixés sur
 // le bilan du 28/10/2026 (ml/cartes_empreinte.py evalue) : à 0,8, 99,0 % des cartes

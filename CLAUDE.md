@@ -2018,6 +2018,27 @@ modèle ultra fiable ». Google Lens n'a pas d'API publique, et Google Cloud Vis
     photos normales (3 000) 97,1 · 99,8 · 99,8 % ; difficiles (1 500) 94,8 · 98,0 · 98,9 %.
   - Vérifié dans l'aperçu : Dracaufeu-ex de « 151 » à 0,986 (suivante 0,712), Dracaufeu
     du Set de Base à 0,986 ; l'artwork de Pikachu plafonne à 0,67 → Pokémon.
+- **Les visuels embarqués rejoignent l'index** (31/10/2026, demandé : « entraîne le
+  modèle avec les nouvelles images des cartes ») : `charge_catalogue` lit aussi
+  `<données>/catalogue/visuels` (copie de `public/visuels-cartes`), soit 2 152 images
+  françaises que TCGdex n'a pas — **913 cartes qui n'avaient AUCUNE image, donc aucune
+  empreinte**, et 1 235 qui n'étaient indexées que par leur image anglaise. Index :
+  **38 924 images, 20 622 cartes** (10 Mo).
+  - **Réentraîner n'a rien apporté, et le modèle n'a PAS changé.** La v3 (`--depart`
+    depuis la v2, 4 époques, lr 5e-5, `A:\Jeu-scan\lance-cartes-v3.cmd`) finit à 97,2 %
+    contre 97,7 % pour la v2 sur le même catalogue, s'effondre sur les photos difficiles
+    (85,3 % contre 93,3 %) et, aux seuils de l'appli, prend **9,2 % des Pokémon seuls,
+    4,2 % des objets et 2 % des scènes vides pour des cartes** (0,1 / 0 / 0 % pour la
+    v2). La perte d'apprentissage tombait à 0,0003 : le réseau apprenait par cœur ses
+    paires. Écartée.
+  - Retenu : la v2 telle quelle, son index refait (`runs/cartes-v2-visuels`,
+    `lance-cartes-v2-visuels.cmd`). `empreinte.onnx` est identique octet pour octet :
+    seuls `index.bin` et `index.json` changent. Aux seuils de l'appli (0,8 / 0,02),
+    photos normales 92,4 % gardées, justes à 100 % (92,7 % avant, sur 2 152 images de
+    moins) ; difficiles 72,7 % / 100 % (73,9 %) ; acceptés à tort 0,1 / 0 / 0 %, inchangé.
+  - Pour une prochaine série de visuels : relancer seulement l'export de la v2 sur le
+    catalogue (`lance-cartes-v2-visuels.cmd`, sans attente si la v3 est finie), puis
+    `node ml/noms-cartes.mjs public/scan-cartes/index.json`. Pas de réentraînement.
 - **Dans le Scan** (scan.js) :
   - Mode Auto : le détecteur pose sa boîte sur l'ILLUSTRATION d'une carte (il a été
     entraîné ainsi). `carteAutour` en déduit le rectangle de la carte entière (fenêtre

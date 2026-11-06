@@ -20,10 +20,14 @@ permissions:
   pages: write
   id-token: write
 
-# Un seul déploiement à la fois ; les poussées rapprochées annulent la précédente.
+# Un seul déploiement à la fois, et ils ATTENDENT leur tour au lieu de s'annuler
+# (06/11/2026). Le workflow iOS relance ce déploiement trois minutes après la poussée :
+# annulé en plein envoi, celui de la poussée laissait côté Pages un déploiement « en
+# cours » que le suivant attendait jusqu'à abandonner (« Timeout reached, aborting! »),
+# et le site restait sur la version d'avant.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:

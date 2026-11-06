@@ -286,7 +286,10 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
         reverse, 1re édition, reverse Poké Ball / Master Ball ; tout autre nom devient une
         variante à lui, `x_<nom>` (a-z et « _ », 24 au plus, comme l'exigent collection.js
         et classeurs.js ; un nom trop long est coupé et suivi de quatre lettres tirées du nom
-        entier, sinon les deux tampons « Master Ball League » se confondaient), affichée
+        entier, sinon les deux tampons « Master Ball League » se confondaient ; les chiffres
+        tombent, et deux noms qui ne diffèrent que par eux — « Top 4 » et « Top 8 (Professor
+        Program) » — prennent aussi l'empreinte, décidé sur TOUS les noms lus avant d'en
+        nommer aucun ; les autres clés ne changent pas), affichée
         sous le nom de Pokécardex (`nomVersionRelevee`). Lettre de pochette : les initiales
         entre parenthèses (« Reverse (Love Ball) » → LB). Une `x_reverse_…` brille comme
         une reverse dans les classeurs.
@@ -306,7 +309,11 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
         Déferlantes (`SSP` → `sv08`), Évolutions Prismatiques (`PRE` → `sv08.5`), Équilibre
         Parfait (`POR` → `me03`), puis Flammes Fantasmagoriques (`PFL` → `me02`), Flammes
         Obsidiennes (`OBF` → `sv03`), Faille Paradoxe (`PAR` → `sv04`), Fable Nébuleuse (`SFA`
-        → `sv06.5`), Flamme Blanche (`WHT` → `sv10.5w`) : 626 cartes, 70 icônes nommées. « Cosmos Reverse » brille comme une reverse (`(^|_)reverse`).
+        → `sv06.5`), Flamme Blanche (`WHT` → `sv10.5w`), puis Forces Temporelles (`TEF` →
+        `sv05`), Mascarade Crépusculaire (`TWM` → `sv06`), Foudre Noire (`BLK` → `sv10.5b`),
+        et Méga-Évolution et Héros Transcendants relevés à nouveau en galerie (l'ancien
+        fichier REMPLACÉ : deux fichiers d'une même série s'effaceraient l'un l'autre) :
+        759 cartes, 72 icônes nommées. « Cosmos Reverse » brille comme une reverse (`(^|_)reverse`).
         Vérifié : Germignon 008 → Normale, Reverse, Reverse (Copain Ball), Holo cosmos ;
         Rafflesia de 151 (« Non Holo ») → Normale, Holo, Reverse ; Ho-Oh de Chaos Ascendant
         → Holo, Reverse, deux tampons.

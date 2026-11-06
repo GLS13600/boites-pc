@@ -58,17 +58,22 @@ const CONNUES = {
 const plat = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 // Les clés de variante n'admettent que a-z et « _ », 24 au plus (collection.js, classeurs.js).
 // Un nom trop long est coupé et suivi de quatre lettres tirées du nom entier : « Tampon
-// (Master Ball League) » et « … League Judge » ne se confondent pas.
+// (Master Ball League) » et « … League Judge » ne se confondent pas. Les chiffres tombent
+// (« Top 8 (EUIC) » → x_top_euic) ; deux noms qui ne diffèrent QUE par eux (« Top 4 » et
+// « Top 8 (Professor Program) ») prennent eux aussi l'empreinte. Les autres clés restent
+// telles quelles : les exemplaires déjà rangés sous elles restent valides.
 const empreinte = (t) => {
   let h = 0;
   for (const ch of t) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return Array.from({ length: 4 }, (_, i) => String.fromCharCode(97 + (Math.floor(h / 26 ** i) % 26))).join('');
 };
+const slugDe = (p) => p.replace(/[^a-z]+/g, '_').replace(/^_+|_+$/g, '');
+let ambigus = new Set();   // les slugs portés par plusieurs noms, relevés avant de nommer
 const cle = (nom) => {
   const p = plat(nom);
   if (CONNUES[p]) return CONNUES[p];
-  const slug = p.replace(/[^a-z]+/g, '_').replace(/^_+|_+$/g, '');
-  return `x_${slug.length <= 22 ? slug : `${slug.slice(0, 17)}_${empreinte(p)}`}`;
+  const slug = slugDe(p);
+  return `x_${slug.length <= 22 && !ambigus.has(slug) ? slug : `${slug.slice(0, 17)}_${empreinte(p)}`}`;
 };
 
 // L'icône d'une version, et ce qui peut être son NOM : du texte, pas une adresse ni un
@@ -89,15 +94,14 @@ const noms = { ...(avant.noms ?? {}) };
 const inconnues = new Map();   // numéro d'icône → { n, exemples }
 const extensionDe = (id) => id.slice(0, Math.max(0, id.lastIndexOf('-')));
 
+// D'abord lire tout : les noms appris d'un fichier servent aux autres, et les clés
+// ambiguës se décident sur l'ensemble des noms.
+const lus = [];
 for (const f of fichiers) {
   let serie;
   try { serie = await rattacheSerie(path.join(DOSSIER, f)); }
   catch (e) { console.log(`${f} : ${e.message}`); continue; }
-  const { lignes, colNum, colUrl, code, ids, rattache, sansCarte } = serie;
-
-  // La série relue remplace ce qu'on en savait.
-  for (const id of Object.keys(cartes)) if (ids.includes(extensionDe(id))) delete cartes[id];
-
+  const { lignes, colNum, colUrl, rattache } = serie;
   // Ce que porte chaque ligne : ses icônes de version et les noms écrits en clair.
   const releves = [...rattache].map(([i, c]) => {
     const icones = [], textes = [];
@@ -112,6 +116,22 @@ for (const f of fichiers) {
     if (icones.length === 1 && textes.length === 1) NOMS[icones[0]] = textes[0];
     return { i, c, icones, textes };
   });
+  lus.push({ f, serie, releves });
+}
+
+const parSlug = new Map();
+for (const nom of new Set([...Object.values(NOMS), ...lus.flatMap((x) => x.releves.flatMap((r) => r.textes))])) {
+  const p = plat(nom);
+  if (CONNUES[p]) continue;
+  const slug = slugDe(p);
+  parSlug.set(slug, new Set([...(parSlug.get(slug) ?? []), p]));
+}
+ambigus = new Set([...parSlug].filter(([, ps]) => ps.size > 1).map(([slug]) => slug));
+
+for (const { f, serie, releves } of lus) {
+  const { lignes, colNum, code, ids, rattache, sansCarte } = serie;
+  // La série relue remplace ce qu'on en savait.
+  for (const id of Object.keys(cartes)) if (ids.includes(extensionDe(id))) delete cartes[id];
 
   const compte = new Map();
   const parCarte = new Map();   // une carte peut avoir plusieurs lignes (mode galerie)

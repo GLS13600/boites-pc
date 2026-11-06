@@ -71,7 +71,8 @@ const lis = (chemin, age, lg) => lisBrut(chemin, age, lg)
   .then(async (v) => { if ((lg ?? LANGUE) === 'en') await chargeImagesAnglaises(); return completeImages(v); });
 async function lisBrut(chemin, age, lg = LANGUE) {
   const cle = cleDe(chemin, lg);
-  const frais = (e) => e && Date.now() - e.t < age;
+  // `age` peut dépendre de ce qu'on a lu (une carte sans image se redemande plus tôt).
+  const frais = (e) => e && Date.now() - e.t < (typeof age === 'function' ? age(e.v) : age);
   const m = memoire.get(cle);
   if (frais(m)) return m.v;
   if (enVol.has(cle)) return enVol.get(cle);
@@ -205,15 +206,18 @@ function completeImages(v) {
 export const estVisuelLocal = (base) => typeof base === 'string' && base.startsWith('visuels-cartes/');
 
 // ---------------------------------------------------------------- l'API
-export const series = () => lis('/series', 7 * JOUR);
+// Listes des séries et des extensions relues CHAQUE JOUR (sept jours jusqu'au 06/11/2026) :
+// une extension qui sort (Règne Delta, une promo d'un coffret) paraît le lendemain du jour où
+// TCGdex la publie, pas une semaine plus tard. Ce sont de petites listes.
+export const series = () => lis('/series', JOUR);
 // Toutes les extensions, dans l'ordre de sortie : leurs noms pour les résultats d'une
 // recherche, et l'ordre pour montrer les cartes récentes d'abord.
-export const toutesExtensions = () => lis('/sets', 7 * JOUR).then((l) => { if (Array.isArray(l)) l.forEach(completeLogo); return fusionneListe(l); });
-export const serie = (id) => lis(`/series/${encodeURIComponent(id)}`, 7 * JOUR)
+export const toutesExtensions = () => lis('/sets', JOUR).then((l) => { if (Array.isArray(l)) l.forEach(completeLogo); return fusionneListe(l); });
+export const serie = (id) => lis(`/series/${encodeURIComponent(id)}`, JOUR)
   .then((d) => { d?.sets?.forEach(completeLogo); return d?.sets ? { ...d, sets: fusionneListe(d.sets) } : d; });
 // Une extension hôte rend ses cartes PUIS celles des extensions absorbées ; demander une
 // absorbée rend son hôte.
-const lisExtension = (id) => lis(`/sets/${encodeURIComponent(id)}`, 3 * JOUR).then(completeLogo);
+const lisExtension = (id) => lis(`/sets/${encodeURIComponent(id)}`, JOUR).then(completeLogo);
 export const extension = async (id) => {
   const h = hote(id);
   // Une absorbée illisible (hors ligne, pas encore en cache) ne prive pas de l'hôte.
@@ -228,9 +232,12 @@ export const extension = async (id) => {
   };
 };
 // Le détail d'une carte : rareté, variantes, Pokémon représentés, prix. Le prix bouge
-// chaque jour, le reste jamais : `pourPrix` raccourcit la durée de garde à un jour.
+// chaque jour, le reste jamais : `pourPrix` raccourcit la durée de garde à un jour. Une
+// carte que TCGdex publie SANS image (une promo qui vient de sortir) se redemande chaque jour :
+// l'image arrive souvent après la carte.
+const gardeCarte = (v) => (v?.image ? 30 * JOUR : JOUR);
 export const carte = (id, { pourPrix = false } = {}) =>
-  lis(`/cards/${encodeURIComponent(id)}`, pourPrix ? JOUR : 30 * JOUR);
+  lis(`/cards/${encodeURIComponent(id)}`, pourPrix ? JOUR : gardeCarte);
 export const cherche = (nom) => lis(`/cards?name=${encodeURIComponent(nom)}`, JOUR / 24);
 export const parPokedex = (num) => lis(`/cards?dexId=eq:${Number(num)}`, 7 * JOUR);
 export const cheminCarte = (id) => `/cards/${encodeURIComponent(id)}`;
@@ -243,7 +250,7 @@ function suivant() {
   while (actives < 4 && file.length) {
     const { id, pourPrix, autre, ok, ko } = file.shift();
     actives++;
-    (autre ? lis(cheminCarte(id), 30 * JOUR, autreLangue()) : carte(id, { pourPrix }))
+    (autre ? lis(cheminCarte(id), gardeCarte, autreLangue()) : carte(id, { pourPrix }))
       .then(ok, ko).finally(() => { actives--; suivant(); });
   }
 }

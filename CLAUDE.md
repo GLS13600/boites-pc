@@ -531,6 +531,14 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   (`pcbox.sescartes`). `toggle` ne remontant pas, il est écouté en capture sur le document. Toucher une carte ouvre sa fiche PAR-DESSUS celle du
   Pokémon ; le voile ne referme alors que la carte (même règle que le document légal
   par-dessus l'abonnement). En miroir, « Dans le Pokédex » de la fiche d'une carte.
+- **Nouveautés de TCGdex vues le lendemain** (06/11/2026) : séries, liste des extensions et
+  contenu d'une extension sont relus CHAQUE JOUR (sept et trois jours avant), et le détail
+  d'une carte publiée SANS image chaque jour aussi (`gardeCarte` ; trente jours sinon) —
+  l'image arrive souvent après la carte. Demandé pour Règne Delta (ME06, sortie le
+  06/11/2026) et ses promos (Kyogre du Coffret Dresseur d'Élite) : ce jour-là TCGdex n'avait
+  encore ni `me06` ni ces promos. Rien à coder pour la faire paraître : une extension de la
+  série `me` se range d'elle-même dans le bloc Méga-Évolution, à son rang de sortie. Son code
+  Pokécardex (pour SERIES) sera lu dans l'adresse des scans de son premier relevé.
 - **Résultats d'une recherche** : nom de l'extension en légende et les plus RÉCENTES
   d'abord, d'après la liste des 202 extensions de TCGdex (`/sets`, dans l'ordre de
   sortie, lue une fois et gardée sept jours).

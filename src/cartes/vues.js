@@ -1279,7 +1279,7 @@ export function creeCartes(ctx) {
     }
     const vs = v ? [v] : (co?.ex || []).map((x) => x.v);
     // Les reverses relevées chez Pokécardex (« x_reverse_love_ball »…) brillent comme les autres.
-    if (!vs.length || !vs.every((x) => /^(x_)?reverse/.test(String(x)))) return null;
+    if (!vs.length || !vs.every((x) => /(^|_)reverse/.test(String(x)))) return null;
     const g = genreCarte(d, co);
     return { genre: 'rev', fenetre: g === 'E' ? FENETRE_ENERGIE : FENETRES[epoque(id)][g] };
   }

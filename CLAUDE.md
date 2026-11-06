@@ -297,10 +297,15 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
       - **Façon de travailler (06/11/2026)** : l'utilisateur joint l'Excel dans la
         conversation ; Claude le copie dans `reference/visuels-cartes/excel/`, lance
         `npm run versions-cartes`, vérifie dans l'aperçu et committe.
-      - Relevés : Méga-Évolution (`MEG` → `me01`, icônes seules, 22 lignes : 9 cartes
-        nommées grâce aux noms appris, 6 icônes encore inconnues) ; Héros Transcendants
-        (`ASC` → `me02.5`, galerie, 155 lignes, 144 cartes, 12 icônes apprises). Vérifié
-        dans la fiche : Germignon 008 → Normale, Reverse, Reverse (Copain Ball), Holo cosmos.
+      - Relevés (codes dans `SERIES` de pokecardex-excel.mjs) : Méga-Évolution (`MEG` →
+        `me01`, icônes seules, nommées par les relevés suivants sauf la 187), Héros
+        Transcendants (`ASC` → `me02.5`, 144 cartes), Chaos Ascendant (`CRI` → `me04`),
+        151 (`MEW` → `sv03.5`), Destinées de Paldea (`PAF` → `sv04.5`), Couronne
+        Stellaire (`SCR` → `sv07`), Aventures Ensemble (`JTG` → `sv09`) : 249 cartes, 33
+        icônes nommées. « Cosmos Reverse » brille comme une reverse (`(^|_)reverse`).
+        Vérifié : Germignon 008 → Normale, Reverse, Reverse (Copain Ball), Holo cosmos ;
+        Rafflesia de 151 (« Non Holo ») → Normale, Holo, Reverse ; Ho-Oh de Chaos Ascendant
+        → Holo, Reverse, deux tampons.
     - Piège : TCGdex donne à six cartes de Southern Islands (Mew, Togepi, Coxy, Marill,
       Roigada, Rafflesia) la SEULE variante reverse. La retirer après coup les laissait
       sans aucune variante ; elle est écartée avant le repli sur la version normale.

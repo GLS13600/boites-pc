@@ -315,7 +315,9 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
         fichier REMPLACÉ : deux fichiers d'une même série s'effaceraient l'un l'autre) :
         puis Rivalités Destinées (`DRI` → `sv10`), Nuit Noire (`PBL` → `me05`), promos
         Écarlate et Violet (`SVP` → `svp`) et Méga-Évolution (`MEP` → `mep` ; 111 à 114 et
-        117 pas encore chez TCGdex) : 892 cartes, 87 icônes nommées. « Cosmos Reverse » brille comme une reverse (`(^|_)reverse`).
+        117 pas encore chez TCGdex), puis les promos XY (`PRXY` → `xyp`), Noir et Blanc
+        (`PRBW` → `bwp`), Soleil et Lune (`PRSM` → `smp`), Épée et Bouclier (`PRSWSH` →
+        `swshp`) : 1 044 cartes, 99 icônes nommées. « Cosmos Reverse » brille comme une reverse (`(^|_)reverse`).
         Vérifié : Germignon 008 → Normale, Reverse, Reverse (Copain Ball), Holo cosmos ;
         Rafflesia de 151 (« Non Holo ») → Normale, Holo, Reverse ; Ho-Oh de Chaos Ascendant
         → Holo, Reverse, deux tampons.

@@ -21,7 +21,7 @@ export const SERIES = {
   // Épée et Bouclier, avec leurs galeries et coffres ; Soleil et Lune ; les deux promos.
   BRS: ['swsh9', 'swsh9tg'], ASR: ['swsh10', 'swsh10tg'], PGO: ['swsh10.5'], LOR: ['swsh11', 'swsh11tg'],
   SIT: ['swsh12', 'swsh12tg'], CRZ: ['swsh12.5', 'swsh12.5gg'], CEL: ['cel25', 'cel25cc'],
-  SWSH45: ['swsh4.5', 'swsh4.5sv'], PRSWSH: ['swshp'],
+  SWSH45: ['swsh4.5', 'swsh4.5sv'], PRSWSH: ['swshp'], PRXY: ['xyp'], PRBW: ['bwp'],
   SLE: ['sm3.5'], SM75: ['sm7.5'], SM115: ['sm115', 'sma'], DPK: ['det1'], PRSM: ['smp'],
   // Méga-Évolution : les promos, numérotées sans total ni préfixe (« 001 »).
   MEP: ['mep'],

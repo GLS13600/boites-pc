@@ -313,7 +313,9 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
         `sv05`), Mascarade Crépusculaire (`TWM` → `sv06`), Foudre Noire (`BLK` → `sv10.5b`),
         et Méga-Évolution et Héros Transcendants relevés à nouveau en galerie (l'ancien
         fichier REMPLACÉ : deux fichiers d'une même série s'effaceraient l'un l'autre) :
-        759 cartes, 72 icônes nommées. « Cosmos Reverse » brille comme une reverse (`(^|_)reverse`).
+        puis Rivalités Destinées (`DRI` → `sv10`), Nuit Noire (`PBL` → `me05`), promos
+        Écarlate et Violet (`SVP` → `svp`) et Méga-Évolution (`MEP` → `mep` ; 111 à 114 et
+        117 pas encore chez TCGdex) : 892 cartes, 87 icônes nommées. « Cosmos Reverse » brille comme une reverse (`(^|_)reverse`).
         Vérifié : Germignon 008 → Normale, Reverse, Reverse (Copain Ball), Holo cosmos ;
         Rafflesia de 151 (« Non Holo ») → Normale, Holo, Reverse ; Ho-Oh de Chaos Ascendant
         → Holo, Reverse, deux tampons.

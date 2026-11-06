@@ -58,7 +58,10 @@ async function traite(fichier) {
       if (c.image) break;
     }
   }
-  const aTelecharger = [...rattache].filter(([, c]) => !c.image);
+  // Un relevé en mode galerie donne le scan de chaque VERSION (…/sets/ASC/FR/94/1.jpg) : ce
+  // n'est pas le visuel de la carte, il ne sert pas ici.
+  const versionScan = (i) => /\/[A-Z]{2}\/\d+\/[^/]+$/.test(String(lignes[i][colUrl] ?? '').split('?')[0]);
+  const aTelecharger = [...rattache].filter(([i, c]) => !c.image && !versionScan(i));
   console.log(`${path.basename(fichier)} (${code} → ${ids.join(' + ')}) : ${rattache.size} / ${lignes.length} lignes rattachées, `
     + `${aTelecharger.length} sans image française chez TCGdex`);
   if (sansCarte.length) console.log(`  lignes non rattachées : ${sansCarte.join(', ')}`);

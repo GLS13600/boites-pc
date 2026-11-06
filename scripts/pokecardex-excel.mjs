@@ -26,7 +26,7 @@ export const SERIES = {
   // Méga-Évolution : les promos, numérotées sans total ni préfixe (« 001 »).
   MEP: ['mep'],
   // Méga-Évolution : l'extension (« 001/132 »).
-  MEG: ['me01'],
+  MEG: ['me01'], ASC: ['me02.5'],
   // Diamant et Perle, Platine-HeartGold : L'appel des Légendes (seule extension `col1`).
   DP: ['dp1'], MT: ['dp2'], SW: ['dp3'], GE: ['dp4'], MD: ['dp5'], LA: ['dp6'], SF: ['dp7'],
   PRDP: ['dpp'], CL: ['col1'],
@@ -135,6 +135,13 @@ export async function rattacheSerie(fichier) {
     const c = cartes.find((x) => libres.has(x.id) && x.local === num(a) && (!/^\d+$/.test(total) || Number(total) === officiel[x.set]));
     if (c) { rattache.set(i, c); libres.delete(c.id); }
   }
+  // Relevé en mode GALERIE : une ligne par version, donc plusieurs lignes au même numéro.
+  // Elles vont toutes à la carte de la première.
+  const memes = () => {
+    const parNumero = new Map([...rattache].map(([i, c]) => [lignes[i][colNum], c]));
+    for (const [i, l] of lignes.entries()) if (!rattache.has(i) && parNumero.has(l[colNum])) rattache.set(i, parNumero.get(l[colNum]));
+  };
+  memes();
   // 2. Rééditions au numéro d'origine : l'originale, puis son nom chez les cartes restantes.
   for (const [i, l] of lignes.entries()) {
     if (rattache.has(i)) continue;
@@ -149,6 +156,7 @@ export async function rattacheSerie(fichier) {
     if (c) { rattache.set(i, c); libres.delete(c.id); }
   }
 
+  memes();
   const sansLigne = cartes.filter((c) => libres.has(c.id));
   const sansCarte = lignes.map((l, i) => (rattache.has(i) ? null : `${l[colNum]}`)).filter(Boolean);
   return { lignes, colNum, colUrl, code, ids, cartes, rattache, sansLigne, sansCarte };

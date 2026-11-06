@@ -269,25 +269,38 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
       visuels-cartes.mjs) et écrit `src/data/versions-cartes.json` :
       `{ cartes: { id: [clés] }, noms: { x_…: nom } }`. Une série relue remplace ce qu'on
       savait d'elle.
-      - Le relevé ne porte PAS le nom des versions : seulement l'icône numérotée
-        (`…/versions/version_39.png`), surtout en « image2 », parfois à la place de la
-        reverse. Toute la ligne est lue ; normale et reverse (`card_normale.svg`,
-        `card_reverse.svg`) sont ignorées, l'appli les déduit. Le nom de chaque numéro se
-        donne dans `NOMS` du script ; un numéro sans nom n'est jamais deviné, il est listé
-        dans `reference/visuels-cartes/versions-inconnues.html` (icônes affichées par le
+      - **Le nom vient du relevé « galerie »** (colonne « data2 » : « Holo Cosmos »,
+        « Reverse (Love Ball) », « Tampon (30 ans) »), une ligne PAR VERSION, l'icône
+        numérotée à côté (`…/versions/version_215.png`). Une ligne qui porte une icône et un
+        nom APPREND le nom de l'icône, gardé dans `scripts/versions-pokecardex.json`
+        (versionné) : un relevé plus ancien, qui n'a que les icônes (Méga-Évolution), en
+        profite. Un numéro jamais nommé n'est pas deviné : il est listé dans
+        `reference/visuels-cartes/versions-inconnues.html` (icônes affichées par le
         navigateur de l'utilisateur — Claude ne les charge pas, robots.txt de Pokécardex).
-        Une cellule qui porte le NOM en texte (titre de l'icône relevé) est lue telle quelle.
+        Toute la ligne est lue ; normale et reverse (`.svg`) sont ignorées, l'appli les
+        déduit ; « NV » (deux lettres) n'est pas un nom de version.
+      - Plusieurs lignes au même numéro (mode galerie) vont à la même carte (`memes` dans
+        pokecardex-excel.mjs). visuels-cartes.mjs ne prend jamais le scan d'une VERSION
+        (`…/sets/ASC/FR/94/1.jpg`) pour visuel.
       - Nom → clé : holo cosmos → `cosmos`, tampon → `tampon`, non holo → `normal`, holo,
         reverse, 1re édition, reverse Poké Ball / Master Ball ; tout autre nom devient une
         variante à lui, `x_<nom>` (a-z et « _ », 24 au plus, comme l'exigent collection.js
-        et classeurs.js), affichée sous le nom de Pokécardex (`nomVersionRelevee`).
+        et classeurs.js ; un nom trop long est coupé et suivi de quatre lettres tirées du nom
+        entier, sinon les deux tampons « Master Ball League » se confondaient), affichée
+        sous le nom de Pokécardex (`nomVersionRelevee`). Lettre de pochette : les initiales
+        entre parenthèses (« Reverse (Love Ball) » → LB). Une `x_reverse_…` brille comme
+        une reverse dans les classeurs.
       - regles.js : `versionsEnPlus` (VERSIONS_EN_PLUS + relevé) ajoute chaque version à sa
         place — normale en tête, holo après elle, reverse avant la 1re édition, le reste à
         la fin — et `varianteReelle` ne convertit pas une version que le relevé donne à la
         carte (une « non holo » d'une rare d'Écarlate et Violet reste normale).
-      - Premier relevé : Méga-Évolution (`MEG` → `me01`), 22 / 22 lignes rattachées, 9
-        icônes à nommer. Vérifié avec des données provisoires : Kyogre → Holo, Reverse,
-        Holo cosmos dans la fiche ; Élekable (DP) → Normale en tête, version « x_ » nommée.
+      - **Façon de travailler (06/11/2026)** : l'utilisateur joint l'Excel dans la
+        conversation ; Claude le copie dans `reference/visuels-cartes/excel/`, lance
+        `npm run versions-cartes`, vérifie dans l'aperçu et committe.
+      - Relevés : Méga-Évolution (`MEG` → `me01`, icônes seules, 22 lignes : 9 cartes
+        nommées grâce aux noms appris, 6 icônes encore inconnues) ; Héros Transcendants
+        (`ASC` → `me02.5`, galerie, 155 lignes, 144 cartes, 12 icônes apprises). Vérifié
+        dans la fiche : Germignon 008 → Normale, Reverse, Reverse (Copain Ball), Holo cosmos.
     - Piège : TCGdex donne à six cartes de Southern Islands (Mew, Togepi, Coxy, Marill,
       Roigada, Rafflesia) la SEULE variante reverse. La retirer après coup les laissait
       sans aucune variante ; elle est écartée avant le repli sur la version normale.

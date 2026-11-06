@@ -1099,6 +1099,13 @@ export function creeCartes(ctx) {
     const v = cls.varianteDe(k);
     return v ? coll.exemplairesVariante(cls.idDe(k), v) : coll.exemplaires(cls.idDe(k));
   };
+  // Une version relevée chez Pokécardex : les initiales de ce qui est entre parenthèses
+  // (« Reverse (Love Ball) » → LB, « Tampon (30 ans) » → 3A), sinon ses deux premières lettres.
+  const lettreVersion = (v) => {
+    const nom = nomVariante(v);
+    const entre = /\(([^)]+)\)/.exec(nom)?.[1];
+    return (entre ? entre.split(/\s+/).map((m) => m[0]).join('').slice(0, 3) : nom.slice(0, 2)).toUpperCase();
+  };
   const LETTRE_VAR = { normal: 'N', holo: 'H', reverse: 'R', premiere: '1', reverse_pokeball: 'PB', reverse_masterball: 'MB', cosmos: 'C', tampon: 'T' };
   const reduit = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const logoSet = (id) => extensions.get(api.hote(id))?.logo || extensions.get(id)?.logo || toutesExt?.get(api.hote(id))?.logo || '';
@@ -1271,7 +1278,8 @@ export function creeCartes(ctx) {
       if (ULTRA.has(cat) || (cat === 'autre' && /hyper|noir blanc|chromatique|brillant|shiny|secr/i.test(`${carte.rarity} ${carte.name}`))) return { genre: 'ultra' };
     }
     const vs = v ? [v] : (co?.ex || []).map((x) => x.v);
-    if (!vs.length || !vs.every((x) => String(x).startsWith('reverse'))) return null;
+    // Les reverses relevées chez Pokécardex (« x_reverse_love_ball »…) brillent comme les autres.
+    if (!vs.length || !vs.every((x) => /^(x_)?reverse/.test(String(x)))) return null;
     const g = genreCarte(d, co);
     return { genre: 'rev', fenetre: g === 'E' ? FENETRE_ENERGIE : FENETRES[epoque(id)][g] };
   }
@@ -1304,7 +1312,7 @@ export function creeCartes(ctx) {
               aria-label="${esc(info.nom)} ${esc(info.num)}${v ? ', ' + esc(nomVariante(v)) : ''}${a ? '' : ', ' + esc(t('cxManquantes'))}">
         <img src="${esc(api.image(info.img, 'low'))}" alt="" loading="lazy" decoding="async" />
         ${brille ? `<span class="cl-brille ${brille.genre}"${fenetre} aria-hidden="true"></span>` : ''}
-        ${v ? `<span class="cl-var v-${esc(v)}">${LETTRE_VAR[v] || esc(nomVariante(v).slice(0, 2).toUpperCase())}</span>` : ''}
+        ${v ? `<span class="cl-var v-${esc(v)}">${esc(LETTRE_VAR[v] || lettreVersion(v))}</span>` : ''}
         ${cles.length > 1 ? `<span class="cl-qte">▦ ${cles.length}</span>` : n > 1 ? `<span class="cl-qte">×${n}</span>` : ''}
         ${etat.clsSel ? `<span class="cx-v-coche" aria-hidden="true">${ICO.coche}</span>` : ''}
       </button>`;

@@ -317,7 +317,7 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
         Écarlate et Violet (`SVP` → `svp`) et Méga-Évolution (`MEP` → `mep` ; 111 à 114 et
         117 pas encore chez TCGdex), puis les promos XY (`PRXY` → `xyp`), Noir et Blanc
         (`PRBW` → `bwp`), Soleil et Lune (`PRSM` → `smp`), Épée et Bouclier (`PRSWSH` →
-        `swshp`) : 1 044 cartes, 99 icônes nommées. « Cosmos Reverse » brille comme une reverse (`(^|_)reverse`).
+        `swshp`), puis Noir et Blanc (`BLW` → `bw1`) : 1 078 cartes, 101 icônes nommées. « Cosmos Reverse » brille comme une reverse (`(^|_)reverse`).
         Vérifié : Germignon 008 → Normale, Reverse, Reverse (Copain Ball), Holo cosmos ;
         Rafflesia de 151 (« Non Holo ») → Normale, Holo, Reverse ; Ho-Oh de Chaos Ascendant
         → Holo, Reverse, deux tampons.

@@ -21,6 +21,7 @@
     "fetch-elevage": "node scripts/fetch-elevage.mjs",
     "fetch-logos-cartes": "node scripts/fetch-logos-cartes.mjs",
     "images-anglaises": "node scripts/images-anglaises.mjs",
+    "versions-cartes": "node scripts/versions-cartes.mjs",
     "predev": "node scripts/assemble-modeles.mjs",
     "fetch-i18n": "node scripts/fetch-i18n.mjs"
   },

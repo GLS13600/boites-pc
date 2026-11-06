@@ -1,6 +1,7 @@
 // Les règles du collectionneur, reprises de Cartodex : catégories de rareté et
 // variantes qu'une carte peut prendre. C'est le savoir métier de l'appli de cartes ;
 // on le garde à part, sans rien d'interface, pour qu'il se lise et se corrige d'un bloc.
+import RELEVEES from '../data/versions-cartes.json';
 
 // ---------------------------------------------------------------- rareté
 // TCGdex écrit la rareté de quarante façons (« Commune », « Double rare »,
@@ -60,6 +61,14 @@ const SANS_REVERSE = (ext) => WIZARDS_SANS_REVERSE.test(ext) || /^30th/i.test(ex
 // Des versions propres à UNE carte (06/11/2026, à la demande), ajoutées à ses autres :
 // l'Évoli holo cosmos et le Mewtwo tamponné du 30ᵉ Anniversaire.
 const VERSIONS_EN_PLUS = { '30th-116': ['cosmos'], '30th-063': ['tampon'] };
+// Et celles des relevés Pokécardex de l'utilisateur (scripts/versions-cartes.mjs) : holo
+// cosmos, tampon, non holo… carte par carte. Une version qui n'a pas de clé dans l'appli y
+// porte la sienne (« x_… ») et son nom tel que Pokécardex l'écrit.
+const versionsEnPlus = (id) => {
+  const k = String(id ?? '');
+  return [...(VERSIONS_EN_PLUS[k] || []), ...(RELEVEES.cartes?.[k] || [])];
+};
+export const nomVersionRelevee = (v) => RELEVEES.noms?.[v] ?? null;
 
 // Les variantes qu'une carte peut prendre, dans l'ordre d'affichage. TCGdex les
 // publie désormais carte par carte (`variants`) : on les suit quand on les a, et l'on
@@ -98,6 +107,8 @@ const rareToutHolo = (c) => holoClassique(c) && ERE_TOUT_HOLO.test(extensionDe(c
 // ou de Méga-Évolution est sa version holo. Rareté inconnue : on ne tranche pas.
 export function varianteReelle(c, v) {
   if (v !== 'holo' && v !== 'normal') return v;
+  // Une version que le relevé donne à CETTE carte (une « non holo » d'une rare holo) reste.
+  if (versionsEnPlus(c?.id).includes(v)) return v;
   const r = String(c?.rarity ?? c?.rar ?? '').trim();
   if (!r) return v;
   if (v === 'holo') return holoClassique(c) ? v : 'normal';
@@ -127,7 +138,17 @@ export function variantes(c, setId) {
     liste.splice(p < 0 ? liste.length : p, 0, 'reverse');
   }
   if (courante && extensionABall(ext)) liste.push('reverse_pokeball', 'reverse_masterball');
-  for (const x of VERSIONS_EN_PLUS[String(c?.id ?? '')] || []) if (!liste.includes(x)) liste.push(x);
+  // Les versions propres à la carte, chacune à sa place d'affichage : la normale en tête,
+  // la holo après elle, la reverse avant la première édition, les autres à la fin.
+  for (const x of versionsEnPlus(c?.id)) {
+    if (liste.includes(x)) continue;
+    if (x === 'normal') liste.unshift(x);
+    else if (x === 'holo') liste.splice(liste[0] === 'normal' ? 1 : 0, 0, x);
+    else if (x === 'reverse') {
+      const p = liste.indexOf('premiere');
+      liste.splice(p < 0 ? liste.length : p, 0, x);
+    } else liste.push(x);
+  }
   return liste;
 }
 

@@ -262,6 +262,32 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
       couleur d'étiquette. Pas de prix propre chez TCGdex : celui de la carte.
       Vérifié : master set du 30ᵉ à 193 vignettes (191 + 2), aucune reverse ; fiche
       d'Évoli : Normale, Holo cosmos ; 151 garde ses reverses.
+    - **Versions relevées chez Pokécardex** (`npm run versions-cartes`, 06/11/2026, à la
+      demande) : `scripts/versions-cartes.mjs` lit les MÊMES Excel que les visuels
+      (`reference/visuels-cartes/excel/`), rattache chaque ligne à sa carte (colonne
+      « data », module commun `scripts/pokecardex-excel.mjs`, qui sert aussi à
+      visuels-cartes.mjs) et écrit `src/data/versions-cartes.json` :
+      `{ cartes: { id: [clés] }, noms: { x_…: nom } }`. Une série relue remplace ce qu'on
+      savait d'elle.
+      - Le relevé ne porte PAS le nom des versions : seulement l'icône numérotée
+        (`…/versions/version_39.png`), surtout en « image2 », parfois à la place de la
+        reverse. Toute la ligne est lue ; normale et reverse (`card_normale.svg`,
+        `card_reverse.svg`) sont ignorées, l'appli les déduit. Le nom de chaque numéro se
+        donne dans `NOMS` du script ; un numéro sans nom n'est jamais deviné, il est listé
+        dans `reference/visuels-cartes/versions-inconnues.html` (icônes affichées par le
+        navigateur de l'utilisateur — Claude ne les charge pas, robots.txt de Pokécardex).
+        Une cellule qui porte le NOM en texte (titre de l'icône relevé) est lue telle quelle.
+      - Nom → clé : holo cosmos → `cosmos`, tampon → `tampon`, non holo → `normal`, holo,
+        reverse, 1re édition, reverse Poké Ball / Master Ball ; tout autre nom devient une
+        variante à lui, `x_<nom>` (a-z et « _ », 24 au plus, comme l'exigent collection.js
+        et classeurs.js), affichée sous le nom de Pokécardex (`nomVersionRelevee`).
+      - regles.js : `versionsEnPlus` (VERSIONS_EN_PLUS + relevé) ajoute chaque version à sa
+        place — normale en tête, holo après elle, reverse avant la 1re édition, le reste à
+        la fin — et `varianteReelle` ne convertit pas une version que le relevé donne à la
+        carte (une « non holo » d'une rare d'Écarlate et Violet reste normale).
+      - Premier relevé : Méga-Évolution (`MEG` → `me01`), 22 / 22 lignes rattachées, 9
+        icônes à nommer. Vérifié avec des données provisoires : Kyogre → Holo, Reverse,
+        Holo cosmos dans la fiche ; Élekable (DP) → Normale en tête, version « x_ » nommée.
     - Piège : TCGdex donne à six cartes de Southern Islands (Mew, Togepi, Coxy, Marill,
       Roigada, Rafflesia) la SEULE variante reverse. La retirer après coup les laissait
       sans aucune variante ; elle est écartée avant le repli sur la version normale.
@@ -1182,6 +1208,9 @@ déclencheur coûteux** — il faudrait alors revenir à `workflow_dispatch` seu
 | `ml/suivi_cartes.py` | Tableau de bord en console de l'apprentissage |
 | `ml/cartes_doublons.py` | Groupes de rééditions par pHash (trop large : le bilan compare des vignettes de couleur) |
 | `scripts/visuels-cartes.mjs` | Visuels absents de TCGdex, d'après les relevés Pokécardex de l'utilisateur (Excel dans `reference/visuels-cartes/excel/`, hors git) |
+| `scripts/pokecardex-excel.mjs` | Lecture de ces Excel et rattachement aux cartes TCGdex (`SERIES`, `FORCES`), commun aux deux scripts |
+| `scripts/versions-cartes.mjs` | Versions propres à chaque carte (holo cosmos, tampon…) d'après les mêmes Excel (`npm run versions-cartes`) |
+| `src/data/versions-cartes.json` | Leur table, lue par `regles.js`, **générée** |
 | `public/visuels-cartes/` | Ces visuels, nommés par identifiant TCGdex (`30th-c-014.webp`), **générés** |
 | `src/data/visuels-cartes.json` | Leur liste, lue par `api.js`, **générée** |
 | `scripts/images-anglaises.mjs` | Image de chaque carte ANGLAISE dans la base Pokémon TCG (`npm run images-anglaises`, `SEULEMENT=` pour refaire quelques extensions) |

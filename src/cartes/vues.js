@@ -18,7 +18,7 @@ import * as cls from './classeurs.js';
 import * as advisor from './advisor.js';
 import * as favoris from './favoris.js';
 import * as couleurs from './couleurs.js';
-import { categorie, variantes, varianteReelle, CATEGORIES, ETATS, VARIANTES, cleEtat, distance } from './regles.js';
+import { categorie, variantes, varianteReelle, nomVersionRelevee, CATEGORIES, ETATS, VARIANTES, cleEtat, distance } from './regles.js';
 
 const BLOCS_KEY = 'pcbox.cartes.blocs';
 // Les blocs, dans l'ordre de Pokécardex : du plus récent au plus ancien, puis les
@@ -165,7 +165,8 @@ export function creeCartes(ctx) {
   let pageAffichee = null;
 
   const detail = (id) => api.connuEnMemoire(api.cheminCarte(id));
-  const nomVariante = (v) => t(`variante_${v}`);
+  // Une version relevée chez Pokécardex sans clé dans l'appli (« x_… ») garde son nom.
+  const nomVariante = (v) => nomVersionRelevee(v) ?? t(`variante_${v}`);
   const nomEtat = (e) => t(`etat_${cleEtat(e)}`);
   const vueCartes = () => ['extensions', 'collection', 'classeurs', 'valeur', 'advisor'].includes(ctx.vue());
 
@@ -1303,7 +1304,7 @@ export function creeCartes(ctx) {
               aria-label="${esc(info.nom)} ${esc(info.num)}${v ? ', ' + esc(nomVariante(v)) : ''}${a ? '' : ', ' + esc(t('cxManquantes'))}">
         <img src="${esc(api.image(info.img, 'low'))}" alt="" loading="lazy" decoding="async" />
         ${brille ? `<span class="cl-brille ${brille.genre}"${fenetre} aria-hidden="true"></span>` : ''}
-        ${v ? `<span class="cl-var v-${esc(v)}">${LETTRE_VAR[v] || esc(v.slice(0, 2).toUpperCase())}</span>` : ''}
+        ${v ? `<span class="cl-var v-${esc(v)}">${LETTRE_VAR[v] || esc(nomVariante(v).slice(0, 2).toUpperCase())}</span>` : ''}
         ${cles.length > 1 ? `<span class="cl-qte">▦ ${cles.length}</span>` : n > 1 ? `<span class="cl-qte">×${n}</span>` : ''}
         ${etat.clsSel ? `<span class="cx-v-coche" aria-hidden="true">${ICO.coche}</span>` : ''}
       </button>`;

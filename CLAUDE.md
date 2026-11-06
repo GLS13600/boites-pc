@@ -304,7 +304,9 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
         Stellaire (`SCR` → `sv07`), Aventures Ensemble (`JTG` → `sv09`), puis Écarlate et
         Violet (`SVI` → `sv01`), Évolutions à Paldea (`PAL` → `sv02`), Étincelles
         Déferlantes (`SSP` → `sv08`), Évolutions Prismatiques (`PRE` → `sv08.5`), Équilibre
-        Parfait (`POR` → `me03`) : 469 cartes, 69 icônes nommées. « Cosmos Reverse » brille comme une reverse (`(^|_)reverse`).
+        Parfait (`POR` → `me03`), puis Flammes Fantasmagoriques (`PFL` → `me02`), Flammes
+        Obsidiennes (`OBF` → `sv03`), Faille Paradoxe (`PAR` → `sv04`), Fable Nébuleuse (`SFA`
+        → `sv06.5`), Flamme Blanche (`WHT` → `sv10.5w`) : 626 cartes, 70 icônes nommées. « Cosmos Reverse » brille comme une reverse (`(^|_)reverse`).
         Vérifié : Germignon 008 → Normale, Reverse, Reverse (Copain Ball), Holo cosmos ;
         Rafflesia de 151 (« Non Holo ») → Normale, Holo, Reverse ; Ho-Oh de Chaos Ascendant
         → Holo, Reverse, deux tampons.

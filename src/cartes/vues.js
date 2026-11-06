@@ -283,8 +283,18 @@ export function creeCartes(ctx) {
   // Une vignette : une carte, ou une variante d'une carte en mode master set. Le même
   // signal que la grille du Living Dex : possédée en couleur, manquante en gris, et la
   // Poké Ball dessinée de la boîte pour dire « elle est à moi ».
+  // Les versions possédées d'une carte, en petites cartes de couleur comme sur Pokécardex :
+  // rouge la normale, jaune la reverse, bleu tout le reste (holo, première édition, reverse
+  // Poké Ball ou Master Ball). Pas en master set : chaque vignette y est déjà une version.
+  const GROUPE_VERSION = (v) => (v === 'normal' ? 'n' : v === 'reverse' ? 'r' : 'a');
+  function versionsDe(id) {
+    const vs = [...new Set((coll.carte(id)?.ex || []).map((e) => e.v || 'normal'))];
+    const groupes = new Set(vs.map(GROUPE_VERSION));
+    return { groupes: ['n', 'r', 'a'].filter((g) => groupes.has(g)), noms: vs.map(nomVariante).join(', ') };
+  }
   function vignette(x, { avecSet = false, choix = null } = {}) {
     const n = x.va ? coll.exemplairesVariante(x.id, x.va) : coll.exemplaires(x.id);
+    const vers = n && !x.va ? versionsDe(x.id) : null;
     const cle = x.va ? `${x.id}|${x.va}` : x.id;
     const choisie = choix ? choix.has(x.id) : !!etat.selection?.has(cle);
     const p = prixDe(x.d, x.va) ?? (n ? coll.carte(x.id)?.prix?.t : null) ?? null;
@@ -292,12 +302,13 @@ export function creeCartes(ctx) {
     return `
       <button class="cx-v ${n ? 'possedee' : 'manque'} ${choisie ? 'choisie' : ''}" data-cx-carte="${esc(x.id)}"
               ${x.va ? `data-cx-var="${esc(x.va)}"` : ''}
-              aria-label="${esc(x.nom)} ${esc(x.num)}${x.va ? ', ' + esc(nomVariante(x.va)) : ''}${n ? ', ' + esc(t('cxPossedeeN', n)) : ''}">
+              aria-label="${esc(x.nom)} ${esc(x.num)}${x.va ? ', ' + esc(nomVariante(x.va)) : ''}${n ? ', ' + esc(t('cxPossedeeN', n)) : ''}${vers ? ', ' + esc(t('cxVersions', vers.noms)) : ''}">
         <span class="cx-v-img">
           <img src="${esc(api.image(x.img || imagesAutres.get(x.id), 'low'))}" alt="" loading="lazy" decoding="async" />
           ${p != null ? `<span class="cx-v-prix">${euros(p)}</span>` : ''}
           ${n ? `<span class="cx-v-pos"><i class="marque" aria-hidden="true"></i>${n > 1 ? `<span>×${n}</span>` : ''}</span>` : ''}
           ${x.va ? `<span class="cx-v-var v-${esc(x.va)}">${esc(nomVariante(x.va))}</span>` : ''}
+          ${vers ? `<span class="cx-v-vers" aria-hidden="true">${vers.groupes.map((g) => `<i class="vv-${g}"></i>`).join('')}</span>` : ''}
           ${choix || etat.selection ? `<span class="cx-v-coche" aria-hidden="true">${ICO.coche}</span>` : ''}
         </span>
         <span class="cx-v-legende"><span class="cx-v-nom">${esc(legende)}</span><span class="cx-v-num">${esc(x.num)}</span></span>

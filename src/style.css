@@ -4162,6 +4162,28 @@ img {
 .cx-v-var.v-premiere { background: rgb(180 83 9 / 92%); }
 .cx-v-var.v-reverse_pokeball { background: rgb(220 38 38 / 92%); }
 .cx-v-var.v-reverse_masterball { background: rgb(109 40 217 / 92%); }
+/* Les versions possédées, en bas à droite comme sur Pokécardex : une petite carte par
+   version — rouge la normale, jaune la reverse, bleu tout le reste. */
+.cx-v-vers {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px 4px;
+  border-radius: 5px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 30%);
+}
+.cx-v-vers i {
+  width: 8px;
+  height: 11px;
+  border-radius: 1.5px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 22%), inset 0 1px 0 rgb(255 255 255 / 45%);
+}
+.cx-v-vers .vv-n { background: #d63a32; }
+.cx-v-vers .vv-r { background: #f2c230; }
+.cx-v-vers .vv-a { background: #2f7de1; }
 .cx-v-legende { display: flex; justify-content: space-between; gap: 4px; min-width: 0; font-size: 11px; line-height: 1.2; color: var(--muted); font-variant-numeric: tabular-nums; }
 .cx-v-nom { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 700; }
 .cx-v-num { flex: 0 0 auto; }

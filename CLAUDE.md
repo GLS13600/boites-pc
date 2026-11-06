@@ -202,6 +202,14 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
 - **Une extension** : bandeau, rareté (les 7 catégories de Cartodex, avec leur nombre),
   tri (numéro, nom, prix, rareté), rail Toutes / Manquantes / Possédées — le composant
   du filtre du Pokédex —, grille de trois avec bulle de prix et pastille « Poké Ball ×n ».
+  - **Versions possédées en bas à droite** de chaque vignette (06/11/2026, à la demande,
+    comme Pokécardex) : une petite carte de couleur par version que l'on a — **rouge la
+    normale, jaune la reverse, bleu tout le reste** (holo, première édition, reverse Poké
+    Ball / Master Ball) —, dans une pastille blanche (`.cx-v-vers`, `versionsDe` dans
+    vues.js). Toutes les grilles de trois passent par `vignette()` : extension,
+    collection, recherche, « Ses cartes ». Pas en master set, où chaque vignette est déjà
+    une version. Les variantes sont celles des exemplaires, déjà ramenées aux règles de
+    l'appli (une peu commune « holo » d'Écarlate et Violet y est normale).
   - Le DÉTAIL des cartes (rareté, variantes, prix) arrive une à une par la file de
     quatre requêtes d'api.js : chaque arrivée refait SA vignette ; ce qui dépend de
     toutes (rareté, tri par prix, master set) se refait par paquets de 700 ms. Mesuré :

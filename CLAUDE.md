@@ -301,8 +301,10 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
         `me01`, icônes seules, nommées par les relevés suivants sauf la 187), Héros
         Transcendants (`ASC` → `me02.5`, 144 cartes), Chaos Ascendant (`CRI` → `me04`),
         151 (`MEW` → `sv03.5`), Destinées de Paldea (`PAF` → `sv04.5`), Couronne
-        Stellaire (`SCR` → `sv07`), Aventures Ensemble (`JTG` → `sv09`) : 249 cartes, 33
-        icônes nommées. « Cosmos Reverse » brille comme une reverse (`(^|_)reverse`).
+        Stellaire (`SCR` → `sv07`), Aventures Ensemble (`JTG` → `sv09`), puis Écarlate et
+        Violet (`SVI` → `sv01`), Évolutions à Paldea (`PAL` → `sv02`), Étincelles
+        Déferlantes (`SSP` → `sv08`), Évolutions Prismatiques (`PRE` → `sv08.5`), Équilibre
+        Parfait (`POR` → `me03`) : 469 cartes, 69 icônes nommées. « Cosmos Reverse » brille comme une reverse (`(^|_)reverse`).
         Vérifié : Germignon 008 → Normale, Reverse, Reverse (Copain Ball), Holo cosmos ;
         Rafflesia de 151 (« Non Holo ») → Normale, Holo, Reverse ; Ho-Oh de Chaos Ascendant
         → Holo, Reverse, deux tampons.

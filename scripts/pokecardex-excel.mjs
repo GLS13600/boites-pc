@@ -26,9 +26,10 @@ export const SERIES = {
   // Méga-Évolution : les promos, numérotées sans total ni préfixe (« 001 »).
   MEP: ['mep'],
   // Méga-Évolution : l'extension (« 001/132 »).
-  MEG: ['me01'], ASC: ['me02.5'], CRI: ['me04'],
+  MEG: ['me01'], ASC: ['me02.5'], POR: ['me03'], CRI: ['me04'],
   // Écarlate et Violet.
-  MEW: ['sv03.5'], PAF: ['sv04.5'], SCR: ['sv07'], JTG: ['sv09'],
+  SVI: ['sv01'], PAL: ['sv02'], MEW: ['sv03.5'], PAF: ['sv04.5'], SCR: ['sv07'], SSP: ['sv08'],
+  PRE: ['sv08.5'], JTG: ['sv09'],
   // Diamant et Perle, Platine-HeartGold : L'appel des Légendes (seule extension `col1`).
   DP: ['dp1'], MT: ['dp2'], SW: ['dp3'], GE: ['dp4'], MD: ['dp5'], LA: ['dp6'], SF: ['dp7'],
   PRDP: ['dpp'], CL: ['col1'],

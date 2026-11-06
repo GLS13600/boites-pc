@@ -54,6 +54,12 @@ const POCKET = /^(a\d|b\d|p-[ab])/i;
 // Elle arrive avec Legendary Collection (2002), puis toute la série e-card. TCGdex en
 // annonce pourtant quelques-unes (Southern Islands) : ici, on n'en propose AUCUNE.
 const WIZARDS_SANS_REVERSE = /^(base[1-5]|basep|wp|gym[12]|neo[1-4]|si1)$/i;
+// Le 30ᵉ Anniversaire et sa Collection Classique n'ont pas de reverse non plus (06/11/2026,
+// à la demande) ; TCGdex n'en annonce aucune.
+const SANS_REVERSE = (ext) => WIZARDS_SANS_REVERSE.test(ext) || /^30th/i.test(ext);
+// Des versions propres à UNE carte (06/11/2026, à la demande), ajoutées à ses autres :
+// l'Évoli holo cosmos et le Mewtwo tamponné du 30ᵉ Anniversaire.
+const VERSIONS_EN_PLUS = { '30th-116': ['cosmos'], '30th-063': ['tampon'] };
 
 // Les variantes qu'une carte peut prendre, dans l'ordre d'affichage. TCGdex les
 // publie désormais carte par carte (`variants`) : on les suit quand on les a, et l'on
@@ -111,20 +117,21 @@ export function variantes(c, setId) {
     if (holo) liste.push('holo');
     // Six cartes de Southern Islands n'ont, chez TCGdex, QUE la reverse : elles retombent
     // sur leur version normale, plus bas.
-    if (v.reverse && !WIZARDS_SANS_REVERSE.test(ext)) liste.push('reverse');
+    if (v.reverse && !SANS_REVERSE(ext)) liste.push('reverse');
     if (v.firstEdition) liste.push('premiere');
   }
   if (!liste.length) liste.push(rareToutHolo(c) ? 'holo' : 'normal');
   // La reverse prend sa place d'affichage : avant la première édition.
-  if (courante && !liste.includes('reverse') && !POCKET.test(ext) && !WIZARDS_SANS_REVERSE.test(ext)) {
+  if (courante && !liste.includes('reverse') && !POCKET.test(ext) && !SANS_REVERSE(ext)) {
     const p = liste.indexOf('premiere');
     liste.splice(p < 0 ? liste.length : p, 0, 'reverse');
   }
   if (courante && extensionABall(ext)) liste.push('reverse_pokeball', 'reverse_masterball');
+  for (const x of VERSIONS_EN_PLUS[String(c?.id ?? '')] || []) if (!liste.includes(x)) liste.push(x);
   return liste;
 }
 
-export const VARIANTES = ['normal', 'holo', 'reverse', 'premiere', 'reverse_pokeball', 'reverse_masterball'];
+export const VARIANTES = ['normal', 'holo', 'reverse', 'premiere', 'reverse_pokeball', 'reverse_masterball', 'cosmos', 'tampon'];
 export const LANGUES_CARTE = ['FR', 'EN', 'JP'];
 export const ETATS = ['neuf', 'tres_bon', 'bon', 'abime'];
 

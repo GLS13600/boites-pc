@@ -4162,6 +4162,8 @@ img {
 .cx-v-var.v-premiere { background: rgb(180 83 9 / 92%); }
 .cx-v-var.v-reverse_pokeball { background: rgb(220 38 38 / 92%); }
 .cx-v-var.v-reverse_masterball { background: rgb(109 40 217 / 92%); }
+.cx-v-var.v-cosmos { background: rgb(14 116 144 / 95%); }
+.cx-v-var.v-tampon { background: rgb(71 85 105 / 95%); }
 /* Les versions possédées, en bas à droite comme sur Pokécardex : une petite carte par
    version — rouge la normale, jaune la reverse, bleu tout le reste. */
 .cx-v-vers {
@@ -4601,6 +4603,8 @@ img {
 .cl-var.v-premiere { background: rgb(180 83 9 / 95%); }
 .cl-var.v-reverse_pokeball { background: rgb(220 38 38 / 95%); }
 .cl-var.v-reverse_masterball { background: rgb(109 40 217 / 95%); }
+.cl-var.v-cosmos { background: rgb(14 116 144 / 95%); }
+.cl-var.v-tampon { background: rgb(71 85 105 / 95%); }
 .cl-qte {
   position: absolute;
   right: 3px;

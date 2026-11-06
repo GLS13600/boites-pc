@@ -1098,7 +1098,7 @@ export function creeCartes(ctx) {
     const v = cls.varianteDe(k);
     return v ? coll.exemplairesVariante(cls.idDe(k), v) : coll.exemplaires(cls.idDe(k));
   };
-  const LETTRE_VAR = { normal: 'N', holo: 'H', reverse: 'R', premiere: '1', reverse_pokeball: 'PB', reverse_masterball: 'MB' };
+  const LETTRE_VAR = { normal: 'N', holo: 'H', reverse: 'R', premiere: '1', reverse_pokeball: 'PB', reverse_masterball: 'MB', cosmos: 'C', tampon: 'T' };
   const reduit = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const logoSet = (id) => extensions.get(api.hote(id))?.logo || extensions.get(id)?.logo || toutesExt?.get(api.hote(id))?.logo || '';
 

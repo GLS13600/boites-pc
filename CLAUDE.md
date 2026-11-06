@@ -252,6 +252,16 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
       quatre Neo, Southern Islands, promos Wizards (`basep`, `wp`) — AUCUNE reverse, même
       annoncée par TCGdex. La reverse arrive avec Legendary Collection (2002), puis
       Expedition, Aquapolis et Skyridge, qui la gardent.
+    - **Le 30ᵉ Anniversaire et sa Collection Classique n'ont AUCUNE reverse** (06/11/2026,
+      à la demande ; TCGdex n'en annonce aucune) : `SANS_REVERSE` réunit ces deux
+      extensions et `WIZARDS_SANS_REVERSE`.
+    - **Versions propres à une carte** (`VERSIONS_EN_PLUS`, 06/11/2026, à la demande) :
+      l'Évoli 116/128 du 30ᵉ a sa **holo cosmos** (`cosmos`), le Mewtwo 063/128 sa version
+      **tampon** (`tampon`), ajoutées à leurs autres versions. Deux nouvelles clés dans
+      `VARIANTES`, avec leur nom (trois langues), leur lettre de pochette (C, T) et leur
+      couleur d'étiquette. Pas de prix propre chez TCGdex : celui de la carte.
+      Vérifié : master set du 30ᵉ à 193 vignettes (191 + 2), aucune reverse ; fiche
+      d'Évoli : Normale, Holo cosmos ; 151 garde ses reverses.
     - Piège : TCGdex donne à six cartes de Southern Islands (Mew, Togepi, Coxy, Marill,
       Roigada, Rafflesia) la SEULE variante reverse. La retirer après coup les laissait
       sans aucune variante ; elle est écartée avant le repli sur la version normale.

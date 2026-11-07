@@ -2693,13 +2693,17 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
         ${d?.hp ? `<span class="cx-pv">${t('cxPV')} ${esc(d.hp)}</span>` : ''}
       </div>
 
-      <h3>${t('cxMesExemplaires')}${n ? ` <small>${n}</small>` : ''}</h3>
-      ${n ? listeExemplaires(c) : `<p class="none">${t('cxAucunExemplaire')}</p>`}
+      <!-- L'ajout juste sous le nom, le bouton EN TÊTE (07/11/2026, à la demande) : il était
+           sous la liste des exemplaires et sortait de l'écran dès qu'on possédait la carte ;
+           sous les choix de version et d'état, il tombait encore au ras du bas. -->
       <div class="cx-ajout">
+        <button class="catch-btn" data-cx-ajoute>${ICO.plus}<span>${n ? t('cxAjouterExemplaire') : t('cxAjouter')}</span></button>
         ${choix('v', vars, etat.ajout.v, nomVariante, t('cxVariante'))}
         ${choix('e', ETATS, etat.ajout.e, nomEtat, t('cxEtat'))}
-        <button class="catch-btn" data-cx-ajoute>${ICO.plus}<span>${n ? t('cxAjouterExemplaire') : t('cxAjouter')}</span></button>
       </div>
+
+      <h3>${t('cxMesExemplaires')}${n ? ` <small>${n}</small>` : ''}</h3>
+      ${n ? listeExemplaires(c) : `<p class="none">${t('cxAucunExemplaire')}</p>`}
 
       <h3>${t('cxPrix')}</h3>
       ${blocPrix(d, i)}

@@ -373,6 +373,12 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   plus bas — l'ordre de Cartodex), liens Cardmarket, Vinted et eBay (domaines .fr en
   français), **« Dans le Pokédex »** avec le sprite et l'état de capture du Pokémon, qui
   ouvre sa fiche. Glisser de côté passe à la carte voisine de la liste affichée.
+  **L'ajout est juste sous le nom et les types, le bouton EN TÊTE** (07/11/2026, à la
+  demande : « accessible dès l'ouverture ») — puis les choix de version et d'état, puis
+  « Mes exemplaires ». Il était sous la liste des exemplaires, à ~710 px du haut de la
+  fiche, et sortait de l'écran dès qu'on possédait la carte ; sous les choix, il tombait
+  encore au ras du bas (636–686 px pour 703 visibles), sous la barre d'accueil d'un iPhone.
+  Mesuré après, à 375 × 812 : 482–532 px.
   Ouvrir la fiche relève le prix du jour ; une carte possédée le recopie
   (`notePrix`, qui n'écrit que si le prix a changé ou date de plus d'un jour).
 - **Ma collection** : bandeau (éventail des trois plus chères, valeur, nombre), recherche,

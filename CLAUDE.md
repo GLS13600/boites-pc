@@ -379,6 +379,27 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   plus bas — l'ordre de Cartodex), liens Cardmarket, Vinted et eBay (domaines .fr en
   français), **« Dans le Pokédex »** avec le sprite et l'état de capture du Pokémon, qui
   ouvre sa fiche. Glisser de côté passe à la carte voisine de la liste affichée.
+  **En carrousel** (07/11/2026, à la demande : « je dois voir la carte suivante ou celle
+  d'avant se placer, sans bug ») — `suit` / `lache` / `bascule` dans vues.js, branchés sur
+  `enableSwipeClose` par deux crochets optionnels (`nav.suit`, `nav.lache`, avec la vitesse
+  du doigt) que seule la fiche d'une carte fournit :
+  - dès que le doigt part de côté, la fiche VOISINE est rendue à côté (`.cx-voisine`, même
+    boîte que `.sheet-body`, 24 px d'écart, sans toucher à la version choisie pour l'ajout) ;
+    les deux suivent le doigt au pixel. Sans voisine, la fiche ne suit qu'au tiers ;
+  - relâchée au-delà du quart de la largeur, ou d'un geste vif (> 0,35 px/ms), la voisine
+    glisse en place EN PARTANT de là où le doigt l'a laissée (160–320 ms selon l'élan),
+    puis devient la fiche ouverte sans mouvement, avec la grande image déjà décodée de
+    l'aperçu. Sinon tout revient en place. Un toucher pendant la glissade est ignoré ;
+  - les deux fiches voisines sont préparées dès l'ouverture (détail et grande image,
+    `prechargeVoisins`), et la grande image a la petite (celle de la grille, en cache) en fond ;
+  - défauts de l'ancienne version : au relâchement la fiche revenait D'UN COUP au centre
+    (transform remis à vide avant l'animation), s'effaçait en 130 ms, et la suivante entrait
+    en fondu avec une image encore vide.
+  - Vérifié dans l'aperçu par des TouchEvent : voisine à 24 px qui suit le doigt, même
+    hauteur et même image à 375 px ; glissement long, court (retour), vers la droite (carte
+    d'avant), vif et court (suivante), première carte (au tiers, pas de voisine) ; aucun
+    reste ni décalage après. Les transitions n'avancent pas dans l'aperçu masqué : la
+    fluidité réelle se juge sur l'iPhone.
   **L'ajout est juste sous le nom et les types, le bouton EN TÊTE** (07/11/2026, à la
   demande : « accessible dès l'ouverture ») — puis les choix de version et d'état, puis
   « Mes exemplaires ». Il était sous la liste des exemplaires, à ~710 px du haut de la

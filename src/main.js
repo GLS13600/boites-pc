@@ -1606,6 +1606,8 @@ function navFiche(dir) {
 function enableSwipeClose(el, close, nav = null) {
   const body = el.querySelector('.sheet-body');
   let startY = 0, startX = 0, startTop = 0, fromGrip = false, drag = null, horizontalLocal = false;
+  // La vitesse du doigt (px/ms), pour un panneau qui suit le geste lui-même (`nav.suit`).
+  let lastX = 0, lastT = 0, vx = 0;
 
   el.addEventListener('touchstart', (e) => {
     if (!el.classList.contains('open') || e.touches.length !== 1) { drag = 'no'; return; }
@@ -1615,6 +1617,7 @@ function enableSwipeClose(el, close, nav = null) {
     startY = e.touches[0].clientY;
     startX = e.touches[0].clientX;
     startTop = body.scrollTop;
+    lastX = startX; lastT = performance.now(); vx = 0;
     fromGrip = !e.target.closest('.sheet-body');
     // Les onglets de génération et la table des types défilent de côté : un glissement
     // horizontal qui part de là leur appartient, il ne doit ni naviguer ni revenir.
@@ -1644,6 +1647,13 @@ function enableSwipeClose(el, close, nav = null) {
 
     e.preventDefault(); // pendant le geste, la page ne doit pas bouger
 
+    if (drag === 'nav' && nav.suit) {
+      const x = e.touches[0].clientX, maintenant = performance.now();
+      if (maintenant > lastT) vx = 0.7 * ((x - lastX) / (maintenant - lastT)) + 0.3 * vx;
+      lastX = x; lastT = maintenant;
+      nav.suit(dx);
+      return;
+    }
     if (drag === 'nav') {
       // Sans voisin de ce côté, le contenu ne suit qu'au tiers : le geste répond
       // quand même, mais on sent qu'il n'ira nulle part.
@@ -1658,6 +1668,13 @@ function enableSwipeClose(el, close, nav = null) {
   }, { passive: false });
 
   const end = (e) => {
+    if (drag === 'nav' && nav.lache) {
+      const dx = e.type === 'touchcancel' ? 0 : (e.changedTouches?.[0]?.clientX ?? startX) - startX;
+      // Un doigt resté immobile avant de se lever n'a plus d'élan.
+      nav.lache(dx, performance.now() - lastT > 90 ? 0 : vx);
+      drag = null;
+      return;
+    }
     if (drag === 'nav') {
       const dx = (e.changedTouches?.[0]?.clientX ?? startX) - startX;
       // On rend la main : navFiche() reprend la suite de l'animation, ou le contenu
@@ -1886,7 +1903,10 @@ const cartes = creeCartes({
   },
 });
 enableSwipeClose(outilSheet, fermeOutil);
-enableSwipeClose(carteSheet, fermeCarte, { voisin: (d) => cartes.voisin(d), aller: (d) => cartes.aller(d) });
+enableSwipeClose(carteSheet, fermeCarte, {
+  voisin: (d) => cartes.voisin(d), aller: (d) => cartes.aller(d),
+  suit: (dx) => cartes.suit(dx), lache: (dx, v) => cartes.lache(dx, v),
+});
 cartes.branche(app);
 
 // ---------- Documents légaux ----------

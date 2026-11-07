@@ -46,8 +46,6 @@ const TYPES_JCC = {
   'Métal': '#7d8b98', Metal: '#7d8b98', 'Fée': '#e078b4', Fairy: '#e078b4',
   Dragon: '#b39545', Incolore: '#8f8f86', Colorless: '#8f8f86',
 };
-// Même mouvement que le passage d'une fiche de Pokémon à l'autre (navFiche).
-const NAV_OUT = 130, NAV_IN = 210;
 
 // Le prix de RÉFÉRENCE d'une carte, dans l'ordre de Cartodex : la moyenne sur 30 jours
 // (la plus stable), puis 7 jours, la tendance, la moyenne, le plus bas.
@@ -2567,6 +2565,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     gyro.base = null; // chaque carte repart de la position du moment
     etat.ajout.v = variante;
     panneau.ouvre(htmlFiche(id));
+    prechargeVoisins(id);
     if (gyro.accorde && gyroPossible()) ecouteGyro();
     releveFavoris(id);
     // Le détail du jour : le prix bouge, et une carte possédée relève le sien.
@@ -2746,7 +2745,8 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     return `
       <div class="cx-fiche-haut">
         <div class="cx-fiche-img" data-cx-incline>
-          <img src="${esc(api.image(i.img, 'high'))}" alt="${esc(i.nom)}" />
+          <img src="${esc(api.image(i.img, 'high'))}" alt="${esc(i.nom)}"
+               style="background-image:url('${esc(api.image(i.img, 'low'))}')" />
           <span class="cx-reflet" aria-hidden="true"></span>
         </div>
         ${gyroPossible() && !gyro.accorde && !gyro.refuse ? `<p class="cx-gyro-aide">${t('cxGyroAide')}</p>` : ''}
@@ -3011,27 +3011,123 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     const i = f.liste.indexOf(f.id);
     return i < 0 ? null : (f.liste[i + dir] ?? null);
   }
-  let navEnCours = false;
-  function aller(dir) {
-    const suivant = voisin(dir);
-    if (suivant == null || navEnCours) return;
-    navEnCours = true;
+  // Passer d'une carte à l'autre : un CARROUSEL (07/11/2026, à la demande : « je dois
+  // voir la carte suivante ou celle d'avant se placer, sans bug »). Dès que le doigt part
+  // de côté, la fiche voisine est posée à côté de la fiche ouverte (`.cx-voisine`, rendue
+  // à l'avance) ; les deux suivent le doigt au pixel. Relâchée au-delà du quart de la
+  // largeur — ou plus court si le geste est vif —, la voisine glisse en place en partant
+  // de là où le doigt l'a laissée ; sinon tout revient. Avant, la fiche revenait d'un coup
+  // au centre au relâchement, s'effaçait, et la suivante surgissait en fondu.
+  // Les fiches voisines sont préparées dès l'ouverture d'une carte (détail et grande
+  // image, `prechargeVoisins`), et la grande image d'une fiche a la petite en fond : rien
+  // ne paraît vide pendant qu'elle arrive.
+  const ECART_NAV = 24;
+  const nav = { el: null, dir: 0, id: null, anim: false };
+  const reduitNav = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  function retireApercu() {
+    nav.el?.remove();
+    Object.assign(nav, { el: null, dir: 0, id: null });
+  }
+  function poseApercu(dir) {
+    retireApercu();
+    const id = voisin(dir);
+    if (id == null) return false;
     const b = panneau.corps;
-    const w = b.getBoundingClientRect().width || 340;
-    b.style.transition = `transform ${NAV_OUT}ms ease-in, opacity ${NAV_OUT}ms ease-in`;
-    b.style.transform = `translateX(${-dir * w * 0.45}px)`;
-    b.style.opacity = '0';
+    // htmlFiche choisit la version à ajouter : l'aperçu ne doit pas toucher à celle-ci.
+    const v = etat.ajout.v;
+    etat.ajout.v = null;
+    const html = htmlFiche(id);
+    etat.ajout.v = v;
+    const el = document.createElement('div');
+    el.className = 'sheet-body cx-voisine';
+    el.setAttribute('aria-hidden', 'true');
+    el.innerHTML = html;
+    el.style.top = `${b.offsetTop}px`;
+    el.style.width = `${b.offsetWidth}px`;
+    el.style.height = `${b.offsetHeight}px`;
+    b.parentNode.append(el);
+    Object.assign(nav, { el, dir, id });
+    return true;
+  }
+  const largeurNav = () => panneau.corps.offsetWidth || 340;
+  function placeNav(dx) {
+    const b = panneau.corps;
+    b.style.transform = dx ? `translate3d(${dx}px, 0, 0)` : '';
+    if (nav.el) nav.el.style.transform = `translate3d(${nav.dir * (largeurNav() + ECART_NAV) + dx}px, 0, 0)`;
+  }
+  // Le doigt bouge : `dx` depuis le début du geste.
+  function suit(dx) {
+    if (nav.anim) return;
+    const dir = dx < 0 ? 1 : -1;
+    if (dx && nav.dir !== dir && !poseApercu(dir)) retireApercu();
+    // Sans voisine de ce côté, la fiche ne suit qu'au tiers : on sent qu'elle n'ira pas.
+    placeNav(nav.el ? dx : dx / 3);
+  }
+  function anime(dx, vers, duree, apres) {
+    const b = panneau.corps;
+    nav.anim = true;
+    const tr = `transform ${duree}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+    b.style.transition = 'none';
+    if (nav.el) nav.el.style.transition = 'none';
+    placeNav(dx);
+    void b.offsetWidth; // pas de requestAnimationFrame : il ne vient pas en arrière-plan
+    b.style.transition = tr;
+    if (nav.el) nav.el.style.transition = tr;
+    placeNav(vers);
     setTimeout(() => {
-      ouvre(suivant, etat.fiche.liste);
       b.style.transition = 'none';
-      b.style.transform = `translateX(${dir * w * 0.4}px)`;
-      b.style.opacity = '0';
-      void b.offsetWidth; // pas de requestAnimationFrame, comme navFiche
-      b.style.transition = `transform ${NAV_IN}ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity ${NAV_IN}ms ease-out`;
-      b.style.transform = '';
-      b.style.opacity = '';
-      setTimeout(() => { b.style.transition = ''; navEnCours = false; }, NAV_IN);
-    }, NAV_OUT);
+      if (nav.el) nav.el.style.transition = 'none';
+      apres();
+      nav.anim = false;
+    }, duree + 20);
+  }
+  // La voisine prend la place : la fiche ouverte devient elle, au même endroit, sans
+  // mouvement — et garde la grande image déjà décodée de l'aperçu.
+  function bascule() {
+    const id = nav.id;
+    const img = nav.el?.querySelector('.cx-fiche-img img');
+    const b = panneau.corps;
+    b.style.transition = 'none';
+    b.style.transform = '';
+    ouvre(id, etat.fiche.liste);
+    const neuve = b.querySelector('.cx-fiche-img img');
+    if (img && neuve && img.src === neuve.src) neuve.replaceWith(img);
+    retireApercu();
+    void b.offsetWidth;
+    b.style.transition = '';
+  }
+  // Le doigt se lève : `dx` parcourus, `vx` sa vitesse en px/ms.
+  function lache(dx, vx = 0) {
+    if (nav.anim) return;
+    const w = largeurNav();
+    const vif = Math.abs(vx) > 0.35 && Math.sign(vx) === Math.sign(dx) && Math.abs(dx) > 24;
+    if (nav.el && (Math.abs(dx) > w * 0.25 || vif)) {
+      if (reduitNav()) { bascule(); return; }
+      const reste = w + ECART_NAV - Math.abs(dx);
+      const duree = Math.round(Math.min(320, Math.max(160, reste / Math.max(Math.abs(vx), 1.4))));
+      anime(dx, -nav.dir * (w + ECART_NAV), duree, bascule);
+    } else if (dx) {
+      anime(nav.el ? dx : dx / 3, 0, reduitNav() ? 0 : 220, () => { retireApercu(); panneau.corps.style.transition = ''; });
+    } else { retireApercu(); placeNav(0); panneau.corps.style.transition = ''; }
+  }
+  // Sans geste (clavier, assistant) : la même glissade, depuis le repos.
+  function aller(dir) {
+    if (nav.anim || !poseApercu(dir)) return;
+    if (reduitNav()) { bascule(); return; }
+    anime(0, -dir * (largeurNav() + ECART_NAV), 280, bascule);
+  }
+  // Les fiches d'à côté arrivent prêtes : leur détail (prix, rareté) et leur grande image.
+  function prechargeVoisins(id) {
+    setTimeout(() => {
+      if (etat.fiche?.id !== id) return;
+      for (const dir of [1, -1]) {
+        const v = voisin(dir);
+        if (v == null) continue;
+        api.carteEnFile(v).catch(() => {});
+        const img = infoCarte(v).img;
+        if (img) { const im = new Image(); im.decoding = 'async'; im.src = api.image(img, 'high'); }
+      }
+    }, 250);
   }
 
   // ---------------------------------------------------------------- gestes
@@ -3798,6 +3894,8 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     ouvre,
     voisin,
     aller,
+    suit,
+    lache,
     // On revient d'une extension à la liste, d'une recherche au parcours. Rend vrai si
     // le retour a été traité ici.
     retour() {
@@ -3821,7 +3919,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       positions.clear();
       pageAffichee = null;
     },
-    fermee() { etat.fiche = null; coupeGyro(); },
+    fermee() { etat.fiche = null; coupeGyro(); retireApercu(); },
     // Le second panneau s'est refermé (voile, glissement, retour) : on oublie son état.
     panneau2Ferme() { etat.clsEdition = null; etat.clsAjout = null; advUI.reglages = false; },
     // Lance une recherche dans les extensions (depuis la fiche d'un Pokémon).

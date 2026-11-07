@@ -4287,6 +4287,18 @@ img {
   transform: rotateX(var(--rx)) rotateY(var(--ry));
   transition: transform 420ms var(--c-entree);
 }
+/* La petite image (déjà en cache, celle de la grille) en fond de la grande : la fiche
+   n'est jamais vide le temps que la grande arrive. */
+.cx-fiche-img img { background: var(--slot) center / cover no-repeat; }
+/* La fiche voisine, posée à côté de la fiche ouverte pendant qu'on glisse de l'une à
+   l'autre (le carrousel de vues.js). Même boîte que .sheet-body, sans défilement. */
+.cx-voisine {
+  position: absolute;
+  left: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.cx-sheet .sheet-body, .cx-voisine { will-change: transform; }
 .cx-fiche-img.incline img { transition: transform 60ms linear; }
 /* Au gyroscope, les mesures arrivent par à-coups : un court lissage les fond. */
 .cx-fiche-img.gyro img, .cx-fiche-img.gyro .cx-reflet { transition: transform 140ms linear; }

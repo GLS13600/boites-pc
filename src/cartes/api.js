@@ -258,10 +258,11 @@ function suivant() {
 // mémoire mais vieux de plus d'un jour repasse alors par le réseau.
 // `autre` : le détail dans l'AUTRE langue des données. TCGdex n'a pas encore l'image
 // française de certaines cartes (Détective Pikachu…) mais en a l'anglaise.
-export function carteEnFile(id, { pourPrix = false, autre = false } = {}) {
+// `devant` : passe devant ce qui attend — la carte qu'on vient de faire défiler à l'écran.
+export function carteEnFile(id, { pourPrix = false, autre = false, devant = false } = {}) {
   const connu = autre ? memoire.get(cleDe(cheminCarte(id), autreLangue()))?.v : connuEnMemoire(cheminCarte(id));
   if (connu && !pourPrix) return Promise.resolve(connu);
-  return new Promise((ok, ko) => { file.push({ id, pourPrix, autre, ok, ko }); suivant(); });
+  return new Promise((ok, ko) => { file[devant ? 'unshift' : 'push']({ id, pourPrix, autre, ok, ko }); suivant(); });
 }
 // Abandonner ce qui attend encore (on a quitté l'extension).
 export function videFile() { file.length = 0; }

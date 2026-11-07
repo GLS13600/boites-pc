@@ -219,6 +219,23 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
     quatre requêtes d'api.js : chaque arrivée refait SA vignette ; ce qui dépend de
     toutes (rareté, tri par prix, master set) se refait par paquets de 700 ms. Mesuré :
     les 207 cartes de « 151 » en ~4 s, puis gardées trente jours sur l'appareil.
+  - **Seules les cartes À L'ÉCRAN demandent leur détail** (07/11/2026, à la demande :
+    « charge les cartes affichées, garde-les en cache, et celles qu'on fait défiler ») —
+    plus 600 px d'avance, mesurés à l'ouverture puis au défilement (`demandeVisibles`, au
+    plus toutes les 120 ms), et la carte qu'on vient d'atteindre passe DEVANT la file
+    (`carteEnFile(id, { devant })`). Avant, l'ouverture demandait toutes les cartes dans
+    l'ordre : celles qu'on regardait attendaient derrière les 295 de Héros Transcendants.
+    Rareté, tri par prix ou par rareté et master set demandent encore tout (`chargeTout`),
+    l'avancement « détails x / y » n'est dit que dans ce cas.
+    - Pas d'IntersectionObserver : il ne se déclenche pas quand la page n'est pas dessinée
+      (aperçu masqué), et la grille restait sans aucun détail.
+    - Une vignette refaite (détail arrivé, tri, filtre) GARDE son `<img>` quand l'image est
+      la même (`gardeImage`) : rien ne clignote ni ne se recharge.
+    - L'image vient de la liste de l'extension, et le navigateur la garde un an (TCGdex la
+      sert `max-age=31536000, immutable`) ; les détails restent trente jours en IndexedDB.
+    - Mesuré dans l'aperçu sur Nuit Noire (120 cartes) : 18 détails à l'ouverture, 48 au
+      milieu, 69 en bas (les cartes sautées ne sont pas demandées), les 12 cartes visibles
+      en bas avec leur prix ; rouverte, aucune requête ; image gardée à travers un tri.
   - **Master set** (icône calques) : une vignette par variante, étiquetée et prix de la
     variante (champs « -holo » de Cardmarket pour une reverse).
   - **« Holo » = la rare holographique classique, et elle seule** (28/10/2026, à la

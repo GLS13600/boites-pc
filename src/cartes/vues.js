@@ -527,30 +527,84 @@ export function creeCartes(ctx) {
   }
 
   // ---------------------------------------------------------------- une extension
-  // Le détail de chaque carte (rareté, variantes, prix) arrive une à une, par la file de
-  // quatre requêtes d'api.js, puis reste sur disque trente jours : la deuxième visite ne
-  // coûte plus rien. Chaque arrivée met à jour SA vignette ; ce qui dépend de toutes
-  // (filtre de rareté, tri par prix, master set) se refait par paquets.
+  // Le détail de chaque carte (rareté, variantes, prix) arrive par la file de quatre
+  // requêtes d'api.js, puis reste sur disque trente jours : la deuxième visite ne coûte
+  // plus rien. L'image, elle, vient de la liste de l'extension, et le navigateur la garde
+  // un an (TCGdex la sert « immutable »).
+  //
+  // SEULES LES CARTES À L'ÉCRAN demandent leur détail (07/11/2026, à la demande) — plus
+  // une avance de 600 px —, et celle qu'on vient de faire défiler passe devant la file.
+  // Avant, l'ouverture demandait les 295 cartes de Héros Transcendants dans l'ordre :
+  // celles qu'on regardait attendaient derrière toutes les autres. Ce qui dépend de TOUTES
+  // (filtre de rareté, tri par prix ou par rareté, master set) demande encore tout, les
+  // cartes visibles d'abord. Chaque arrivée met à jour SA vignette, image gardée.
   let jeton = 0;
   let attente = 0;
+  let setCourant = null;            // l'extension dont les vignettes sont observées
+  const demandees = new Set();      // détails demandés pour cette extension
+  const dependTout = () => !!(etat.rarete || etat.tri === 'prix' || etat.tri === 'rarete' || etat.master);
   function chargeDetails(s) {
-    const mon = ++jeton;
+    ++jeton;
     attente = 0;
-    chercheImages(s.cards || []);
-    for (const c of s.cards || []) {
-      if (detail(c.id)) continue;
-      attente++;
-      api.carteEnFile(c.id).then((d) => {
-        if (mon !== jeton) return;
-        attente--;
-        majVignettes(c.id, d);
-        planifieMaj();
-      }, () => { if (mon === jeton) { attente--; planifieMaj(); } });
+    setCourant = s;
+    demandees.clear();
+    api.videFile();
+    if (dependTout()) chargeTout(s);
+  }
+  function demandeDetail(c, devant) {
+    if (!c || demandees.has(c.id)) return;
+    demandees.add(c.id);
+    const mon = jeton;
+    if (!c.image) chercheImages([c], devant);
+    if (detail(c.id)) return;
+    attente++;
+    api.carteEnFile(c.id, { devant }).then((d) => {
+      if (mon !== jeton) return;
+      attente--;
+      majVignettes(c.id, d);
+      planifieMaj();
+    }, () => { if (mon === jeton) { attente--; planifieMaj(); } });
+  }
+  function chargeTout(s) {
+    for (const c of s?.cards || []) demandeDetail(c, false);
+  }
+  // Les vignettes de l'extension ouverte qui sont à l'écran (avec 600 px d'avance) demandent
+  // leur détail, devant les autres. Mesuré à l'ouverture puis au défilement (au plus toutes
+  // les 120 ms) plutôt que par IntersectionObserver : il ne se déclenche pas quand la page
+  // n'est pas dessinée (aperçu masqué), et la page restait alors sans aucun détail.
+  const AVANCE = 600;
+  const zonesEcoutees = new WeakSet();
+  let minuterieVue = null;
+  function demandeVisibles() {
+    minuterieVue = null;
+    const grille = document.querySelector('[data-cx-grille]');
+    if (!grille || !setCourant || ctx.vue() !== 'extensions') return;
+    const zone = grille.closest('.vue');
+    const haut = (zone?.getBoundingClientRect().top ?? 0) - AVANCE;
+    const bas = (zone?.getBoundingClientRect().bottom ?? innerHeight) + AVANCE;
+    const parId = new Map((setCourant.cards || []).map((c) => [c.id, c]));
+    // De bas en haut : en descendant, la carte qu'on vient d'atteindre passe la première.
+    const visibles = [...grille.querySelectorAll('.cx-v[data-cx-carte]')].filter((v) => {
+      if (demandees.has(v.dataset.cxCarte)) return false;
+      const r = v.getBoundingClientRect();
+      return r.bottom >= haut && r.top <= bas;
+    });
+    for (const v of visibles.reverse()) demandeDetail(parId.get(v.dataset.cxCarte), true);
+  }
+  function observeGrille() {
+    const grille = document.querySelector('[data-cx-grille]');
+    if (!grille || !setCourant) return;
+    const zone = grille.closest('.vue');
+    if (zone && !zonesEcoutees.has(zone)) {
+      zonesEcoutees.add(zone);
+      zone.addEventListener('scroll', () => { minuterieVue ??= setTimeout(demandeVisibles, 120); }, { passive: true });
     }
+    demandeVisibles();
   }
   function quitteSet() {
     jeton++;
     api.videFile();
+    setCourant = null;
     etat.set = null;
     etat.selection = null;
   }
@@ -560,16 +614,17 @@ export function creeCartes(ctx) {
     minuterieMaj = setTimeout(() => {
       minuterieMaj = null;
       if (ctx.vue() !== 'extensions' || !etat.set) return;
-      const dependTout = etat.rarete || etat.tri === 'prix' || etat.tri === 'rarete' || etat.master;
-      if (dependTout || attente <= 0) majGrille();
+      // Les vignettes se sont déjà mises à jour une à une : la grille ne se refait que
+      // quand son ORDRE ou son contenu dépend de toutes les cartes.
+      if (dependTout()) majGrille();
       else majEntete();
     }, 700);
   }
-  function chercheImages(cartes) {
+  function chercheImages(cartes, devant = false) {
     for (const c of cartes) {
       if (c.image || imagesAutres.has(c.id)) continue;
       imagesAutres.set(c.id, '');
-      api.carteEnFile(c.id, { autre: true }).then((d) => {
+      api.carteEnFile(c.id, { autre: true, devant }).then((d) => {
         if (!d?.image) return;
         imagesAutres.set(c.id, d.image);
         majVignettes(c.id, detail(c.id));
@@ -577,13 +632,21 @@ export function creeCartes(ctx) {
     }
   }
 
+  // Une vignette refaite garde son <img> quand l'image est la même : elle est déjà
+  // décodée, rien ne clignote ni ne se recharge.
+  function gardeImage(ancienne, neuve) {
+    const a = ancienne?.querySelector('.cx-v-img img'), n = neuve?.querySelector('.cx-v-img img');
+    if (a && n && a.getAttribute('src') === n.getAttribute('src')) n.replaceWith(a);
+  }
   // La vignette d'une carte, refaite là où elle s'affiche (grille, résultats, collection).
   function majVignettes(id, d) {
     for (const el of document.querySelectorAll(`#app .cx-v[data-cx-carte="${CSS.escape(id)}"]`)) {
       const va = el.dataset.cxVar || null;
       const i = infoCarte(id, d);
       const avecSet = !!el.closest('.cx-resultats');
-      el.outerHTML = vignette({ id, va, num: i.num, nom: i.nom, img: i.img, d }, { avecSet });
+      const neuve = h(vignette({ id, va, num: i.num, nom: i.nom, img: i.img, d }, { avecSet }));
+      gardeImage(el, neuve);
+      el.replaceWith(neuve);
     }
   }
 
@@ -628,7 +691,13 @@ export function creeCartes(ctx) {
     const morceaux = [];
     if (s.releaseDate) morceaux.push(t('cxSortie', date(s.releaseDate)));
     if (s.abbreviation?.official) morceaux.push(esc(s.abbreviation.official));
-    if (attente > 0) morceaux.push(t('cxDetailsEnCours', (s.cards?.length || 0) - attente, s.cards?.length || 0));
+    // L'avancement ne se dit que quand on attend TOUTES les cartes (rareté, tri, master set) :
+    // à l'écran seulement, il n'y a rien à attendre.
+    if (attente > 0 && dependTout()) {
+      const total = s.cards?.length || 0;
+      const connus = (s.cards || []).filter((c) => detail(c.id)).length;
+      morceaux.push(t('cxDetailsEnCours', connus, total));
+    }
     return morceaux.join(' · ');
   }
 
@@ -686,8 +755,11 @@ export function creeCartes(ctx) {
       return [ctx.tete(titre, actions),
         h(`<section class="cx-page">${echecs.has(`set:${id}`) ? erreurBloc(`set:${id}`) : squeletteGrille()}</section>`)];
     }
+    if (setCourant !== s) chargeDetails(s);
     const { v, comptes } = vignettesDuSet(s);
     etat.liste = [...new Set(v.map((x) => x.id))];
+    // Une fois la vue posée, ses vignettes demandent leur détail en approchant de l'écran.
+    setTimeout(observeGrille, 0);
     return [
       ctx.tete(titre, actions),
       h(`<section class="cx-page">
@@ -710,7 +782,14 @@ export function creeCartes(ctx) {
     if (!s || !grille) return;
     const { v, comptes } = vignettesDuSet(s);
     etat.liste = [...new Set(v.map((x) => x.id))];
+    // Les images déjà affichées sont reprises telles quelles (même carte, même version).
+    const avant = new Map([...grille.querySelectorAll('.cx-v[data-cx-carte]')]
+      .map((el) => [`${el.dataset.cxCarte}|${el.dataset.cxVar || ''}`, el]));
     grille.innerHTML = v.map((x) => vignette(x)).join('');
+    for (const el of grille.querySelectorAll('.cx-v[data-cx-carte]')) {
+      gardeImage(avant.get(`${el.dataset.cxCarte}|${el.dataset.cxVar || ''}`), el);
+    }
+    observeGrille();
     const neuf = h(railSet(comptes));
     const railEl = document.querySelector('.cx-page .dex-filtre');
     if (railEl) {
@@ -2910,8 +2989,8 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
 
     app.addEventListener('change', (e) => {
       const el = e.target;
-      if (el.matches('[data-cx-rarete]')) { etat.rarete = el.value; el.classList.toggle('actif', !!el.value); majGrille(); }
-      else if (el.matches('[data-cx-tri]')) { etat.tri = el.value; el.classList.toggle('actif', el.value !== 'num'); majGrille(); }
+      if (el.matches('[data-cx-rarete]')) { etat.rarete = el.value; el.classList.toggle('actif', !!el.value); if (dependTout()) chargeTout(setCourant); majGrille(); }
+      else if (el.matches('[data-cx-tri]')) { etat.tri = el.value; el.classList.toggle('actif', el.value !== 'num'); if (dependTout()) chargeTout(setCourant); majGrille(); }
       else if (el.matches('[data-cx-coltri]')) {
         // Le tri vit dans l'icône de l'en-tête. Changer de tri reprend son sens naturel —
         // numéro et nom croissants, prix et ajout récent du plus grand au plus petit.
@@ -3038,7 +3117,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
         ouvre(id, etat.liste);
         return;
       }
-      if (q('[data-cx-master]')) { etat.master = !etat.master; etat.selection = etat.selection && new Set(); ctx.haptique(); rend('extensions'); return; }
+      if (q('[data-cx-master]')) { etat.master = !etat.master; etat.selection = etat.selection && new Set(); if (dependTout()) chargeTout(setCourant); ctx.haptique(); rend('extensions'); return; }
       if (q('[data-cx-selection]')) { etat.selection = etat.selection ? null : new Set(); ctx.haptique(); rend('extensions'); return; }
       if ((x = q('[data-cx-filtre]'))) { etat.filtre = x.dataset.cxFiltre; ctx.haptique(); majGrille(); return; }
       if ((x = q('[data-cx-colfiltre]'))) { etat.colFiltre = x.dataset.cxColfiltre; ctx.haptique(); majCollection(); return; }

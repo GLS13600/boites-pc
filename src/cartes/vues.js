@@ -344,7 +344,7 @@ export function creeCartes(ctx) {
               ${x.va ? `data-cx-var="${esc(x.va)}"` : ''}
               aria-label="${esc(x.nom)} ${esc(x.num)}${x.va ? ', ' + esc(nomVariante(x.va)) : ''}${n ? ', ' + esc(t('cxPossedeeN', n)) : ''}${vers ? ', ' + esc(t('cxVersions', vers.noms)) : ''}">
         <span class="cx-v-img">
-          <img src="${esc(api.image(x.img || imagesAutres.get(x.id), 'low'))}" alt="" loading="lazy" decoding="async" />
+          <img src="${esc(api.image(x.img || imagesAutres.get(x.id), 'low'))}" alt="" />
           ${p != null ? `<span class="cx-v-prix">${euros(p)}</span>` : ''}
           ${n ? `<span class="cx-v-pos"><i class="marque" aria-hidden="true"></i>${n > 1 ? `<span>×${n}</span>` : ''}</span>` : ''}
           ${etiquette ? `<span class="cx-v-var v-${esc(x.va)}">${esc(nomVariante(x.va))}</span>` : ''}
@@ -360,8 +360,8 @@ export function creeCartes(ctx) {
     const total = s.cardCount?.total || 0;
     const fini = total > 0 && n >= total;
     const pc = total ? Math.min(100, (100 * n) / total) : 0;
-    const art = s.logo ? `<img src="${esc(api.logo(s.logo))}" alt="" loading="lazy" />`
-      : s.symbol ? `<img class="symbole" src="${esc(api.symbole(s.symbol))}" alt="" loading="lazy" />`
+    const art = s.logo ? `<img src="${esc(api.logo(s.logo))}" alt="" />`
+      : s.symbol ? `<img class="symbole" src="${esc(api.symbole(s.symbol))}" alt="" />`
       : `<span class="avance-sigle">${esc(String(s.id).toUpperCase())}</span>`;
     return `
       <button class="avance ${fini ? 'complet' : ''}" data-cx-set="${esc(s.id)}"
@@ -425,7 +425,7 @@ export function creeCartes(ctx) {
       <section class="cx-bloc ${ouvert ? 'ouvert' : ''}">
         <button class="pilule ${ouvert ? 'ouverte' : ''}" data-cx-bloc="${esc(b.id)}" aria-expanded="${ouvert}"
                 aria-label="${esc(nom)}${n ? ', ' + esc(t('cxPossedeeN', n)) : ''}">
-          <span class="pilule-logo">${logoBloc ? `<img class="pilule-img" src="${esc(api.logo(logoBloc))}" alt="" loading="lazy" />` : ''}</span>
+          <span class="pilule-logo">${logoBloc ? `<img class="pilule-img" src="${esc(api.logo(logoBloc))}" alt="" />` : ''}</span>
           <span class="pilule-txt"><small>${t('cxBloc')}${nbSets ? ` · ${t('cxNbExtensions', nbSets)}` : ''}</small><b>${esc(nom)}</b></span>
           ${n ? `<span class="pilule-cpt"><b>${n}</b></span>` : ''}
           ${ICO.bas}
@@ -1059,7 +1059,7 @@ export function creeCartes(ctx) {
         <section class="cx-bloc ${o ? 'ouvert' : ''}">
           <button class="pilule ${o ? 'ouverte' : ''}" data-cx-colmenu="${esc(cleB)}" aria-expanded="${o}"
                   aria-label="${esc(nom)}, ${esc(t('cxNbCartes', n))}">
-            <span class="pilule-logo">${logo ? `<img class="pilule-img" src="${esc(api.logo(logo))}" alt="" loading="lazy" />` : ''}</span>
+            <span class="pilule-logo">${logo ? `<img class="pilule-img" src="${esc(api.logo(logo))}" alt="" />` : ''}</span>
             <span class="pilule-txt"><small>${t('cxBloc')} · ${t('cxNbExtensions', sets.length)}</small><b>${esc(nom)}</b></span>
             <span class="pilule-cpt"><b>${n}</b></span>
             ${ICO.bas}
@@ -1076,7 +1076,7 @@ export function creeCartes(ctx) {
     const fini = total > 0 && n >= total;
     const pc = total ? Math.min(100, (100 * n) / total) : 0;
     const logo = logoSet(sid);
-    const art = logo ? `<img src="${esc(api.logo(logo))}" alt="" loading="lazy" />`
+    const art = logo ? `<img src="${esc(api.logo(logo))}" alt="" />`
       : `<span class="avance-sigle">${esc(String(sid).toUpperCase())}</span>`;
     return `
       <div class="col-set ${ouvert ? 'ouvert' : ''}">
@@ -1159,7 +1159,7 @@ export function creeCartes(ctx) {
           <h2 class="cx-titre">${t('valPlusCheres')}</h2>
           <div class="reg-lignes cx-top">${l.slice(0, 60).map(({ id, c, u, n, v }) => `
             <button class="reg-ligne cx-ligne" data-cx-carte="${esc(id)}">
-              <img class="cx-mini" src="${esc(api.image(c.img, 'low'))}" alt="" loading="lazy" />
+              <img class="cx-mini" src="${esc(api.image(c.img, 'low'))}" alt="" />
               <span><b>${esc(c.n || id)}</b><small>${esc(c.setN || setDe(id))} · ${esc(c.num || '')}${n > 1 ? ` · ×${n}` : ''}</small></span>
               <span class="cx-ligne-prix">${u != null ? euros(v ?? u * n) : '—'}${n > 1 && u != null ? `<small>${euros(u)}</small>` : ''}</span>
             </button>`).join('')}</div>`
@@ -1274,7 +1274,7 @@ export function creeCartes(ctx) {
       <button class="cl-couv ${teinteClasseur(c).classe}" style="${esc(teinteClasseur(c).style)}" data-cl="${esc(c.id)}"
               aria-label="${esc(c.nom)}, ${esc(t('clContenu', v.possedees, v.pleines))}">
         <span class="cl-anneaux" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span class="cl-couv-art">${logo ? `<img src="${esc(api.logo(logo))}" alt="" loading="lazy" />`
+        <span class="cl-couv-art">${logo ? `<img src="${esc(api.logo(logo))}" alt="" />`
           : `<b aria-hidden="true">${esc((c.nom || '?').slice(0, 1).toUpperCase())}</b>`}</span>
         <span class="cl-couv-txt">
           <b>${esc(c.nom)}</b>
@@ -1438,7 +1438,7 @@ export function creeCartes(ctx) {
       <button class="cl-poche pleine ${a ? '' : 'manque'} ${sel ? 'choisie' : ''}" data-cl-poche="${i}"
               ${brille ? `style="--k:${diagonale(c, i)}"` : ''}
               aria-label="${esc(info.nom)} ${esc(info.num)}${v ? ', ' + esc(nomVariante(v)) : ''}${a ? '' : ', ' + esc(t('cxManquantes'))}">
-        <img src="${esc(api.image(info.img, 'low'))}" alt="" loading="lazy" decoding="async" />
+        <img src="${esc(api.image(info.img, 'low'))}" alt="" />
         ${brille ? `<span class="cl-brille ${brille.genre}"${fenetre} aria-hidden="true"></span>` : ''}
         ${v ? `<span class="cl-var v-${esc(v)}">${esc(LETTRE_VAR[v] || lettreVersion(v))}</span>` : ''}
         ${cles.length > 1 ? `<span class="cl-qte">▦ ${cles.length}</span>` : n > 1 ? `<span class="cl-qte">×${n}</span>` : ''}
@@ -1825,7 +1825,7 @@ export function creeCartes(ctx) {
   }
   const logoBloc = (bi, sets) => listeSeries?.find((x) => x.id === BLOCS[bi]?.series[0])?.logo
     || sets.map((s) => logoSet(s.sid)).find(Boolean) || '';
-  const logoG = (logo) => `<span class="cl-g-logo">${logo ? `<img src="${esc(api.logo(logo))}" alt="" loading="lazy" />` : ''}</span>`;
+  const logoG = (logo) => `<span class="cl-g-logo">${logo ? `<img src="${esc(api.logo(logo))}" alt="" />` : ''}</span>`;
   // Un menu déroulant : le bloc, puis ses extensions, chacune avec sa grille. Le nombre de
   // cartes choisies s'affiche sur chaque menu, même replié.
   // Ouvert : par la mémoire de la session, ou forcé (une recherche, un seul choix possible)
@@ -1885,7 +1885,7 @@ export function creeCartes(ctx) {
   function ligneSetChoix(x, choisi) {
     return `
       <button class="avance cl-set ${choisi ? 'complet' : ''}" data-cl-set="${esc(x.id)}" aria-pressed="${choisi}">
-        <span class="avance-art logo">${x.logo ? `<img src="${esc(api.logo(x.logo))}" alt="" loading="lazy" />`
+        <span class="avance-art logo">${x.logo ? `<img src="${esc(api.logo(x.logo))}" alt="" />`
           : `<span class="avance-sigle">${esc(x.id.toUpperCase())}</span>`}</span>
         <span class="avance-txt">
           <span class="avance-haut"><b class="avance-nom">${esc(x.nom)}</b>${x.total ? `<span class="avance-cpt">${t('cxResultats', x.total)}</span>` : ''}</span>

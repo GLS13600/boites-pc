@@ -231,6 +231,12 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
       (aperçu masqué), et la grille restait sans aucun détail.
     - Une vignette refaite (détail arrivé, tri, filtre) GARDE son `<img>` quand l'image est
       la même (`gardeImage`) : rien ne clignote ni ne se recharge.
+    - **Les IMAGES, elles, se chargent toutes d'avance** (07/11/2026, à la demande : « je ne
+      veux pas d'affichage soudain des cartes quand je défile ») : plus de `loading="lazy"`
+      sur les vignettes et les logos, plus de `content-visibility: auto` sur `.cx-v` — les
+      cartes hors de l'écran n'étaient ni dessinées ni chargées, et surgissaient au
+      défilement. Dans l'ordre de la page, celles du haut d'abord. Vérifié : les 191 images
+      du 30ᵉ Anniversaire chargées sans défiler. Seul le DÉTAIL (prix, rareté) suit l'écran.
     - L'image vient de la liste de l'extension, et le navigateur la garde un an (TCGdex la
       sert `max-age=31536000, immutable`) ; les détails restent trente jours en IndexedDB.
     - Mesuré dans l'aperçu sur Nuit Noire (120 cartes) : 18 détails à l'ouverture, 48 au

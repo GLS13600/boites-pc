@@ -4108,8 +4108,10 @@ img {
   min-width: 0;
   text-align: left;
   color: var(--ink);
-  content-visibility: auto;
-  contain-intrinsic-size: auto 190px;
+  /* PAS de content-visibility ni d'images en `loading="lazy"` (07/11/2026, à la demande) :
+     les cartes hors de l'écran n'étaient ni dessinées ni chargées, et apparaissaient d'un
+     coup pendant le défilement. Toute la grille est dessinée et ses images chargées
+     d'avance, dans l'ordre de la page — celles du haut d'abord. */
   transition: transform var(--d-court) var(--c-ressort);
 }
 .cx-v:active { transform: scale(0.95); }

@@ -4368,6 +4368,19 @@ img {
 .cx-ajout .catch-btn { display: flex; align-items: center; justify-content: center; gap: var(--e-2); margin: 0; }
 .cx-ajout .catch-btn .ico { width: 20px; height: 20px; stroke-width: 2.2; }
 
+/* Le prix de chaque version, une ligne par version (07/11/2026) : pastille de couleur des
+   vignettes (rouge normale, jaune reverse, bleu le reste), prix et tendance à droite. */
+.cx-pver { margin-bottom: var(--e-3); }
+.cx-pver-ligne { justify-content: space-between; gap: var(--e-3); min-height: 48px; cursor: default; }
+.cx-pver-nom { display: inline-flex; align-items: center; gap: var(--e-2); min-width: 0; font-weight: 700; }
+.cx-pver-pastille { flex: none; width: 9px; height: 13px; border-radius: 2px; box-shadow: 0 0 0 1px rgb(0 0 0 / 12%); }
+.cx-pver-pastille.vv-n { background: #d63a32; }
+.cx-pver-pastille.vv-r { background: #f2c230; }
+.cx-pver-pastille.vv-a { background: #2f7de1; }
+.cx-pver-prix { display: grid; justify-items: end; text-align: right; flex: none; }
+.cx-pver-prix b { font-size: var(--t-corps); font-variant-numeric: tabular-nums; }
+.cx-pver-prix small { color: var(--muted); font-size: var(--t-mini); }
+.cx-pver-ligne.inconnu .cx-pver-nom { color: var(--muted); }
 .cx-prix {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

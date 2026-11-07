@@ -381,6 +381,23 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   Mesuré après, à 375 × 812 : 482–532 px.
   Ouvrir la fiche relève le prix du jour ; une carte possédée le recopie
   (`notePrix`, qui n'écrit que si le prix a changé ou date de plus d'un jour).
+  **Prix PAR VERSION** (07/11/2026, à la demande : « distinguer le prix de chaque version »).
+  TCGdex ne relaie que DEUX séries Cardmarket : la carte (normale, ou holo pour une rare
+  holo) et la reverse (champs « -holo »). Reverses Poké Ball / Master Ball, tampons, holo
+  cosmos, 1re édition et versions relevées sont d'autres produits chez Cardmarket, absents
+  de TCGdex : `prixDe(d, v)` rend `null` pour elles (et pour une reverse sans prix propre)
+  au lieu de recopier le prix de la normale — toutes les versions affichaient le même. La
+  fiche montre une ligne par version (`prixParVersion` : pastille de couleur, prix de
+  référence et tendance, ou « Prix non publié ») au-dessus du détail de la version de la
+  carte, et une note le dit. En master set, une version sans prix n'a plus de bulle. Les
+  TOTAUX (valeur d'un classeur, de la collection) gardent le prix de la carte comme
+  estimation, faute de mieux. Vérifié sur Noeunoeuf d'Évolutions Prismatiques : Normale
+  0,03 €, Reverse 0,09 €, Poké Ball et Master Ball « non publié ».
+  **Cardmarket, Vinted, eBay s'ouvrent HORS de l'appli** (07/11/2026, à la demande) :
+  `ouvreLien` (main.js) passe par `window.open(url, '_blank')` dans l'IPA — Capacitor la
+  remet à iOS (`createWebViewWith` → `UIApplication.shared.open`), donc Safari, ou l'appli
+  Vinted / eBay si elle est installée. Le greffon Browser ouvrait une fenêtre Safari DANS
+  l'appli. Https seulement. Vaut pour tous les liens externes (Mistral, abonnements Apple).
 - **Ma collection** : bandeau (éventail des trois plus chères, valeur, nombre), recherche,
   filtres, puis la rangée du classement, Toutes / Favoris.
   - **Classement et tri séparés** (28/10/2026, à la demande) : une puce « Par

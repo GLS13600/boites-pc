@@ -50,17 +50,33 @@ const TYPES_JCC = {
 const NAV_OUT = 130, NAV_IN = 210;
 
 // Le prix de RÉFÉRENCE d'une carte, dans l'ordre de Cartodex : la moyenne sur 30 jours
-// (la plus stable), puis 7 jours, la tendance, la moyenne, le plus bas. Une reverse
-// prend les champs « -holo » de Cardmarket, qui sont les siens.
+// (la plus stable), puis 7 jours, la tendance, la moyenne, le plus bas.
+//
+// PAR VERSION (07/11/2026, à la demande) : TCGdex ne relaie que DEUX séries de prix
+// Cardmarket — la carte (sa version normale, ou holo pour une rare holo) et la reverse
+// (champs « -holo »). Les reverses Poké Ball / Master Ball, les tampons, la holo cosmos,
+// la 1re édition et les versions relevées sont d'autres produits chez Cardmarket, que
+// TCGdex ne publie pas : leur prix est INCONNU (null), jamais celui de la normale recopié
+// — ce qui faisait afficher le même prix pour toutes les versions. Une reverse sans prix
+// propre est inconnue aussi.
+export const VERSIONS_PRIX_CARTE = new Set(['normal', 'holo']);
 export function prixDe(d, variante) {
   const cm = d?.pricing?.cardmarket;
   if (!cm) return null;
   const champ = (k) => (cm[k] > 0 ? cm[k] : null);
-  if (variante && variante.startsWith('reverse')) {
-    const r = champ('avg30-holo') ?? champ('avg7-holo') ?? champ('trend-holo') ?? champ('avg-holo') ?? champ('low-holo');
-    if (r != null) return r;
-  }
-  return champ('avg30') ?? champ('avg7') ?? champ('trend') ?? champ('avg') ?? champ('low');
+  const serie = (s = '') => champ(`avg30${s}`) ?? champ(`avg7${s}`) ?? champ(`trend${s}`) ?? champ(`avg${s}`) ?? champ(`low${s}`);
+  if (!variante || VERSIONS_PRIX_CARTE.has(variante)) return serie();
+  if (variante === 'reverse') return serie('-holo');
+  return null;
+}
+// Le détail Cardmarket d'une version qui a ses prix (tendance, moyennes, plus bas).
+function champsPrix(d, variante) {
+  const cm = d?.pricing?.cardmarket;
+  if (!cm) return null;
+  const s = variante === 'reverse' ? '-holo' : '';
+  if (variante && variante !== 'reverse' && !VERSIONS_PRIX_CARTE.has(variante)) return null;
+  const v = (k) => (cm[`${k}${s}`] > 0 ? cm[`${k}${s}`] : null);
+  return { trend: v('trend'), avg7: v('avg7'), avg30: v('avg30'), low: v('low') };
 }
 
 // L'extension d'une carte se lit dans son identifiant : « sv03.5-006 » → « sv03.5 ».
@@ -298,7 +314,9 @@ export function creeCartes(ctx) {
     const vers = n && !x.va ? versionsDe(x.id) : null;
     const cle = x.va ? `${x.id}|${x.va}` : x.id;
     const choisie = choix ? choix.has(x.id) : !!etat.selection?.has(cle);
-    const p = prixDe(x.d, x.va) ?? (n ? coll.carte(x.id)?.prix?.t : null) ?? null;
+    // Une version sans prix propre (Poké Ball, tampon…) n'affiche pas celui de la carte.
+    const p = x.va && !VERSIONS_PRIX_CARTE.has(x.va) ? prixDe(x.d, x.va)
+      : prixDe(x.d, x.va) ?? (n ? coll.carte(x.id)?.prix?.t : null) ?? null;
     const legende = avecSet ? (nomSetConnu(setDe(x.id)) || setDe(x.id)) : x.nom;
     return `
       <button class="cx-v ${n ? 'possedee' : 'manque'} ${choisie ? 'choisie' : ''}" data-cx-carte="${esc(x.id)}"
@@ -2628,7 +2646,25 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       </div>`;
   }
 
-  function blocPrix(d, i) {
+  // Le prix de CHAQUE version de la carte (07/11/2026, à la demande) : une ligne par version,
+  // son prix de référence et sa tendance, ou « non publié » quand Cardmarket la vend comme
+  // un autre produit que TCGdex ne relaie pas (Poké Ball, tampon, holo cosmos…). Puis le
+  // détail et la courbe de la version de la CARTE.
+  function prixParVersion(d, vars) {
+    return `
+      <div class="reg-lignes cx-pver">${vars.map((v) => {
+        const p = prixDe(d, v);
+        const tendance = champsPrix(d, v)?.trend;
+        return `
+        <div class="reg-ligne cx-pver-ligne ${p == null ? 'inconnu' : ''}">
+          <span class="cx-pver-nom"><i class="cx-pver-pastille vv-${v === 'normal' ? 'n' : v === 'reverse' ? 'r' : 'a'}" aria-hidden="true"></i>${esc(nomVariante(v))}</span>
+          ${p != null
+            ? `<span class="cx-pver-prix"><b>${euros(p)}</b>${tendance != null ? `<small>${t('cxTendance')} ${euros(tendance)}</small>` : ''}</span>`
+            : `<span class="cx-pver-prix"><small>${t('cxPrixNonPublie')}</small></span>`}
+        </div>`;
+      }).join('')}</div>`;
+  }
+  function blocPrix(d, i, vars) {
     if (!d) {
       return `<p class="none">${etat.ficheEchec === i.id ? t('cxPrixHorsLigne') : t('cxPrixChargement')}</p>${liens(i)}`;
     }
@@ -2636,20 +2672,22 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     const ref = prixDe(d);
     if (!cm || ref == null) return `<p class="none">${t('cxPrixAucun')}</p>${liens(i)}`;
     const val = (k) => (cm[k] > 0 ? euros(cm[k]) : '—');
-    const rev = prixDe(d, 'reverse');
+    // La version dont Cardmarket donne le prix « de la carte » : la normale, ou la holo.
+    const principale = vars.find((v) => VERSIONS_PRIX_CARTE.has(v)) || 'normal';
+    const autresVersions = vars.length > 1 || principale !== vars[0];
     return `
+      ${autresVersions ? prixParVersion(d, vars) : ''}
       <div class="cx-prix">
-        <div class="cx-prix-ref"><small>${t('cxPrixRef')}</small><b>${euros(ref)}</b></div>
+        <div class="cx-prix-ref"><small>${t('cxPrixRef')}${autresVersions ? ` · ${esc(nomVariante(principale))}` : ''}</small><b>${euros(ref)}</b></div>
         <dl class="cx-prix-grille">
           <div><dt>${t('cxTendance')}</dt><dd>${val('trend')}</dd></div>
           <div><dt>${t('cxMoy7')}</dt><dd>${val('avg7')}</dd></div>
           <div><dt>${t('cxMoy30')}</dt><dd>${val('avg30')}</dd></div>
           <div><dt>${t('cxPlusBas')}</dt><dd>${val('low')}</dd></div>
         </dl>
-        ${rev != null && rev !== ref ? `<p class="cx-prix-rev">${t('cxPrixReverse', euros(rev))}</p>` : ''}
       </div>
       ${courbePrix(i.id, d)}
-      <p class="cx-note">${t('cxPrixSource', cm.updated ? date(cm.updated) : '—')}</p>
+      <p class="cx-note">${t('cxPrixSource', cm.updated ? date(cm.updated) : '—')}${vars.some((v) => prixDe(d, v) == null) ? ` ${t('cxPrixVersionsNote')}` : ''}</p>
       ${liens(i)}`;
   }
 
@@ -2706,7 +2744,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
       ${n ? listeExemplaires(c) : `<p class="none">${t('cxAucunExemplaire')}</p>`}
 
       <h3>${t('cxPrix')}</h3>
-      ${blocPrix(d, i)}
+      ${blocPrix(d, i, vars)}
 
       ${dansLePokedex(d)}
 

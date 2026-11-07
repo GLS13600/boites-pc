@@ -1800,9 +1800,16 @@ function fermeCarte() {
 
 // Un lien vers l'extérieur (Cardmarket, Vinted, eBay, réglages d'Apple) : le navigateur
 // du système dans l'application, un nouvel onglet sur le web.
+// Un lien externe (Cardmarket, Vinted, eBay, la CNIL…) s'ouvre HORS de l'appli
+// (07/11/2026, à la demande). Le greffon Browser l'ouvrait dans une fenêtre Safari intégrée
+// à l'appli ; dans l'IPA, une nouvelle fenêtre est remise par Capacitor à iOS
+// (WebViewDelegationHandler, createWebViewWith → UIApplication.shared.open), qui l'ouvre
+// dans Safari — ou dans l'appli Vinted ou eBay quand elle est installée. Sur le web, un
+// nouvel onglet.
 function ouvreLien(url) {
-  const B = window.Capacitor?.Plugins?.Browser;
-  if (B) B.open({ url }).catch(() => {}); else window.open(url, '_blank', 'noopener');
+  if (!/^https:\/\//i.test(String(url))) return;
+  if (window.Capacitor?.isNativePlatform?.()) window.open(url, '_blank');
+  else window.open(url, '_blank', 'noopener');
 }
 
 const cartes = creeCartes({

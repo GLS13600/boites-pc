@@ -15,7 +15,7 @@
 //     dex:  numéros du Pokédex national représentés (passerelle vers la fiche),
 //     ex:   [{ v: variante, l: langue, e: état, d: date d'ajout AAAA-MM-JJ }],
 //     fav:  favori,
-//     prix: { t: tendance Cardmarket en €, maj: date ISO du relevé },
+//     prix: { t: prix Cardmarket en €, r: celui de la reverse, maj: date ISO du relevé },
 //   }
 //
 // Variantes : 'normal', 'reverse', 'holo', 'premiere' (première édition), et les deux
@@ -223,14 +223,25 @@ export function basculeFavori(fiche) {
 // Le prix d'une carte POSSÉDÉE, relevé à l'ouverture de sa fiche ou par la mise à
 // jour de la collection. N'écrit que s'il a changé ou date de plus d'un jour : une
 // écriture part vers le compte, inutile de renvoyer la collection pour rien.
-export function notePrix(id, valeur, maj = new Date().toISOString()) {
+// `reverse` : le prix de sa version reverse (07/11/2026), la seule autre version dont
+// TCGdex relaie le prix Cardmarket — la collection montre chaque version à SON prix.
+const arrondi = (x) => Math.round(x * 100) / 100;
+export function notePrix(id, valeur, { reverse = null, maj = new Date().toISOString() } = {}) {
   const c = cartes[id];
   if (!c || !(valeur > 0)) return;
-  const v = Math.round(valeur * 100) / 100;
-  if (c.prix && c.prix.t === v && Date.now() - Date.parse(c.prix.maj) < 864e5) return;
-  c.prix = { t: v, maj };
+  const v = arrondi(valeur);
+  const r = reverse > 0 ? arrondi(reverse) : undefined;
+  if (c.prix && c.prix.t === v && c.prix.r === r && Date.now() - Date.parse(c.prix.maj) < 864e5) return;
+  c.prix = r ? { t: v, r, maj } : { t: v, maj };
   ecrire();
 }
+
+// Le prix d'UN exemplaire d'une version : la reverse a le sien quand il est connu ; les
+// autres versions (holo, Poké Ball, tampon…) prennent celui de la carte, en estimation
+// pour les totaux — leur prix propre n'est pas publié.
+export const prixExemplaire = (c, v) => (v === 'reverse' && c?.prix?.r) || c?.prix?.t || 0;
+// La valeur d'une carte possédée : la somme de ses exemplaires, chacun à sa version.
+export const valeurDe = (c) => arrondi((c?.ex || []).reduce((k, e) => k + prixExemplaire(c, e.v), 0));
 
 // Ce que la fiche apprend d'une carte déjà possédée (nom, rareté, Pokémon) est recopié :
 // la collection s'affiche hors ligne, sans redemander. N'écrit que ce qui a changé.
@@ -254,7 +265,7 @@ export function stats() {
     if (n) distinctes++;
     nbEx += n;
     if (c.fav) favoris++;
-    if (c.prix?.t) valeur += c.prix.t * n;
+    valeur += valeurDe(c);
   }
   return { distinctes, exemplaires: nbEx, valeur: Math.round(valeur * 100) / 100, favoris };
 }
@@ -335,7 +346,10 @@ export function assainit(v) {
     if (Array.isArray(c.dex)) e.dex = c.dex.filter((n) => Number.isInteger(n) && n > 0 && n <= 1025).slice(0, 4);
     if (Array.isArray(c.typ)) e.typ = c.typ.filter((x) => typeof x === 'string' && x.length <= 24).slice(0, 3);
     normalise(id, e);
-    if (c.prix && c.prix.t > 0 && c.prix.t < 1e6) e.prix = { t: Math.round(c.prix.t * 100) / 100, maj: texte(c.prix.maj, 40) || new Date().toISOString() };
+    if (c.prix && c.prix.t > 0 && c.prix.t < 1e6) {
+      e.prix = { t: arrondi(c.prix.t), maj: texte(c.prix.maj, 40) || new Date().toISOString() };
+      if (c.prix.r > 0 && c.prix.r < 1e6) e.prix.r = arrondi(c.prix.r);
+    }
     sortie[id] = e;
   }
   return sortie;

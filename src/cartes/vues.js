@@ -249,6 +249,21 @@ export function creeCartes(ctx) {
   // Prix unitaire retenu pour une carte possédée : le dernier relevé de la collection,
   // sinon celui du détail en mémoire.
   const prixUnitaire = (id) => coll.carte(id)?.prix?.t ?? prixDe(detail(id));
+  // Relève le prix d'une carte possédée ET celui de sa reverse (Ma collection montre
+  // chaque version possédée à son prix).
+  const notePrixCarte = (id, d) => coll.notePrix(id, prixDe(d), { reverse: prixDe(d, 'reverse') });
+  // Le prix d'UNE version possédée, pour Ma collection : celui de la carte pour la normale
+  // ou la holo, celui de la reverse pour la reverse — le détail du jour d'abord, sinon le
+  // dernier relevé —, inconnu (null) pour les versions dont Cardmarket ne publie rien ici.
+  function prixVersion(id, va) {
+    const c = coll.carte(id), d = detail(id);
+    if (!va || VERSIONS_PRIX_CARTE.has(va)) return prixDe(d) ?? c?.prix?.t ?? null;
+    if (va === 'reverse') return prixDe(d, 'reverse') ?? c?.prix?.r ?? null;
+    return null;
+  }
+  // L'ordre des versions d'une même carte : normale, holo, reverse, puis le reste.
+  const RANG_VERSION = { normal: 0, holo: 1, reverse: 2, premiere: 3, reverse_pokeball: 4, reverse_masterball: 5 };
+  const rangVersion = (v) => RANG_VERSION[v] ?? 9;
   const pourcent = (x) => `${Math.round(x)} %`;
   const date = (iso) => {
     try { return new Date(iso).toLocaleDateString(ctx.langue(), { day: 'numeric', month: 'long', year: 'numeric' }); } catch { return String(iso || ''); }
@@ -309,13 +324,19 @@ export function creeCartes(ctx) {
     const groupes = new Set(vs.map(GROUPE_VERSION));
     return { groupes: ['n', 'r', 'a'].filter((g) => groupes.has(g)), noms: vs.map(nomVariante).join(', ') };
   }
-  function vignette(x, { avecSet = false, choix = null } = {}) {
+  // `collection` : Ma collection, une vignette par version possédée — la pastille de
+  // couleur dit SA version, l'étiquette n'est posée que hors de la normale (la version par
+  // défaut), et le prix est celui de la version (`x.prix`).
+  function vignette(x, { avecSet = false, choix = null, collection = false } = {}) {
     const n = x.va ? coll.exemplairesVariante(x.id, x.va) : coll.exemplaires(x.id);
-    const vers = n && !x.va ? versionsDe(x.id) : null;
+    const vers = !n ? null : !x.va ? versionsDe(x.id)
+      : collection ? { groupes: [GROUPE_VERSION(x.va)], noms: nomVariante(x.va) } : null;
+    const etiquette = x.va && !(collection && x.va === 'normal');
     const cle = x.va ? `${x.id}|${x.va}` : x.id;
     const choisie = choix ? choix.has(x.id) : !!etat.selection?.has(cle);
     // Une version sans prix propre (Poké Ball, tampon…) n'affiche pas celui de la carte.
-    const p = x.va && !VERSIONS_PRIX_CARTE.has(x.va) ? prixDe(x.d, x.va)
+    const p = x.prix !== undefined ? x.prix
+      : x.va && !VERSIONS_PRIX_CARTE.has(x.va) ? prixDe(x.d, x.va)
       : prixDe(x.d, x.va) ?? (n ? coll.carte(x.id)?.prix?.t : null) ?? null;
     const legende = avecSet ? (nomSetConnu(setDe(x.id)) || setDe(x.id)) : x.nom;
     return `
@@ -326,7 +347,7 @@ export function creeCartes(ctx) {
           <img src="${esc(api.image(x.img || imagesAutres.get(x.id), 'low'))}" alt="" loading="lazy" decoding="async" />
           ${p != null ? `<span class="cx-v-prix">${euros(p)}</span>` : ''}
           ${n ? `<span class="cx-v-pos"><i class="marque" aria-hidden="true"></i>${n > 1 ? `<span>×${n}</span>` : ''}</span>` : ''}
-          ${x.va ? `<span class="cx-v-var v-${esc(x.va)}">${esc(nomVariante(x.va))}</span>` : ''}
+          ${etiquette ? `<span class="cx-v-var v-${esc(x.va)}">${esc(nomVariante(x.va))}</span>` : ''}
           ${vers ? `<span class="cx-v-vers" aria-hidden="true">${vers.groupes.map((g) => `<i class="vv-${g}"></i>`).join('')}</span>` : ''}
           ${choix || etat.selection ? `<span class="cx-v-coche" aria-hidden="true">${ICO.coche}</span>` : ''}
         </span>
@@ -961,7 +982,6 @@ export function creeCartes(ctx) {
     if (etat.colRarete) l = l.filter(([id, c]) => rareteDe(id, c) === etat.colRarete);
     if (etat.colType) l = l.filter(([, c]) => (c.typ || []).includes(etat.colType));
     const lg = ctx.langue();
-    const dernier = (c) => c.ex?.[c.ex.length - 1]?.d || '';
     // L'ordre des extensions, comme Pokécardex : bloc (ordre de BLOCS), puis extensions
     // de la plus récente à la plus ancienne, Énergies et Promos en fin de bloc.
     const cle = new Map();
@@ -972,20 +992,31 @@ export function creeCartes(ctx) {
       cle.set(id, { set, bi: bi < 0 ? BLOCS.length : bi, g: genreSet(set, c.setN || nomSetConnu(set)), r: toutesExt?.get(set)?.rang ?? -1 });
     }
     etat.colBlocs = cle;
+    // Une vignette par VERSION possédée (07/11/2026, à la demande) : une carte qu'on a en
+    // normale et en reverse paraît deux fois, chacune à SON prix, et le tri par prix les
+    // range chacune à sa place. Un favori qu'on ne possède pas reste une vignette seule.
+    // Entrée : [id, carte, version, prix d'un exemplaire, dernier ajout de cette version].
+    l = l.flatMap(([id, c]) => {
+      const vs = [...new Set((c.ex || []).map((e) => e.v || 'normal'))].sort((a, b) => rangVersion(a) - rangVersion(b));
+      if (!vs.length) return [[id, c, null, prixUnitaire(id), '']];
+      return vs.map((va) => [id, c, va, prixVersion(id, va),
+        c.ex.filter((e) => (e.v || 'normal') === va).reduce((m, e) => (e.d > m ? e.d : m), '')]);
+    });
     const ordreSets = ([a], [b]) => {
       const x = cle.get(a), y = cle.get(b);
       return x.bi - y.bi || x.g - y.g || y.r - x.r || x.set.localeCompare(y.set);
     };
-    const numero = ([, a], [, b]) => String(a.num || '').localeCompare(String(b.num || ''), undefined, { numeric: true });
+    const numero = ([, a, va], [, b, vb]) => String(a.num || '').localeCompare(String(b.num || ''), undefined, { numeric: true })
+      || rangVersion(va) - rangVersion(vb);
     const s = etat.colSens === 'desc' ? -1 : 1;
     let critere;
     if (etat.colTri === 'nom') critere = ([, a], [, b]) => s * (a.n || '').localeCompare(b.n || '', lg);
-    else if (etat.colTri === 'recent') critere = ([, a], [, b]) => s * (dernier(a) < dernier(b) ? -1 : dernier(a) > dernier(b) ? 1 : 0);
+    else if (etat.colTri === 'recent') critere = (a, b) => s * (a[4] < b[4] ? -1 : a[4] > b[4] ? 1 : 0);
     else if (etat.colTri === 'prix') {
-      // Le prix d'UN exemplaire. Une carte sans prix connu va en fin de liste, dans un
-      // sens comme dans l'autre : elle n'est ni la moins chère ni la plus chère.
-      critere = ([a], [b]) => {
-        const pa = prixUnitaire(a), pb = prixUnitaire(b);
+      // Le prix d'UN exemplaire de CETTE version. Une version sans prix connu va en fin de
+      // liste, dans un sens comme dans l'autre : ni la moins chère ni la plus chère.
+      critere = (a, b) => {
+        const pa = a[3], pb = b[3];
         if (pa == null || pb == null) return (pa == null) - (pb == null);
         return s * (pa - pb);
       };
@@ -993,9 +1024,9 @@ export function creeCartes(ctx) {
     // Numéro : dans l'extension quand on classe, dans l'ordre des extensions sinon.
     else critere = (a, b) => s * ((etat.colGroupe ? 0 : ordreSets(a, b)) || numero(a, b));
     l.sort((a, b) => (etat.colGroupe ? ordreSets(a, b) : 0) || critere(a, b) || numero(a, b));
-    etat.liste = l.map(([id]) => id);
+    etat.liste = [...new Set(l.map(([id]) => id))];
     if (!l.length) return `<p class="dex-vide">${q || etat.colRarete || etat.colType ? t('colAucuneTrouvee') : t('colAucunFavori')}</p>`;
-    const tuile = ([id, c]) => vignette({ id, num: c.num || '', nom: c.n || id, img: c.img, d: detail(id) });
+    const tuile = ([id, c, va, p]) => vignette({ id, va, prix: p, num: c.num || '', nom: c.n || id, img: c.img, d: detail(id) }, { collection: true });
     if (!etat.colGroupe) return `<div class="cx-grille">${l.map(tuile).join('')}</div>`;
     // Groupée comme la page Extensions : un BLOC (couverture, logo, menu déroulant), puis
     // ses extensions sur le rail — logo, avancement, sceau —, chacune dépliant ses cartes.
@@ -1021,7 +1052,7 @@ export function creeCartes(ctx) {
     return `<div class="cx-blocs col-blocs">${[...parBloc].map(([bi, sets]) => {
       const cleB = `b:${BLOCS[bi]?.id || 'divers'}`;
       const nom = nomBloc(bi);
-      const n = sets.reduce((k, s) => k + s.cartes.length, 0);
+      const n = sets.reduce((k, s) => k + new Set(s.cartes.map(([id]) => id)).size, 0);
       const logo = logoBloc(bi, sets);
       const o = ouvert(cleB);
       return `
@@ -1103,8 +1134,9 @@ export function creeCartes(ctx) {
     const st = coll.stats();
     coll.noteValeurDuJour(st.valeur);
     const l = Object.entries(coll.toutes()).filter(([, c]) => c.ex?.length)
-      .map(([id, c]) => ({ id, c, u: prixUnitaire(id), n: c.ex.length }))
-      .sort((a, b) => (b.u ?? -1) * b.n - (a.u ?? -1) * a.n);
+      // La valeur d'une carte : chaque exemplaire à sa version (une reverse à son prix).
+      .map(([id, c]) => ({ id, c, u: prixUnitaire(id), n: c.ex.length, v: c.prix?.t ? coll.valeurDe(c) : null }))
+      .sort((a, b) => (b.v ?? b.u ?? -1) - (a.v ?? a.u ?? -1));
     const sansPrix = l.filter((x) => x.u == null).length;
     const m = etat.majPrix;
     etat.liste = l.map((x) => x.id);
@@ -1125,11 +1157,11 @@ export function creeCartes(ctx) {
           </button>
           ${sansPrix ? `<p class="cx-note">${t('valSansPrix', sansPrix)}</p>` : ''}
           <h2 class="cx-titre">${t('valPlusCheres')}</h2>
-          <div class="reg-lignes cx-top">${l.slice(0, 60).map(({ id, c, u, n }) => `
+          <div class="reg-lignes cx-top">${l.slice(0, 60).map(({ id, c, u, n, v }) => `
             <button class="reg-ligne cx-ligne" data-cx-carte="${esc(id)}">
               <img class="cx-mini" src="${esc(api.image(c.img, 'low'))}" alt="" loading="lazy" />
               <span><b>${esc(c.n || id)}</b><small>${esc(c.setN || setDe(id))} · ${esc(c.num || '')}${n > 1 ? ` · ×${n}` : ''}</small></span>
-              <span class="cx-ligne-prix">${u != null ? euros(u * n) : '—'}${n > 1 && u != null ? `<small>${euros(u)}</small>` : ''}</span>
+              <span class="cx-ligne-prix">${u != null ? euros(v ?? u * n) : '—'}${n > 1 && u != null ? `<small>${euros(u)}</small>` : ''}</span>
             </button>`).join('')}</div>`
         : `<div class="cx-vide"><p>${t('colVide')}</p>
             <button class="puce" data-nav-vers="extensions">${ICO.cartes}<span>${t('colOuvrirExtensions')}</span></button></div>`}
@@ -1156,8 +1188,7 @@ export function creeCartes(ctx) {
     };
     for (const id of ids) {
       api.carteEnFile(id, { pourPrix: true }).then((d) => {
-        const p = prixDe(d);
-        if (p) coll.notePrix(id, p);
+        notePrixCarte(id, d);
         coll.complete(id, ficheDe(id, d));
         prix.notePoint(id, d?.pricing?.cardmarket);
       }).catch(() => {}).finally(fin);
@@ -2353,8 +2384,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
           const v = vars.includes(variante) ? variante : vars[0];
           const avant = JSON.parse(JSON.stringify(coll.toutes()));
           coll.ajoute(ficheDe(k, d), v, { langue: langueExemplaire(), etat: ETATS.includes(e) ? e : 'neuf' });
-          const p = prixDe(d);
-          if (p) coll.notePrix(k, p);
+          notePrixCarte(k, d);
           prix.notePoint(k, d?.pricing?.cardmarket);
           ctx.noteRecent(k);
           ctx.annonce(t('advAjoute', d.name), () => coll.remplace(avant));
@@ -2543,8 +2573,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
     api.carte(id, { pourPrix: true }).then((d) => {
       if (coll.carte(id)) {
         coll.complete(id, ficheDe(id, d));
-        const p = prixDe(d);
-        if (p) coll.notePrix(id, p);
+        notePrixCarte(id, d);
         // Une carte suivie relève son point du jour : sa courbe se construit ainsi.
         prix.notePoint(id, d?.pricing?.cardmarket);
       }
@@ -2784,8 +2813,7 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
   function ajouteDepuisFiche(id, v, e) {
     const d = detail(id);
     coll.ajoute(ficheDe(id, d), v, { langue: langueExemplaire(), etat: e });
-    const p = prixDe(d);
-    if (p) coll.notePrix(id, p);
+    notePrixCarte(id, d);
     prix.notePoint(id, d?.pricing?.cardmarket);
     ctx.noteRecent(id);
     ctx.haptique();
@@ -3156,7 +3184,8 @@ Classeurs : ${lesClasseurs}.${mem ? `\nSouvenirs : ${mem}` : ''}`;
           majLot();
           return;
         }
-        ouvre(id, etat.liste);
+        // La version touchée est présélectionnée pour l'ajout (master set, Ma collection).
+        ouvre(id, etat.liste, { variante: x.dataset.cxVar || null });
         return;
       }
       if (q('[data-cx-master]')) { etat.master = !etat.master; etat.selection = etat.selection && new Set(); if (dependTout()) chargeTout(setCourant); ctx.haptique(); rend('extensions'); return; }

@@ -400,6 +400,18 @@ fiche (`carteSheet`, un `.sheet` comme les autres) et la passerelle vers le Pok�
   l'appli. Https seulement. Vaut pour tous les liens externes (Mistral, abonnements Apple).
 - **Ma collection** : bandeau (éventail des trois plus chères, valeur, nombre), recherche,
   filtres, puis la rangée du classement, Toutes / Favoris.
+  - **Une vignette par VERSION possédée** (07/11/2026, à la demande : « si j'ai une carte en
+    normal et en reverse, je dois voir les deux en fonction de leur prix ») : chacune porte le
+    prix de SA version (`prixVersion` : la carte pour normale / holo, les champs « -holo »
+    pour la reverse, rien pour Poké Ball, tampon…), son nombre d'exemplaires, sa pastille de
+    couleur, et une étiquette hors de la normale. Le tri par prix les range chacune à sa
+    place ; numéro égal → normale, holo, reverse, puis le reste. Toucher une version ouvre la
+    fiche avec cette version choisie pour l'ajout. Les compteurs restent en cartes distinctes.
+  - La collection garde le prix de la reverse (`prix.r`, relevé avec celui de la carte par
+    `notePrixCarte`) : la vignette s'affiche hors ligne, et la VALEUR compte chaque exemplaire
+    à sa version (`valeurDe` dans collection.js ; une version sans prix publié compte au prix
+    de la carte, en estimation). Vérifié : Bulbizarre normale 0,17 € et reverse ×2 0,40 €,
+    Salamèche 0,12 / 0,43 €, Noeunoeuf 0,03 € et Poké Ball sans prix → valeur 1,58 €.
   - **Classement et tri séparés** (28/10/2026, à la demande) : une puce « Par
     collection » (`etat.colGroupe`, gardée sur l'appareil, `pcbox.cartes.colgroupe`,
     classée par défaut), le tri (numéro, ajout récent, nom, prix), qui vit SEULEMENT dans l'icône de

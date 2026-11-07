@@ -121,7 +121,12 @@ section « Langage commun » en fin de `style.css` :
 - **`.champ`**, le champ de recherche à loupe, partout.
 - **La Poké Ball dessinée (`.marque`) veut dire « à moi »** : cases de boîte, grille du
   Pokédex (`.dx-ok`, qui était une pastille rouge), cartes possédées. Et la règle du
-  Living Dex vaut pour les cartes : possédée en COULEUR, manquante en GRIS.
+  Living Dex vaut pour les cartes : possédée en COULEUR, manquante éteinte — en couleur
+  depuis le 07/11/2026 (à la demande, d'après une capture fournie), mais voilée
+  (`saturate(0.7) brightness(0.82)`, opacité 0,55 ; 0,5 dans les classeurs) : on reconnaît
+  l'illustration, et la carte possédée reste la seule pleinement vive. Grilles de cartes
+  (`.cx-v.manque`) et pochettes (`.cl-poche.manque`) ; les sprites du monde des jeux
+  gardent le gris.
 - Marges des pages : 16 px de chaque côté dans les deux univers.
 - **Les panneaux recouvrent la barre du bas** (voile 20, panneau 21, barre 15) : depuis
   l'étape 1 la barre passait au-dessus et cachait le bas de chaque panneau, alors que

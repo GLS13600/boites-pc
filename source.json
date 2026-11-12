@@ -1,0 +1,31 @@
+{
+  "name": "Unydex",
+  "identifier": "com.guillaume.unydex.source",
+  "subtitle": "Living Dex et cartes Pokémon",
+  "apps": [
+    {
+      "name": "Unydex Dev",
+      "bundleIdentifier": "com.guillaume.unydex.dev",
+      "developerName": "Guillaume",
+      "subtitle": "Living Dex et collection de cartes Pokémon",
+      "localizedDescription": "Ton Living Dex et ta collection de cartes Pokémon dans une seule appli : boîtes PC, Pokédex, équipes et analyse des types ; extensions, classeurs, valeur de la collection ; scan des cartes et des Pokémon sur le téléphone. Application non officielle, sans lien avec Nintendo ou The Pokémon Company. Pokémon © Nintendo / Creatures / GAME FREAK / The Pokémon Company — tous droits réservés.",
+      "iconURL": "https://gls13600.github.io/boites-pc/icone-1024.png",
+      "tintColor": "d6453c",
+      "screenshotURLs": [],
+      "versions": [
+        {
+          "version": "1.0.204",
+          "date": "2026-11-12",
+          "localizedDescription": "Build 1.0.204.",
+          "downloadURL": "https://github.com/GLS13600/boites-pc/releases/download/v1.0.204/Unydex.ipa",
+          "size": 321869636,
+          "minOSVersion": "15.0"
+        }
+      ],
+      "version": "1.0.204",
+      "versionDate": "2026-11-12",
+      "downloadURL": "https://github.com/GLS13600/boites-pc/releases/download/v1.0.204/Unydex.ipa",
+      "size": 321869636
+    }
+  ]
+}

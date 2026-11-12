@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Mentions légales — Unydex</title>
+<meta name="color-scheme" content="light dark" />
+<style>
+  :root {
+    --paper: #f6f5f1; --panel: #fff; --ink: #1b1a17; --muted: #6b675d;
+    --rule: #e3e0d6; --ball: #d6453c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #16191d; --panel: #1c2026; --ink: #eef1f4; --muted: #99a3ad;
+      --rule: #2c333b; --ball: #f06056;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: max(24px, env(safe-area-inset-top)) 18px calc(48px + env(safe-area-inset-bottom));
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 46rem; margin: 0 auto; }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 1rem; }
+  h2 { font-size: 1.3rem; margin: 2.2rem 0 .6rem; }
+  h3 { font-size: 1.05rem; margin: 1.6rem 0 .4rem; }
+  h4 { font-size: .95rem; margin: 1.2rem 0 .3rem; color: var(--muted); }
+  p, li { margin: .6rem 0; }
+  a { color: var(--ball); }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 2rem 0; }
+  code {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 5px;
+    padding: 1px 5px; font-size: .88em;
+  }
+  blockquote {
+    margin: 1.2rem 0; padding: .8rem 1rem;
+    border-left: 3px solid var(--ball); background: var(--panel);
+    border-radius: 0 10px 10px 0;
+  }
+  blockquote p { margin: .4rem 0; }
+  pre {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 10px;
+    padding: .8rem 1rem; font-size: .78em; line-height: 1.45;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  /* Ces pages se lisent au téléphone : les tableaux occupent la largeur disponible et
+     leur texte passe à la ligne, plutôt que de déborder et d'imposer un défilement
+     horizontal qui masque la dernière colonne. L'enveloppe garde le débordement sous
+     le coude pour un tableau qui serait un jour trop large. */
+  .tableau { width: 100%; overflow-x: auto; margin: 1rem 0; }
+  /* Largeur FIXE et césure autorisée : en disposition automatique, la plus longue
+     suite de caractères insécables de chaque colonne impose une largeur minimale, et
+     trois colonnes de texte juridique débordaient du cadre — la dernière se trouvait
+     coupée au bord de l’écran. */
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  /* La césure vient AVANT la coupure brutale : sans elle, les colonnes étroites
+     tranchaient au milieu des mots (« d emprisonne-ment »). La page déclare lang="fr",
+     le navigateur coupe donc aux syllabes françaises. */
+  th, td { -webkit-hyphens: auto; hyphens: auto; overflow-wrap: break-word; }
+  th, td { border: 1px solid var(--rule); padding: 8px 10px; text-align: left; vertical-align: top; font-size: .92rem; }
+  th { background: var(--panel); font-weight: 700; }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .85rem; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Mentions légales</h1>
+<p><strong>Version 2.1 — En vigueur au 12 novembre 2026</strong></p>
+<p>Conformément aux articles 6-III et 19 de la loi n° 2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique (LCEN), il est porté à la connaissance des utilisateurs de l'application Unydex et du site qui lui est associé les présentes mentions légales.</p>
+<hr />
+<h2>Article 1 — Éditeur</h2>
+<p>L'application mobile Unydex et le site accessible à l'adresse <code>https://gls13600.github.io/boites-pc</code> (ci-après ensemble « le Service ») sont édités par :</p>
+<ul>
+<li><strong>Nom</strong> : Guillaume LEPINAY-SALVETAT, personne physique</li>
+<li><strong>Adresse électronique</strong> : unydexapp@gmail.com</li>
+</ul>
+<p><strong>Directeur de la publication</strong> : Guillaume LEPINAY-SALVETAT.</p>
+<p>L'éditeur, personne physique, ne publie pas son adresse postale. Conformément à l'article 6, III, 2 de la loi n° 2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique, les éléments permettant de l'identifier sont tenus à la disposition de l'hébergeur mentionné à l'article 2. Toute demande, y compris de retrait d'un contenu, est reçue à l'adresse électronique ci-dessus.</p>
+<hr />
+<h2>Article 2 — Hébergement</h2>
+<div class="tableau"><table><thead><tr><th>Composant</th><th>Hébergeur</th></tr></thead><tbody>
+<tr><td>Site web</td><td><strong>GitHub, Inc.</strong>, 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis</td></tr>
+<tr><td>Comptes, collections et synchronisation</td><td><strong>Supabase, Inc.</strong>, 970 Toa Payoh North #07-04, Singapour 318992 — données hébergées dans l'Union européenne, région Irlande (Amazon Web Services EMEA SARL, 38 avenue John F. Kennedy, L-1855 Luxembourg)</td></tr>
+<tr><td>Distribution de l'application mobile</td><td><strong>Apple Distribution International Ltd.</strong>, Hollyhill Industrial Estate, Hollyhill, Cork, Irlande</td></tr>
+</tbody></table></div>
+<hr />
+<h2>Article 3 — Propriété intellectuelle</h2>
+<p>Le code source de l'application, son interface, son icône et les illustrations créées pour elle sont protégés par le droit d'auteur et demeurent la propriété exclusive de l'éditeur.</p>
+<p>Les bibliothèques logicielles, la police de caractères et les pictogrammes de tiers utilisés par le Service le sont conformément à leurs licences (MIT, ISC, BSD, Apache 2.0, SIL Open Font License), dont les textes et les avis de droit d'auteur sont reproduits dans la page <strong>« Licences des composants tiers »</strong>, accessible depuis l'application (Profil → Légal).</p>
+<p><strong>©2026 Pokémon. ©1995–2026 Nintendo / Creatures Inc. / GAME FREAK inc.</strong> Pokémon, les noms des personnages Pokémon, Pokédex, Poké Ball et les logos qui s'y rapportent sont des marques de leurs titulaires. Les illustrations, sprites, cris, fonds de boîte, textes des jeux, cartes à collectionner, illustrations de cartes et logos d'extensions affichés par le Service appartiennent à Nintendo, Creatures Inc., GAME FREAK inc., The Pokémon Company et aux illustrateurs crédités : <strong>tous droits réservés</strong>. Ils sont affichés à titre d'identification et d'information, sans revendication d'aucun droit par l'éditeur. Leurs sources (PokéAPI, Bulbagarden Archives, TCGdex, Pokémon TCG API, Pokécardex, Cardmarket, TCGPlayer) et les autres marques citées sont détaillées dans la page <strong>« Crédits et droits »</strong> (<a href="credits.html">CREDITS-ET-DROITS.md</a>), accessible depuis l'application.</p>
+<p>Les marques, dénominations, personnages, illustrations et œuvres de tiers cités ou représentés demeurent la propriété exclusive de leurs titulaires respectifs. <strong>Unydex n'est ni éditée, ni produite, ni approuvée, ni soutenue, ni sponsorisée par Nintendo Co., Ltd., Game Freak Inc., Creatures Inc. ou The Pokémon Company International.</strong> Aucun lien, partenariat ou affiliation n'existe avec ces sociétés, ni avec les services dont le Service affiche des données (TCGdex, Cardmarket, TCGPlayer) ou vers lesquels il renvoie (Cardmarket, Vinted, eBay).</p>
+<p>Toute reproduction ou réutilisation des éléments propres au Service, quel qu'en soit le procédé, est interdite sans autorisation écrite préalable de l'éditeur. La contrefaçon est punie de trois ans d'emprisonnement et de 300 000 euros d'amende (article L. 335-2 du code de la propriété intellectuelle).</p>
+<hr />
+<h2>Article 4 — Protection des données à caractère personnel</h2>
+<p>Les traitements de données mis en œuvre dans le cadre du Service sont décrits dans la <a href="confidentialite.html">politique de confidentialité</a>.</p>
+<hr />
+<h2>Article 5 — Traceurs et stockage local</h2>
+<p><strong>Le site</strong> ne dépose aucun cookie et ne met en œuvre aucun outil de mesure d'audience ni aucun dispositif publicitaire.</p>
+<p><strong>L'application et le site</strong> inscrivent dans l'espace de stockage local du terminal la collection, les préférences et, le cas échéant, le jeton de session. Ces opérations sont strictement nécessaires au service demandé par l'utilisateur et, à ce titre, dispensées de consentement (article 82, II, de la loi n° 78-17 du 6 janvier 1978 modifiée).</p>
+<p><strong>La version de l'application distribuée par l'App Store</strong> intègre le kit publicitaire de Google (AdMob), qui accède à des informations du terminal. Le consentement de l'utilisateur est recueilli avant toute publicité personnalisée et toute lecture de l'identifiant publicitaire, par le formulaire de consentement de Google puis la demande de suivi d'iOS ; il se modifie à tout moment dans l'application et dans les réglages d'iOS. Le détail figure à l'article 5 de la politique de confidentialité.</p>
+<hr />
+<h2>Article 6 — Limitation de responsabilité</h2>
+<p>Les informations relatives aux jeux vidéo et aux cartes à collectionner, ainsi que les prix affichés, proviennent de sources tierces, n'ont <strong>aucun caractère officiel</strong> et sont fournis à titre indicatif. Les conditions et limites de la responsabilité de l'éditeur sont précisées aux articles 8, 13 et 14 des <a href="conditions.html">conditions générales d'utilisation</a>.</p>
+<hr />
+<h2>Article 7 — Signalement d'un contenu illicite ou contrefaisant</h2>
+<p>Toute personne estimant qu'un contenu diffusé par le Service présente un caractère illicite, ou porte atteinte à ses droits, peut le signaler à l'adresse électronique mentionnée à l'article 1, en précisant ses coordonnées, la description et la localisation du contenu, et les motifs, notamment le droit invoqué. Le signalement est examiné promptement et le contenu retiré lorsque la demande est fondée.</p>
+<p>Point de contact unique pour les autorités et les utilisateurs au sens des articles 11 et 12 du règlement (UE) 2022/2065 : l'adresse électronique mentionnée à l'article 1 ; langues acceptées : français, anglais.</p>
+<hr />
+<h2>Article 8 — Médiation de la consommation</h2>
+<p>Conformément aux articles L. 611-1 et suivants du code de la consommation, l'utilisateur consommateur peut recourir gratuitement au médiateur de la consommation suivant : <strong>[NOM, ADRESSE ET SITE DU MÉDIATEUR — À DÉSIGNER AVANT LA MISE EN PLACE DE L'ABONNEMENT]</strong>.</p>
+<hr />
+<h2>Article 9 — Droit applicable</h2>
+<p>Les présentes mentions légales sont régies par le droit français.</p>
+<footer>
+  <a href="confidentialite.html">Confidentialité</a> ·
+  <a href="conditions.html">Conditions</a> ·
+  <a href="mentions.html">Mentions légales</a> ·
+  <a href="privacy.html" lang="en">Privacy (EN)</a> ·
+  <a href="../">Unydex</a>
+</footer>
+</main>
+</body>
+</html>

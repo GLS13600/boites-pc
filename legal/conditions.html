@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Conditions d’utilisation — Unydex</title>
+<meta name="color-scheme" content="light dark" />
+<style>
+  :root {
+    --paper: #f6f5f1; --panel: #fff; --ink: #1b1a17; --muted: #6b675d;
+    --rule: #e3e0d6; --ball: #d6453c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #16191d; --panel: #1c2026; --ink: #eef1f4; --muted: #99a3ad;
+      --rule: #2c333b; --ball: #f06056;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: max(24px, env(safe-area-inset-top)) 18px calc(48px + env(safe-area-inset-bottom));
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 46rem; margin: 0 auto; }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 1rem; }
+  h2 { font-size: 1.3rem; margin: 2.2rem 0 .6rem; }
+  h3 { font-size: 1.05rem; margin: 1.6rem 0 .4rem; }
+  h4 { font-size: .95rem; margin: 1.2rem 0 .3rem; color: var(--muted); }
+  p, li { margin: .6rem 0; }
+  a { color: var(--ball); }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 2rem 0; }
+  code {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 5px;
+    padding: 1px 5px; font-size: .88em;
+  }
+  blockquote {
+    margin: 1.2rem 0; padding: .8rem 1rem;
+    border-left: 3px solid var(--ball); background: var(--panel);
+    border-radius: 0 10px 10px 0;
+  }
+  blockquote p { margin: .4rem 0; }
+  pre {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 10px;
+    padding: .8rem 1rem; font-size: .78em; line-height: 1.45;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  /* Ces pages se lisent au téléphone : les tableaux occupent la largeur disponible et
+     leur texte passe à la ligne, plutôt que de déborder et d'imposer un défilement
+     horizontal qui masque la dernière colonne. L'enveloppe garde le débordement sous
+     le coude pour un tableau qui serait un jour trop large. */
+  .tableau { width: 100%; overflow-x: auto; margin: 1rem 0; }
+  /* Largeur FIXE et césure autorisée : en disposition automatique, la plus longue
+     suite de caractères insécables de chaque colonne impose une largeur minimale, et
+     trois colonnes de texte juridique débordaient du cadre — la dernière se trouvait
+     coupée au bord de l’écran. */
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  /* La césure vient AVANT la coupure brutale : sans elle, les colonnes étroites
+     tranchaient au milieu des mots (« d emprisonne-ment »). La page déclare lang="fr",
+     le navigateur coupe donc aux syllabes françaises. */
+  th, td { -webkit-hyphens: auto; hyphens: auto; overflow-wrap: break-word; }
+  th, td { border: 1px solid var(--rule); padding: 8px 10px; text-align: left; vertical-align: top; font-size: .92rem; }
+  th { background: var(--panel); font-weight: 700; }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .85rem; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Conditions générales d'utilisation</h1>
+<p><strong>Version 2.1 — En vigueur au 12 novembre 2026</strong></p>
+<h2>Préambule</h2>
+<p>Les présentes conditions générales d'utilisation (ci-après « les CGU ») définissent les modalités dans lesquelles l'éditeur met l'application Unydex à la disposition des utilisateurs, ainsi que les droits et obligations des parties.</p>
+<p>L'éditeur est identifié aux <a href="mentions.html">mentions légales</a>, qui font partie intégrante des présentes, de même que la <a href="confidentialite.html">politique de confidentialité</a>.</p>
+<p><strong>L'utilisation du Service vaut acceptation pleine et entière des présentes CGU.</strong> L'utilisateur qui ne les accepte pas est invité à ne pas utiliser le Service et, le cas échéant, à désinstaller l'Application.</p>
+<hr />
+<h2>Article 1 — Définitions</h2>
+<ul>
+<li><strong>Application</strong> : l'application mobile Unydex, dans toutes ses versions.</li>
+<li><strong>Service</strong> : l'Application, le site qui lui est associé et l'ensemble des fonctionnalités accessibles par leur intermédiaire.</li>
+<li><strong>Utilisateur</strong> : toute personne physique qui utilise le Service à titre personnel.</li>
+<li><strong>Compte</strong> : l'espace personnel facultatif créé par l'Utilisateur ; il est commun à l'application Cartodex, du même éditeur.</li>
+<li><strong>Collection</strong> : l'ensemble des données saisies, organisées ou générées par l'Utilisateur dans l'Application.</li>
+<li><strong>Sauvegarde en ligne</strong> : la conservation de la Collection sur les serveurs de l'hébergeur et sa synchronisation entre les terminaux connectés au même Compte.</li>
+<li><strong>Contenus tiers</strong> : les informations et images affichées par le Service et provenant de sources tierces — données relatives à des jeux vidéo, catalogue et images de cartes à collectionner, prix de marché, taux de change.</li>
+<li><strong>Assistant</strong> : la fonctionnalité conversationnelle « PokéAdvisor ».</li>
+<li><strong>Abonnement</strong> : l'offre payante facultative « Unydex+ ».</li>
+</ul>
+<hr />
+<h2>Article 2 — Objet du Service</h2>
+<p>Le Service est un outil personnel de suivi de collection. Il permet notamment à l'Utilisateur :</p>
+<ul>
+<li>d'organiser des entrées dans des boîtes, de composer des équipes et d'analyser leurs forces et faiblesses ;</li>
+<li>de recenser des cartes à collectionner, leurs exemplaires et leurs versions, de les ranger dans des classeurs et d'en estimer la valeur ;</li>
+<li>de reconnaître un sujet ou une carte au moyen de l'appareil photographique ;</li>
+<li>d'interroger un assistant conversationnel ;</li>
+<li>s'il crée un Compte, de retrouver et de synchroniser sa Collection sur plusieurs terminaux.</li>
+</ul>
+<p>Le Service est <strong>gratuit</strong>. La version distribuée par l'App Store est financée par la <strong>publicité</strong> (article 9) et propose un <strong>Abonnement</strong> facultatif (article 10).</p>
+<hr />
+<h2>Article 3 — Acceptation et opposabilité des CGU</h2>
+<p>Les CGU sont accessibles à tout moment depuis l'Application (Profil → Légal) et sur le site de l'éditeur. La version opposable est celle en vigueur à la date d'utilisation du Service.</p>
+<hr />
+<h2>Article 4 — Accès au Service</h2>
+<h3>4.1. Conditions d'accès</h3>
+<p>L'accès au Service suppose un terminal compatible et, pour certaines fonctionnalités, une connexion à internet : catalogue, images et prix des cartes, Assistant, Sauvegarde en ligne, publicité, Abonnement. Les frais de connexion et d'équipement restent à la charge de l'Utilisateur. Le suivi de la Collection fonctionne sans connexion.</p>
+<h3>4.2. Autorisations du terminal</h3>
+<p>L'Application sollicite l'accès à l'appareil photographique aux seules fins de reconnaissance d'image, exécutée sur le terminal, et, pour la version financée par la publicité, l'autorisation de suivi prévue par iOS. Ces autorisations peuvent être refusées ou révoquées à tout moment dans les réglages du terminal, sans que le reste du Service en soit affecté.</p>
+<hr />
+<h2>Article 5 — Compte utilisateur</h2>
+<h3>5.1. Caractère facultatif</h3>
+<p>La création d'un Compte est <strong>facultative</strong>. Le suivi de la Collection est accessible sans Compte.</p>
+<h3>5.2. Conditions de création</h3>
+<p>La création d'un Compte est ouverte aux personnes âgées de <strong>quinze (15) ans</strong> révolus en France, ou de l'âge fixé par la législation de leur État de résidence en application de l'article 8 du RGPD. En deçà, elle requiert l'accord du titulaire de l'autorité parentale, qui en assume la responsabilité.</p>
+<p>L'Utilisateur garantit l'exactitude des informations qu'il communique.</p>
+<h3>5.3. Identifiants</h3>
+<p>L'Utilisateur est seul responsable de la confidentialité de ses identifiants et de toute utilisation de son Compte. Il informe sans délai l'éditeur de toute utilisation non autorisée.</p>
+<h3>5.4. Pseudonyme</h3>
+<p>Le pseudonyme comporte de trois à seize caractères. L'Utilisateur s'interdit de choisir un pseudonyme usurpant l'identité d'un tiers, injurieux, diffamatoire, discriminatoire, portant atteinte à un droit de propriété intellectuelle, ou laissant croire à un lien officiel avec un éditeur de jeux vidéo ou toute autre entité.</p>
+<h3>5.5. Compte commun avec Cartodex</h3>
+<p>Le Compte permet d'utiliser l'application Cartodex. À la première connexion d'un Compte à Unydex, la sauvegarde Cartodex qui lui est rattachée est ajoutée à la Collection.</p>
+<h3>5.6. Suppression du Compte</h3>
+<p>L'Utilisateur peut supprimer son Compte à tout moment, sans motif, depuis l'Application (Profil → Compte → « Supprimer mon compte »). <strong>La suppression est immédiate et définitive</strong> et porte sur les données enregistrées sur les serveurs pour Unydex et pour Cartodex. La Collection enregistrée sur le terminal n'est pas affectée. La suppression du Compte ne met pas fin à un Abonnement en cours, qui se résilie auprès d'Apple (article 10.4).</p>
+<hr />
+<h2>Article 6 — Obligations de l'Utilisateur</h2>
+<h3>6.1. Usage conforme</h3>
+<p>L'Utilisateur utilise le Service conformément aux présentes, aux lois en vigueur et aux droits des tiers.</p>
+<h3>6.2. Interdictions</h3>
+<p>Il est notamment interdit à l'Utilisateur :</p>
+<ol>
+<li>d'accéder ou de tenter d'accéder aux données d'un autre Compte, ou de contourner les mesures techniques de protection ;</li>
+<li>d'entraver ou de surcharger le fonctionnement du Service ou des services tiers qu'il interroge, notamment par l'automatisation de requêtes ;</li>
+<li>d'extraire ou de réutiliser de manière systématique tout ou partie des contenus ou des bases de données du Service ;</li>
+<li>de procéder à des opérations de rétro-ingénierie, en dehors des cas autorisés par l'article L. 122-6-1 du code de la propriété intellectuelle ;</li>
+<li>d'utiliser le Service, notamment l'Assistant, pour produire, stocker ou diffuser un contenu illicite, préjudiciable ou contraire à l'ordre public ;</li>
+<li>de contourner les limites de la version gratuite, de manipuler l'affichage des publicités ou de générer des interactions publicitaires artificielles ;</li>
+<li>de redistribuer l'Application ou de la présenter comme officielle.</li>
+</ol>
+<h3>6.3. Rappel des dispositions pénales applicables</h3>
+<p>Sont notamment réprimés : l'accès ou le maintien frauduleux dans un système de traitement automatisé de données (article 323-1 du code pénal : trois ans d'emprisonnement et 100 000 euros d'amende, portés à cinq ans et 150 000 euros en cas de suppression ou de modification de données) ; l'entrave à son fonctionnement (article 323-2 : cinq ans et 150 000 euros) ; l'introduction, l'extraction ou la modification frauduleuse de données (article 323-3 : cinq ans et 150 000 euros) ; l'usurpation d'identité (article 226-4-1 : un an et 15 000 euros) ; la contrefaçon (article L. 335-2 du code de la propriété intellectuelle : trois ans et 300 000 euros). Ce rappel n'est pas exhaustif.</p>
+<h3>6.4. Garantie</h3>
+<p>L'Utilisateur garantit l'éditeur contre toute réclamation trouvant son origine dans un manquement de sa part aux présentes ou à la réglementation.</p>
+<hr />
+<h2>Article 7 — Données de l'Utilisateur et sauvegarde</h2>
+<h3>7.1. Propriété</h3>
+<p>La Collection appartient à l'Utilisateur. L'éditeur ne l'exploite à aucune autre fin que la fourniture du Service, sous réserve du compteur agrégé des favoris décrit à la politique de confidentialité.</p>
+<h3>7.2. Portabilité et obligation de sauvegarde</h3>
+<p>L'Utilisateur peut exporter à tout moment l'intégralité de ses données dans un fichier, depuis l'Application. <strong>Il lui appartient de procéder régulièrement à cette exportation et d'en conserver une copie</strong>, seul moyen sous son contrôle exclusif de prémunir sa Collection contre une désinstallation, une défaillance du terminal ou une interruption du Service.</p>
+<h3>7.3. Fonctionnement de la Sauvegarde en ligne</h3>
+<p>La Collection est synchronisée automatiquement et en temps réel entre les terminaux connectés au même Compte. Lorsqu'elle a été modifiée sur plusieurs terminaux, les modifications sont <strong>fusionnées automatiquement</strong> ; lorsqu'une même donnée a été modifiée différemment sur deux terminaux dans un court intervalle, la dernière modification enregistrée prévaut. À la connexion d'un terminal à un Compte qui contient déjà une Collection, celle du Compte remplace celle du terminal.</p>
+<hr />
+<h2>Article 8 — Contenus tiers, prix et fonctionnalités d'aide</h2>
+<h3>8.1. Contenus tiers</h3>
+<p>Les Contenus tiers proviennent de sources publiques ou de services tiers, notamment PokéAPI et TCGdex. Ils sont fournis à titre <strong>purement informatif</strong>, peuvent être incomplets, inexacts ou indisponibles, et ne présentent <strong>aucun caractère officiel</strong>. Leur disponibilité dépend de ces services, que l'éditeur ne contrôle pas.</p>
+<h3>8.2. Prix et valeur des cartes</h3>
+<p>Les prix et valeurs affichés sont des <strong>estimations indicatives</strong> calculées à partir de données de marché publiées par des tiers (Cardmarket, TCGPlayer), relayées par TCGdex, converties au taux de référence de la Banque centrale européenne et combinées selon une règle propre à l'Application. Ils ne constituent ni une offre d'achat ou de vente, ni une évaluation professionnelle, ni un conseil financier ou d'investissement. <strong>L'Utilisateur ne doit pas fonder une décision d'achat, de vente ou d'assurance sur ces seules estimations.</strong></p>
+<h3>8.3. Reconnaissance par l'appareil photographique</h3>
+<p>La reconnaissance repose sur des modèles statistiques dont les résultats sont, par nature, approximatifs et faillibles.</p>
+<h3>8.4. Liens vers des sites tiers</h3>
+<p>Le Service propose des liens vers des sites tiers (Cardmarket, Vinted, eBay…), ouverts dans le navigateur du terminal. L'éditeur n'a aucun lien commercial avec ces sites, n'exerce aucun contrôle sur leur contenu et décline toute responsabilité quant aux transactions que l'Utilisateur y conclut.</p>
+<h3>8.5. L'Assistant (PokéAdvisor)</h3>
+<p><strong>Fonction non proposée dans la version actuelle de l'Application.</strong> Le présent paragraphe ne s'appliquera qu'à sa mise à disposition.</p>
+<ol>
+<li>L'Assistant repose sur les modèles de langage de Mistral AI. Il ne fonctionne qu'avec une clé d'accès que l'Utilisateur obtient lui-même auprès de Mistral AI ; l'Utilisateur est alors lié à Mistral AI par les conditions de ce dernier, dont il assume le respect et, le cas échéant, le coût.</li>
+<li>Les réponses sont <strong>générées automatiquement</strong>. Elles peuvent être inexactes, incomplètes ou inappropriées, et ne constituent ni un conseil professionnel, ni un conseil financier, ni une information vérifiée. L'Utilisateur les apprécie sous sa seule responsabilité.</li>
+<li>L'Assistant peut, à la demande de l'Utilisateur, modifier la Collection (ajout ou retrait d'une carte) ; chaque modification est annoncée et peut être annulée.</li>
+<li>L'Utilisateur s'interdit de soumettre à l'Assistant des contenus illicites ou des données personnelles de tiers, et il lui est recommandé de n'y communiquer aucune donnée personnelle le concernant.</li>
+</ol>
+<hr />
+<h2>Article 9 — Publicité</h2>
+<p>La version de l'Application distribuée par l'App Store affiche des publicités fournies par Google (AdMob), sous la forme d'une annonce plein écran à l'ouverture de l'Application (au lancement, et au retour dans l'Application après une absence). Elles sont personnalisées uniquement avec le consentement de l'Utilisateur, dans les conditions décrites à la politique de confidentialité. L'éditeur ne choisit pas individuellement les annonces diffusées et n'est pas responsable de leur contenu ni des produits ou services qu'elles présentent ; il s'efforce d'exclure les catégories d'annonces inadaptées à un public jeune. Les abonnés Unydex+ ne voient aucune publicité.</p>
+<hr />
+<h2>Article 10 — Abonnement Unydex+</h2>
+<p><strong>Unydex+ n'est pas proposé dans la version actuelle de l'Application</strong> : aucun achat n'y est possible, et toutes les fonctions de l'Application sont accessibles gratuitement. Le présent article ne s'appliquera qu'à la mise en place de l'abonnement, annoncée par une nouvelle version des CGU ; les prix seront alors ceux fixés dans l'App Store.</p>
+<h3>10.1. Contenu</h3>
+<p>L'Abonnement donne accès, pendant sa durée, aux avantages décrits dans l'Application au moment de la souscription, et notamment : la suppression des publicités ; le mode « master set » et la progression par version ; des classeurs en nombre illimité, leurs couleurs libres, les classeurs « master set » et leurs effets visuels ; l'historique des prix et la courbe de valeur de la collection ; une liste de souhaits illimitée et ses alertes de prix ; le scan des cartes sans limite quotidienne ; l'export de l'inventaire en tableur ; l'ajout de boîtes et une équipe de combat par version de jeu. Les limites de la version gratuite sont indiquées dans l'Application, sur l'écran de l'Abonnement.</p>
+<p>La version gratuite reste utilisable sans Abonnement. <strong>Aucune donnée créée pendant l'Abonnement ou l'essai n'est effacée à son terme</strong> : seules les fonctions réservées sont alors verrouillées, et ce qui a été créé au-delà des limites gratuites reste consultable.</p>
+<h3>10.2. Formules et prix</h3>
+<p>Trois formules sont proposées : <strong>annuelle</strong>, <strong>mensuelle</strong>, et un <strong>accès à vie</strong> par achat unique. Leurs prix, toutes taxes comprises, sont ceux affichés par l'App Store dans la monnaie et selon la fiscalité du pays de l'Utilisateur au moment de l'achat. À titre indicatif en France : 24,99 € par an ; 2,99 € par mois ; 59,99 € à vie.</p>
+<h3>10.2 bis. Essai gratuit</h3>
+<p>La formule annuelle peut être précédée d'un <strong>essai gratuit de quatorze jours</strong>, une fois par compte Apple. À la fin de l'essai, l'Abonnement annuel commence et est facturé au prix affiché, <strong>sauf résiliation au moins vingt-quatre heures avant la fin de l'essai</strong>, dans les réglages du compte Apple. La durée de l'essai, le prix qui suit et la façon de résilier sont indiqués sous le bouton de souscription.</p>
+<h3>10.2 ter. Accès à vie</h3>
+<p>L'accès à vie est un <strong>achat unique, sans renouvellement</strong>, rattaché au compte Apple qui l'a effectué et rétabli sur ses autres appareils par « Restaurer mes achats ». Il donne accès aux avantages d'Unydex+ tant que l'Application est proposée et maintenue par l'éditeur.</p>
+<h3>10.3. Souscription et paiement</h3>
+<p>L'Abonnement est souscrit <strong>auprès d'Apple</strong>, par le système d'achat intégré de l'App Store, et payé au moyen du compte Apple de l'Utilisateur. <strong>Les conditions de vente d'Apple (Conditions générales des services multimédias Apple) s'appliquent à la transaction.</strong> L'éditeur n'a pas accès aux moyens de paiement.</p>
+<h3>10.4. Renouvellement et résiliation</h3>
+<p><strong>L'Abonnement se renouvelle automatiquement</strong> pour une durée identique, au prix alors en vigueur, <strong>sauf résiliation au moins vingt-quatre heures avant la fin de la période en cours.</strong> Le compte Apple est débité dans les vingt-quatre heures précédant la fin de la période. L'Utilisateur gère et résilie son Abonnement dans les réglages de son compte Apple (Réglages → [nom] → Abonnements) ; la résiliation prend effet à la fin de la période en cours. Une modification de prix est notifiée par Apple dans les conditions prévues par ses conditions de vente.</p>
+<h3>10.5. Droit de rétractation et remboursement</h3>
+<p>L'Utilisateur consommateur dispose d'un droit de rétractation de quatorze jours, qu'il exerce <strong>auprès d'Apple</strong>, qui traite les demandes de remboursement selon ses propres conditions (<a href="https://reportaproblem.apple.com" target="_blank" rel="noopener">reportaproblem.apple.com</a>). Lorsque l'Utilisateur demande l'accès immédiat aux avantages de l'Abonnement, il reconnaît que l'exécution commence dès la souscription et, dans la mesure permise par la loi, renonce à son droit de rétractation pour la part déjà exécutée (article L. 221-28, 13° du code de la consommation).</p>
+<h3>10.6. Restauration</h3>
+<p>Un Abonnement souscrit avec le même compte Apple est rétabli sur un autre terminal par la commande « Restaurer mes achats ».</p>
+<hr />
+<h2>Article 11 — Propriété intellectuelle</h2>
+<h3>11.1. Droits de l'éditeur</h3>
+<p>Le Service, son code source, son interface, son icône et les illustrations créées pour lui sont protégés par le droit d'auteur. Il est concédé à l'Utilisateur un droit d'usage personnel, non exclusif, non cessible et révocable, pour la durée d'utilisation du Service. Les composants libres utilisés sont listés, avec leurs licences, dans la page « Licences des composants tiers » de l'Application.</p>
+<h3>11.2. Droits des tiers</h3>
+<p>Les marques, dénominations, personnages, illustrations et œuvres de tiers cités ou représentés demeurent la propriété exclusive de leurs titulaires. <strong>Unydex n'est ni éditée, ni produite, ni approuvée, ni soutenue, ni sponsorisée par Nintendo Co., Ltd., Game Freak Inc., Creatures Inc. ou The Pokémon Company International, ni par les services tiers dont elle affiche des données.</strong> Aucun lien, partenariat ou affiliation n'existe avec ces sociétés.</p>
+<p><strong>©2026 Pokémon. ©1995–2026 Nintendo / Creatures Inc. / GAME FREAK inc.</strong> Les illustrations, sprites, cris, fonds de boîte, textes des jeux, cartes, illustrations de cartes et logos d'extensions appartiennent à leurs titulaires et aux illustrateurs crédités — <strong>tous droits réservés</strong>. Ils sont affichés à titre d'identification et d'information, pour l'organisation d'une collection personnelle ; l'Utilisateur s'interdit de les extraire du Service ou de les réutiliser. Le détail des droits, des sources et des marques figure dans la page « Crédits et droits » de l'Application (<a href="credits.html">CREDITS-ET-DROITS.md</a>).</p>
+<h3>11.3. Réclamation</h3>
+<p>Tout titulaire de droits estimant qu'un contenu du Service porte atteinte à ses droits peut le signaler à l'adresse figurant aux mentions légales, en identifiant le contenu, le droit invoqué et ses coordonnées. Le contenu en cause est retiré promptement à réception d'une réclamation suffisamment motivée.</p>
+<hr />
+<h2>Article 12 — Disponibilité, évolution et interruption du Service</h2>
+<p>L'éditeur peut faire évoluer, suspendre, limiter ou interrompre tout ou partie du Service, notamment les fonctionnalités qui reposent sur des services tiers dont les offres sont susceptibles d'évoluer. Il s'efforce d'informer les Utilisateurs dans un délai raisonnable de toute interruption définitive de la Sauvegarde en ligne, pour leur permettre d'exporter leurs données. Les droits des abonnés en cas d'interruption sont ceux prévus par le code de la consommation.</p>
+<hr />
+<h2>Article 13 — Garanties</h2>
+<p>Le Service est fourni en l'état, sans autre garantie que celles prévues par la loi. L'éditeur ne garantit pas que le Service sera exempt d'erreurs ou d'interruptions, ni que les Contenus tiers, les prix, les résultats de la reconnaissance ou les réponses de l'Assistant seront exacts. Les analyses et indicateurs proposés sont de simples aides, dépourvues de valeur normative.</p>
+<p>Ces stipulations s'appliquent <strong>sans préjudice des garanties légales</strong> dont bénéficie l'Utilisateur consommateur, notamment la garantie légale de conformité des contenus et services numériques (articles L. 224-25-12 et suivants du code de la consommation).</p>
+<hr />
+<h2>Article 14 — Responsabilité</h2>
+<p>La responsabilité de l'éditeur ne saurait être engagée à raison : des dommages indirects ; de l'indisponibilité du Service ou d'un service tiers ; de la perte de la Collection, l'Utilisateur disposant du moyen d'exportation de l'article 7 ; de l'usage fait des informations, estimations et réponses affichées ; d'un manquement de l'Utilisateur à ses obligations ; du fait d'un tiers, notamment d'un hébergeur, d'un fournisseur d'identité, d'une régie publicitaire, de Mistral AI ou d'un site vers lequel le Service renvoie.</p>
+<p>Ces limitations ne s'appliquent ni en cas de dol ou de faute lourde, ni en cas de dommage corporel, ni lorsque la loi en interdit la stipulation, notamment à l'égard des consommateurs.</p>
+<hr />
+<h2>Article 15 — Suspension et résiliation</h2>
+<p>L'Utilisateur peut cesser d'utiliser le Service à tout moment et supprimer son Compte. L'éditeur peut suspendre ou supprimer un Compte en cas de manquement caractérisé aux présentes, après information et, sauf urgence ou obligation légale, mise en demeure restée infructueuse.</p>
+<hr />
+<h2>Article 16 — Modification des CGU</h2>
+<p>L'éditeur peut modifier les présentes. Toute modification substantielle est portée à la connaissance de l'Utilisateur par un moyen approprié au sein de l'Application ; la poursuite de l'utilisation vaut acceptation. Une modification défavorable des conditions de l'Abonnement ne s'applique à un abonné qu'à compter du renouvellement suivant son information.</p>
+<hr />
+<h2>Article 17 — Dispositions diverses</h2>
+<p><strong>Nullité partielle.</strong> Si l'une des stipulations était déclarée nulle, les autres conserveraient leur plein effet. <strong>Absence de renonciation.</strong> Ne pas se prévaloir d'un manquement ne vaut pas renonciation à s'en prévaloir. <strong>Intégralité.</strong> Les CGU, les mentions légales et la politique de confidentialité expriment l'intégralité de l'accord entre les parties.</p>
+<hr />
+<h2>Article 18 — Réclamations et médiation</h2>
+<p>Toute réclamation est adressée à l'éditeur à l'adresse figurant aux mentions légales.</p>
+<p>Le Service étant fourni gratuitement, sans contrat de vente ni de prestation payante, le dispositif de médiation de la consommation (articles L. 611-1 et suivants du code de la consommation) ne s'applique pas. Un médiateur sera désigné avant la mise en place de tout service payant. À défaut de solution amiable, l'Utilisateur résidant dans un autre État membre de l'Union européenne peut saisir le Centre européen des consommateurs de son pays.</p>
+<hr />
+<h2>Article 19 — Droit applicable et juridiction compétente</h2>
+<p>Les présentes CGU sont régies par le <strong>droit français</strong>. À défaut de résolution amiable, les juridictions françaises sont compétentes, sous réserve des règles impératives protégeant le consommateur résidant dans un autre État membre de l'Union européenne.</p>
+<hr />
+<h2>Annexe — Dispositions applicables à l'Application distribuée par l'App Store</h2>
+<p>Les stipulations de la présente annexe s'appliquent lorsque l'Application a été obtenue sur l'App Store d'Apple. Elles reprennent les dispositions minimales exigées par Apple Inc. et prévalent sur toute stipulation contraire des présentes CGU.</p>
+<ol>
+<li><strong>Portée de l'accord.</strong> Les CGU sont conclues entre l'Utilisateur et l'éditeur seul, à l'exclusion d'Apple. L'éditeur est seul responsable de l'Application et de son contenu.</li>
+<li><strong>Étendue de la licence.</strong> La licence est personnelle et non transférable, pour l'utilisation de l'Application sur tout produit de marque Apple que l'Utilisateur possède ou contrôle, dans les limites des règles d'utilisation des Conditions générales des services multimédias Apple, y compris le partage familial le cas échéant.</li>
+<li><strong>Maintenance et assistance.</strong> L'éditeur est seul tenu de fournir la maintenance et l'assistance ; Apple n'a aucune obligation à ce titre.</li>
+<li><strong>Garantie.</strong> L'éditeur est seul responsable des garanties non valablement exclues. En cas de défaut de conformité, l'Utilisateur peut en informer Apple, qui lui remboursera, le cas échéant, le prix d'achat ; dans la limite permise par la loi, Apple n'assume aucune autre obligation de garantie.</li>
+<li><strong>Réclamations relatives au produit.</strong> L'éditeur, et non Apple, répond des réclamations relatives à l'Application, notamment au titre de la responsabilité du fait des produits, de la conformité légale ou réglementaire, de la protection des consommateurs ou des données à caractère personnel.</li>
+<li><strong>Propriété intellectuelle.</strong> En cas de réclamation d'un tiers alléguant que l'Application porte atteinte à ses droits de propriété intellectuelle, l'éditeur est seul tenu d'en assurer l'examen, la défense, le règlement et l'exécution.</li>
+<li><strong>Conformité légale.</strong> L'Utilisateur déclare ne pas être situé dans un pays soumis à un embargo du gouvernement des États-Unis ou désigné par lui comme soutenant le terrorisme, et ne figurer sur aucune liste de parties interdites ou restreintes établie par ce gouvernement.</li>
+<li><strong>Coordonnées.</strong> Les questions et réclamations relatives à l'Application sont adressées à l'éditeur, dont le nom et l'adresse figurent aux mentions légales.</li>
+<li><strong>Conditions de tiers.</strong> L'Utilisateur respecte les conditions des tiers applicables à son utilisation de l'Application (notamment celles de Mistral AI pour l'Assistant).</li>
+<li><strong>Tiers bénéficiaire.</strong> Apple Inc. et ses filiales sont tiers bénéficiaires des présentes CGU et peuvent s'en prévaloir à l'encontre de l'Utilisateur.</li>
+</ol>
+<footer>
+  <a href="confidentialite.html">Confidentialité</a> ·
+  <a href="conditions.html">Conditions</a> ·
+  <a href="mentions.html">Mentions légales</a> ·
+  <a href="privacy.html" lang="en">Privacy (EN)</a> ·
+  <a href="../">Unydex</a>
+</footer>
+</main>
+</body>
+</html>

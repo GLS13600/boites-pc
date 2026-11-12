@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Politique de confidentialité — Unydex</title>
+<meta name="color-scheme" content="light dark" />
+<style>
+  :root {
+    --paper: #f6f5f1; --panel: #fff; --ink: #1b1a17; --muted: #6b675d;
+    --rule: #e3e0d6; --ball: #d6453c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #16191d; --panel: #1c2026; --ink: #eef1f4; --muted: #99a3ad;
+      --rule: #2c333b; --ball: #f06056;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: max(24px, env(safe-area-inset-top)) 18px calc(48px + env(safe-area-inset-bottom));
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 46rem; margin: 0 auto; }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 1rem; }
+  h2 { font-size: 1.3rem; margin: 2.2rem 0 .6rem; }
+  h3 { font-size: 1.05rem; margin: 1.6rem 0 .4rem; }
+  h4 { font-size: .95rem; margin: 1.2rem 0 .3rem; color: var(--muted); }
+  p, li { margin: .6rem 0; }
+  a { color: var(--ball); }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 2rem 0; }
+  code {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 5px;
+    padding: 1px 5px; font-size: .88em;
+  }
+  blockquote {
+    margin: 1.2rem 0; padding: .8rem 1rem;
+    border-left: 3px solid var(--ball); background: var(--panel);
+    border-radius: 0 10px 10px 0;
+  }
+  blockquote p { margin: .4rem 0; }
+  pre {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 10px;
+    padding: .8rem 1rem; font-size: .78em; line-height: 1.45;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  /* Ces pages se lisent au téléphone : les tableaux occupent la largeur disponible et
+     leur texte passe à la ligne, plutôt que de déborder et d'imposer un défilement
+     horizontal qui masque la dernière colonne. L'enveloppe garde le débordement sous
+     le coude pour un tableau qui serait un jour trop large. */
+  .tableau { width: 100%; overflow-x: auto; margin: 1rem 0; }
+  /* Largeur FIXE et césure autorisée : en disposition automatique, la plus longue
+     suite de caractères insécables de chaque colonne impose une largeur minimale, et
+     trois colonnes de texte juridique débordaient du cadre — la dernière se trouvait
+     coupée au bord de l’écran. */
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  /* La césure vient AVANT la coupure brutale : sans elle, les colonnes étroites
+     tranchaient au milieu des mots (« d emprisonne-ment »). La page déclare lang="fr",
+     le navigateur coupe donc aux syllabes françaises. */
+  th, td { -webkit-hyphens: auto; hyphens: auto; overflow-wrap: break-word; }
+  th, td { border: 1px solid var(--rule); padding: 8px 10px; text-align: left; vertical-align: top; font-size: .92rem; }
+  th { background: var(--panel); font-weight: 700; }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .85rem; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Politique de confidentialité</h1>
+<p><strong>Version 2.1 — En vigueur au 12 novembre 2026</strong></p>
+<h2>Préambule</h2>
+<p>La présente politique a pour objet d'informer l'utilisateur de l'application Unydex et du site qui lui est associé (ci-après ensemble « l'Application ») des traitements de données à caractère personnel mis en œuvre à l'occasion de leur utilisation, conformément aux articles 12 à 14 du règlement (UE) 2016/679 du 27 avril 2016 (ci-après « le RGPD »), à la loi n° 78-17 du 6 janvier 1978 modifiée, dite « Informatique et Libertés », et à son article 82 relatif aux traceurs.</p>
+<p>Elle fait partie intégrante des <a href="conditions.html">conditions générales d'utilisation</a>.</p>
+<p><strong>L'essentiel.</strong></p>
+<ul>
+<li><strong>Sans compte, la collection reste sur le terminal.</strong> Captures, boîtes, équipes, cartes, classeurs et préférences sont enregistrés dans le stockage local de l'Application et ne sont transmis à personne.</li>
+<li><strong>Certaines fonctions interrogent des services tiers</strong>, même sans compte : le catalogue des cartes et leurs images, les prix, le taux de change. Ces services reçoivent alors l'adresse IP du terminal et l'objet de la demande (article 3).</li>
+<li><strong>Le compte est facultatif.</strong> Il sert à retrouver sa collection sur un autre terminal et à la synchroniser en temps réel (article 4).</li>
+<li><strong>La version de l'Application distribuée par l'App Store affiche de la publicité</strong> fournie par Google, personnalisée seulement avec le consentement de l'utilisateur (article 5). L'abonnement Unydex+ la supprime.</li>
+<li><strong>L'assistant PokéAdvisor</strong> n'envoie rien tant que l'utilisateur n'y a pas enregistré sa propre clé Mistral AI ; il transmet alors ses questions et un résumé de sa collection à Mistral AI (article 6).</li>
+<li><strong>La caméra ne transmet rien</strong> : la reconnaissance se fait sur le terminal.</li>
+<li>Aucune donnée n'est vendue, louée ni cédée.</li>
+</ul>
+<hr />
+<h2>Article 1 — Responsable du traitement</h2>
+<p>Le responsable du traitement, au sens de l'article 4.7 du RGPD, est :</p>
+<ul>
+<li><strong>Nom</strong> : Guillaume LEPINAY-SALVETAT</li>
+<li><strong>Adresse électronique</strong> : unydexapp@gmail.com</li>
+</ul>
+<p>La désignation d'un délégué à la protection des données n'est pas requise au regard des critères de l'article 37 du RGPD.</p>
+<p>Le même compte permet d'utiliser l'application <strong>Cartodex</strong>, éditée par le même responsable du traitement (article 4.4).</p>
+<hr />
+<h2>Article 2 — Données enregistrées sur le terminal</h2>
+<p>L'Application enregistre dans son espace de stockage local, sur le terminal :</p>
+<ul>
+<li>la collection : Pokémon capturés (normaux et chromatiques), contenu, ordre, noms et fonds des boîtes, équipes de combat, cartes possédées et leurs exemplaires (version, état, date d'ajout), favoris, liste de souhaits et ses prix cibles, classeurs, historique des prix et de la valeur de la collection, journal des dernières actions ;</li>
+<li>le nombre de cartes scannées dans la journée (limite de la version gratuite) ;</li>
+<li>les préférences : thème, langue, version de jeu, affichages, mode du scan, sons et vibrations, animations, source et devise des prix, réglage des publicités de la version de développement ;</li>
+<li>les réglages de PokéAdvisor, sa mémoire, la conversation et <strong>la clé d'accès Mistral AI de l'utilisateur</strong> ;</li>
+<li>un cache des données de catalogue téléchargées (article 3), pour un usage hors ligne.</li>
+</ul>
+<p>Ces informations ne sont transmises à aucun destinataire, sauf dans les cas décrits aux articles 3 à 6. Elles sont effacées à la désinstallation de l'Application. La clé Mistral AI n'est <strong>jamais</strong> transmise au responsable du traitement, ni incluse dans la sauvegarde ou la synchronisation.</p>
+<p><strong>Base légale du stockage local</strong> : il est strictement nécessaire au service demandé par l'utilisateur et, à ce titre, dispensé de consentement (article 82 de la loi Informatique et Libertés).</p>
+<h3>2.1. Reconnaissance par l'appareil photographique</h3>
+<ul>
+<li>Le traitement des images est <strong>intégralement exécuté sur le terminal</strong>, au moyen de modèles d'apprentissage automatique embarqués dans l'Application.</li>
+<li><strong>Aucune image n'est transmise ni enregistrée</strong> : les vues sont analysées puis immédiatement écartées.</li>
+<li>L'accès à l'appareil photographique fait l'objet d'une demande d'autorisation du système d'exploitation. Il peut être refusé ou révoqué à tout moment dans les réglages du terminal, sans incidence sur le reste de l'Application.</li>
+</ul>
+<h3>2.2. Sauvegarde par fichier</h3>
+<p>L'utilisateur peut exporter l'intégralité de ses données dans un fichier, et l'importer. Le fichier est remis par la feuille de partage du système ; son devenir relève du choix de l'utilisateur (Fichiers, AirDrop, messagerie…). La clé Mistral AI n'y figure pas.</p>
+<hr />
+<h2>Article 3 — Services tiers interrogés par l'Application</h2>
+<p>Certaines fonctions nécessitent d'interroger un service tiers, <strong>y compris sans compte</strong>. À chaque requête, ce service reçoit nécessairement l'<strong>adresse IP</strong> du terminal, des informations techniques (type de navigateur ou de système) et l'objet de la demande. Ces services agissent en qualité de responsables de leurs propres traitements, selon leurs politiques respectives.</p>
+<div class="tableau"><table><thead><tr><th>Service</th><th>Quand</th><th>Ce qu'il reçoit</th></tr></thead><tbody>
+<tr><td><strong>TCGdex</strong> (<code>api.tcgdex.net</code>, <code>assets.tcgdex.net</code>)</td><td>Univers Cartes : séries, extensions, fiches, images, raretés, prix</td><td>Les extensions et cartes consultées ; <strong>les termes saisis dans la recherche de cartes</strong></td></tr>
+<tr><td><strong>Pokémon TCG</strong> (<code>images.pokemontcg.io</code>) et <strong>Scrydex</strong> (<code>images.scrydex.com</code>)</td><td>Images des cartes de la collection anglaise</td><td>Les images demandées</td></tr>
+<tr><td><strong>Frankfurter</strong> (<code>api.frankfurter.dev</code>), taux de la Banque centrale européenne</td><td>Au plus une fois toutes les 20 heures, dans l'univers Cartes</td><td>Une demande de taux de change, sans donnée de l'utilisateur</td></tr>
+<tr><td><strong>GitHub Pages</strong> (GitHub, Inc.)</td><td>Version web uniquement : chargement du site</td><td>Les pages et fichiers demandés</td></tr>
+<tr><td>Cardmarket, Vinted, eBay</td><td>Seulement si l'utilisateur touche le lien correspondant ; la page s'ouvre dans son navigateur</td><td>Le nom de la carte recherchée</td></tr>
+</tbody></table></div>
+<p><strong>Base légale</strong> : l'exécution du service demandé par l'utilisateur (article 6.1.b du RGPD) — afficher le catalogue, l'image ou le prix qu'il consulte. Le monde des jeux (Pokédex, boîtes, équipes, attaques, scan) ne fait appel à aucun service tiers.</p>
+<hr />
+<h2>Article 4 — Données traitées en cas de création d'un compte</h2>
+<h3>4.1. Catégories de données</h3>
+<ul>
+<li><strong>Identification</strong> — adresse électronique ; mot de passe, conservé sous forme de condensat et jamais accessible en clair ; identifiant interne ; le cas échéant, le nom transmis par le fournisseur d'identité. <em>Origine : l'utilisateur ou son fournisseur d'identité.</em></li>
+<li><strong>Profil</strong> — pseudonyme ; image de profil, constituée d'un <strong>numéro</strong> désignant une illustration de l'Application et non d'un fichier ; dates de création et de modification. <em>Origine : l'utilisateur, ou déduites à l'inscription.</em></li>
+<li><strong>Collection</strong> — l'ensemble des données décrites à l'article 2, <strong>à l'exception de la clé Mistral AI</strong> et des seules préférences d'affichage propres au terminal. Elle comprend donc la mémoire et la <strong>conversation de PokéAdvisor</strong>, et la version de jeu retenue pour l'équipe gratuite. <em>Origine : l'usage de l'Application.</em></li>
+<li><strong>Données techniques</strong> — date de la dernière modification ; <strong>type</strong> de terminal d'origine (« iPhone » ou « Navigateur »), sans identifiant ni nom de terminal. <em>Origine : automatique.</em></li>
+</ul>
+<h3>4.2. Connexion par un fournisseur d'identité</h3>
+<p>Lorsque l'utilisateur se connecte au moyen d'un compte Google ou Apple, le fournisseur communique <strong>l'adresse électronique et, le cas échéant, le nom</strong> associés à ce compte, à l'exclusion de toute autre donnée. Le service d'Apple permet de <strong>masquer son adresse électronique</strong>. Les traitements réalisés par le fournisseur relèvent de sa propre politique de confidentialité. À la suppression d'un compte connecté par Apple, l'Application demande une nouvelle confirmation à Apple et transmet le code obtenu à Apple, par le serveur du Service, pour <strong>révoquer l'accès</strong> de l'Application ; rien n'en est conservé.</p>
+<h3>4.3. Synchronisation</h3>
+<p>La collection est enregistrée sur les serveurs de l'hébergeur et synchronisée <strong>en temps réel</strong> entre les terminaux connectés au même compte : une connexion permanente est maintenue avec l'hébergeur tant que l'Application est ouverte. Lorsque la même donnée a été modifiée sur deux terminaux, les deux versions sont fusionnées automatiquement.</p>
+<h3>4.4. Compte commun avec Cartodex</h3>
+<p>Le compte est commun à Unydex et à l'application Cartodex, du même éditeur. Lors de la première connexion d'un compte à Unydex, <strong>la sauvegarde Cartodex de ce compte, si elle existe, est lue et ajoutée à la collection</strong>. La suppression du compte efface les données des deux applications.</p>
+<h3>4.5. Compteur partagé des favoris</h3>
+<p>La fiche d'une carte peut afficher le <strong>nombre</strong> d'autres comptes qui l'ont mise en favori. Ce nombre est calculé par l'hébergeur à partir des collections enregistrées ; il n'est communiqué qu'aux utilisateurs connectés et ne révèle jamais l'identité, le pseudonyme ni la collection d'aucun compte.</p>
+<h3>4.6. Données non collectées</h3>
+<p>Ne font l'objet d'aucune collecte par le responsable du traitement : la géolocalisation, le carnet d'adresses, l'agenda, la photothèque, le microphone, les données de santé, l'historique de navigation, la liste des applications installées et les données bancaires. Les paiements de l'abonnement sont traités par Apple (article 7).</p>
+<h3>4.7. Absence de profilage par le responsable du traitement</h3>
+<p>Le responsable du traitement ne procède à aucun profilage au sens de l'article 4.4 du RGPD et ne prend aucune décision fondée exclusivement sur un traitement automatisé au sens de l'article 22. Les données des comptes ne sont utilisées à aucune fin de prospection commerciale.</p>
+<hr />
+<h2>Article 5 — Publicité</h2>
+<p>La version de l'Application distribuée par l'App Store affiche des publicités fournies par <strong>Google Ireland Limited</strong> et Google LLC (service <strong>AdMob</strong>), sauf pour les abonnés Unydex+ : une annonce plein écran à l'ouverture de l'Application (au lancement, et au retour dans l'Application après une absence), jamais pendant la première utilisation. La version web n'en affiche aucune.</p>
+<ul>
+<li><strong>Ce que reçoit Google</strong> : l'adresse IP (dont Google déduit une localisation approximative), des informations sur le terminal et l'Application, les interactions avec les publicités, des données de diagnostic et, <strong>si l'utilisateur l'autorise</strong>, l'identifiant publicitaire du terminal (IDFA). Google agit en qualité de responsable de traitement indépendant ; ses pratiques sont décrites sur <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener">policies.google.com/technologies/partner-sites</a>.</li>
+<li><strong>Consentement</strong> : à la fin de la présentation du premier lancement, avant toute publicité, l'utilisateur résidant dans l'Espace économique européen, au Royaume-Uni ou en Suisse se voit présenter le formulaire de consentement de Google ; puis iOS lui demande s'il autorise le suivi (App Tracking Transparency). <strong>Sans son consentement, les publicités ne sont pas personnalisées</strong> et l'identifiant publicitaire n'est pas transmis. Les choix peuvent être modifiés à tout moment : Profil → Confidentialité → « Gérer mes choix publicitaires » et, pour le suivi, dans les réglages d'iOS (Confidentialité → Suivi).</li>
+<li><strong>Mineurs</strong> : [LES PUBLICITÉS SONT DEMANDÉES SANS PERSONNALISATION POUR LES UTILISATEURS DE MOINS DE QUINZE ANS — À METTRE EN ŒUVRE AVANT PUBLICATION].</li>
+<li><strong>Base légale</strong> : le consentement (article 6.1.a du RGPD et article 82 de la loi Informatique et Libertés) pour la publicité personnalisée et la lecture de l'identifiant publicitaire ; l'intérêt légitime du responsable du traitement à financer un service gratuit (article 6.1.f) pour la publicité non personnalisée et la lutte contre la fraude publicitaire.</li>
+</ul>
+<hr />
+<h2>Article 6 — PokéAdvisor (assistant conversationnel)</h2>
+<p><strong>Fonction non proposée dans la version actuelle de l'Application</strong> : aucune donnée n'est transmise à Mistral AI. Le présent article ne s'appliquera qu'à sa mise à disposition.</p>
+<p>PokéAdvisor est un assistant fondé sur les modèles de langage de <strong>Mistral AI</strong> (société par actions simplifiée, 15 rue des Halles, 75001 Paris). Il ne fonctionne qu'avec une clé d'accès que <strong>l'utilisateur obtient lui-même auprès de Mistral AI</strong> et enregistre dans l'Application ; l'utilisateur est alors client de Mistral AI, selon les conditions de ce dernier.</p>
+<ul>
+<li><strong>Ce qui est transmis à Mistral AI, à chaque question</strong> : la question, les douze derniers messages de la conversation, et un résumé de la collection — avancement du Living Dex, nombre et valeur des cartes, les quinze cartes les plus chères, les classeurs, les éléments mémorisés par l'assistant. L'Application en informe l'utilisateur <strong>avant</strong> qu'il n'enregistre sa clé.</li>
+<li>La transmission s'effectue directement du terminal à Mistral AI ; <strong>le responsable du traitement n'y a pas accès</strong>. Mistral AI traite ces données selon sa propre politique de confidentialité (<a href="https://mistral.ai/terms" target="_blank" rel="noopener">mistral.ai/terms</a>).</li>
+<li>La conversation et la mémoire de l'assistant sont enregistrées sur le terminal et, pour les utilisateurs connectés, dans le compte (article 4.1).</li>
+<li><strong>Il est recommandé de ne communiquer à l'assistant aucune information personnelle</strong> (nom, adresse, coordonnées, données sensibles) : elle serait transmise à Mistral AI et conservée dans la conversation.</li>
+<li><strong>Base légale</strong> : l'exécution du service demandé par l'utilisateur (article 6.1.b du RGPD).</li>
+</ul>
+<hr />
+<h2>Article 7 — Abonnement Unydex+</h2>
+<p><strong>Unydex+ n'est pas proposé dans la version actuelle de l'Application</strong> : aucun achat n'y est possible, et toutes ses fonctions sont accessibles gratuitement. Le présent article ne s'appliquera qu'à la mise en place de l'abonnement.</p>
+<p>L'abonnement est souscrit et payé <strong>auprès d'Apple</strong>, par le système d'achat intégré de l'App Store. Le responsable du traitement <strong>n'a jamais accès aux moyens de paiement</strong> de l'utilisateur. Il reçoit d'Apple l'état de l'abonnement (formule, dates de début et de renouvellement, statut), associé à un identifiant anonyme d'achat et, le cas échéant, au compte de l'utilisateur, afin de lui donner accès aux avantages souscrits sur ses terminaux. <strong>Base légale</strong> : l'exécution du contrat (article 6.1.b du RGPD) ; obligations comptables (article 6.1.c).</p>
+<hr />
+<h2>Article 8 — Finalités et bases légales</h2>
+<div class="tableau"><table><thead><tr><th>Finalité</th><th>Base légale</th></tr></thead><tbody>
+<tr><td>Fonctionnement de l'Application et stockage local</td><td>Exécution du contrat — art. 6.1.b ; exemption de consentement de l'art. 82 de la loi Informatique et Libertés</td></tr>
+<tr><td>Affichage du catalogue des cartes, de leurs images et de leurs prix</td><td>Exécution du contrat — art. 6.1.b</td></tr>
+<tr><td>Création, gestion et authentification du compte ; vérification de la disponibilité d'un pseudonyme</td><td>Exécution du contrat — art. 6.1.b</td></tr>
+<tr><td>Sauvegarde, synchronisation et reprise de la sauvegarde Cartodex</td><td>Exécution du contrat — art. 6.1.b</td></tr>
+<tr><td>Compteur partagé des favoris</td><td>Intérêt légitime — art. 6.1.f — à offrir un indicateur collectif, sans donnée identifiante</td></tr>
+<tr><td>PokéAdvisor</td><td>Exécution du contrat — art. 6.1.b</td></tr>
+<tr><td>Publicité personnalisée, lecture de l'identifiant publicitaire</td><td>Consentement — art. 6.1.a</td></tr>
+<tr><td>Publicité non personnalisée, prévention de la fraude publicitaire</td><td>Intérêt légitime — art. 6.1.f</td></tr>
+<tr><td>Gestion de l'abonnement</td><td>Exécution du contrat — art. 6.1.b ; obligation légale — art. 6.1.c</td></tr>
+<tr><td>Sécurité, journalisation technique, prévention des abus</td><td>Intérêt légitime — art. 6.1.f</td></tr>
+</tbody></table></div>
+<p><strong>Caractère obligatoire.</strong> Les données du compte (article 4.1) sont nécessaires à sa création ; sans elles, l'utilisateur ne peut bénéficier de la sauvegarde en ligne. L'Application demeure utilisable sans compte.</p>
+<hr />
+<h2>Article 9 — Destinataires et sous-traitants</h2>
+<p>Les données des comptes sont destinées au seul responsable du traitement et, dans la limite de leurs prestations, aux sous-traitants suivants, qui interviennent sur ses instructions dans les conditions de l'article 28 du RGPD :</p>
+<ul>
+<li><strong>Supabase, Inc.</strong> — base de données, authentification et synchronisation en temps réel. Données hébergées dans l'Union européenne, <strong>région Irlande</strong> (infrastructure Amazon Web Services, eu-west-1).</li>
+<li><strong>GitHub, Inc.</strong> — hébergement du site et de ses fichiers.</li>
+<li><strong>Apple Inc. / Apple Distribution International Ltd.</strong> — distribution de l'Application, service de connexion et, le cas échéant, paiement de l'abonnement.</li>
+</ul>
+<p>Sont en outre destinataires, en qualité de responsables de leurs propres traitements : Google (connexion, si l'utilisateur la choisit ; publicité), Mistral AI (PokéAdvisor, à l'initiative de l'utilisateur) et les services tiers listés à l'article 3.</p>
+<p>Les données peuvent être communiquées à toute autorité habilitée dans les conditions prévues par la loi. <strong>Aucune donnée n'est cédée, louée ou échangée à des fins commerciales.</strong></p>
+<hr />
+<h2>Article 10 — Transferts hors de l'Union européenne</h2>
+<p>Les données des comptes sont hébergées dans l'Union européenne. Certains prestataires sont établis aux États-Unis (Supabase, GitHub, Google, Apple) et peuvent y accéder ou y traiter des données. Ces transferts sont encadrés, selon le prestataire, par la décision d'adéquation de la Commission européenne du 10 juillet 2023 relative au cadre de protection des données UE–États-Unis, pour les entreprises certifiées, ou par les <strong>clauses contractuelles types</strong> de la Commission (article 46.2.c du RGPD) incorporées à leurs conditions de traitement des données. Une copie des garanties applicables peut être obtenue sur demande.</p>
+<hr />
+<h2>Article 11 — Durées de conservation</h2>
+<div class="tableau"><table><thead><tr><th>Donnée</th><th>Durée</th></tr></thead><tbody>
+<tr><td>Compte, profil et collection enregistrés sur les serveurs</td><td>Jusqu'à la suppression du compte par l'utilisateur ; effacement immédiat et en cascade.</td></tr>
+<tr><td>Données enregistrées sur le terminal</td><td>Jusqu'à la désinstallation de l'Application ou l'effacement de ses données</td></tr>
+<tr><td>Choix relatifs à la publicité</td><td>Treize mois au plus, puis redemandés</td></tr>
+<tr><td>Journaux techniques des hébergeurs</td><td>Durée fixée par chaque hébergeur, de l'ordre de quelques jours à quelques semaines</td></tr>
+<tr><td>Données de l'abonnement</td><td>Durée de l'abonnement, puis durée légale de conservation des pièces comptables (dix ans) pour les seules données requises</td></tr>
+</tbody></table></div>
+<hr />
+<h2>Article 12 — Sécurité</h2>
+<p>Le responsable du traitement met en œuvre les mesures appropriées au sens de l'article 32 du RGPD, notamment : chiffrement de toutes les communications (HTTPS) ; mots de passe conservés sous forme de condensat ; cloisonnement <strong>au niveau de la base de données</strong> (sécurité au niveau des lignes), qui garantit qu'un compte ne peut lire ni modifier que ses propres enregistrements ; absence de privilège attaché à la clé publique embarquée ; fonctions à privilèges élevés limitées et verrouillées ; politique de sécurité du contenu limitant les destinations réseau de l'Application.</p>
+<p><strong>Ni l'adresse électronique, ni le profil, ni la collection d'un compte ne sont accessibles aux autres utilisateurs.</strong></p>
+<p>En cas de violation de données, le responsable du traitement procède aux notifications prévues aux articles 33 et 34 du RGPD.</p>
+<hr />
+<h2>Article 13 — Droits des personnes concernées</h2>
+<p>L'utilisateur dispose des droits d'<strong>accès</strong> (art. 15), de <strong>rectification</strong> (art. 16), d'<strong>effacement</strong> (art. 17), à la <strong>limitation</strong> (art. 18), à la <strong>portabilité</strong> (art. 20) et d'<strong>opposition</strong> (art. 21), du droit de <strong>retirer son consentement</strong> à tout moment (art. 7.3), sans que cela affecte la licéité du traitement antérieur, et du droit de définir des <strong>directives relatives au sort de ses données après son décès</strong> (article 85 de la loi Informatique et Libertés).</p>
+<h3>13.1. Dans l'Application</h3>
+<div class="tableau"><table><thead><tr><th>Droit</th><th>Modalité</th></tr></thead><tbody>
+<tr><td>Accès et portabilité</td><td>Profil → Sauvegarde et données → « Exporter » : un fichier complet et structuré, remis immédiatement</td></tr>
+<tr><td>Rectification</td><td>Profil → Compte : pseudonyme et image de profil se modifient directement</td></tr>
+<tr><td>Effacement</td><td>Profil → Compte → « Supprimer mon compte » : effacement immédiat et définitif du compte, du profil et de la collection enregistrée sur les serveurs, pour Unydex et Cartodex</td></tr>
+<tr><td>Retrait du consentement publicitaire</td><td>Profil → Confidentialité → « Gérer mes choix publicitaires » ; réglages d'iOS pour le suivi</td></tr>
+</tbody></table></div>
+<p>La suppression du compte est sans incidence sur la collection enregistrée sur le terminal.</p>
+<h3>13.2. Auprès du responsable du traitement</h3>
+<p>Les autres demandes s'adressent à l'adresse figurant à l'article 1, accompagnées, en cas de doute raisonnable, de tout élément justifiant de l'identité du demandeur. Il y est répondu dans le délai d'un mois, prorogeable de deux mois en cas de complexité.</p>
+<h3>13.3. Réclamation</h3>
+<p>L'utilisateur peut introduire une réclamation auprès de la <strong>Commission nationale de l'informatique et des libertés</strong> (CNIL), 3 place de Fontenoy, TSA 80715, 75334 Paris Cedex 07 — <a href="https://www.cnil.fr" target="_blank" rel="noopener">www.cnil.fr</a>, ou de l'autorité de contrôle de l'État membre de sa résidence habituelle.</p>
+<hr />
+<h2>Article 14 — Mineurs</h2>
+<p>L'Application est utilisable sans compte, sans transmission de données au responsable du traitement.</p>
+<p>La création d'un compte est ouverte à partir de <strong>quinze (15) ans</strong> en France (article 45 de la loi Informatique et Libertés), ou de l'âge fixé par la législation de l'État de résidence de l'utilisateur en application de l'article 8 du RGPD (seize ans à défaut). En deçà, elle requiert l'accord du titulaire de l'autorité parentale.</p>
+<p>Le titulaire de l'autorité parentale peut demander à tout moment l'effacement du compte d'un mineur à l'adresse figurant à l'article 1 ; il y est procédé sans délai.</p>
+<hr />
+<h2>Article 15 — Modification de la présente politique</h2>
+<p>La présente politique peut évoluer, notamment en cas d'évolution des traitements ou de la réglementation. La version applicable est celle accessible depuis l'Application. Toute modification substantielle est portée à la connaissance de l'utilisateur par un moyen approprié au sein de l'Application.</p>
+<hr />
+<h2>Article 16 — Contact</h2>
+<p>Toute question relative à la présente politique peut être adressée au responsable du traitement à l'adresse figurant à l'article 1.</p>
+<footer>
+  <a href="confidentialite.html">Confidentialité</a> ·
+  <a href="conditions.html">Conditions</a> ·
+  <a href="mentions.html">Mentions légales</a> ·
+  <a href="privacy.html" lang="en">Privacy (EN)</a> ·
+  <a href="../">Unydex</a>
+</footer>
+</main>
+</body>
+</html>

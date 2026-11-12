@@ -1,0 +1,41 @@
+# Déploie ce dépôt tel quel sur GitHub Pages (https://gls13600.github.io/boites-pc/).
+# Son contenu est le site COMPILÉ de l'appli Unydex, poussé par le dépôt privé où vit le
+# code : ne pas le modifier ici, il serait remplacé à la publication suivante.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url || steps.deploiement2.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      # Pages est parfois lent à libérer un déploiement précédent : un nouvel essai après
+      # deux minutes rattrape le plus souvent l'échec.
+      - id: deploiement
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+      - if: steps.deploiement.outcome == 'failure'
+        run: sleep 120
+      - id: deploiement2
+        if: steps.deploiement.outcome == 'failure'
+        uses: actions/deploy-pages@v4

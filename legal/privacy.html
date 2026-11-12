@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Privacy Policy — Unydex</title>
+<meta name="color-scheme" content="light dark" />
+<style>
+  :root {
+    --paper: #f6f5f1; --panel: #fff; --ink: #1b1a17; --muted: #6b675d;
+    --rule: #e3e0d6; --ball: #d6453c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #16191d; --panel: #1c2026; --ink: #eef1f4; --muted: #99a3ad;
+      --rule: #2c333b; --ball: #f06056;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: max(24px, env(safe-area-inset-top)) 18px calc(48px + env(safe-area-inset-bottom));
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 46rem; margin: 0 auto; }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 1rem; }
+  h2 { font-size: 1.3rem; margin: 2.2rem 0 .6rem; }
+  h3 { font-size: 1.05rem; margin: 1.6rem 0 .4rem; }
+  h4 { font-size: .95rem; margin: 1.2rem 0 .3rem; color: var(--muted); }
+  p, li { margin: .6rem 0; }
+  a { color: var(--ball); }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 2rem 0; }
+  code {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 5px;
+    padding: 1px 5px; font-size: .88em;
+  }
+  blockquote {
+    margin: 1.2rem 0; padding: .8rem 1rem;
+    border-left: 3px solid var(--ball); background: var(--panel);
+    border-radius: 0 10px 10px 0;
+  }
+  blockquote p { margin: .4rem 0; }
+  pre {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 10px;
+    padding: .8rem 1rem; font-size: .78em; line-height: 1.45;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  /* Ces pages se lisent au téléphone : les tableaux occupent la largeur disponible et
+     leur texte passe à la ligne, plutôt que de déborder et d'imposer un défilement
+     horizontal qui masque la dernière colonne. L'enveloppe garde le débordement sous
+     le coude pour un tableau qui serait un jour trop large. */
+  .tableau { width: 100%; overflow-x: auto; margin: 1rem 0; }
+  /* Largeur FIXE et césure autorisée : en disposition automatique, la plus longue
+     suite de caractères insécables de chaque colonne impose une largeur minimale, et
+     trois colonnes de texte juridique débordaient du cadre — la dernière se trouvait
+     coupée au bord de l’écran. */
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  /* La césure vient AVANT la coupure brutale : sans elle, les colonnes étroites
+     tranchaient au milieu des mots (« d emprisonne-ment »). La page déclare lang="fr",
+     le navigateur coupe donc aux syllabes françaises. */
+  th, td { -webkit-hyphens: auto; hyphens: auto; overflow-wrap: break-word; }
+  th, td { border: 1px solid var(--rule); padding: 8px 10px; text-align: left; vertical-align: top; font-size: .92rem; }
+  th { background: var(--panel); font-weight: 700; }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .85rem; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Privacy Policy</h1>
+<p><strong>Version 2.1 — Effective 12 November 2026</strong></p>
+<h2>Preamble</h2>
+<p>This policy informs users of the Unydex application and its associated website (together, "the App") about the processing of personal data carried out when they use them, in accordance with Articles 12 to 14 of Regulation (EU) 2016/679 of 27 April 2016 (the "GDPR"), the French Data Protection Act No. 78-17 of 6 January 1978 as amended, and its Article 82 on trackers.</p>
+<p>It forms an integral part of the <a href="conditions.html">Terms of Use</a>. The French version prevails in case of discrepancy.</p>
+<p><strong>Key points.</strong></p>
+<ul>
+<li><strong>Without an account, your collection stays on your device.</strong> Caught Pokémon, boxes, teams, cards, binders and preferences are stored in the App's local storage and sent to no one.</li>
+<li><strong>Some features query third-party services</strong>, even without an account: the card catalogue and images, prices, the exchange rate. Those services receive your device's IP address and the request (Section 3).</li>
+<li><strong>An account is optional.</strong> It lets you restore your collection on another device and sync it in real time (Section 4).</li>
+<li><strong>The App Store version of the App displays ads</strong> served by Google, personalised only with your consent (Section 5). The Unydex+ subscription removes them.</li>
+<li><strong>The PokéAdvisor assistant</strong> sends nothing until you save your own Mistral AI key; it then sends your questions and a summary of your collection to Mistral AI (Section 6).</li>
+<li><strong>The camera sends nothing</strong>: recognition runs on the device.</li>
+<li>No data is sold, rented or transferred.</li>
+</ul>
+<hr />
+<h2>1 — Data controller</h2>
+<p>The data controller within the meaning of Article 4(7) GDPR is:</p>
+<ul>
+<li><strong>Name</strong>: Guillaume LEPINAY-SALVETAT</li>
+<li><strong>Email</strong>: unydexapp@gmail.com</li>
+</ul>
+<p>No Data Protection Officer is required under Article 37 GDPR.</p>
+<p>The same account can be used in the <strong>Cartodex</strong> app, published by the same controller (Section 4.4).</p>
+<hr />
+<h2>2 — Data stored on your device</h2>
+<p>The App stores locally, on your device:</p>
+<ul>
+<li>your collection: caught Pokémon (regular and shiny), box contents, order, names and wallpapers, battle teams, owned cards and their copies (version, condition, date added), favourites, wishlist and its target prices, binders, price and collection value history, a log of recent actions;</li>
+<li>the number of cards scanned today (free version limit);</li>
+<li>your preferences: theme, language, game version, display options, scan mode, sounds and haptics, animations, price source and currency, the development build's ad setting;</li>
+<li>PokéAdvisor settings, memory, conversation and <strong>your Mistral AI access key</strong>;</li>
+<li>a cache of downloaded catalogue data (Section 3), for offline use.</li>
+</ul>
+<p>This information is sent to no one, except as described in Sections 3 to 6. It is erased when the App is uninstalled. Your Mistral AI key is <strong>never</strong> sent to the controller, nor included in backups or sync.</p>
+<p><strong>Legal basis for local storage</strong>: it is strictly necessary for the service you request and therefore exempt from consent (Article 82 of the French Data Protection Act).</p>
+<h3>2.1. Camera recognition</h3>
+<ul>
+<li>Images are processed <strong>entirely on the device</strong>, by machine-learning models built into the App.</li>
+<li><strong>No image is transmitted or stored</strong>: frames are analysed and immediately discarded.</li>
+<li>Camera access is requested by the operating system and can be refused or revoked at any time in the device settings, without affecting the rest of the App.</li>
+</ul>
+<h3>2.2. File backup</h3>
+<p>You can export all your data to a file and import it. The file is handed over through the system share sheet; what happens to it is your choice. Your Mistral AI key is not included.</p>
+<hr />
+<h2>3 — Third-party services queried by the App</h2>
+<p>Some features require querying a third-party service, <strong>including without an account</strong>. Each request necessarily discloses the device's <strong>IP address</strong>, technical information (browser or system type) and the request itself. These services act as controllers of their own processing, under their own policies.</p>
+<div class="tableau"><table><thead><tr><th>Service</th><th>When</th><th>What it receives</th></tr></thead><tbody>
+<tr><td><strong>TCGdex</strong> (<code>api.tcgdex.net</code>, <code>assets.tcgdex.net</code>)</td><td>Cards section: series, sets, card pages, images, rarities, prices</td><td>The sets and cards viewed; <strong>terms typed in the card search</strong></td></tr>
+<tr><td><strong>Pokémon TCG</strong> (<code>images.pokemontcg.io</code>) and <strong>Scrydex</strong> (<code>images.scrydex.com</code>)</td><td>Card images in the English collection</td><td>The requested images</td></tr>
+<tr><td><strong>Frankfurter</strong> (<code>api.frankfurter.dev</code>), European Central Bank rates</td><td>At most once every 20 hours, in the Cards section</td><td>An exchange-rate request, with no user data</td></tr>
+<tr><td><strong>GitHub Pages</strong> (GitHub, Inc.)</td><td>Web version only: loading the site</td><td>The requested pages and files</td></tr>
+<tr><td>Cardmarket, Vinted, eBay</td><td>Only if you tap the corresponding link; the page opens in your browser</td><td>The name of the card searched</td></tr>
+</tbody></table></div>
+<p><strong>Legal basis</strong>: performance of the service you request (Article 6(1)(b) GDPR). The games section (Pokédex, boxes, teams, moves, scan) uses no third-party service.</p>
+<hr />
+<h2>4 — Data processed if you create an account</h2>
+<h3>4.1. Categories of data</h3>
+<ul>
+<li><strong>Identification</strong> — email address; password, stored as a hash and never readable; internal identifier; where applicable, the name provided by your identity provider.</li>
+<li><strong>Profile</strong> — username; profile picture, which is a <strong>number</strong> pointing to an illustration within the App, not a file; creation and update dates.</li>
+<li><strong>Collection</strong> — all data described in Section 2, <strong>except the Mistral AI key</strong> and device-specific display preferences. It therefore includes PokéAdvisor's memory and <strong>conversation</strong>, and the game version chosen for the free team.</li>
+<li><strong>Technical data</strong> — date of last update; <strong>type</strong> of originating device ("iPhone" or "Browser"), with no device identifier or name.</li>
+</ul>
+<h3>4.2. Sign-in with an identity provider</h3>
+<p>When you sign in with Google or Apple, the provider shares <strong>your email address and, where applicable, your name</strong>, and nothing else. Sign in with Apple lets you <strong>hide your email address</strong>. The provider's processing is governed by its own privacy policy. When an account created with Apple is deleted, the App asks Apple for a fresh confirmation and sends the resulting code to Apple, through the Service's server, to <strong>revoke the App's access</strong>; nothing is kept.</p>
+<h3>4.3. Sync</h3>
+<p>Your collection is stored on the hosting provider's servers and synced <strong>in real time</strong> across devices signed in to the same account: a persistent connection to the hosting provider is kept open while the App is open. When the same data has been changed on two devices, both versions are merged automatically.</p>
+<h3>4.4. Account shared with Cartodex</h3>
+<p>The account is shared between Unydex and the Cartodex app, by the same publisher. The first time an account signs in to Unydex, <strong>its Cartodex backup, if any, is read and added to the collection</strong>. Deleting the account erases the data of both apps.</p>
+<h3>4.5. Shared favourites counter</h3>
+<p>A card's page may display the <strong>number</strong> of other accounts that have favourited it. It is computed by the hosting provider from stored collections, shown only to signed-in users, and never reveals the identity, username or collection of any account.</p>
+<h3>4.6. Data not collected</h3>
+<p>The controller does not collect: location, contacts, calendar, photo library, microphone, health data, browsing history, installed apps or payment data. Subscription payments are handled by Apple (Section 7).</p>
+<h3>4.7. No profiling by the controller</h3>
+<p>The controller carries out no profiling within the meaning of Article 4(4) GDPR and no decision based solely on automated processing within the meaning of Article 22. Account data is never used for marketing.</p>
+<hr />
+<h2>5 — Advertising</h2>
+<p>The App Store version of the App displays ads served by <strong>Google Ireland Limited</strong> and Google LLC (<strong>AdMob</strong>), except for Unydex+ subscribers: one full-screen ad when the App is opened (at launch, and when you come back to the App after a while), never during your first use. The web version shows no ads.</p>
+<ul>
+<li><strong>What Google receives</strong>: IP address (from which Google infers an approximate location), device and app information, ad interactions, diagnostic data and, <strong>if you allow it</strong>, your device's advertising identifier (IDFA). Google acts as an independent controller; see <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener">policies.google.com/technologies/partner-sites</a>.</li>
+<li><strong>Consent</strong>: at the end of the first-launch introduction, before any ad, users in the European Economic Area, the UK or Switzerland are shown Google's consent form; iOS then asks whether you allow tracking (App Tracking Transparency). <strong>Without your consent, ads are not personalised</strong> and the advertising identifier is not shared. You can change your choices at any time: Profile → Privacy → "Manage my ad choices" and, for tracking, in iOS Settings (Privacy → Tracking).</li>
+<li><strong>Minors</strong>: [ADS ARE REQUESTED WITHOUT PERSONALISATION FOR USERS UNDER FIFTEEN — TO BE IMPLEMENTED BEFORE RELEASE].</li>
+<li><strong>Legal basis</strong>: consent (Article 6(1)(a) GDPR and Article 82 of the French Data Protection Act) for personalised ads and reading the advertising identifier; the controller's legitimate interest in funding a free service (Article 6(1)(f)) for non-personalised ads and ad-fraud prevention.</li>
+</ul>
+<hr />
+<h2>6 — PokéAdvisor (chat assistant)</h2>
+<p><strong>This feature is not offered in the current version of the App</strong>: no data is sent to Mistral AI. This section will only apply once it is made available.</p>
+<p>PokéAdvisor is an assistant based on <strong>Mistral AI</strong> language models (Mistral AI SAS, 15 rue des Halles, 75001 Paris, France). It only works with an access key that <strong>you obtain yourself from Mistral AI</strong> and save in the App; you are then a Mistral AI customer, under its terms.</p>
+<ul>
+<li><strong>Sent to Mistral AI with each question</strong>: the question, the last twelve messages of the conversation, and a summary of your collection — Living Dex progress, number and value of cards, the fifteen most valuable cards, binders, items memorised by the assistant. The App tells you this <strong>before</strong> you save your key.</li>
+<li>The data goes directly from your device to Mistral AI; <strong>the controller has no access to it</strong>. Mistral AI processes it under its own privacy policy (<a href="https://mistral.ai/terms" target="_blank" rel="noopener">mistral.ai/terms</a>).</li>
+<li>The conversation and the assistant's memory are stored on the device and, for signed-in users, in the account (Section 4.1).</li>
+<li><strong>Do not share personal information with the assistant</strong> (name, address, contact details, sensitive data): it would be sent to Mistral AI and kept in the conversation.</li>
+<li><strong>Legal basis</strong>: performance of the service you request (Article 6(1)(b) GDPR).</li>
+</ul>
+<hr />
+<h2>7 — Unydex+ subscription</h2>
+<p><strong>Unydex+ is not offered in the current version of the App</strong>: no purchase is possible, and all of its features are available for free. This section will only apply once the subscription is introduced.</p>
+<p>The subscription is purchased and paid <strong>through Apple</strong>, via App Store in-app purchase. The controller <strong>never has access to your payment details</strong>. It receives from Apple the subscription status (plan, start and renewal dates, status), linked to an anonymous purchase identifier and, where applicable, to your account, so that you can access the benefits on your devices. <strong>Legal basis</strong>: performance of the contract (Article 6(1)(b) GDPR); accounting obligations (Article 6(1)(c)).</p>
+<hr />
+<h2>8 — Purposes and legal bases</h2>
+<div class="tableau"><table><thead><tr><th>Purpose</th><th>Legal basis</th></tr></thead><tbody>
+<tr><td>Operating the App and local storage</td><td>Contract — Art. 6(1)(b); consent exemption under Art. 82 of the French Data Protection Act</td></tr>
+<tr><td>Displaying the card catalogue, images and prices</td><td>Contract — Art. 6(1)(b)</td></tr>
+<tr><td>Account creation, management and authentication; username availability check</td><td>Contract — Art. 6(1)(b)</td></tr>
+<tr><td>Backup, sync and import of the Cartodex backup</td><td>Contract — Art. 6(1)(b)</td></tr>
+<tr><td>Shared favourites counter</td><td>Legitimate interest — Art. 6(1)(f) — in offering an aggregate indicator with no identifying data</td></tr>
+<tr><td>PokéAdvisor</td><td>Contract — Art. 6(1)(b)</td></tr>
+<tr><td>Personalised advertising, reading the advertising identifier</td><td>Consent — Art. 6(1)(a)</td></tr>
+<tr><td>Non-personalised advertising, ad-fraud prevention</td><td>Legitimate interest — Art. 6(1)(f)</td></tr>
+<tr><td>Subscription management</td><td>Contract — Art. 6(1)(b); legal obligation — Art. 6(1)(c)</td></tr>
+<tr><td>Security, technical logging, abuse prevention</td><td>Legitimate interest — Art. 6(1)(f)</td></tr>
+</tbody></table></div>
+<hr />
+<h2>9 — Recipients and processors</h2>
+<p>Account data is intended for the controller only and, within the limits of their services, for the following processors acting on its instructions under Article 28 GDPR:</p>
+<ul>
+<li><strong>Supabase, Inc.</strong> — database, authentication and real-time sync. Data hosted in the European Union, <strong>Ireland region</strong> (Amazon Web Services, eu-west-1).</li>
+<li><strong>GitHub, Inc.</strong> — hosting of the website and its files.</li>
+<li><strong>Apple Inc. / Apple Distribution International Ltd.</strong> — App distribution, sign-in service and, where applicable, subscription payment.</li>
+</ul>
+<p>Also recipients, as controllers of their own processing: Google (sign-in, if chosen; advertising), Mistral AI (PokéAdvisor, at your initiative) and the third-party services listed in Section 3.</p>
+<p>Data may be disclosed to any competent authority as provided by law. <strong>No data is sold, rented or exchanged for commercial purposes.</strong></p>
+<hr />
+<h2>10 — Transfers outside the European Union</h2>
+<p>Account data is hosted in the European Union. Some providers are established in the United States (Supabase, GitHub, Google, Apple) and may access or process data there. These transfers are covered, depending on the provider, by the European Commission's adequacy decision of 10 July 2023 on the EU–US Data Privacy Framework, for certified companies, or by the Commission's <strong>standard contractual clauses</strong> (Article 46(2)(c) GDPR) included in their data processing terms. A copy of the applicable safeguards is available on request.</p>
+<hr />
+<h2>11 — Retention</h2>
+<div class="tableau"><table><thead><tr><th>Data</th><th>Period</th></tr></thead><tbody>
+<tr><td>Account, profile and collection stored on the servers</td><td>Until you delete your account; erasure is immediate and cascading.</td></tr>
+<tr><td>Data stored on the device</td><td>Until the App is uninstalled or its data cleared</td></tr>
+<tr><td>Advertising choices</td><td>Thirteen months at most, then asked again</td></tr>
+<tr><td>Hosting providers' technical logs</td><td>As set by each provider, from a few days to a few weeks</td></tr>
+<tr><td>Subscription data</td><td>Duration of the subscription, then the legal retention period for accounting records (ten years) for required data only</td></tr>
+</tbody></table></div>
+<hr />
+<h2>12 — Security</h2>
+<p>The controller implements appropriate measures under Article 32 GDPR, including: encryption of all communications (HTTPS); hashed passwords; <strong>database-level</strong> isolation (row-level security) ensuring an account can only read and modify its own records; no privileges attached to the public key built into the App; restricted and locked high-privilege functions; a content security policy limiting the App's network destinations.</p>
+<p><strong>No other user can access an account's email address, profile or collection.</strong></p>
+<p>In the event of a data breach, the controller makes the notifications required by Articles 33 and 34 GDPR.</p>
+<hr />
+<h2>13 — Your rights</h2>
+<p>You have the right of <strong>access</strong> (Art. 15), <strong>rectification</strong> (Art. 16), <strong>erasure</strong> (Art. 17), <strong>restriction</strong> (Art. 18), <strong>portability</strong> (Art. 20) and <strong>objection</strong> (Art. 21), the right to <strong>withdraw consent</strong> at any time (Art. 7(3)) without affecting the lawfulness of prior processing, and the right to give <strong>instructions regarding your data after your death</strong> (Article 85 of the French Data Protection Act).</p>
+<h3>13.1. In the App</h3>
+<div class="tableau"><table><thead><tr><th>Right</th><th>How</th></tr></thead><tbody>
+<tr><td>Access and portability</td><td>Profile → Backup &amp; data → "Export": a complete, structured file, delivered immediately</td></tr>
+<tr><td>Rectification</td><td>Profile → Account: edit your username and profile picture directly</td></tr>
+<tr><td>Erasure</td><td>Profile → Account → "Delete my account": immediate and permanent erasure of the account, profile and server-side collection, for Unydex and Cartodex</td></tr>
+<tr><td>Withdrawing advertising consent</td><td>Profile → Privacy → "Manage my ad choices"; iOS Settings for tracking</td></tr>
+</tbody></table></div>
+<h3>13.2. By contacting the controller</h3>
+<p>Other requests can be sent to the address in Section 1, with proof of identity where there is reasonable doubt. We respond within one month, extendable by two months for complex requests.</p>
+<h3>13.3. Complaints</h3>
+<p>You may lodge a complaint with the French data protection authority, the <strong>CNIL</strong>, 3 place de Fontenoy, TSA 80715, 75334 Paris Cedex 07 — <a href="https://www.cnil.fr" target="_blank" rel="noopener">www.cnil.fr</a>, or with the supervisory authority of your country of residence.</p>
+<hr />
+<h2>14 — Minors</h2>
+<p>The App can be used without an account, without any data being sent to the controller.</p>
+<p>Creating an account is open from <strong>fifteen (15)</strong> in France (Article 45 of the French Data Protection Act), or from the age set by the law of your country of residence under Article 8 GDPR (sixteen by default). Below that age, the consent of a parent or guardian is required.</p>
+<p>A parent or guardian may request the deletion of a minor's account at any time at the address in Section 1; it will be done without delay.</p>
+<hr />
+<h2>15 — Changes to this policy</h2>
+<p>This policy may change, in particular when processing or the law changes. The applicable version is the one available from the App. Any substantial change will be brought to your attention by appropriate means within the App.</p>
+<hr />
+<h2>16 — Contact</h2>
+<p>Any question about this policy can be sent to the controller at the address in Section 1.</p>
+<footer>
+  <a href="confidentialite.html">Confidentialité</a> ·
+  <a href="conditions.html">Conditions</a> ·
+  <a href="mentions.html">Mentions légales</a> ·
+  <a href="privacy.html" lang="en">Privacy (EN)</a> ·
+  <a href="../">Unydex</a>
+</footer>
+</main>
+</body>
+</html>

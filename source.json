@@ -4,7 +4,7 @@
   "subtitle": "Living Dex et cartes Pokémon",
   "apps": [
     {
-      "name": "Unydex Dev",
+      "name": "Unydex",
       "bundleIdentifier": "com.guillaume.unydex.dev",
       "developerName": "Guillaume",
       "subtitle": "Living Dex et collection de cartes Pokémon",
@@ -14,18 +14,18 @@
       "screenshotURLs": [],
       "versions": [
         {
-          "version": "1.0.204",
+          "version": "1.0.207",
           "date": "2026-11-12",
-          "localizedDescription": "Build 1.0.204.",
-          "downloadURL": "https://github.com/GLS13600/boites-pc/releases/download/v1.0.204/Unydex.ipa",
-          "size": 321869636,
+          "localizedDescription": "Build 1.0.207.",
+          "downloadURL": "https://github.com/GLS13600/boites-pc/releases/download/v1.0.207/Unydex.ipa",
+          "size": 321888572,
           "minOSVersion": "15.0"
         }
       ],
-      "version": "1.0.204",
+      "version": "1.0.207",
       "versionDate": "2026-11-12",
-      "downloadURL": "https://github.com/GLS13600/boites-pc/releases/download/v1.0.204/Unydex.ipa",
-      "size": 321869636
+      "downloadURL": "https://github.com/GLS13600/boites-pc/releases/download/v1.0.207/Unydex.ipa",
+      "size": 321888572
     }
   ]
 }

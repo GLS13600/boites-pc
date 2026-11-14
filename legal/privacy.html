@@ -157,6 +157,15 @@
 <li><strong>Confidentiality of messages</strong>: they are encrypted in transit and stored by the host (European Union), but are <strong>not end-to-end encrypted</strong>: the controller is technically able to access them. It only does so following a report or a request from an authority.</li>
 <li><strong>Retention</strong>: messages are deleted when either user removes or blocks the other, and when either account is deleted. Reports are kept for at most one year after they are handled; friend-code attempts for one day.</li>
 </ul>
+<h3>4.9. Notifications</h3>
+<p>The App can send <strong>notifications</strong> (new expansions, friend requests, messages, reminders), <strong>only if you turn them on</strong> in the Profile and allow them in the system; you can turn them off in the same place, one kind at a time or altogether. This also applies <strong>without an account</strong>: a device can sign up for new expansions and reminders.</p>
+<ul>
+<li><strong>iPhone app reminders</strong>: scheduled <strong>on the device</strong>, with no data sent; they are rescheduled each time you open the App (four at most in thirty days).</li>
+<li><strong>Notifications sent by the server</strong> (website and App Store version): the device registers with the host a <strong>notification identifier</strong> — the subscription address issued by the browser (Web Push) or the token issued by Apple (APNs) —, the language, the kinds of notifications turned off, the date of last opening and, where applicable, the account identifier. No other data is stored.</li>
+<li><strong>Content</strong>: the expansion's name, the friend's username and, for a message, its first 140 characters. It passes through the browser's push service (Google, Mozilla, Apple or Microsoft depending on the browser) or through Apple (APNs), which deliver it to the device; Web Push content is end-to-end encrypted up to the browser, APNs content is not.</li>
+<li><strong>Purpose and legal basis</strong>: telling you about what you chose — <strong>consent</strong> (Art. 6(1)(a)), which you can withdraw at any time by turning notifications off.</li>
+<li><strong>Retention</strong>: the identifier is deleted when you turn notifications off, when the push service reports it as expired, or when the account is deleted; at the latest after twelve months without opening the App.</li>
+</ul>
 <hr />
 <h2>5 — Advertising</h2>
 <p>The App Store version of the App displays ads served by <strong>Google Ireland Limited</strong> and Google LLC (<strong>AdMob</strong>), except for Unydex+ subscribers: one full-screen ad when the App is opened (at launch, and when you come back to the App after a while), never during your first use. The web version shows no ads.</p>

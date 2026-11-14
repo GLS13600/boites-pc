@@ -1,13 +1,13 @@
 // Généré par scripts/build-sw.mjs — ne pas éditer à la main.
-const CACHE = 'unydex-20261113133910';
+const CACHE = 'unydex-20261114102809';
 const SHELL = [
   "./",
   "./index.html",
   "./icon.svg",
   "./assets/compte-natif-C0YAcbMT.js",
-  "./assets/index-BFhNhAjr.js",
-  "./assets/index-CtsCF2Y2.css",
   "./assets/index-D5bMjAqh.js",
+  "./assets/index-DLd7eYBx.css",
+  "./assets/index-DqeS0y9e.js",
   "./assets/learnsets-vg-yNECzyJ5.js",
   "./assets/scan-worker-B3QWNv6j.js"
 ];
@@ -27,6 +27,33 @@ self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
     for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);
     await self.clients.claim();
+  })());
+});
+
+// Les notifications du site (13/11/2026) : la fonction notifie envoie { titre, corps, url,
+// tag }. Toucher la notification ramène à l'appli ouverte (qui va à la page) ou l'ouvre.
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { corps: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.titre || 'Unydex', {
+    body: d.corps || '',
+    icon: './icone-192.png',
+    badge: './icone-192.png',
+    tag: d.tag || undefined,
+    renotify: !!d.tag,
+    data: { url: d.url || './' },
+  }));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
+  e.waitUntil((async () => {
+    const fenetres = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of fenetres) {
+      if ('focus' in c) { c.postMessage({ notif: url }); return c.focus(); }
+    }
+    return self.clients.openWindow(url);
   })());
 });
 
